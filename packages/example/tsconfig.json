@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "isolatedDeclarations": false,
+    "rewriteRelativeImportExtensions": false,
+    "allowImportingTsExtensions": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsc/example.tsbuildinfo",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "types": ["vite/client"],
+    "jsx": "react-jsx",
+    "customConditions": ["@slider/source"]
+  },
+  "include": ["src"],
+  "references": [{ "path": "../core/tsconfig.lib.json" }]
+}

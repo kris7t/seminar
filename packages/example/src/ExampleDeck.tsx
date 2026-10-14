@@ -1,0 +1,133 @@
+import { Box, Link, Stack, Typography } from '@mui/material';
+import {
+  createSlideTheme,
+  Deck,
+  Slide,
+  type SlideMasterProps,
+} from '@slider/core';
+import type { JSX } from 'react';
+
+/** Master added to the theme, so that slides can refer to it by name. */
+function SectionMaster({ title, children }: SlideMasterProps): JSX.Element {
+  return (
+    <Stack
+      component="section"
+      sx={{
+        height: '100%',
+        justifyContent: 'center',
+        gap: 2,
+        px: 10,
+        bgcolor: 'primary.main',
+        color: 'primary.contrastText',
+      }}
+    >
+      <Typography variant="h2" component="h1">
+        {title}
+      </Typography>
+      {children}
+    </Stack>
+  );
+}
+
+/** Master passed directly to a single slide. */
+function ClosingMaster({ title, children }: SlideMasterProps): JSX.Element {
+  return (
+    <Stack
+      component="section"
+      sx={{
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 3,
+        textAlign: 'center',
+      }}
+    >
+      <Typography variant="h1" component="h1" color="primary">
+        {title}
+      </Typography>
+      {children}
+    </Stack>
+  );
+}
+
+const theme = createSlideTheme({
+  palette: {
+    primary: { main: '#00639b' },
+    secondary: { main: '#b3261e' },
+  },
+  master: {
+    section: SectionMaster,
+  },
+  components: {
+    SliderSlideNumber: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          color: '#fff',
+          backgroundColor: theme.palette.primary.main,
+          padding: 2,
+        }),
+      },
+    },
+  },
+});
+
+export function ExampleDeck(): JSX.Element {
+  return (
+    <Deck theme={theme}>
+      <Slide master="title" title="slider">
+        <Typography variant="subtitle1">
+          Scientific talks and lectures in Markdown
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Use the arrow keys, Page Up / Page Down or Space to navigate.
+        </Typography>
+      </Slide>
+      <Slide id="why" title="Why slider?">
+        <ul>
+          <li>Keep your slides in plain text under version control</li>
+          <li>Write content in Markdown, style it with themes</li>
+          <li>Present from any modern web browser</li>
+        </ul>
+      </Slide>
+      <Slide id="theming" master="section" title="Theming">
+        <Typography variant="subtitle1">
+          Slide masters and MUI themes
+        </Typography>
+      </Slide>
+      <Slide title="Theming with MUI">
+        <Stack direction="row" sx={{ gap: 4, height: '100%' }}>
+          <Box sx={{ flex: 1 }}>
+            <Typography>
+              Slides use the MUI theme passed to the <code>Deck</code>, so
+              palettes and typography can be adjusted in one place.
+            </Typography>
+          </Box>
+          <Stack sx={{ flex: 1, gap: 2 }}>
+            {(['primary', 'secondary'] as const).map((color) => (
+              <Box
+                key={color}
+                sx={{
+                  p: 3,
+                  borderRadius: 2,
+                  bgcolor: `${color}.main`,
+                  color: `${color}.contrastText`,
+                }}
+              >
+                <Typography variant="h5" component="p">
+                  {color}
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
+        </Stack>
+      </Slide>
+      <Slide master={ClosingMaster} title="Thank you!">
+        <Typography variant="subtitle1">Questions?</Typography>
+        <Typography variant="body2">
+          Back to <Link href="#why">Why slider?</Link> or{' '}
+          <Link href="#slide=1">the beginning</Link>
+        </Typography>
+      </Slide>
+    </Deck>
+  );
+}

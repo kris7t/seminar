@@ -1,6 +1,8 @@
 // @ts-check
 import eslint from '@eslint/js';
+import eslintReact from '@eslint-react/eslint-plugin';
 import prettier from 'eslint-config-prettier/flat';
+import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -15,7 +17,12 @@ export default defineConfig(
       globals: globals.node,
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.js', '*.ts'],
+          allowDefaultProject: [
+            '*.js',
+            '*.ts',
+            'packages/*/*.config.ts',
+            'packages/*/vitest.setup.ts',
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -25,6 +32,16 @@ export default defineConfig(
       '@typescript-eslint/consistent-type-exports': 'error',
       '@typescript-eslint/no-import-type-side-effects': 'error',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
+    },
+  },
+  {
+    files: ['packages/*/src/**/*.{ts,tsx}'],
+    extends: [
+      eslintReact.configs['recommended-type-checked'],
+      reactHooks.configs.flat.recommended,
+    ],
+    languageOptions: {
+      globals: globals.browser,
     },
   },
   {

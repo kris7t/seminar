@@ -5,8 +5,10 @@
     "isolatedDeclarations": false,
     "rewriteRelativeImportExtensions": false,
     "allowImportingTsExtensions": true,
-    "tsBuildInfoFile": "../../node_modules/.cache/tsc/core-test.tsbuildinfo"
+    "tsBuildInfoFile": "../../node_modules/.cache/tsc/core-test.tsbuildinfo",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*.test.ts"],
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [{ "path": "./tsconfig.lib.json" }]
 }
