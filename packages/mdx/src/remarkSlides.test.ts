@@ -1,4 +1,4 @@
-import { evaluate } from '@mdx-js/mdx';
+import { compile, evaluate } from '@mdx-js/mdx';
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import * as runtime from 'react/jsx-runtime';
 import { describe, expect, it } from 'vitest';
@@ -8,6 +8,7 @@ import { sliderMdxOptions } from './options.ts';
 type SlideSummary = Record<string, unknown>;
 
 const STUB_URL = new URL('test-stub.ts', import.meta.url).href;
+const THEME_URL = new URL('test-theme.ts', import.meta.url).href;
 
 async function compileDeck(source: string) {
   const module = await evaluate(source, {
@@ -243,6 +244,52 @@ author: Someone
   it('keeps the title in the frontmatter', async () => {
     const module = await compileDeck('---\ntitle: Talk\n---\n\n# Slide');
     expect(module.frontmatter).toMatchObject({ title: 'Talk' });
+  });
+
+  it('uses the theme from the frontmatter', async () => {
+    const module = await compileDeck(
+      `---\ntheme: ${THEME_URL}\n---\n\n# Slide`,
+    );
+    expect(renderDeck(module).props).toMatchObject({
+      theme: { name: 'test theme' },
+    });
+    expect(renderDeck(module, { theme: undefined }).props).toMatchObject({
+      theme: { name: 'test theme' },
+    });
+    expect(renderDeck(module, { theme: 'override' }).props).toMatchObject({
+      theme: 'override',
+    });
+  });
+
+  it('uses the defaults passed as options', async () => {
+    const options = sliderMdxOptions({
+      importSource: STUB_URL,
+      defaultTheme: THEME_URL,
+      defaultMouseNavigation: false,
+    });
+    const module = (await evaluate('# Slide', {
+      ...runtime,
+      ...options,
+      baseUrl: import.meta.url,
+    })) as Awaited<ReturnType<typeof compileDeck>>;
+    expect(module.frontmatter).toEqual({
+      title: 'Slide',
+      mouseNavigation: false,
+      theme: THEME_URL,
+    });
+    expect(renderDeck(module).props).toMatchObject({
+      defaultMouseNavigation: false,
+      theme: { name: 'test theme' },
+    });
+  });
+
+  it('reports invalid themes in the frontmatter', async () => {
+    const file = await compile('---\ntheme: 42\n---\n\n# Slide', {
+      ...sliderMdxOptions(),
+    });
+    expect(file.messages.map(String)).toEqual([
+      expect.stringContaining('Expected `theme` in the frontmatter'),
+    ]);
   });
 
   it('keeps exports of the document', async () => {

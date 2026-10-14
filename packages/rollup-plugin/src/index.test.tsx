@@ -1,13 +1,16 @@
-import { createSlideTheme } from '@slider/core';
+import { createSlideTheme, type SlideMasterProps } from '@slider/core';
 import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import type { JSX } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import Plain, {
+  frontmatter as plainFrontmatter,
+} from './fixtures/plain.deck.mdx';
 import Talk, { frontmatter } from './fixtures/talk.deck.mdx';
 
-function SectionMaster({ title }: { title?: unknown }): JSX.Element {
-  return <h1 data-master="section">{String(title)}</h1>;
+function OverrideMaster({ title }: SlideMasterProps): JSX.Element {
+  return <h1 data-master="override">{title}</h1>;
 }
 
 describe('.deck.mdx', () => {
@@ -21,9 +24,7 @@ describe('.deck.mdx', () => {
 
   it('renders the slides of the document', async () => {
     const user = userEvent.setup();
-    render(
-      <Talk theme={createSlideTheme({ master: { section: SectionMaster } })} />,
-    );
+    render(<Talk />);
     expect(screen.getByRole('heading').textContent).toBe('A talk about slides');
     expect(screen.getByText('talk').tagName).toBe('EM');
     expect(window.location.hash).toBe('#a-talk-about-slides');
@@ -49,6 +50,7 @@ describe('.deck.mdx', () => {
     expect(frontmatter).toEqual({
       title: 'A talk about slides',
       mouseNavigation: false,
+      theme: './theme.tsx',
     });
     render(<Talk />);
     await user.click(screen.getByText('Someone, somewhere'));
@@ -60,5 +62,30 @@ describe('.deck.mdx', () => {
     render(<Talk defaultMouseNavigation />);
     await user.click(screen.getByText('Someone, somewhere'));
     expect(window.location.hash).toBe('#introduction');
+  });
+
+  it('lets props override the theme', () => {
+    window.history.replaceState(null, '', '#results');
+    render(
+      <Talk
+        theme={createSlideTheme({ master: { section: OverrideMaster } })}
+      />,
+    );
+    expect(screen.getByRole('heading').getAttribute('data-master')).toBe(
+      'override',
+    );
+  });
+
+  it('uses the default theme and mouse navigation', async () => {
+    const user = userEvent.setup();
+    expect(plainFrontmatter).toEqual({
+      title: 'Plain deck',
+      mouseNavigation: true,
+      theme: '@slider/theme-default',
+    });
+    render(<Plain />);
+    expect(screen.getByRole('heading').textContent).toBe('Plain deck');
+    await user.click(screen.getByText('Uses the default theme'));
+    expect(window.location.hash).toBe('#plain-deck');
   });
 });

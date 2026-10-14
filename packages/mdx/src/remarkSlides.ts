@@ -4,7 +4,6 @@ import type { Paragraph, PhrasingContent, Root, RootContent } from 'mdast';
 import type { MdxJsxFlowElement } from 'mdast-util-mdx';
 import { toString } from 'mdast-util-to-string';
 import type { VFile } from 'vfile';
-import { parse as parseYaml } from 'yaml';
 
 import {
   splitTrailingAttributeBlock,
@@ -16,11 +15,12 @@ import {
   createSpreadAttribute,
   createStringAttribute,
 } from './estree.ts';
+import { getDeckFrontmatter, type DeckDefaults } from './frontmatter.ts';
 import { SLIDE_TITLE_MARKER } from './marker.ts';
 
-export interface RemarkSlidesOptions {
+export interface RemarkSlidesOptions extends DeckDefaults {
   /** Module to import the `Deck` and `Slide` components from. */
-  importSource?: string;
+  importSource?: string | undefined;
 }
 
 /**
@@ -60,6 +60,7 @@ const EXPLICIT_JSX = { _mdxExplicitJsx: true } as MdxJsxFlowElement['data'];
 
 const DECK = '_SliderDeck';
 const SLIDE = '_SliderSlide';
+const THEME = '_SliderTheme';
 
 /**
  * Matches a slide break with an (escaped) attribute block, e.g.,
@@ -252,20 +253,27 @@ function createSlideElement(
   };
 }
 
-function parseFrontmatter(value: string, file: VFile): Record<string, unknown> {
-  const data: unknown = parseYaml(value);
-  if (data === null || data === undefined) {
-    return {};
+/** Returns the module to import the theme from, if any. */
+function getThemeSource(
+  frontmatter: Record<string, unknown>,
+  file: VFile,
+): string | undefined {
+  const { theme } = frontmatter;
+  if (theme === undefined) {
+    return undefined;
   }
-  if (typeof data !== 'object' || Array.isArray(data)) {
-    file.message('Expected the frontmatter to be a YAML mapping');
-    return {};
+  if (typeof theme !== 'string' || theme === '') {
+    file.message(
+      'Expected `theme` in the frontmatter to be the module to import the theme from',
+    );
+    return undefined;
   }
-  return data as Record<string, unknown>;
+  return theme;
 }
 
 function createDeckAttributes(
   frontmatter: Record<string, unknown>,
+  themeSource: string | undefined,
   file: VFile,
 ): MdxJsxFlowElement['attributes'] {
   const attributes: MdxJsxFlowElement['attributes'] = [];
@@ -286,6 +294,13 @@ function createDeckAttributes(
   }
   // Props passed to the document override the frontmatter.
   attributes.push(createSpreadAttribute('props'));
+  if (themeSource !== undefined) {
+    // Also fall back to the theme of the document if the `theme` prop is
+    // explicitly `undefined`.
+    attributes.push(
+      createExpressionAttribute('theme', `props.theme ?? ${THEME}`),
+    );
+  }
   return attributes;
 }
 
@@ -312,32 +327,31 @@ function createDeckAttributes(
  * The document becomes a `Deck` that receives the props of the MDX component.
  * Settings for the deck are taken from the frontmatter (which requires
  * `remark-frontmatter`), which is also exported as `frontmatter`, with
- * defaults filled in:
+ * defaults filled in (see {@link getDeckFrontmatter}).
  *
- * - `title` defaults to the text of the first heading.
- * - `mouseNavigation` defaults to `true`.
+ * If the frontmatter has a `theme`, the default export of that module (e.g.,
+ * `./theme.ts` relative to the document, or a package) is the default theme of
+ * the deck, which can still be overridden with the `theme` prop.
  */
 export function remarkSlides({
   importSource = '@slider/core',
+  ...defaults
 }: RemarkSlidesOptions = {}): (tree: Root, file: VFile) => void {
   return (tree, file) => {
     const slugger = new GithubSlugger();
     const esm: RootContent[] = [];
     const slides: SlideDraft[] = [];
-    let frontmatter: Record<string, unknown> = {};
-    let firstHeading: string | undefined;
+    const frontmatter = getDeckFrontmatter(tree, file, defaults);
     let current: SlideDraft | undefined;
 
     for (const node of tree.children) {
       if (node.type === 'yaml') {
-        frontmatter = parseFrontmatter(node.value, file);
+        // Already read by `getDeckFrontmatter`.
       } else if (node.type === 'mdxjsEsm') {
         esm.push(node);
       } else if (node.type === 'heading' && node.depth <= 2) {
         const block = extractTrailingAttributes(node.children);
-        const text = toString(node);
-        firstHeading ??= text;
-        const slug = slugger.slug(text);
+        const slug = slugger.slug(toString(node));
         current = createSlide(
           node.depth === 1 ? 'title' : 'content',
           slug === '' ? undefined : slug,
@@ -380,23 +394,22 @@ export function remarkSlides({
       }
     }
 
-    frontmatter = {
-      ...(firstHeading === undefined ? {} : { title: firstHeading }),
-      mouseNavigation: true,
-      ...frontmatter,
-    };
     const bindings = collectBindings(esm);
+    const themeSource = getThemeSource(frontmatter, file);
     const deck: MdxJsxFlowElement = {
       type: 'mdxJsxFlowElement',
       name: DECK,
       data: EXPLICIT_JSX,
-      attributes: createDeckAttributes(frontmatter, file),
+      attributes: createDeckAttributes(frontmatter, themeSource, file),
       children: slides.map((slide) => createSlideElement(slide, bindings)),
     };
     tree.children = [
       createEsm(
         `import { Deck as ${DECK}, Slide as ${SLIDE} } from ${JSON.stringify(importSource)};`,
       ),
+      ...(themeSource === undefined
+        ? []
+        : [createEsm(`import ${THEME} from ${JSON.stringify(themeSource)};`)]),
       createEsm(`export const frontmatter = ${JSON.stringify(frontmatter)};`),
       ...esm,
       deck,

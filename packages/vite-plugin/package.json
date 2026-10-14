@@ -1,0 +1,35 @@
+{
+  "name": "@slider/vite-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Vite plugin for slider presentations",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@slider/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@slider/mdx": "0.0.0",
+    "@slider/rollup-plugin": "0.0.0"
+  },
+  "peerDependencies": {
+    "vite": "^8.0.0"
+  },
+  "devDependencies": {
+    "@slider/core": "0.0.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.4"
+  }
+}

@@ -1,4 +1,4 @@
-import slider from '@slider/rollup-plugin';
+import slider from '@slider/vite-plugin';
 import react from '@vitejs/plugin-react';
 import { defaultClientConditions, defineConfig } from 'vite';
 
@@ -9,11 +9,9 @@ export default defineConfig({
     conditions: ['@slider/source', ...defaultClientConditions],
   },
   build: {
-    rollupOptions: {
-      input: {
-        main: 'index.html',
-        components: 'components.html',
-      },
+    rolldownOptions: {
+      // The page for `index.deck.mdx` is added by the slider plugin.
+      input: { components: 'components.html' },
     },
   },
 });

@@ -7,6 +7,6 @@
     "allowImportingTsExtensions": true,
     "tsBuildInfoFile": "../../node_modules/.cache/tsc/mdx-test.tsbuildinfo"
   },
-  "include": ["src/**/*.test.ts", "src/test-stub.ts"],
+  "include": ["src/**/*.test.ts", "src/test-stub.ts", "src/test-theme.ts"],
   "references": [{ "path": "./tsconfig.lib.json" }]
 }

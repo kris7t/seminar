@@ -22,10 +22,12 @@
   },
   "dependencies": {
     "@mdx-js/rollup": "^3.1.1",
-    "@slider/mdx": "0.0.0"
+    "@slider/mdx": "0.0.0",
+    "@slider/theme-default": "0.0.0"
   },
   "devDependencies": {
     "@slider/core": "0.0.0",
-    "rollup": "^4.64.6"
+    "rollup": "^4.64.6",
+    "vite": "^8.3.4"
   }
 }

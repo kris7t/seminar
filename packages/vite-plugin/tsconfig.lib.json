@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../mdx/tsconfig.lib.json" },
+    { "path": "../rollup-plugin/tsconfig.lib.json" }
+  ],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/fixtures"]
+}

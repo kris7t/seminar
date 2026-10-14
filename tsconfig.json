@@ -4,6 +4,8 @@
     { "path": "./packages/core" },
     { "path": "./packages/mdx" },
     { "path": "./packages/rollup-plugin" },
+    { "path": "./packages/vite-plugin" },
+    { "path": "./packages/theme-default" },
     { "path": "./packages/example" }
   ]
 }
