@@ -135,7 +135,8 @@ describe('click navigation', () => {
         </Slide>
       </Deck>,
     );
-    const root = container.firstElementChild;
+    // The area of the slides, next to the (closed) table of contents.
+    const root = container.firstElementChild?.lastElementChild ?? null;
     expect(root).not.toBeNull();
     if (root !== null) {
       expect(getComputedStyle(root).userSelect).toBe('none');
@@ -151,7 +152,7 @@ describe('click navigation', () => {
         <Slide title="Title" />
       </Deck>,
     );
-    const root = container.firstElementChild;
+    const root = container.firstElementChild?.lastElementChild ?? null;
     expect(root).not.toBeNull();
     if (root !== null) {
       expect(getComputedStyle(root).userSelect).not.toBe('none');

@@ -25,6 +25,8 @@ import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { useDeckNavigation } from './useDeckNavigation.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
+import { resolveToc, type TocEntry } from '../toc/tableOfContents.ts';
+import { TocSidebar } from '../toc/TocSidebar.tsx';
 
 export interface DeckProps {
   /**
@@ -45,6 +47,14 @@ export interface DeckProps {
    * since selecting text with the mouse would interfere with clicking.
    */
   defaultMouseNavigation?: boolean;
+  /**
+   * The table of contents of the deck, which the presenter can show in a
+   * sidebar from the context menu. Decks written in MDX get it from their
+   * headings.
+   */
+  toc?: TocEntry[] | undefined;
+  /** Whether the table of contents is shown initially. Defaults to `false`. */
+  defaultShowToc?: boolean;
 }
 
 const SELECTABLE_SELECTOR = [
@@ -73,11 +83,14 @@ export function Deck({
   children,
   theme = defaultSlideTheme,
   defaultMouseNavigation = true,
+  toc: tocEntries,
+  defaultShowToc = false,
 }: DeckProps): JSX.Element {
   // Slides are positional children, so we need to index into them.
   // eslint-disable-next-line @eslint-react/no-children-to-array
   const slides = Children.toArray(children);
   const slideCount = slides.length;
+  const slideIds = slides.map(getSlideId);
   const {
     slideIndex,
     stepStore,
@@ -88,7 +101,13 @@ export function Deck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slides.map(getSlideId));
+  } = useDeckNavigation(slideIds);
+  const toc = useMemo(() => {
+    // eslint-disable-next-line @eslint-react/no-children-to-array
+    const tocSlides = Children.toArray(children);
+    return resolveToc(tocEntries ?? [], tocSlides, tocSlides.map(getSlideId));
+  }, [tocEntries, children]);
+  const [showToc, setShowToc] = useState(defaultShowToc);
   const [containerRef, scale] = useFitScale(SLIDE_WIDTH, SLIDE_HEIGHT);
   const [mouseNavigation, setMouseNavigation] = useState(
     defaultMouseNavigation,
@@ -108,6 +127,9 @@ export function Deck({
       lastStep,
       mouseNavigation,
       setMouseNavigation,
+      toc,
+      showToc,
+      setShowToc,
     }),
     [
       slideIndex,
@@ -120,6 +142,8 @@ export function Deck({
       firstStep,
       lastStep,
       mouseNavigation,
+      toc,
+      showToc,
     ],
   );
   const [goToSlideOpen, setGoToSlideOpen] = useState(false);
@@ -137,39 +161,51 @@ export function Deck({
       <CssBaseline />
       <DeckContext value={deck}>
         <StepStoreContext value={stepStore}>
-          <Box
-            ref={containerRef}
-            onClick={mouseNavigation ? onClick : undefined}
-            onContextMenu={onContextMenu}
-            sx={[
-              {
-                position: 'fixed',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                bgcolor: 'common.black',
-              },
-              mouseNavigation && {
-                userSelect: 'none',
-                [SELECTABLE_SELECTOR]: { userSelect: 'text' },
-              },
-            ]}
-          >
+          <Box sx={{ position: 'fixed', inset: 0, display: 'flex' }}>
+            {showToc && toc.length > 0 && (
+              // Outside of the slides, so that clicks don't navigate.
+              <ThemeProvider theme={uiTheme}>
+                <TocSidebar
+                  onClose={() => {
+                    setShowToc(false);
+                  }}
+                />
+              </ThemeProvider>
+            )}
             <Box
-              sx={{
-                flex: 'none',
-                position: 'relative',
-                width: SLIDE_WIDTH,
-                height: SLIDE_HEIGHT,
-                overflow: 'hidden',
-                bgcolor: 'background.default',
-                color: 'text.primary',
-              }}
-              style={{ transform: `scale(${String(scale)})` }}
+              ref={containerRef}
+              onClick={mouseNavigation ? onClick : undefined}
+              onContextMenu={onContextMenu}
+              sx={[
+                {
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  bgcolor: 'common.black',
+                },
+                mouseNavigation && {
+                  userSelect: 'none',
+                  [SELECTABLE_SELECTOR]: { userSelect: 'text' },
+                },
+              ]}
             >
-              {slides[slideIndex]}
+              <Box
+                sx={{
+                  flex: 'none',
+                  position: 'relative',
+                  width: SLIDE_WIDTH,
+                  height: SLIDE_HEIGHT,
+                  overflow: 'hidden',
+                  bgcolor: 'background.default',
+                  color: 'text.primary',
+                }}
+                style={{ transform: `scale(${String(scale)})` }}
+              >
+                {slides[slideIndex]}
+              </Box>
             </Box>
           </Box>
           {/* Outside of the slides, so that events don't bubble to them. */}

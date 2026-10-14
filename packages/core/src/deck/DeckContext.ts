@@ -1,5 +1,7 @@
 import { createContext, use, type Context } from 'react';
 
+import type { ResolvedTocEntry } from '../toc/tableOfContents.ts';
+
 export interface DeckState {
   /** Zero-based index of the currently shown slide. */
   slideIndex: number;
@@ -30,6 +32,11 @@ export interface DeckState {
    */
   mouseNavigation: boolean;
   setMouseNavigation: (enabled: boolean) => void;
+  /** The table of contents of the deck, which may be empty. */
+  toc: ResolvedTocEntry[];
+  /** Whether the table of contents is shown in a sidebar. */
+  showToc: boolean;
+  setShowToc: (shown: boolean) => void;
 }
 
 export const DeckContext: Context<DeckState | undefined> = createContext<

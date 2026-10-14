@@ -48,6 +48,10 @@ interface SlideDraft {
   attributes: Map<string, string>;
   title: PhrasingContent[] | undefined;
   children: RootContent[];
+  /** Title of the slide in the table of contents, if set explicitly. */
+  tocTitle?: string | undefined;
+  /** Level of the heading of the slide, if any. */
+  level: number | undefined;
 }
 
 /**
@@ -73,6 +77,45 @@ const ATTRIBUTED_BREAK_PATTERN =
 
 /** Matches an (escaped) attribute block on its own, e.g., `\{#id}`. */
 const ATTRIBUTE_BLOCK_PATTERN = /^\s*(\{[^{}]*\})\s*$/;
+
+/** An entry of the table of contents, as in `@slider/core`. */
+interface TocEntry {
+  slide: number;
+  title?: string;
+  children?: TocEntry[];
+}
+
+/**
+ * Creates the table of contents of the deck, where the slides are nested by
+ * the levels of their headings, e.g., the content slides of a section in its
+ * section slide. Slides without headings are at the level of content slides.
+ * The titles are taken from the slides by the `Deck`, which also names slides
+ * without titles.
+ */
+function createToc(slides: readonly SlideDraft[], depth: number): TocEntry[] {
+  // Slides without headings are at the level of content slides.
+  const contentLevel = Math.max(depth, 1);
+  const toc: TocEntry[] = [];
+  const stack: { level: number; entry: TocEntry }[] = [];
+  for (const [index, slide] of slides.entries()) {
+    const level = slide.level ?? contentLevel;
+    const entry: TocEntry =
+      slide.tocTitle === undefined
+        ? { slide: index }
+        : { slide: index, title: slide.tocTitle };
+    while ((stack.at(-1)?.level ?? 0) >= level) {
+      stack.pop();
+    }
+    const parent = stack.at(-1)?.entry;
+    if (parent === undefined) {
+      toc.push(entry);
+    } else {
+      (parent.children ??= []).push(entry);
+    }
+    stack.push({ level, entry });
+  }
+  return toc;
+}
 
 /** Masters of the slides started by headings above the deepest level. */
 const HEADING_MASTERS = ['title', 'section', 'subsection'];
@@ -102,6 +145,7 @@ function createSlide(
     attributes: new Map<string, string>(),
     title,
     children: [],
+    level: undefined,
   };
   if (block !== undefined) {
     applyAttributes(slide, block, file);
@@ -182,7 +226,9 @@ function applyAttributes(
     }
   }
   for (const [key, value] of attributes) {
-    if (key !== 'master') {
+    if (key === 'title') {
+      slide.tocTitle = value;
+    } else if (key !== 'master') {
       slide.attributes.set(key, value);
     }
   }
@@ -290,9 +336,12 @@ function getThemeSource(
 function createDeckAttributes(
   frontmatter: Record<string, unknown>,
   themeSource: string | undefined,
+  toc: TocEntry[],
   file: VFile,
 ): MdxJsxFlowElement['attributes'] {
-  const attributes: MdxJsxFlowElement['attributes'] = [];
+  const attributes: MdxJsxFlowElement['attributes'] = [
+    createExpressionAttribute('toc', JSON.stringify(toc)),
+  ];
   const { mouseNavigation } = frontmatter;
   if (mouseNavigation !== undefined) {
     if (typeof mouseNavigation === 'boolean') {
@@ -350,6 +399,8 @@ function createDeckAttributes(
  * slide is set either with a class, like `.section`, which names a master in
  * the theme, or with `master=Name`, which refers to a component imported in the
  * document if there is one, and to a master in the theme otherwise.
+ * `title="…"` sets the title of the slide in the table of contents, e.g., for
+ * slides without a heading, instead of the title shown on the slide.
  * The attribute block may also follow in its own paragraph, which is how
  * formatters write it after a slide break.
  *
@@ -392,6 +443,7 @@ export function remarkSlides({
           file,
           node.children,
         );
+        current.level = node.depth;
         slides.push(current);
       } else if (node.type === 'thematicBreak') {
         current = createSlide('content', undefined, undefined, file);
@@ -433,7 +485,12 @@ export function remarkSlides({
       type: 'mdxJsxFlowElement',
       name: DECK,
       data: EXPLICIT_JSX,
-      attributes: createDeckAttributes(frontmatter, themeSource, file),
+      attributes: createDeckAttributes(
+        frontmatter,
+        themeSource,
+        createToc(slides, depth),
+        file,
+      ),
       children: slides.map((slide) => createSlideElement(slide, bindings)),
     };
     tree.children = [

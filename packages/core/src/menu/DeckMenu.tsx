@@ -59,7 +59,15 @@ export function DeckMenu({
   onGoToSlide,
 }: DeckMenuProps): JSX.Element {
   const deck = useDeck();
-  const { slideIndex, slideCount, mouseNavigation, setMouseNavigation } = deck;
+  const {
+    slideIndex,
+    slideCount,
+    mouseNavigation,
+    setMouseNavigation,
+    toc,
+    showToc,
+    setShowToc,
+  } = deck;
   const isFirstSlide = slideIndex === 0;
   const isLastSlide = slideIndex === slideCount - 1;
 
@@ -181,6 +189,18 @@ export function DeckMenu({
         ),
       ])}
       <Divider />
+      <MenuItem
+        role="menuitemcheckbox"
+        aria-checked={showToc}
+        disabled={toc.length === 0}
+        onClick={() => {
+          onClose();
+          setShowToc(!showToc);
+        }}
+      >
+        <ItemIcon>{showToc && <CheckIcon fontSize="small" />}</ItemIcon>
+        <ListItemText>Table of contents</ListItemText>
+      </MenuItem>
       <MenuItem
         role="menuitemcheckbox"
         aria-checked={!mouseNavigation}

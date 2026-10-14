@@ -1,12 +1,35 @@
 import { Box, Link, Stack, Typography } from '@mui/material';
-import { Deck, Slide, Step, Together, Steps } from '@slider/core';
+import {
+  Deck,
+  Slide,
+  Step,
+  Together,
+  Steps,
+  type TocEntry,
+} from '@slider/core';
 import type { JSX } from 'react';
 
 import { ClosingMaster, theme } from './theme.tsx';
 
+/**
+ * Table of contents of the deck. Titles default to the titles of the slides,
+ * which are referred to by their ids or indices.
+ */
+const toc: TocEntry[] = [
+  {
+    slide: 0,
+    children: [
+      { slide: 'why' },
+      { slide: 'steps' },
+      { slide: 'theming', children: [{ slide: 4 }] },
+      { slide: 5 },
+    ],
+  },
+];
+
 export function ExampleDeck(): JSX.Element {
   return (
-    <Deck theme={theme}>
+    <Deck theme={theme} toc={toc}>
       <Slide master="title" title="slider">
         <Typography variant="subtitle1">
           Scientific talks and lectures in Markdown

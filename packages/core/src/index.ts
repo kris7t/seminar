@@ -67,6 +67,7 @@ export {
   type UseStepsOptions,
 } from './steps/useSteps.ts';
 export type { ComponentTheme } from './theme/ComponentTheme.ts';
+export type { TocEntry } from './toc/tableOfContents.ts';
 export {
   createSlideTheme,
   defaultSlideTheme,

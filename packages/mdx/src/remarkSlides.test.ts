@@ -374,6 +374,74 @@ author: Someone
     });
   });
 
+  describe('table of contents', () => {
+    it('nests slides by the levels of their headings', async () => {
+      const module = await compileDeck(`Intro
+
+# Talk
+
+## Part
+
+### One
+
+---
+
+More
+
+### Two
+
+## Other
+
+---
+`);
+      expect(renderDeck(module).props).toMatchObject({
+        toc: [
+          { slide: 0 },
+          {
+            slide: 1,
+            children: [
+              {
+                slide: 2,
+                children: [{ slide: 3 }, { slide: 4 }, { slide: 5 }],
+              },
+              { slide: 6, children: [{ slide: 7 }] },
+            ],
+          },
+        ],
+      });
+    });
+
+    it('lists every slide with depth 0', async () => {
+      const module = await compileDeck('---\ndepth: 0\n---\n\n# A\n\n---\n\nB');
+      expect(renderDeck(module).props).toMatchObject({
+        toc: [{ slide: 0 }, { slide: 1 }],
+      });
+    });
+
+    it('takes titles from attribute blocks', async () => {
+      const module = await compileDeck(
+        '## Long title \\{title=Short}\n\n---\n\n\\{#more title="More results"}',
+      );
+      expect(renderDeck(module).props).toMatchObject({
+        toc: [
+          { slide: 0, title: 'Short' },
+          { slide: 1, title: 'More results' },
+        ],
+      });
+      // The slides keep their own titles.
+      expect(
+        (await slides('## Long title \\{title=Short}')).map(
+          ({ title }) => title,
+        ),
+      ).toEqual(['Long title']);
+    });
+
+    it('can be overridden with props', async () => {
+      const module = await compileDeck('## A');
+      expect(renderDeck(module, { toc: [] }).props).toMatchObject({ toc: [] });
+    });
+  });
+
   describe('list steps', () => {
     async function content(source: string): Promise<unknown> {
       return (await slides(source)).map(({ children }) => children);
