@@ -17,6 +17,8 @@ export interface KeyboardNavigationOptions {
  * - Home and End go to the beginning of the first or last slide.
  * - Shift+Home and Shift+End go to the first or last step of the slide.
  * - `:` (as in Vim) asks for a slide number to go to.
+ * - `o` shows or hides the overview of the slides, and Escape or Enter hide
+ *   it, staying on the selected slide.
  * - Escape moves the focus away from the focused element, so that the keys
  *   it uses navigate again.
  *
@@ -34,6 +36,8 @@ export function useKeyboardNavigation(
     previousSlide,
     firstStep,
     lastStep,
+    showOverview,
+    setShowOverview,
   }: DeckState,
   { onGoToSlide }: KeyboardNavigationOptions,
 ): void {
@@ -50,6 +54,11 @@ export function useKeyboardNavigation(
       // Widgets that use Escape themselves, e.g., to close a menu, should
       // cancel the event.
       if (event.key === 'Escape') {
+        if (showOverview) {
+          setShowOverview(false);
+          event.preventDefault();
+          return;
+        }
         if (
           document.activeElement instanceof HTMLElement &&
           document.activeElement !== document.body
@@ -100,6 +109,16 @@ export function useKeyboardNavigation(
         case ':':
           onGoToSlide();
           break;
+        case 'o':
+        case 'O':
+          setShowOverview(!showOverview);
+          break;
+        case 'Enter':
+          if (!showOverview) {
+            return;
+          }
+          setShowOverview(false);
+          break;
         default:
           return;
       }
@@ -118,6 +137,8 @@ export function useKeyboardNavigation(
     previousSlide,
     firstStep,
     lastStep,
+    showOverview,
+    setShowOverview,
     onGoToSlide,
   ]);
 }

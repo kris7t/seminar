@@ -39,6 +39,12 @@ export {
 } from './formula/Formula.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
 export {
+  SLIDE_VIEW_ATTRIBUTE,
+  useSlideView,
+  type SlideView,
+  type SlideViewKind,
+} from './slide/SlideViewContext.ts';
+export {
   SlideNumber,
   slideNumberClasses,
   type SlideNumberClassKey,

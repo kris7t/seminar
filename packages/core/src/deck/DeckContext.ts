@@ -37,6 +37,9 @@ export interface DeckState {
   /** Whether the table of contents is shown in a sidebar. */
   showToc: boolean;
   setShowToc: (shown: boolean) => void;
+  /** Whether all slides are shown in a grid to select one. */
+  showOverview: boolean;
+  setShowOverview: (shown: boolean) => void;
 }
 
 export const DeckContext: Context<DeckState | undefined> = createContext<

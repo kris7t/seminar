@@ -15,3 +15,6 @@ vi.stubGlobal(
     }
   },
 );
+
+// jsdom does not implement scrolling.
+Element.prototype.scrollIntoView = () => undefined;

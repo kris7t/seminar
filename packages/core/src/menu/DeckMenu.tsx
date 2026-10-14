@@ -1,5 +1,6 @@
 import CheckIcon from '@mui/icons-material/Check';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
+import GridViewIcon from '@mui/icons-material/GridView';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 import LastPageIcon from '@mui/icons-material/LastPage';
@@ -134,6 +135,14 @@ export function DeckMenu({
         icon: TagIcon,
         shortcut: ':',
         action: onGoToSlide,
+      },
+      {
+        label: 'Slide overview',
+        icon: GridViewIcon,
+        shortcut: 'O',
+        action: () => {
+          deck.setShowOverview(!deck.showOverview);
+        },
       },
     ],
   ];

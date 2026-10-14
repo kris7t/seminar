@@ -10,6 +10,7 @@ import type { JSX } from 'react';
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../utils/classNames.ts';
 import { useDeck } from '../deck/DeckContext.ts';
+import { useSlideView } from './SlideViewContext.ts';
 
 export interface SlideNumberProps {
   className?: string;
@@ -52,14 +53,16 @@ const SlideNumberRoot = styled('div', {
 export function SlideNumber(inProps: SlideNumberProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SliderSlideNumber' });
   const { className, ...other } = props;
-  const { slideIndex, slideCount } = useDeck();
+  // The slide may be shown in several views, e.g., in the overview.
+  const { index } = useSlideView();
+  const { slideCount } = useDeck();
   return (
     <SlideNumberRoot
       className={classNames(slideNumberClasses.root, className)}
       ownerState={props}
       {...other}
     >
-      {slideIndex + 1} / {slideCount}
+      {index + 1} / {slideCount}
     </SlideNumberRoot>
   );
 }

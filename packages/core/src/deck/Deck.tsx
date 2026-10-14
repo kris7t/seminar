@@ -27,6 +27,12 @@ import { useDeckNavigation } from './useDeckNavigation.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { resolveToc, type TocEntry } from '../toc/tableOfContents.ts';
 import { TocSidebar } from '../toc/TocSidebar.tsx';
+import { SlideOverview } from '../overview/SlideOverview.tsx';
+import {
+  SLIDE_VIEW_ATTRIBUTE,
+  SlideViewContext,
+  type SlideView,
+} from '../slide/SlideViewContext.ts';
 
 export interface DeckProps {
   /**
@@ -108,6 +114,11 @@ export function Deck({
     return resolveToc(tocEntries ?? [], tocSlides, tocSlides.map(getSlideId));
   }, [tocEntries, children]);
   const [showToc, setShowToc] = useState(defaultShowToc);
+  const [showOverview, setShowOverview] = useState(false);
+  const view = useMemo<SlideView>(
+    () => ({ index: slideIndex, kind: 'audience', interactive: true }),
+    [slideIndex],
+  );
   const [containerRef, scale] = useFitScale(SLIDE_WIDTH, SLIDE_HEIGHT);
   const [mouseNavigation, setMouseNavigation] = useState(
     defaultMouseNavigation,
@@ -130,6 +141,8 @@ export function Deck({
       toc,
       showToc,
       setShowToc,
+      showOverview,
+      setShowOverview,
     }),
     [
       slideIndex,
@@ -144,6 +157,7 @@ export function Deck({
       mouseNavigation,
       toc,
       showToc,
+      showOverview,
     ],
   );
   const [goToSlideOpen, setGoToSlideOpen] = useState(false);
@@ -203,11 +217,26 @@ export function Deck({
                   color: 'text.primary',
                 }}
                 style={{ transform: `scale(${String(scale)})` }}
+                {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
               >
-                {slides[slideIndex]}
+                {/* The overview shows the slide instead. */}
+                {!showOverview && (
+                  <SlideViewContext value={view}>
+                    {slides[slideIndex]}
+                  </SlideViewContext>
+                )}
               </Box>
             </Box>
           </Box>
+          {showOverview && (
+            <SlideOverview
+              slides={slides}
+              onClose={() => {
+                setShowOverview(false);
+              }}
+              onContextMenu={onContextMenu}
+            />
+          )}
           {/* Outside of the slides, so that events don't bubble to them. */}
           <ThemeProvider theme={uiTheme}>
             <DeckMenu
