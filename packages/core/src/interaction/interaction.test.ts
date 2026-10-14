@@ -31,6 +31,8 @@ describe('getInteraction', () => {
     ['<div tabindex="0" id="target"></div>', 'activatable'],
     ['<div tabindex="-1" id="target"></div>', undefined],
     ['<div data-slider-interactive><p id="target">x</p></div>', 'custom'],
+    ['<div role="dialog"><button id="target">OK</button></div>', 'custom'],
+    ['<div aria-modal="true"><p id="target">x</p></div>', 'custom'],
   ])('classifies %s as %s', (html, expected) => {
     expect(classify(html)).toBe(expected);
   });
@@ -50,7 +52,8 @@ describe('usesKey', () => {
     ['custom', 'PageDown', true],
     ['composite', 'ArrowRight', true],
     ['composite', 'Home', true],
-    ['composite', ' ', false],
+    ['composite', ' ', true],
+    ['composite', 'Enter', true],
     ['activatable', ' ', true],
     ['activatable', 'ArrowRight', false],
     ['activatable', 'PageDown', false],

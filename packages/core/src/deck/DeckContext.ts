@@ -24,6 +24,12 @@ export interface DeckState {
    * slide.
    */
   lastStep: () => void;
+  /**
+   * Whether clicking on the slides navigates. If disabled, text on the slides
+   * can be selected instead.
+   */
+  mouseNavigation: boolean;
+  setMouseNavigation: (enabled: boolean) => void;
 }
 
 export const DeckContext: Context<DeckState | undefined> = createContext<

@@ -3,6 +3,11 @@ import { useEffect } from 'react';
 import type { DeckState } from '../deck/DeckContext.ts';
 import { getInteraction, usesKey } from './interaction.ts';
 
+export interface KeyboardNavigationOptions {
+  /** Opens the dialog for going to a slide by number. */
+  onGoToSlide: () => void;
+}
+
 /**
  * Navigates between slides and steps with the keyboard:
  *
@@ -11,6 +16,7 @@ import { getInteraction, usesKey } from './interaction.ts';
  * - Page Up and Page Down go to the beginning of the previous or next slide.
  * - Home and End go to the beginning of the first or last slide.
  * - Shift+Home and Shift+End go to the first or last step of the slide.
+ * - `:` (as in Vim) asks for a slide number to go to.
  * - Escape moves the focus away from the focused element, so that the keys
  *   it uses navigate again.
  *
@@ -18,16 +24,19 @@ import { getInteraction, usesKey } from './interaction.ts';
  *
  * See also {@link useClickNavigation} for navigating with the mouse.
  */
-export function useKeyboardNavigation({
-  slideCount,
-  goTo,
-  next,
-  previous,
-  nextSlide,
-  previousSlide,
-  firstStep,
-  lastStep,
-}: DeckState): void {
+export function useKeyboardNavigation(
+  {
+    slideCount,
+    goTo,
+    next,
+    previous,
+    nextSlide,
+    previousSlide,
+    firstStep,
+    lastStep,
+  }: DeckState,
+  { onGoToSlide }: KeyboardNavigationOptions,
+): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
@@ -88,6 +97,9 @@ export function useKeyboardNavigation({
             goTo(slideCount - 1);
           }
           break;
+        case ':':
+          onGoToSlide();
+          break;
         default:
           return;
       }
@@ -106,5 +118,6 @@ export function useKeyboardNavigation({
     previousSlide,
     firstStep,
     lastStep,
+    onGoToSlide,
   ]);
 }

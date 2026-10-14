@@ -44,14 +44,12 @@ describe('keyboard navigation', () => {
     expect(window.location.hash).toBe('#slide=1&step=1');
   });
 
-  it('leaves the arrow keys to a focused slider, but not Space', async () => {
+  it('leaves the arrow keys and Space to a focused slider', async () => {
     const user = userEvent.setup();
     renderDeck();
     screen.getByText('Slider').focus();
-    await user.keyboard('{ArrowRight}{PageDown}');
+    await user.keyboard('{ArrowRight}{PageDown} ');
     expect(window.location.hash).toBe('#slide=1');
-    await user.keyboard(' ');
-    expect(window.location.hash).toBe('#slide=1&step=1');
   });
 
   it.each(['Text', 'Custom'])('leaves all keys to %s', async (name) => {

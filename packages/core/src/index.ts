@@ -1,5 +1,6 @@
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
+export { INTERACTIVE_ATTRIBUTE } from './interaction/interaction.ts';
 export type {
   SlideMaster,
   SlideMasterProps,

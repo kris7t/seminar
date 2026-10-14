@@ -4,11 +4,12 @@
  *
  * - `'text'`: text entry, which uses all navigation keys.
  * - `'composite'`: widgets like sliders, radio groups, tabs, and menus, which
- *   use the arrow keys, Home, End, Page Up, and Page Down.
+ *   use the arrow keys, Home, End, Page Up, and Page Down to move between
+ *   their items, and Space and Enter to activate them.
  * - `'activatable'`: links, buttons, and other focusable elements, which use
  *   Space and Enter.
- * - `'custom'`: elements marked with the `data-slider-interactive` attribute,
- *   which handle all input themselves.
+ * - `'custom'`: elements marked with the `data-slider-interactive` attribute
+ *   and modal dialogs, which handle all input themselves.
  *
  * Clicks on any of these elements don't navigate.
  */
@@ -63,6 +64,12 @@ const ACTIVATABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
+const MODAL_SELECTOR = [
+  '[aria-modal="true"]',
+  '[role="dialog"]',
+  '[role="alertdialog"]',
+].join(', ');
+
 function classifyElement(element: Element): Interaction | undefined {
   if (element.hasAttribute(INTERACTIVE_ATTRIBUTE)) {
     return 'custom';
@@ -103,8 +110,15 @@ function classifyElement(element: Element): Interaction | undefined {
 export function getInteraction(
   target: EventTarget | null,
 ): Interaction | undefined {
+  if (!(target instanceof Element)) {
+    return undefined;
+  }
+  // Keep all input inside modal dialogs from reaching the deck behind them.
+  if (target.closest(MODAL_SELECTOR) !== null) {
+    return 'custom';
+  }
   for (
-    let element = target instanceof Element ? target : null;
+    let element: Element | null = target;
     element !== null;
     element = element.parentElement
   ) {
@@ -141,7 +155,7 @@ export function usesKey(
     case 'custom':
       return true;
     case 'composite':
-      return COMPOSITE_KEYS.has(key);
+      return COMPOSITE_KEYS.has(key) || ACTIVATABLE_KEYS.has(key);
     case 'activatable':
       return ACTIVATABLE_KEYS.has(key);
   }

@@ -2,7 +2,9 @@ import { Box, CssBaseline, ThemeProvider, type Theme } from '@mui/material';
 import {
   Children,
   isValidElement,
+  useCallback,
   useMemo,
+  useState,
   type JSX,
   type ReactNode,
 } from 'react';
@@ -17,6 +19,10 @@ import { useFitScale } from './useFitScale.ts';
 import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
 import { useClickNavigation } from '../interaction/useClickNavigation.ts';
+import { useContextMenu } from '../interaction/useContextMenu.ts';
+import { DeckMenu } from '../menu/DeckMenu.tsx';
+import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
+import { uiTheme } from '../menu/uiTheme.ts';
 import { useDeckNavigation } from './useDeckNavigation.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 
@@ -30,14 +36,15 @@ export interface DeckProps {
   /** MUI theme of the slides. Defaults to {@link defaultSlideTheme}. */
   theme?: Theme;
   /**
-   * Whether clicking on the slides navigates (see {@link useClickNavigation}).
-   * Defaults to `true`.
+   * Whether clicking on the slides navigates initially (see
+   * {@link useClickNavigation}). Defaults to `true`. The presenter can toggle
+   * it in the context menu.
    *
    * With mouse navigation, text on the slides can't be selected, except in
    * text fields and elements with the `data-slider-interactive` attribute,
    * since selecting text with the mouse would interfere with clicking.
    */
-  mouseNavigation?: boolean;
+  defaultMouseNavigation?: boolean;
 }
 
 const SELECTABLE_SELECTOR = [
@@ -65,7 +72,7 @@ function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
 export function Deck({
   children,
   theme = defaultSlideTheme,
-  mouseNavigation = true,
+  defaultMouseNavigation = true,
 }: DeckProps): JSX.Element {
   // Slides are positional children, so we need to index into them.
   // eslint-disable-next-line @eslint-react/no-children-to-array
@@ -83,6 +90,10 @@ export function Deck({
     lastStep,
   } = useDeckNavigation(slides.map(getSlideId));
   const [containerRef, scale] = useFitScale(SLIDE_WIDTH, SLIDE_HEIGHT);
+  const [mouseNavigation, setMouseNavigation] = useState(
+    defaultMouseNavigation,
+  );
+  const [menuPosition, onContextMenu, closeMenu] = useContextMenu();
 
   const deck = useMemo<DeckState>(
     () => ({
@@ -95,6 +106,8 @@ export function Deck({
       previousSlide,
       firstStep,
       lastStep,
+      mouseNavigation,
+      setMouseNavigation,
     }),
     [
       slideIndex,
@@ -106,9 +119,17 @@ export function Deck({
       previousSlide,
       firstStep,
       lastStep,
+      mouseNavigation,
     ],
   );
-  useKeyboardNavigation(deck);
+  const [goToSlideOpen, setGoToSlideOpen] = useState(false);
+  const openGoToSlide = useCallback(() => {
+    setGoToSlideOpen(true);
+  }, []);
+  const closeGoToSlide = useCallback(() => {
+    setGoToSlideOpen(false);
+  }, []);
+  useKeyboardNavigation(deck, { onGoToSlide: openGoToSlide });
   const onClick = useClickNavigation(next, previous);
 
   return (
@@ -119,6 +140,7 @@ export function Deck({
           <Box
             ref={containerRef}
             onClick={mouseNavigation ? onClick : undefined}
+            onContextMenu={onContextMenu}
             sx={[
               {
                 position: 'fixed',
@@ -150,6 +172,15 @@ export function Deck({
               {slides[slideIndex]}
             </Box>
           </Box>
+          {/* Outside of the slides, so that events don't bubble to them. */}
+          <ThemeProvider theme={uiTheme}>
+            <DeckMenu
+              anchorPosition={menuPosition}
+              onClose={closeMenu}
+              onGoToSlide={openGoToSlide}
+            />
+            <GoToSlideDialog open={goToSlideOpen} onClose={closeGoToSlide} />
+          </ThemeProvider>
         </StepStoreContext>
       </DeckContext>
     </ThemeProvider>

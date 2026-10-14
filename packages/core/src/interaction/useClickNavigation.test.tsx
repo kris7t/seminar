@@ -117,7 +117,7 @@ describe('click navigation', () => {
   it('can be disabled', async () => {
     const user = userEvent.setup();
     render(
-      <Deck mouseNavigation={false}>
+      <Deck defaultMouseNavigation={false}>
         <Slide title="Title">
           <Step>a</Step>
         </Slide>
@@ -147,7 +147,7 @@ describe('click navigation', () => {
 
   it('allows text selection without mouse navigation', () => {
     const { container } = render(
-      <Deck mouseNavigation={false}>
+      <Deck defaultMouseNavigation={false}>
         <Slide title="Title" />
       </Deck>,
     );
