@@ -2,7 +2,6 @@ import { Box, CssBaseline, ThemeProvider, type Theme } from '@mui/material';
 import {
   Children,
   isValidElement,
-  useCallback,
   useMemo,
   type JSX,
   type ReactNode,
@@ -16,7 +15,8 @@ import {
 } from '../theme/createSlideTheme.ts';
 import { useFitScale } from './useFitScale.ts';
 import { useKeyboardNavigation } from './useKeyboardNavigation.ts';
-import { useSlideIndex } from './useSlideIndex.ts';
+import { useDeckNavigation } from './useDeckNavigation.ts';
+import { StepStoreContext } from '../steps/StepStoreContext.ts';
 
 export interface DeckProps {
   /**
@@ -27,10 +27,6 @@ export interface DeckProps {
   children?: ReactNode;
   /** MUI theme of the slides. Defaults to {@link defaultSlideTheme}. */
   theme?: Theme;
-}
-
-function clamp(slideIndex: number, slideCount: number): number {
-  return Math.max(0, Math.min(slideIndex, slideCount - 1));
 }
 
 function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
@@ -54,28 +50,28 @@ export function Deck({
   // eslint-disable-next-line @eslint-react/no-children-to-array
   const slides = Children.toArray(children);
   const slideCount = slides.length;
-  const [slideIndex, setSlideIndex] = useSlideIndex(
-    slides.map(getSlideId),
-    (index) => clamp(index, slideCount),
-  );
+  const {
+    slideIndex,
+    stepStore,
+    goTo,
+    next,
+    previous,
+    nextSlide,
+    previousSlide,
+  } = useDeckNavigation(slides.map(getSlideId));
   const [containerRef, scale] = useFitScale(SLIDE_WIDTH, SLIDE_HEIGHT);
 
-  const goTo = useCallback(
-    (newIndex: number) => {
-      setSlideIndex(() => clamp(newIndex, slideCount));
-    },
-    [setSlideIndex, slideCount],
-  );
-  const next = useCallback(() => {
-    setSlideIndex((index) => clamp(clamp(index, slideCount) + 1, slideCount));
-  }, [setSlideIndex, slideCount]);
-  const previous = useCallback(() => {
-    setSlideIndex((index) => clamp(clamp(index, slideCount) - 1, slideCount));
-  }, [setSlideIndex, slideCount]);
-
   const deck = useMemo<DeckState>(
-    () => ({ slideIndex, slideCount, goTo, next, previous }),
-    [slideIndex, slideCount, goTo, next, previous],
+    () => ({
+      slideIndex,
+      slideCount,
+      goTo,
+      next,
+      previous,
+      nextSlide,
+      previousSlide,
+    }),
+    [slideIndex, slideCount, goTo, next, previous, nextSlide, previousSlide],
   );
   useKeyboardNavigation(deck);
 
@@ -83,33 +79,35 @@ export function Deck({
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <DeckContext value={deck}>
-        <Box
-          ref={containerRef}
-          sx={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            bgcolor: 'common.black',
-          }}
-        >
+        <StepStoreContext value={stepStore}>
           <Box
+            ref={containerRef}
             sx={{
-              flex: 'none',
-              position: 'relative',
-              width: SLIDE_WIDTH,
-              height: SLIDE_HEIGHT,
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               overflow: 'hidden',
-              bgcolor: 'background.default',
-              color: 'text.primary',
+              bgcolor: 'common.black',
             }}
-            style={{ transform: `scale(${String(scale)})` }}
           >
-            {slides[slideIndex]}
+            <Box
+              sx={{
+                flex: 'none',
+                position: 'relative',
+                width: SLIDE_WIDTH,
+                height: SLIDE_HEIGHT,
+                overflow: 'hidden',
+                bgcolor: 'background.default',
+                color: 'text.primary',
+              }}
+              style={{ transform: `scale(${String(scale)})` }}
+            >
+              {slides[slideIndex]}
+            </Box>
           </Box>
-        </Box>
+        </StepStoreContext>
       </DeckContext>
     </ThemeProvider>
   );

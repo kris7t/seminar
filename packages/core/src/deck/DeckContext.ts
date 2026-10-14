@@ -4,9 +4,19 @@ export interface DeckState {
   /** Zero-based index of the currently shown slide. */
   slideIndex: number;
   slideCount: number;
+  /** Goes to the beginning of a slide. */
   goTo: (slideIndex: number) => void;
+  /** Goes to the next step, or to the next slide after the last step. */
   next: () => void;
+  /**
+   * Goes to the previous step, or to the last step of the previous slide
+   * before the first step.
+   */
   previous: () => void;
+  /** Goes to the beginning of the next slide, skipping any steps. */
+  nextSlide: () => void;
+  /** Goes to the beginning of the previous slide, skipping any steps. */
+  previousSlide: () => void;
 }
 
 export const DeckContext: Context<DeckState | undefined> = createContext<

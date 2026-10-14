@@ -25,6 +25,29 @@ export {
   type SlideNumberProps,
 } from './slide/SlideNumber.tsx';
 export {
+  Step,
+  stepClasses,
+  type StepClassKey,
+  type StepProps,
+} from './steps/Step.tsx';
+export { Together, type TogetherProps } from './steps/Together.tsx';
+export {
+  Steps,
+  stepsClasses,
+  type StepsClassKey,
+  type StepsProps,
+} from './steps/Steps.tsx';
+export type { StepPath } from './steps/StepStore.ts';
+export {
+  useStep,
+  useSteps,
+  type StepHandle,
+  type StepState,
+  type StepWith,
+  type UseStepsOptions,
+} from './steps/useSteps.ts';
+export type { ComponentTheme } from './theme/ComponentTheme.ts';
+export {
   createSlideTheme,
   defaultSlideTheme,
   SLIDE_HEIGHT,

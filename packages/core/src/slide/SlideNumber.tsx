@@ -2,14 +2,12 @@ import { generateUtilityClasses } from '@mui/material';
 import {
   styled,
   useThemeProps,
-  type ComponentsOverrides,
-  type ComponentsProps,
-  type ComponentsVariants,
   type SxProps,
   type Theme,
 } from '@mui/material/styles';
 import type { JSX } from 'react';
 
+import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../utils/classNames.ts';
 import { useDeck } from '../deck/DeckContext.ts';
 
@@ -33,14 +31,7 @@ declare module '@mui/material/styles' {
   }
 
   interface Components<Theme = unknown> {
-    SliderSlideNumber?:
-      | {
-          defaultProps?: ComponentsProps['SliderSlideNumber'] | undefined;
-          styleOverrides?:
-            ComponentsOverrides<Theme>['SliderSlideNumber'] | undefined;
-          variants?: ComponentsVariants<Theme>['SliderSlideNumber'] | undefined;
-        }
-      | undefined;
+    SliderSlideNumber?: ComponentTheme<'SliderSlideNumber', Theme> | undefined;
   }
 }
 

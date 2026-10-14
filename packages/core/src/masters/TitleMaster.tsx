@@ -1,13 +1,8 @@
 import { generateUtilityClasses } from '@mui/material';
-import {
-  styled,
-  useThemeProps,
-  type ComponentsOverrides,
-  type ComponentsProps,
-  type ComponentsVariants,
-} from '@mui/material/styles';
+import { styled, useThemeProps } from '@mui/material/styles';
 import type { JSX } from 'react';
 
+import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import type { SlideMasterProps } from './SlideMaster.ts';
 
 export type TitleMasterProps = SlideMasterProps;
@@ -27,14 +22,7 @@ declare module '@mui/material/styles' {
   }
 
   interface Components<Theme = unknown> {
-    SliderTitleMaster?:
-      | {
-          defaultProps?: ComponentsProps['SliderTitleMaster'] | undefined;
-          styleOverrides?:
-            ComponentsOverrides<Theme>['SliderTitleMaster'] | undefined;
-          variants?: ComponentsVariants<Theme>['SliderTitleMaster'] | undefined;
-        }
-      | undefined;
+    SliderTitleMaster?: ComponentTheme<'SliderTitleMaster', Theme> | undefined;
   }
 }
 
