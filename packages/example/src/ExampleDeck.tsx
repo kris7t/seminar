@@ -24,7 +24,7 @@ export function ExampleDeck(): JSX.Element {
       </Slide>
       <Slide id="steps" title="Revealing content in steps">
         <ul>
-          <Step component="li" with="first">
+          <Step component="li" with="initial">
             Some bullet points are visible up front
           </Step>
           <Step component="li">others appear one by one</Step>

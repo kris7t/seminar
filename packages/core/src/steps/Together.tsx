@@ -6,6 +6,8 @@ import { useStep, type StepState, type StepWith } from './useSteps.ts';
 export interface TogetherProps {
   /** See {@link StepWith}. */
   with?: StepWith | undefined;
+  /** See the `group` option of `useSteps`. */
+  group?: string | undefined;
   children?: ReactNode | ((state: StepState) => ReactNode);
 }
 
@@ -18,9 +20,10 @@ export interface TogetherProps {
  */
 export function Together({
   with: withStep,
+  group,
   children,
 }: TogetherProps): JSX.Element {
-  const step = useStep({ with: withStep });
+  const step = useStep({ with: withStep, group });
   return (
     <TogetherContext value={step}>
       {typeof children === 'function' ? children(step) : children}

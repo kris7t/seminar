@@ -371,14 +371,86 @@ describe('steps', () => {
     expect(window.location.hash).toBe('#slide=1&step=2');
   });
 
-  describe('with="first"', () => {
+  describe('groups', () => {
+    it('shares steps between the elements of a group', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <ul>
+              <Step component="li" data-name="a1" group="a" />
+              <Step component="li" data-name="b1" group="b" />
+              <Step component="li" data-name="a2" group="a" />
+              <Step component="li" data-name="b2" group="b" />
+            </ul>
+          </Slide>
+        </Deck>,
+      );
+      expect(shownItems()).toEqual([]);
+      await user.keyboard('{ArrowRight}');
+      expect(shownItems()).toEqual(['*a1', '*a2']);
+      await user.keyboard('{ArrowRight}');
+      expect(shownItems()).toEqual(['a1', '*b1', 'a2', '*b2']);
+      expect(window.location.hash).toBe('#slide=1&step=2');
+    });
+
+    it('places nested elements of a group at the outer level', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <ul>
+              <Item name="x">
+                <ul>
+                  <Step component="li" data-name="a1" group="a">
+                    <ul>
+                      <Item name="a1.1" />
+                    </ul>
+                  </Step>
+                </ul>
+              </Item>
+              <Step component="li" data-name="a2" group="a" />
+            </ul>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(shownItems()).toEqual(['*x']);
+      await user.keyboard('{ArrowRight}');
+      expect(shownItems()).toEqual(['x', '*a1', '*a2']);
+      expect(window.location.hash).toBe('#slide=1&step=2');
+      await user.keyboard('{ArrowRight}');
+      expect(shownItems()).toEqual(['x', '*a1', '*a1.1', '*a2']);
+      expect(window.location.hash).toBe('#slide=1&step=2.1');
+    });
+
+    it('places the group by its first element', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <ul>
+              <Item name="x" />
+              <Step component="li" data-name="a1" group="a" with="previous" />
+              <Step component="li" data-name="a2" group="a" with="initial" />
+            </ul>
+          </Slide>
+        </Deck>,
+      );
+      expect(shownItems()).toEqual([]);
+      await user.keyboard('{ArrowRight}');
+      expect(shownItems()).toEqual(['*x', '*a1', '*a2']);
+    });
+  });
+
+  describe('with="initial"', () => {
     it('shows steps up front', async () => {
       const user = userEvent.setup();
       render(
         <Deck>
           <Slide>
             <ul>
-              <Item name="a" with="first" />
+              <Item name="a" with="initial" />
               <Item name="b" with="previous" />
               <Item name="c" />
             </ul>
@@ -394,13 +466,39 @@ describe('steps', () => {
       expect(window.location.hash).toBe('#slide=1');
     });
 
+    it('is the same as with="previous" without previous steps', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <ul>
+              <Item name="a" with="previous" />
+              <Item name="b" with="previous" />
+              <Item name="c" />
+              <Item name="d" with="previous">
+                <ul>
+                  <Item name="d.a" with="previous" />
+                  <Item name="d.b" />
+                </ul>
+              </Item>
+            </ul>
+          </Slide>
+        </Deck>,
+      );
+      expect(shownItems()).toEqual(['*a', '*b']);
+      await user.keyboard('{ArrowRight}');
+      expect(shownItems()).toEqual(['a', 'b', '*c', '*d', '*d.a']);
+      await user.keyboard('{ArrowRight}');
+      expect(shownItems()).toEqual(['a', 'b', '*c', '*d', 'd.a', '*d.b']);
+    });
+
     it('steps through steps nested in steps shown up front', async () => {
       const user = userEvent.setup();
       render(
         <Deck>
           <Slide>
             <ul>
-              <Item name="a" with="first">
+              <Item name="a" with="initial">
                 <ul>
                   <Item name="a.1" />
                   <Item name="a.2" />
@@ -437,7 +535,7 @@ describe('steps', () => {
         <Deck>
           <Slide>
             <ul>
-              <Item name="a" with="first">
+              <Item name="a" with="initial">
                 <ul>
                   <Item name="a.1" />
                 </ul>
@@ -457,7 +555,7 @@ describe('steps', () => {
             <ul>
               <Item name="1">
                 <ul>
-                  <Item name="1.a" with="first" />
+                  <Item name="1.a" with="initial" />
                   <Item name="1.b" />
                 </ul>
               </Item>
@@ -476,7 +574,7 @@ describe('steps', () => {
     it('can be passed as with', async () => {
       const user = userEvent.setup();
       function Lists() {
-        const intro = useStep({ with: 'first' });
+        const intro = useStep({ with: 'initial' });
         return (
           <>
             <ul>

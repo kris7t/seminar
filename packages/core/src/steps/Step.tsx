@@ -27,6 +27,8 @@ export interface StepProps extends Omit<
    * determines the step instead.
    */
   with?: StepWith | undefined;
+  /** See the `group` option of `useSteps`. */
+  group?: string | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   children?: ReactNode | ((state: StepState) => ReactNode);
@@ -85,12 +87,13 @@ export function Step(inProps: StepProps): JSX.Element {
   const {
     component = 'div',
     with: withStep,
+    group,
     className,
     children,
     ...other
   } = props;
   const together = use(TogetherContext);
-  const step = useStep({ with: together ?? withStep });
+  const step = useStep({ with: together ?? withStep, group });
   const { ref, isActive, isCurrent } = step;
   return (
     <StepRoot

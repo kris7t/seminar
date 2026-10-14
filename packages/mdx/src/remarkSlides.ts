@@ -59,7 +59,8 @@ interface SlideDraft {
 const EXPLICIT_JSX = { _mdxExplicitJsx: true } as MdxJsxFlowElement['data'];
 
 const DECK = '_SliderDeck';
-const SLIDE = '_SliderSlide';
+export const SLIDE = '_SliderSlide';
+export const STEP = '_SliderStep';
 const THEME = '_SliderTheme';
 
 /**
@@ -405,7 +406,7 @@ export function remarkSlides({
     };
     tree.children = [
       createEsm(
-        `import { Deck as ${DECK}, Slide as ${SLIDE} } from ${JSON.stringify(importSource)};`,
+        `import { Deck as ${DECK}, Slide as ${SLIDE}, Step as ${STEP} } from ${JSON.stringify(importSource)};`,
       ),
       ...(themeSource === undefined
         ? []

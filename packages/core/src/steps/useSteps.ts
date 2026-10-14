@@ -41,8 +41,9 @@ export interface StepHandle extends StepState {
  * How a stepper is linked to other steps:
  *
  * - `'previous'` shows its first step together with the previous stepper on
- *   the same level.
- * - `'first'` shows its first step as soon as the enclosing step (or the slide)
+ *   the same level. If there is no previous stepper on the level, it works
+ *   like `'initial'`.
+ * - `'initial'` shows its first step as soon as the enclosing step (or the slide)
  *   is shown, without creating a new step. It stays current until the first
  *   step on the same level is shown. This allows using the same component for
  *   content that is visible up front and content revealed in steps.
@@ -53,11 +54,25 @@ export interface StepHandle extends StepState {
  *
  * By default, a stepper starts with a new step after the previous one.
  */
-export type StepWith = 'previous' | 'first' | StepHandle;
+export type StepWith = 'previous' | 'initial' | StepHandle;
 
 export interface UseStepsOptions {
   /** See {@link StepWith}. */
   with?: StepWith | undefined;
+  /**
+   * Name of a stepper shared with the other steps of the group on the same
+   * slide. This allows revealing content in several places in parallel, like
+   * a {@link StepHandle} passed to `with`, but without creating the handle up
+   * front.
+   *
+   * The stepper is placed at the least nested element of the group (the
+   * first one in document order if there are several), according to the
+   * `count` and `with` of that element. Thus, an element nested inside
+   * another step can join a group of the enclosing level, but it is only shown
+   * once both the group and the enclosing step are shown. Ignored if `with` is
+   * a handle.
+   */
+  group?: string | undefined;
 }
 
 const UNLINKED: StepStatus = { stepIndex: -1, isCurrent: false };
@@ -81,10 +96,11 @@ function getUnlinkedStatus(): StepStatus {
  */
 export function useSteps(
   count: number,
-  { with: withStep }: UseStepsOptions = {},
+  { with: withStep, group }: UseStepsOptions = {},
 ): StepHandle {
   const store = use(StepStoreContext);
-  const [node] = useState(() => new StepNode());
+  const [ownNode] = useState(() => new StepNode());
+  const node = group === undefined ? ownNode : store.getGroup(group);
   // Hooks can't be called conditionally, so we still create a node if we're
   // linked to another stepper, but never attach it or subscribe to it.
   const linked = typeof withStep === 'object';

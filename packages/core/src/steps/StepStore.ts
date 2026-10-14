@@ -5,7 +5,7 @@
  * hierarchy. The first entry refers to the top-level steps of the slide, and
  * each further entry refers to the steps nested inside the current step of the
  * previous level. Steps are numbered from 1, while step 0 of a level consists
- * of the content shown as soon as the level is shown (see `with="first"`).
+ * of the content shown as soon as the level is shown (see `with="initial"`).
  * Missing trailing entries are 0, so the empty path is the state before any
  * step is shown.
  */
@@ -26,10 +26,11 @@ export interface StepStatus {
  * Where the first step of a stepper is placed on its level:
  *
  * - `'next'`: after the previous step.
- * - `'previous'`: together with the previous stepper (in document order).
- * - `'first'`: at step 0, i.e., shown as soon as the level is shown.
+ * - `'previous'`: together with the previous stepper on the same level (in
+ *   document order), or like `'initial'` if there is none.
+ * - `'initial'`: at step 0, i.e., shown as soon as the level is shown.
  */
-export type StepPlacement = 'next' | 'previous' | 'first';
+export type StepPlacement = 'next' | 'previous' | 'initial';
 
 export interface StepOptions {
   /** Number of consecutive steps taken by the stepper. */
@@ -39,8 +40,14 @@ export interface StepOptions {
 
 /** A stepper registered in a {@link StepStore}. */
 export class StepNode {
-  readonly elements: Set<Element> = new Set<Element>();
-  options: StepOptions = { count: 1, placement: 'next' };
+  /**
+   * The elements of the stepper with their options. The options of the first
+   * element in document order apply to the stepper.
+   */
+  readonly elements: Map<Element, StepOptions> = new Map<
+    Element,
+    StepOptions
+  >();
 }
 
 interface Placement {
@@ -50,6 +57,12 @@ interface Placement {
   first: number;
   /** Number of the last step of this stepper on its level. */
   last: number;
+}
+
+/** The element that determines the placement of a stepper. */
+interface Anchor {
+  element: Element;
+  options: StepOptions;
 }
 
 interface Layout {
@@ -105,6 +118,7 @@ export class StepStore {
   readonly #nodes = new Set<StepNode>();
   readonly #owners = new Map<Element, StepNode>();
   readonly #listeners = new Set<() => void>();
+  readonly #groups = new Map<string, StepNode>();
   readonly #statuses = new WeakMap<StepNode, StepStatus>();
   #target: StepPath;
   #toEnd = false;
@@ -134,8 +148,7 @@ export class StepStore {
     if (this.#showAll) {
       return () => undefined;
     }
-    node.options = options;
-    node.elements.add(element);
+    node.elements.set(element, options);
     this.#owners.set(element, node);
     this.#nodes.add(node);
     this.#invalidateLayout();
@@ -149,6 +162,21 @@ export class StepStore {
       }
       this.#invalidateLayout();
     };
+  }
+
+  /**
+   * Returns the stepper shared by the elements of the group `name`.
+   *
+   * Groups only have to be unique on a slide, since only the elements of the
+   * current slide are attached.
+   */
+  getGroup(name: string): StepNode {
+    let node = this.#groups.get(name);
+    if (node === undefined) {
+      node = new StepNode();
+      this.#groups.set(name, node);
+    }
+    return node;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -262,35 +290,58 @@ export class StepStore {
   }
 
   #computeLayout(): Layout {
-    const anchors: [StepNode, Element][] = [];
+    const anchors = new Map<StepNode, Anchor>();
     for (const node of this.#nodes) {
-      const [anchor] = [...node.elements].sort(compareDocumentOrder);
-      if (anchor !== undefined) {
-        anchors.push([node, anchor]);
+      const anchor = this.#findAnchor(node);
+      if (anchor !== undefined && anchor.options.count >= 1) {
+        anchors.set(node, anchor);
       }
     }
-    // Enclosing steppers precede the steppers nested in them, so they are
-    // always placed first.
-    anchors.sort(([, a], [, b]) => compareDocumentOrder(a, b));
+    const parents = new Map<StepNode, StepNode | undefined>();
+    for (const [node, { element }] of anchors) {
+      parents.set(node, this.#findParent(node, element, anchors));
+    }
+    const depths = new Map<StepNode, number>();
+    const getDepth = (node: StepNode, visited: Set<StepNode>): number => {
+      let depth = depths.get(node);
+      if (depth === undefined) {
+        const parent = parents.get(node);
+        // Groups may nest in each other in a cycle, which we break by treating
+        // the stepper we came back to as top-level.
+        depth =
+          parent === undefined || visited.has(parent)
+            ? 0
+            : getDepth(parent, visited.add(node)) + 1;
+        depths.set(node, depth);
+      }
+      return depth;
+    };
+    // Enclosing steppers are placed before the steppers nested in them, and
+    // steppers on the same level are placed in document order.
+    const sorted = [...anchors].sort(
+      ([a, { element: x }], [b, { element: y }]) =>
+        getDepth(a, new Set()) - getDepth(b, new Set()) ||
+        compareDocumentOrder(x, y),
+    );
     const placements = new Map<StepNode, Placement>();
     const levelSizes = new Map<string, number>();
     // Number of the last step of the previous stepper on each level.
     const previousSteps = new Map<string, number>();
-    for (const [node, anchor] of anchors) {
-      const { count, placement } = node.options;
-      if (count < 1) {
-        continue;
-      }
-      const parent = this.#findParent(node, anchor, placements);
+    for (const [node, { options }] of sorted) {
+      const { count, placement } = options;
+      const parentNode = parents.get(node);
+      const parent =
+        parentNode === undefined ? undefined : placements.get(parentNode);
       const level = parent === undefined ? [] : [...parent.level, parent.last];
       const key = levelKey(level);
       const size = levelSizes.get(key) ?? 0;
       const previous = previousSteps.get(key);
       let first: number;
-      if (placement === 'first') {
+      if (placement === 'initial') {
         first = 0;
-      } else if (placement === 'previous' && previous !== undefined) {
-        first = previous;
+      } else if (placement === 'previous') {
+        // Without a previous stepper, there is nothing to join but step 0.
+        first = previous ?? 0;
       } else {
         first = size + 1;
       }
@@ -302,22 +353,59 @@ export class StepStore {
     return { placements, levelSizes };
   }
 
+  /**
+   * Returns the element that determines the placement of `node`: its least
+   * nested element, or the first one in document order among those. Thus,
+   * elements of a group nested in other steps belong to the group at an outer
+   * level.
+   */
+  #findAnchor(node: StepNode): Anchor | undefined {
+    let anchor: Anchor | undefined;
+    let anchorDepth = Number.POSITIVE_INFINITY;
+    for (const [element, options] of node.elements) {
+      const depth = this.#countEnclosingSteps(node, element);
+      if (
+        depth < anchorDepth ||
+        (depth === anchorDepth &&
+          anchor !== undefined &&
+          compareDocumentOrder(element, anchor.element) < 0)
+      ) {
+        anchor = { element, options };
+        anchorDepth = depth;
+      }
+    }
+    return anchor;
+  }
+
+  #countEnclosingSteps(node: StepNode, element: Element): number {
+    let depth = 0;
+    for (
+      let ancestor = element.parentElement;
+      ancestor !== null;
+      ancestor = ancestor.parentElement
+    ) {
+      const owner = this.#owners.get(ancestor);
+      if (owner !== undefined && owner !== node) {
+        depth += 1;
+      }
+    }
+    return depth;
+  }
+
+  /** Finds the closest stepper enclosing `element` of `node`. */
   #findParent(
     node: StepNode,
-    anchor: Element,
-    placements: Map<StepNode, Placement>,
-  ): Placement | undefined {
+    element: Element,
+    anchors: Map<StepNode, Anchor>,
+  ): StepNode | undefined {
     for (
-      let element = anchor.parentElement;
-      element !== null;
-      element = element.parentElement
+      let ancestor = element.parentElement;
+      ancestor !== null;
+      ancestor = ancestor.parentElement
     ) {
-      const owner = this.#owners.get(element);
-      if (owner !== undefined && owner !== node) {
-        const placement = placements.get(owner);
-        if (placement !== undefined) {
-          return placement;
-        }
+      const owner = this.#owners.get(ancestor);
+      if (owner !== undefined && owner !== node && anchors.has(owner)) {
+        return owner;
       }
     }
     return undefined;

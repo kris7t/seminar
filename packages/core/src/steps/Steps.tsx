@@ -23,6 +23,8 @@ export interface StepsProps extends Omit<
   count?: number | undefined;
   /** See {@link StepWith}. */
   with?: StepWith | undefined;
+  /** See the `group` option of {@link useSteps}. */
+  group?: string | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   /** Content to render depending on the current step. */
@@ -80,11 +82,12 @@ export function Steps(inProps: StepsProps): JSX.Element {
     count,
     component = 'div',
     with: withStep,
+    group,
     className,
     children,
     ...other
   } = props;
-  const step = useSteps(count ?? 1, { with: withStep });
+  const step = useSteps(count ?? 1, { with: withStep, group });
   const { ref, stepIndex, isActive, isCurrent } = step;
   return (
     <StepsRoot

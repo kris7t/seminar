@@ -53,8 +53,16 @@ function text(node: ReactNode): string {
     return node.map(text).join('');
   }
   if (isValidElement<{ children?: ReactNode }>(node)) {
-    const tag = typeof node.type === 'string' ? node.type : 'component';
-    return `<${tag}>${text(node.props.children)}</${tag}>`;
+    if (typeof node.type === 'string') {
+      return `<${node.type}>${text(node.props.children)}</${node.type}>`;
+    }
+    // Show components with their props, e.g., `<Step with="previous">`.
+    const { children, ...props } = node.props;
+    const name = typeof node.type === 'function' ? node.type.name : 'component';
+    const attributes = Object.entries(props).map(
+      ([key, value]) => ` ${key}=${JSON.stringify(value)}`,
+    );
+    return `<${name}${attributes.join('')}>${text(children)}</${name}>`;
   }
   return typeof node === 'string' ? node : '';
 }
@@ -295,6 +303,140 @@ author: Someone
   it('keeps exports of the document', async () => {
     const module = await compileDeck('export const answer = 42\n\n## Slide');
     expect((module as unknown as { answer: number }).answer).toBe(42);
+  });
+
+  describe('list steps', () => {
+    async function content(source: string): Promise<unknown> {
+      return (await slides(source)).map(({ children }) => children);
+    }
+
+    it('shows list items together with the previous step', async () => {
+      expect(await content('- One\n- Two\n\n1. Three')).toEqual([
+        '<ul>\n<Step component="li" with="previous">One</Step>\n' +
+          '<Step component="li" with="previous">Two</Step>\n</ul>' +
+          '<ol>\n<Step component="li" with="previous">Three</Step>\n</ol>',
+      ]);
+    });
+
+    it('applies attribute blocks', async () => {
+      expect(
+        await content(`
+- One \\{with=initial}
+- *Two* \\{step #two .wide data-x=y}
+- Three \\{with=previous}
+`),
+      ).toEqual([
+        '<ul>\n<Step component="li" with="initial">One</Step>\n' +
+          '<Step component="li" id="two" className="wide" data-x="y">' +
+          '<em>Two</em></Step>\n' +
+          '<Step component="li" with="previous">Three</Step>\n</ul>',
+      ]);
+    });
+
+    it('reads attribute blocks before nested lists', async () => {
+      expect(
+        await content(`
+- One \\{step}
+  - Nested \\{step}
+
+- Loose \\{step}
+
+  More \\{step}
+`),
+      ).toEqual([
+        '<ul>\n<Step component="li">\n<p>One</p>\n<ul>\n' +
+          '<Step component="li">Nested</Step>\n</ul>\n</Step>\n' +
+          '<Step component="li">\n<p>Loose</p>\n<p>More {step}</p>\n</Step>\n</ul>',
+      ]);
+    });
+
+    it('applies attribute blocks at the start of items', async () => {
+      expect(
+        await content(`
+- \\{step} One
+- \\{step .a} *Two* \\{.b data-x=y}
+- \\{with=initial}
+`),
+      ).toEqual([
+        '<ul>\n<Step component="li">One</Step>\n' +
+          '<Step component="li" className="a b" data-x="y"><em>Two</em></Step>\n' +
+          '<Step component="li" with="initial"></Step>\n</ul>',
+      ]);
+    });
+
+    it('shares steps in groups', async () => {
+      expect(
+        await content(`
+- \\{group=a} A1
+- \\{group=b} B1
+- \\{group=a} A2
+- \\{group=b with=previous} B2
+`),
+      ).toEqual([
+        '<ul>\n<Step component="li" group="a">A1</Step>\n' +
+          '<Step component="li" group="b">B1</Step>\n' +
+          '<Step component="li" group="a">A2</Step>\n' +
+          '<Step component="li" with="previous" group="b">B2</Step>\n</ul>',
+      ]);
+    });
+
+    it('reports groups used only once on a slide', async () => {
+      const file = await compile(
+        `
+## One
+
+- \\{group=a} A
+- \\{group=typo} B
+
+<Step group="a">C</Step>
+
+## Two
+
+- \\{group=a} D
+`,
+        { ...sliderMdxOptions() },
+      );
+      expect(file.messages.map(String)).toEqual([
+        '5:1-5:18: The step group `typo` is only used once on the slide',
+        '11:1-11:15: The step group `a` is only used once on the slide',
+      ]);
+    });
+
+    it('warns about with on groups that already exist', async () => {
+      const file = await compile(
+        `
+- \\{group=a with=initial} A
+- \\{group=b} B
+- \\{group=a} C
+- \\{group=b with=previous} D
+  - \\{group=b} E \\{with=initial}
+`,
+        { ...sliderMdxOptions() },
+      );
+      expect(file.messages.map(String)).toEqual([
+        '5:1-6:33: Ignoring `with=previous` on the step group `b`, which is placed by its first element',
+        '6:3-6:33: Ignoring `with=initial` on the step group `b`, which is placed by its first element',
+      ]);
+    });
+
+    it('keeps braces that are not attribute blocks', async () => {
+      expect(await content('- Set \\{x}')).toEqual([
+        '<ul>\n<Step component="li" with="previous">Set {x}</Step>\n</ul>',
+      ]);
+    });
+
+    it('reports invalid steps', async () => {
+      const file = await compile(
+        '- A \\{with=next}\n- B \\{step with=initial}',
+        {
+          ...sliderMdxOptions(),
+        },
+      );
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining('Expected `with=previous` or `with=initial`'),
+        expect.stringContaining('Ignoring `with=initial`'),
+      ]);
+    });
   });
 
   describe('masters', () => {

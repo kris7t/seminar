@@ -10,3 +10,7 @@ export function Slide(): null {
 export function TwoColumn(): null {
   return null;
 }
+
+export function Step(): null {
+  return null;
+}

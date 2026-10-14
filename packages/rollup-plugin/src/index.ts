@@ -32,8 +32,9 @@ export type SliderPlugin = ReturnType<typeof mdx> & { enforce: 'pre' };
  * entry points with generated HTML pages.
  *
  * Additional MDX plugins can be passed in the options. Remark plugins run
- * after the slides have been created, and recma plugins run after the slide
- * titles have been resolved.
+ * after the slides have been created, rehype plugins run after list items have
+ * been turned into steps, and recma plugins run after the slide titles have
+ * been resolved.
  */
 export default function slider({
   defaultTheme = '@slider/theme-default',
@@ -41,6 +42,7 @@ export default function slider({
   include = /\.deck\.mdx$/,
   importSource,
   remarkPlugins = [],
+  rehypePlugins = [],
   recmaPlugins = [],
   ...options
 }: SliderPluginOptions = {}): SliderPlugin {
@@ -61,6 +63,10 @@ export default function slider({
       remarkPlugins: [
         ...(sliderOptions.remarkPlugins ?? []),
         ...(remarkPlugins ?? []),
+      ],
+      rehypePlugins: [
+        ...(sliderOptions.rehypePlugins ?? []),
+        ...(rehypePlugins ?? []),
       ],
       recmaPlugins: [
         ...(sliderOptions.recmaPlugins ?? []),

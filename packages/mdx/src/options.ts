@@ -2,6 +2,7 @@ import type { CompileOptions } from '@mdx-js/mdx';
 import remarkFrontmatter from 'remark-frontmatter';
 
 import { recmaSlideTitles } from './recmaSlideTitles.ts';
+import { rehypeListSteps } from './rehypeListSteps.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './remarkSlides.ts';
 
 /**
@@ -10,9 +11,10 @@ import { remarkSlides, type RemarkSlidesOptions } from './remarkSlides.ts';
  */
 export function sliderMdxOptions(
   options?: RemarkSlidesOptions,
-): Pick<CompileOptions, 'remarkPlugins' | 'recmaPlugins'> {
+): Pick<CompileOptions, 'remarkPlugins' | 'rehypePlugins' | 'recmaPlugins'> {
   return {
     remarkPlugins: [remarkFrontmatter, [remarkSlides, options]],
+    rehypePlugins: [rehypeListSteps],
     recmaPlugins: [recmaSlideTitles],
   };
 }

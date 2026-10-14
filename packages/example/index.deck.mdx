@@ -2,7 +2,7 @@
 theme: ./src/theme.tsx
 ---
 
-import { Step, Together } from '@slider/core';
+import { Step } from '@slider/core';
 
 import { ClosingMaster } from './src/theme.tsx';
 
@@ -33,16 +33,18 @@ Revealing content in steps
 
 ## Revealing content
 
-<ul>
-  <Step component="li" with="first">
-    Some points are visible up front
-  </Step>
-  <Step component="li">others appear one by one</Step>
-  <Together>
-    <Step component="li">and several items</Step>
-    <Step component="li">can appear at once</Step>
-  </Together>
-</ul>
+- List items are shown up front, or along with the previous step
+- \{step} Add `\{step}` to reveal an item in a new step
+- and the items after it along with it
+- \{step} Nested lists can have steps of their own
+  - \{step} like this one
+
+## Interleaving steps
+
+- \{group=pro with=initial} Markdown is easy to write
+- \{group=con} but layout control is limited
+- \{group=pro} Diffs are readable
+- \{group=con} but complex figures still need components
 
 ---
 
