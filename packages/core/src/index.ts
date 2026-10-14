@@ -1,3 +1,4 @@
+export type { MathConfig, SliderConfig } from './config/SliderConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
 export { INTERACTIVE_ATTRIBUTE } from './interaction/interaction.ts';
@@ -18,6 +19,12 @@ export {
   type TitleMasterClassKey,
   type TitleMasterProps,
 } from './masters/TitleMaster.tsx';
+export {
+  Formula,
+  formulaClasses,
+  type FormulaClassKey,
+  type FormulaProps,
+} from './formula/Formula.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
 export {
   SlideNumber,

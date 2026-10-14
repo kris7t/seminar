@@ -51,6 +51,14 @@ describe('sliderEntries', () => {
         output.output.some((file) => file.type === 'chunk' && file.isEntry),
       ).toBe(true);
     });
+
+    it('renders math with the font of the TypeScript theme', () => {
+      const code = output.output
+        .map((file) => (file.type === 'chunk' ? file.code : ''))
+        .join('');
+      expect(code).toMatch(/MJX-\d+-FIRA-/);
+      expect(code).not.toMatch(/MJX-\d+-NCM-/);
+    });
   });
 
   describe('dev server', () => {

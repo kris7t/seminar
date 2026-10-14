@@ -14,3 +14,7 @@ export function TwoColumn(): null {
 export function Step(): null {
   return null;
 }
+
+export function Formula(): null {
+  return null;
+}

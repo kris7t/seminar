@@ -46,6 +46,21 @@ Revealing content in steps
 - \{group=pro} Diffs are readable
 - \{group=con} but complex figures still need components
 
+## Math
+
+Inline math like $e^{i\pi} + 1 = 0$ is rendered with MathJax when the deck
+is compiled, with MathML for screen readers.
+
+$$
+\begin{equation}
+  \hat{f}(\xi) = \int_{-\infty}^{\infty} f(x)\, e^{-2\pi i x \xi} \,\mathrm{d}x
+  \label{fourier}
+\end{equation}
+$$
+
+- \{step} Equations are numbered, and $\eqref{fourier}$ refers back to them
+- \{step} The math font comes from the theme
+
 ---
 
 \{#questions master=ClosingMaster}

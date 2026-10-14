@@ -1,6 +1,7 @@
 import type { Root } from 'mdast';
 import { toString } from 'mdast-util-to-string';
 import remarkFrontmatter from 'remark-frontmatter';
+import remarkMath from 'remark-math';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
@@ -88,6 +89,8 @@ export function readDeckFrontmatter(
     .use(remarkParse)
     .use(remarkMdx)
     .use(remarkFrontmatter)
+    // Braces in math are not JavaScript expressions.
+    .use(remarkMath)
     .parse(file);
   return getDeckFrontmatter(tree, file);
 }

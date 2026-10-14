@@ -19,7 +19,7 @@ import { getDeckFrontmatter, type DeckDefaults } from './frontmatter.ts';
 import { SLIDE_TITLE_MARKER } from './marker.ts';
 
 export interface RemarkSlidesOptions extends DeckDefaults {
-  /** Module to import the `Deck` and `Slide` components from. */
+  /** Module to import the components of decks from. */
   importSource?: string | undefined;
 }
 
@@ -61,6 +61,7 @@ const EXPLICIT_JSX = { _mdxExplicitJsx: true } as MdxJsxFlowElement['data'];
 const DECK = '_SliderDeck';
 export const SLIDE = '_SliderSlide';
 export const STEP = '_SliderStep';
+export const FORMULA = '_SliderFormula';
 const THEME = '_SliderTheme';
 
 /**
@@ -343,6 +344,9 @@ export function remarkSlides({
     const esm: RootContent[] = [];
     const slides: SlideDraft[] = [];
     const frontmatter = getDeckFrontmatter(tree, file, defaults);
+    // Read by `rehypeMath`.
+    (file.data as { sliderFrontmatter?: unknown }).sliderFrontmatter =
+      frontmatter;
     let current: SlideDraft | undefined;
 
     for (const node of tree.children) {
@@ -406,7 +410,7 @@ export function remarkSlides({
     };
     tree.children = [
       createEsm(
-        `import { Deck as ${DECK}, Slide as ${SLIDE}, Step as ${STEP} } from ${JSON.stringify(importSource)};`,
+        `import { Deck as ${DECK}, Slide as ${SLIDE}, Step as ${STEP}, Formula as ${FORMULA} } from ${JSON.stringify(importSource)};`,
       ),
       ...(themeSource === undefined
         ? []

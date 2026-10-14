@@ -15,6 +15,13 @@ describe('readDeckFrontmatter', () => {
     ).toEqual({ title: 'First', mouseNavigation: true });
   });
 
+  it('reads decks with math', () => {
+    expect(readDeckFrontmatter('## Slide\n\n$e^{i\\pi}$')).toEqual({
+      title: 'Slide',
+      mouseNavigation: true,
+    });
+  });
+
   it('works without a title', () => {
     expect(readDeckFrontmatter('Text')).toEqual({ mouseNavigation: true });
   });

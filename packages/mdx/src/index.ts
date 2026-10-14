@@ -9,7 +9,20 @@ export {
   readDeckFrontmatter,
   type DeckDefaults,
 } from './frontmatter.ts';
-export { sliderMdxOptions } from './options.ts';
+export {
+  rehypeMath,
+  type MathConfig,
+  type RehypeMathOptions,
+} from './math/rehypeMath.ts';
+export {
+  CONFIG_CONDITION,
+  importWithNode,
+  loadThemeConfig,
+  type ImportedModule,
+  type LoadedThemeConfig,
+  type ModuleImporter,
+} from './math/themeConfig.ts';
+export { sliderMdxOptions, type SliderMdxOptions } from './options.ts';
 export { recmaSlideTitles } from './recmaSlideTitles.ts';
 export { rehypeListSteps } from './rehypeListSteps.ts';
 export { remarkSlides, type RemarkSlidesOptions } from './remarkSlides.ts';

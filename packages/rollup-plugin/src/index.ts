@@ -1,12 +1,12 @@
 import path from 'node:path';
 
 import mdx, { type Options as MdxOptions } from '@mdx-js/rollup';
-import { sliderMdxOptions, type RemarkSlidesOptions } from '@slider/mdx';
+import { sliderMdxOptions, type SliderMdxOptions } from '@slider/mdx';
 
 export interface SliderPluginOptions
   extends
     Omit<MdxOptions, 'include'>,
-    Omit<RemarkSlidesOptions, 'defaultTheme'> {
+    Omit<SliderMdxOptions, 'defaultTheme' | 'onDependency'> {
   /**
    * Module to import the theme of decks from, unless they set their own
    * `theme` in the frontmatter. Relative paths, like `./src/theme.ts`, are
@@ -29,7 +29,14 @@ export type SliderPlugin = ReturnType<typeof mdx> & { enforce: 'pre' };
  * `remarkSlides` in `@slider/mdx`).
  *
  * In Vite, use `@slider/vite-plugin` instead, which also turns decks into
- * entry points with generated HTML pages.
+ * entry points with generated HTML pages, and can read the compile-time config
+ * of themes written in TypeScript.
+ *
+ * Math is rendered at compile time with the options of the theme of the deck
+ * (see `SliderConfig` in `@slider/core`). Without Vite, theme modules that
+ * aren't packages with a compile-time config are imported by Node to read
+ * their config, so they can't import style sheets or use JSX. The files of the
+ * config are watched for changes.
  *
  * Additional MDX plugins can be passed in the options. Remark plugins run
  * after the slides have been created, rehype plugins run after list items have
@@ -41,11 +48,16 @@ export default function slider({
   defaultMouseNavigation = true,
   include = /\.deck\.mdx$/,
   importSource,
+  math,
+  importModule,
   remarkPlugins = [],
   rehypePlugins = [],
   recmaPlugins = [],
   ...options
 }: SliderPluginOptions = {}): SliderPlugin {
+  // Files that decks depend on at compile time, e.g., the configs of their
+  // themes, by the path of the deck.
+  const dependencies = new Map<string, Set<string>>();
   const createMdx = (root: string) => {
     const sliderOptions = sliderMdxOptions({
       importSource,
@@ -56,6 +68,16 @@ export default function slider({
             ? path.resolve(root, defaultTheme)
             : defaultTheme,
       defaultMouseNavigation,
+      math,
+      importModule,
+      onDependency(deckPath, dependency) {
+        let deckDependencies = dependencies.get(deckPath);
+        if (deckDependencies === undefined) {
+          deckDependencies = new Set();
+          dependencies.set(deckPath, deckDependencies);
+        }
+        deckDependencies.add(dependency);
+      },
     });
     return mdx({
       ...options,
@@ -88,9 +110,19 @@ export default function slider({
       inner = createMdx(path.resolve(root ?? process.cwd()));
       inner.config(config, env);
     },
-    transform(value, id) {
+    // `this` is the plugin context of Rollup or Vite.
+    async transform(
+      this: { addWatchFile(id: string): void },
+      value: string,
+      id: string,
+    ) {
       inner ??= createMdx(process.cwd());
-      return inner.transform(value, id);
+      dependencies.delete(id);
+      const result = await inner.transform(value, id);
+      for (const dependency of dependencies.get(id) ?? []) {
+        this.addWatchFile(dependency);
+      }
+      return result;
     },
   };
   return plugin;
