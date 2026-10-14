@@ -119,6 +119,29 @@ describe('steps', () => {
     expect(shownItems()).toEqual([]);
   });
 
+  it('skips steps with Page Up and Page Down', async () => {
+    const user = userEvent.setup();
+    renderNested();
+    await user.keyboard('{ArrowRight}{PageDown}');
+    expect(window.location.hash).toBe('#slide=2');
+    await user.keyboard('{PageUp}');
+    expect(window.location.hash).toBe('#slide=1');
+    expect(shownItems()).toEqual([]);
+  });
+
+  it('goes to the first and last step of the slide', async () => {
+    const user = userEvent.setup();
+    renderNested();
+    await user.keyboard('{Shift>}{End}{/Shift}');
+    expect(window.location.hash).toBe('#slide=1&step=3');
+    expect(shownItems()).toEqual(['1', '2', '2.1', '2.2', '*3']);
+    await user.keyboard('{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=1&step=2.2');
+    await user.keyboard('{Shift>}{Home}{/Shift}');
+    expect(window.location.hash).toBe('#slide=1');
+    expect(shownItems()).toEqual([]);
+  });
+
   it('restores the step from the location hash', () => {
     window.history.replaceState(null, '', '#slide=1&step=2.1');
     renderNested();
@@ -250,6 +273,11 @@ describe('steps', () => {
       </Deck>,
     );
     await user.keyboard('{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=1&step=1.2');
+    expect(shownItems()).toEqual(['lazy.1', '*lazy.2']);
+    await user.keyboard('{Shift>}{Home}{/Shift}');
+    expect(screen.queryByText('lazy.1')).toBeNull();
+    await user.keyboard('{Shift>}{End}{/Shift}');
     expect(window.location.hash).toBe('#slide=1&step=1.2');
     expect(shownItems()).toEqual(['lazy.1', '*lazy.2']);
     navigateTo('#slide=1&step=1.1');

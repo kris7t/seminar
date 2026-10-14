@@ -27,6 +27,13 @@ export interface DeckNavigation {
   nextSlide: () => void;
   /** Goes to the beginning of the previous slide, skipping any steps. */
   previousSlide: () => void;
+  /** Goes to the first step of the current slide. */
+  firstStep: () => void;
+  /**
+   * Goes to the last step of the current slide, showing all steps on the
+   * slide.
+   */
+  lastStep: () => void;
 }
 
 function readLocation(slideIds: readonly (string | undefined)[]) {
@@ -94,6 +101,14 @@ export function useDeckNavigation(
       goToSlide(slideIndex - 1);
     }
   }, [slideIndex, goToSlide]);
+  const firstStep = useCallback(() => {
+    stepStore.reset();
+  }, [stepStore]);
+  const lastStep = useCallback(() => {
+    // The path of the last step depends on the steps that get rendered, so we
+    // let the store resolve it.
+    stepStore.reset([], true);
+  }, [stepStore]);
 
   // Fires when the user follows a link to a slide, edits the URL, or moves
   // through the browser history.
@@ -141,5 +156,7 @@ export function useDeckNavigation(
     previous,
     nextSlide,
     previousSlide,
+    firstStep,
+    lastStep,
   };
 }

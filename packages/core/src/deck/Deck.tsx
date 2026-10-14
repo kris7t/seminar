@@ -14,7 +14,9 @@ import {
   SLIDE_WIDTH,
 } from '../theme/createSlideTheme.ts';
 import { useFitScale } from './useFitScale.ts';
-import { useKeyboardNavigation } from './useKeyboardNavigation.ts';
+import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
+import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
+import { useClickNavigation } from '../interaction/useClickNavigation.ts';
 import { useDeckNavigation } from './useDeckNavigation.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 
@@ -27,7 +29,25 @@ export interface DeckProps {
   children?: ReactNode;
   /** MUI theme of the slides. Defaults to {@link defaultSlideTheme}. */
   theme?: Theme;
+  /**
+   * Whether clicking on the slides navigates (see {@link useClickNavigation}).
+   * Defaults to `true`.
+   *
+   * With mouse navigation, text on the slides can't be selected, except in
+   * text fields and elements with the `data-slider-interactive` attribute,
+   * since selecting text with the mouse would interfere with clicking.
+   */
+  mouseNavigation?: boolean;
 }
+
+const SELECTABLE_SELECTOR = [
+  `[${INTERACTIVE_ATTRIBUTE}]`,
+  'input',
+  'textarea',
+  '[contenteditable]',
+]
+  .map((selector) => `& ${selector}`)
+  .join(', ');
 
 function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
   if (isValidElement<{ id?: unknown }>(slide)) {
@@ -45,6 +65,7 @@ function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
 export function Deck({
   children,
   theme = defaultSlideTheme,
+  mouseNavigation = true,
 }: DeckProps): JSX.Element {
   // Slides are positional children, so we need to index into them.
   // eslint-disable-next-line @eslint-react/no-children-to-array
@@ -58,6 +79,8 @@ export function Deck({
     previous,
     nextSlide,
     previousSlide,
+    firstStep,
+    lastStep,
   } = useDeckNavigation(slides.map(getSlideId));
   const [containerRef, scale] = useFitScale(SLIDE_WIDTH, SLIDE_HEIGHT);
 
@@ -70,10 +93,23 @@ export function Deck({
       previous,
       nextSlide,
       previousSlide,
+      firstStep,
+      lastStep,
     }),
-    [slideIndex, slideCount, goTo, next, previous, nextSlide, previousSlide],
+    [
+      slideIndex,
+      slideCount,
+      goTo,
+      next,
+      previous,
+      nextSlide,
+      previousSlide,
+      firstStep,
+      lastStep,
+    ],
   );
   useKeyboardNavigation(deck);
+  const onClick = useClickNavigation(next, previous);
 
   return (
     <ThemeProvider theme={theme}>
@@ -82,15 +118,22 @@ export function Deck({
         <StepStoreContext value={stepStore}>
           <Box
             ref={containerRef}
-            sx={{
-              position: 'fixed',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              bgcolor: 'common.black',
-            }}
+            onClick={mouseNavigation ? onClick : undefined}
+            sx={[
+              {
+                position: 'fixed',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                bgcolor: 'common.black',
+              },
+              mouseNavigation && {
+                userSelect: 'none',
+                [SELECTABLE_SELECTOR]: { userSelect: 'text' },
+              },
+            ]}
           >
             <Box
               sx={{

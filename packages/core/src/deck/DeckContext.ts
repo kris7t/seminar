@@ -17,6 +17,13 @@ export interface DeckState {
   nextSlide: () => void;
   /** Goes to the beginning of the previous slide, skipping any steps. */
   previousSlide: () => void;
+  /** Goes to the first step of the current slide. */
+  firstStep: () => void;
+  /**
+   * Goes to the last step of the current slide, showing all steps on the
+   * slide.
+   */
+  lastStep: () => void;
 }
 
 export const DeckContext: Context<DeckState | undefined> = createContext<
