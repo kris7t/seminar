@@ -18,7 +18,8 @@ export interface KeyboardNavigationOptions {
  * - Home goes to the beginning of the first slide, and End to the last step
  *   of the last slide.
  * - Shift+Home and Shift+End go to the first or last step of the slide.
- * - `:` (as in Vim) asks for a slide number to go to.
+ * - `g` (or `:`, as in Vim) asks for a slide number to go to.
+ * - `t` shows or hides the table of contents.
  * - `o` shows or hides the overview of the slides, and Escape or Enter hide
  *   it, staying on the selected slide. In the overview, the keys above move
  *   between slides without changing their steps.
@@ -41,6 +42,9 @@ export function useKeyboardNavigation(
     lastStep,
     showOverview,
     setShowOverview,
+    toc,
+    showToc,
+    setShowToc,
   }: DeckState,
   { onGoToSlide }: KeyboardNavigationOptions,
 ): void {
@@ -112,8 +116,17 @@ export function useKeyboardNavigation(
             goTo(slideCount - 1, showOverview ? 'restore' : 'end');
           }
           break;
-        case ':':
+        case 'g':
+        case 'G':
+        case ':': // As in Vim.
           onGoToSlide();
+          break;
+        case 't':
+        case 'T':
+          if (toc.length === 0) {
+            return;
+          }
+          setShowToc(!showToc);
           break;
         case 'o':
         case 'O':
@@ -145,6 +158,9 @@ export function useKeyboardNavigation(
     lastStep,
     showOverview,
     setShowOverview,
+    toc,
+    showToc,
+    setShowToc,
     onGoToSlide,
   ]);
 }

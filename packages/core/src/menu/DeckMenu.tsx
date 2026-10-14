@@ -45,6 +45,23 @@ interface Action {
  */
 const ICON_WIDTH = 28;
 
+/**
+ * The keyboard shortcut of a menu item. It's hidden from assistive technology,
+ * since it would become part of the name of the item.
+ */
+function Shortcut({ children }: { children: ReactNode }): JSX.Element {
+  return (
+    <Typography
+      variant="body2"
+      color="textSecondary"
+      aria-hidden
+      sx={{ ml: 3 }}
+    >
+      {children}
+    </Typography>
+  );
+}
+
 function ItemIcon({ children }: { children?: ReactNode }): JSX.Element {
   return <ListItemIcon>{children}</ListItemIcon>;
 }
@@ -133,7 +150,7 @@ export function DeckMenu({
       {
         label: 'Go to slide…',
         icon: TagIcon,
-        shortcut: ':',
+        shortcut: 'G',
         action: onGoToSlide,
       },
       {
@@ -184,15 +201,7 @@ export function DeckMenu({
                 <Icon fontSize="small" />
               </ItemIcon>
               <ListItemText>{label}</ListItemText>
-              {shortcut !== undefined && (
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
-                  sx={{ ml: 3 }}
-                >
-                  {shortcut}
-                </Typography>
-              )}
+              {shortcut !== undefined && <Shortcut>{shortcut}</Shortcut>}
             </MenuItem>
           ),
         ),
@@ -209,6 +218,7 @@ export function DeckMenu({
       >
         <ItemIcon>{showToc && <CheckIcon fontSize="small" />}</ItemIcon>
         <ListItemText>Table of contents</ListItemText>
+        <Shortcut>T</Shortcut>
       </MenuItem>
       <MenuItem
         role="menuitemcheckbox"

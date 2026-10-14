@@ -147,6 +147,15 @@ describe('TocSidebar', () => {
     expect(window.location.hash).toBe('#slide=1');
   });
 
+  it('is toggled with t', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('t');
+    expect(screen.getByRole('navigation')).toBeDefined();
+    await user.keyboard('T');
+    expect(screen.queryByRole('navigation')).toBeNull();
+  });
+
   it('is disabled without a table of contents', async () => {
     const user = userEvent.setup();
     renderDeck([]);

@@ -155,20 +155,21 @@ describe('DeckMenu', () => {
     ).toBe('true');
   });
 
-  it('opens the slide number dialog with :', async () => {
+  it.each(['g', ':'])('opens the slide number dialog with %s', async (key) => {
     const user = userEvent.setup();
     renderDeck();
-    await user.keyboard(':3{Enter}');
+    await user.keyboard(`${key}3{Enter}`);
     expect(window.location.hash).toBe('#slide=3');
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
   });
 
-  it('does not open the slide number dialog when typing :', async () => {
+  it('does not open the slide number dialog when typing', async () => {
     const user = userEvent.setup();
     renderDeck();
-    await user.type(screen.getByLabelText('Text'), ':');
+    await user.type(screen.getByLabelText('Text'), 'g:t');
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByLabelText<HTMLInputElement>('Text').value).toBe('g:t');
   });
 });
