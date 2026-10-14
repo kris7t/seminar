@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
+import { sectionMasterClasses } from '../masters/SectionMaster.tsx';
 import type { SlideMasterProps } from '../masters/SlideMaster.ts';
+import { subsectionMasterClasses } from '../masters/SubsectionMaster.tsx';
 import { Slide } from './Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 
@@ -49,6 +51,19 @@ describe('Slide', () => {
     expect(screen.getByRole('heading').tagName).toBe('H1');
     expect(screen.getByRole('heading').textContent).toBe('Talk');
     expect(screen.getByText('Speaker')).toBeDefined();
+  });
+
+  it.each([
+    ['section', sectionMasterClasses.root],
+    ['subsection', subsectionMasterClasses.root],
+  ])('uses the %s master', (master, className) => {
+    renderSlide(
+      <Slide master={master} title="Part">
+        Summary
+      </Slide>,
+    );
+    expect(screen.getByRole('heading').textContent).toBe('Part');
+    expect(screen.getByText('Summary').closest(`.${className}`)).not.toBeNull();
   });
 
   it('uses a master added to the theme', () => {

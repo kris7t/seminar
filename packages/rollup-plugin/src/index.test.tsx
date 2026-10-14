@@ -51,6 +51,7 @@ describe('.deck.mdx', () => {
       title: 'A talk about slides',
       mouseNavigation: false,
       theme: './theme.tsx',
+      depth: 2,
     });
     render(<Talk />);
     await user.click(screen.getByText('Someone, somewhere'));
@@ -82,6 +83,7 @@ describe('.deck.mdx', () => {
       title: 'Plain deck',
       mouseNavigation: true,
       theme: '@slider/theme-default',
+      depth: 1,
     });
     render(<Plain />);
     expect(screen.getByRole('heading').textContent).toBe('Plain deck');

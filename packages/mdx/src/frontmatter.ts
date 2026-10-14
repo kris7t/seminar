@@ -22,10 +22,53 @@ function parseFrontmatter(value: string, file: VFile): Record<string, unknown> {
   return data as Record<string, unknown>;
 }
 
-/** Returns the text of the first heading that starts a slide, if any. */
-function getFirstHeading(tree: Root): string | undefined {
+/** The deepest heading level that starts slides. */
+export const MAX_DEPTH = 4;
+
+/**
+ * Detects the depth of a deck: the deepest level of its headings, but at most
+ * {@link MAX_DEPTH}.
+ */
+function detectDepth(tree: Root): number {
+  let depth = 0;
   for (const node of tree.children) {
-    if (node.type === 'heading' && node.depth <= 2) {
+    if (node.type === 'heading') {
+      depth = Math.max(depth, Math.min(node.depth, MAX_DEPTH));
+    }
+  }
+  return depth;
+}
+
+function getDepth(
+  frontmatter: Record<string, unknown>,
+  tree: Root,
+  file: VFile,
+): number {
+  const { depth } = frontmatter;
+  if (depth === undefined) {
+    return detectDepth(tree);
+  }
+  if (
+    typeof depth === 'number' &&
+    Number.isInteger(depth) &&
+    depth >= 0 &&
+    depth <= MAX_DEPTH
+  ) {
+    return depth;
+  }
+  file.message(
+    `Expected \`depth\` in the frontmatter to be an integer from 0 to ${String(MAX_DEPTH)}`,
+  );
+  return detectDepth(tree);
+}
+
+/**
+ * Returns the text of the first heading that starts a slide, or of the first
+ * heading if no heading starts a slide.
+ */
+function getFirstHeading(tree: Root, depth: number): string | undefined {
+  for (const node of tree.children) {
+    if (node.type === 'heading' && (depth === 0 || node.depth <= depth)) {
       const text = toString(node);
       return splitTrailingAttributeBlock(text)?.[0] ?? text;
     }
@@ -51,7 +94,9 @@ export interface DeckDefaults {
  * Returns the frontmatter of a deck (parsed with `remark-frontmatter`), with
  * defaults filled in:
  *
- * - `title` defaults to the text of the first heading.
+ * - `depth`, the deepest level of headings that start slides, defaults to the
+ *   deepest level of the headings of the deck, but at most 4.
+ * - `title` defaults to the text of the first heading that starts a slide.
  * - `mouseNavigation` defaults to `defaultMouseNavigation`, or `true`.
  * - `theme` defaults to `defaultTheme`, if given.
  */
@@ -67,12 +112,14 @@ export function getDeckFrontmatter(
       break;
     }
   }
-  const title = getFirstHeading(tree);
+  const depth = getDepth(frontmatter, tree, file);
+  const title = getFirstHeading(tree, depth);
   return {
     ...(title === undefined ? {} : { title }),
     mouseNavigation: defaultMouseNavigation,
     ...(defaultTheme === undefined ? {} : { theme: defaultTheme }),
     ...frontmatter,
+    depth,
   };
 }
 

@@ -1,6 +1,8 @@
 import { createTheme, type Theme, type ThemeOptions } from '@mui/material';
 
 import { ContentMaster } from '../masters/ContentMaster.tsx';
+import { SectionMaster } from '../masters/SectionMaster.tsx';
+import { SubsectionMaster } from '../masters/SubsectionMaster.tsx';
 import { TitleMaster } from '../masters/TitleMaster.tsx';
 
 /** Logical width of a slide in CSS pixels before scaling to the viewport. */
@@ -13,6 +15,8 @@ const slideThemeOptions: ThemeOptions = {
   master: {
     content: ContentMaster,
     title: TitleMaster,
+    section: SectionMaster,
+    subsection: SubsectionMaster,
   },
   typography: {
     fontSize: 24,

@@ -16,6 +16,10 @@ export interface SlideMasters {
   content: SlideMaster;
   /** Master for the title slide of a presentation. */
   title: SlideMaster;
+  /** Master for slides that start a section. */
+  section: SlideMaster;
+  /** Master for slides that start a subsection. */
+  subsection: SlideMaster;
 }
 
 declare module '@mui/material/styles' {

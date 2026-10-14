@@ -16,7 +16,7 @@ import {
 } from '@slider/core';
 import type { JSX } from 'react';
 
-/** Master added to the theme, so that slides can refer to it by name. */
+/** Replaces the built-in `section` master of the theme. */
 function SectionMaster({ title, children }: SlideMasterProps): JSX.Element {
   return (
     <Stack

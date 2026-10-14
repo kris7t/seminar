@@ -74,6 +74,20 @@ const ATTRIBUTED_BREAK_PATTERN =
 /** Matches an (escaped) attribute block on its own, e.g., `\{#id}`. */
 const ATTRIBUTE_BLOCK_PATTERN = /^\s*(\{[^{}]*\})\s*$/;
 
+/** Masters of the slides started by headings above the deepest level. */
+const HEADING_MASTERS = ['title', 'section', 'subsection'];
+
+/**
+ * Returns the master of the slide started by a heading of `level` in a deck of
+ * `depth`: the deepest level starts content slides, and the levels above it
+ * start title, section, and subsection slides.
+ */
+function getMaster(level: number, depth: number): string {
+  return level === depth
+    ? 'content'
+    : (HEADING_MASTERS[level - 1] ?? 'content');
+}
+
 function createSlide(
   master: string,
   id: string | undefined,
@@ -309,8 +323,21 @@ function createDeckAttributes(
 /**
  * Turns an MDX document into a deck of slides.
  *
- * - `# Heading` starts a slide with the `title` master.
- * - `## Heading` starts a slide with the `content` master.
+ * - Headings up to the `depth` of the deck start slides. Headings of the
+ *   deepest level start slides with the `content` master, and the levels above
+ *   start slides with the `title`, `section`, and `subsection` masters:
+ *
+ *   | `depth` | `#`     | `##`      | `###`        | `####`    |
+ *   | ------- | ------- | --------- | ------------ | --------- |
+ *   | 0       |         |           |              |           |
+ *   | 1       | content |           |              |           |
+ *   | 2       | title   | content   |              |           |
+ *   | 3       | title   | section   | content      |           |
+ *   | 4       | title   | section   | subsection   | content   |
+ *
+ *   Deeper headings stay in the slides. The `depth` is taken from the
+ *   frontmatter, and defaults to the deepest level of the headings of the
+ *   document, but at most 4.
  * - A thematic break (`***` or `---`) starts a slide with the `content`
  *   master and no title. Formatters like Prettier rewrite `***` to `---`, so
  *   both are slide breaks.
@@ -344,6 +371,7 @@ export function remarkSlides({
     const esm: RootContent[] = [];
     const slides: SlideDraft[] = [];
     const frontmatter = getDeckFrontmatter(tree, file, defaults);
+    const depth = frontmatter['depth'] as number;
     // Read by `rehypeMath`.
     (file.data as { sliderFrontmatter?: unknown }).sliderFrontmatter =
       frontmatter;
@@ -354,11 +382,11 @@ export function remarkSlides({
         // Already read by `getDeckFrontmatter`.
       } else if (node.type === 'mdxjsEsm') {
         esm.push(node);
-      } else if (node.type === 'heading' && node.depth <= 2) {
+      } else if (node.type === 'heading' && node.depth <= depth) {
         const block = extractTrailingAttributes(node.children);
         const slug = slugger.slug(toString(node));
         current = createSlide(
-          node.depth === 1 ? 'title' : 'content',
+          getMaster(node.depth, depth),
           slug === '' ? undefined : slug,
           block,
           file,

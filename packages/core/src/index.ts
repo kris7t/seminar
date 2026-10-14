@@ -14,6 +14,18 @@ export {
   type ContentMasterProps,
 } from './masters/ContentMaster.tsx';
 export {
+  SectionMaster,
+  sectionMasterClasses,
+  type SectionMasterClassKey,
+  type SectionMasterProps,
+} from './masters/SectionMaster.tsx';
+export {
+  SubsectionMaster,
+  subsectionMasterClasses,
+  type SubsectionMasterClassKey,
+  type SubsectionMasterProps,
+} from './masters/SubsectionMaster.tsx';
+export {
   TitleMaster,
   titleMasterClasses,
   type TitleMasterClassKey,

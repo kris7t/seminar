@@ -10,15 +10,21 @@ import { ClosingMaster } from './src/theme.tsx';
 
 Scientific talks and lectures in Markdown
 
-## Why slider? \{#why}
+## Basics
+
+Markdown in, slides out
+
+### Why slider? \{#why}
 
 - Keep your slides in plain text under version control
 - Write content in Markdown, style it with themes
 - Present from any modern web browser
 
-## Writing slides
+### Writing slides
 
-- `#` starts a title slide, `##` a content slide
+- `#` starts the title slide, `##` a section, `###` a content slide
+- `depth:` in the frontmatter shifts these levels, and defaults to the deepest
+  heading level
 - `---` starts a slide without a title
 - Slide ids come from the headings, e.g., `#writing-slides`
 
@@ -27,11 +33,11 @@ Scientific talks and lectures in Markdown
   `\{master=ClosingMaster}` to use an imported component as the master.
 </Step>
 
-## Steps \{.section}
+## Steps
 
 Revealing content in steps
 
-## Revealing content
+### Revealing content
 
 - List items are shown up front, or along with the previous step
 - \{step} Add `\{step}` to reveal an item in a new step
@@ -39,14 +45,18 @@ Revealing content in steps
 - \{step} Nested lists can have steps of their own
   - \{step} like this one
 
-## Interleaving steps
+### Interleaving steps
 
 - \{group=pro with=initial} Markdown is easy to write
 - \{group=con} but layout control is limited
 - \{group=pro} Diffs are readable
 - \{group=con} but complex figures still need components
 
-## Math
+## Typesetting
+
+Formulas with MathJax
+
+### Math
 
 Inline math like $e^{i\pi} + 1 = 0$ is rendered with MathJax when the deck
 is compiled, with MathML for screen readers.

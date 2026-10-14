@@ -136,8 +136,10 @@ More
     ]);
   });
 
-  it('keeps other headings in the content', async () => {
-    expect(await slides('## Slide\n\n### Section\n\nText')).toEqual([
+  it('keeps deeper headings in the content', async () => {
+    expect(
+      await slides('---\ndepth: 2\n---\n\n## Slide\n\n### Section\n\nText'),
+    ).toEqual([
       {
         master: 'content',
         id: 'slide',
@@ -227,6 +229,7 @@ author: Someone
       title: 'Slide',
       mouseNavigation: false,
       author: 'Someone',
+      depth: 2,
     });
     expect(renderDeck(module).props).toMatchObject({
       defaultMouseNavigation: false,
@@ -243,6 +246,7 @@ author: Someone
     expect(module.frontmatter).toEqual({
       title: 'First',
       mouseNavigation: true,
+      depth: 2,
     });
     expect(renderDeck(module).props).toMatchObject({
       defaultMouseNavigation: true,
@@ -284,6 +288,7 @@ author: Someone
       title: 'Slide',
       mouseNavigation: false,
       theme: THEME_URL,
+      depth: 1,
     });
     expect(renderDeck(module).props).toMatchObject({
       defaultMouseNavigation: false,
@@ -303,6 +308,70 @@ author: Someone
   it('keeps exports of the document', async () => {
     const module = await compileDeck('export const answer = 42\n\n## Slide');
     expect((module as unknown as { answer: number }).answer).toBe(42);
+  });
+
+  describe('depth', () => {
+    const DOCUMENT = '# A\n\n## B\n\n### C\n\n#### D\n\nText';
+
+    async function masters(depth: number | undefined) {
+      const frontmatter =
+        depth === undefined ? '' : `---\ndepth: ${String(depth)}\n---\n\n`;
+      return (await slides(frontmatter + DOCUMENT)).map(
+        ({ master, title, children }) =>
+          [master, title, children] as [unknown, unknown, unknown],
+      );
+    }
+
+    it('only starts slides at slide breaks with depth 0', async () => {
+      expect(await masters(0)).toEqual([
+        [
+          'content',
+          undefined,
+          '<h1>A</h1><h2>B</h2><h3>C</h3><h4>D</h4><p>Text</p>',
+        ],
+      ]);
+    });
+
+    it('starts content slides at the deepest level', async () => {
+      expect(await masters(1)).toEqual([
+        ['content', 'A', '<h2>B</h2><h3>C</h3><h4>D</h4><p>Text</p>'],
+      ]);
+      expect(await masters(2)).toEqual([
+        ['title', 'A', ''],
+        ['content', 'B', '<h3>C</h3><h4>D</h4><p>Text</p>'],
+      ]);
+    });
+
+    it('starts section and subsection slides above the deepest level', async () => {
+      expect(await masters(3)).toEqual([
+        ['title', 'A', ''],
+        ['section', 'B', ''],
+        ['content', 'C', '<h4>D</h4><p>Text</p>'],
+      ]);
+      expect(await masters(4)).toEqual([
+        ['title', 'A', ''],
+        ['section', 'B', ''],
+        ['subsection', 'C', ''],
+        ['content', 'D', '<p>Text</p>'],
+      ]);
+    });
+
+    it('detects the depth from the headings', async () => {
+      expect(await masters(undefined)).toEqual(await masters(4));
+      // At most 4, so that deeper headings stay in the slides.
+      expect(await slides('# A\n\n##### B')).toEqual([
+        { master: 'title', id: 'a', title: 'A', children: '<h5>B</h5>' },
+      ]);
+    });
+
+    it('reports invalid depths', async () => {
+      const file = await compile('---\ndepth: 5\n---\n\n# A', {
+        ...sliderMdxOptions(),
+      });
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining('Expected `depth` in the frontmatter'),
+      ]);
+    });
   });
 
   describe('list steps', () => {
