@@ -1,5 +1,6 @@
 import type { Element, ElementContent, Root, RootContent } from 'hast';
 import { fromHtml } from 'hast-util-from-html';
+import { toHtml } from 'hast-util-to-html';
 import type {
   MdxJsxAttribute,
   MdxJsxFlowElementHast,
@@ -226,6 +227,20 @@ function cleanMathml(node: ElementContent, root: boolean): ElementContent {
   };
 }
 
+/**
+ * Serializes MathML to HTML with non-ASCII characters as character references,
+ * e.g., `&#x3C0;` for `π`. Self-contained builds only keep fonts for the
+ * characters that occur literally in the page, and the MathML is only read by
+ * assistive technology, which doesn't need fonts.
+ */
+function serializeMathml(math: ElementContent): string {
+  return toHtml(math).replaceAll(
+    /[\u0080-\u{10FFFF}]/gu,
+    (character) =>
+      `&#x${(character.codePointAt(0) ?? 0).toString(16).toUpperCase()};`,
+  );
+}
+
 function findElement(node: Element, tagName: string): Element | undefined {
   for (const child of node.children) {
     if (child.type === 'element') {
@@ -274,10 +289,12 @@ function createFormula(
       attributes.push(createStringAttribute('minWidth', minWidth));
     }
   }
-  const children = [
-    ...(svg === undefined ? [] : cleanSvg(svg)),
-    ...(math === undefined ? [] : [cleanMathml(math, true)]),
-  ];
+  if (math !== undefined) {
+    attributes.push(
+      createStringAttribute('mathml', serializeMathml(cleanMathml(math, true))),
+    );
+  }
+  const children = svg === undefined ? [] : cleanSvg(svg);
   return {
     type: display ? 'mdxJsxFlowElement' : 'mdxJsxTextElement',
     name: FORMULA,

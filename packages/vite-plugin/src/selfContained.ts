@@ -1,0 +1,261 @@
+import { readdir, rm } from 'node:fs/promises';
+import path from 'node:path';
+
+import type { Plugin, ResolvedConfig, Rolldown, ViteBuilder } from 'vite';
+
+import { findDecks, getHtmlPath, isEmptyInput, removeInputs } from './decks.ts';
+import {
+  collectCodePoints,
+  parseUnicodeRange,
+  pruneFonts,
+  type CodePointRange,
+} from './fonts.ts';
+
+export interface SelfContainedOptions {
+  /**
+   * Unicode ranges of fonts to keep, even if no text in the deck needs them,
+   * e.g., `['U+0400-04FF']` for Cyrillic text generated at runtime.
+   */
+  keepUnicodeRanges?: string[] | undefined;
+}
+
+/** Prefix of the names of the build environments of decks. */
+const ENVIRONMENT_PREFIX = 'slider_deck_';
+
+function escapeRegExp(text: string): string {
+  return text.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Escapes `</script` and `<!--` in a script, so that it can be inlined into
+ * HTML. Both may only occur in strings, regular expressions, and comments,
+ * where the escaped forms mean the same.
+ */
+function escapeScript(code: string): string {
+  return code
+    .replaceAll(/<\/(script)/gi, '<\\/$1')
+    .replaceAll('<!--', '<\\!--');
+}
+
+/** Escapes `</style` in a style sheet, so that it can be inlined into HTML. */
+function escapeStyle(css: string): string {
+  return css.replaceAll(/<\/(style)/gi, '<\\/$1');
+}
+
+/** Finds the tags of `html` that refer to `fileName` with `attribute`. */
+function tagPattern(tag: string, attribute: string, fileName: string): RegExp {
+  return new RegExp(
+    `<${tag}\\b[^>]*\\s${attribute}="[^"]*${escapeRegExp(fileName)}"[^>]*>${tag === 'script' ? '\\s*</script>' : ''}`,
+    'g',
+  );
+}
+
+/**
+ * Inlines the scripts and style sheets of the page in `bundle` into the page,
+ * removing them from the bundle, and removes the fonts that the page doesn't
+ * need. Other assets are inlined as data URIs by the build options of the
+ * environment.
+ */
+function inlineBundle(
+  bundle: Rolldown.OutputBundle,
+  keep: readonly CodePointRange[],
+  warn: (message: string) => void,
+) {
+  const outputs = Object.values(bundle);
+  const page = outputs.find(
+    (output): output is Rolldown.OutputAsset =>
+      output.type === 'asset' && output.fileName.endsWith('.html'),
+  );
+  if (page === undefined) {
+    return;
+  }
+  let html = String(page.source);
+  const used = collectCodePoints(
+    outputs.flatMap((output) => (output.type === 'chunk' ? [output.code] : [])),
+  );
+  for (const codePoint of collectCodePoints([html], { html: true })) {
+    used.add(codePoint);
+  }
+  for (const output of outputs) {
+    if (output === page) {
+      continue;
+    }
+    const before = html;
+    if (output.type === 'chunk') {
+      const script = `<script type="module">${escapeScript(output.code)}</script>`;
+      html = html.replace(
+        tagPattern('script', 'src', output.fileName),
+        () => script,
+      );
+    } else if (output.fileName.endsWith('.css')) {
+      const css = pruneFonts(String(output.source), { used, keep });
+      const style = `<style>${escapeStyle(css)}</style>`;
+      html = html.replace(
+        tagPattern('link', 'href', output.fileName),
+        () => style,
+      );
+    }
+    const inlined = html !== before;
+    if (inlined) {
+      // Drop the file, since the page doesn't refer to it any more.
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete bundle[output.fileName];
+    } else {
+      warn(
+        `${output.fileName} could not be inlined into ${page.fileName}, so the page is not self-contained`,
+      );
+    }
+  }
+  page.source = html;
+}
+
+/** Empties `outDir` like Vite does, keeping `.git`. */
+async function emptyDir(outDir: string) {
+  const entries = await readdir(outDir).catch(() => []);
+  await Promise.all(
+    entries
+      .filter((entry) => entry !== '.git')
+      .map((entry) =>
+        rm(path.join(outDir, entry), { recursive: true, force: true }),
+      ),
+  );
+}
+
+/** Whether Vite would empty the output directory of `config`. */
+function shouldEmptyOutDir({ root, build }: ResolvedConfig): boolean {
+  if (build.emptyOutDir !== null) {
+    return build.emptyOutDir;
+  }
+  const outDir = path.resolve(root, build.outDir);
+  return !path.relative(root, outDir).startsWith('..');
+}
+
+/**
+ * Builds the generated page of each deck as a single, self-contained HTML
+ * file: scripts and style sheets are inlined into the page, and other assets,
+ * like fonts and images, are inlined as data URIs. Each deck is bundled in its
+ * own build environment, since code shared between pages couldn't be inlined.
+ *
+ * Fonts are pruned to keep the pages small: WOFF fallbacks of WOFF2 fonts are
+ * removed, and so are fonts whose `unicode-range` has no character that occurs
+ * in the scripts or the HTML of the page. Text generated at runtime may thus
+ * be shown in a fallback font, unless its characters are kept with
+ * `keepUnicodeRanges`.
+ *
+ * Only applies to `vite build` (or `createBuilder().buildApp()`), where the
+ * build environments of the decks are built after the other pages of the
+ * project. The `build()` API of Vite only builds the client environment,
+ * where decks are bundled with the other pages.
+ *
+ * Files in the `public` directory are not inlined.
+ */
+export function sliderSelfContained({
+  keepUnicodeRanges = [],
+}: SelfContainedOptions = {}): Plugin {
+  const keep = keepUnicodeRanges.flatMap((range) => {
+    const parsed = parseUnicodeRange(range);
+    if (parsed === undefined) {
+      throw new Error(`Invalid Unicode range ${range} in keepUnicodeRanges`);
+    }
+    return parsed;
+  });
+  /** The pages of the decks by the names of their build environments. */
+  let pages = new Map<string, string>();
+
+  return {
+    name: 'slider:self-contained',
+    apply: 'build',
+
+    config(config, { isSsrBuild = false }) {
+      if (isSsrBuild) {
+        return undefined;
+      }
+      const root = path.resolve(config.root ?? process.cwd());
+      pages = new Map(
+        findDecks(root).map((deck, i) => [
+          `${ENVIRONMENT_PREFIX}${String(i)}`,
+          getHtmlPath(deck),
+        ]),
+      );
+      if (pages.size === 0) {
+        return undefined;
+      }
+      return {
+        // Build all environments with `vite build`.
+        builder: {},
+        environments: Object.fromEntries(
+          [...pages.keys()].map((name) => [
+            name,
+            {
+              consumer: 'client',
+              build: {
+                // The output directory is emptied before the first build.
+                emptyOutDir: false,
+                copyPublicDir: false,
+                assetsInlineLimit: () => true,
+                cssCodeSplit: false,
+                modulePreload: false,
+                rolldownOptions: { output: { codeSplitting: false } },
+              },
+            },
+          ]),
+        ),
+      };
+    },
+
+    async buildApp(builder: ViteBuilder) {
+      const { client } = builder.environments;
+      const deckPages = new Set(pages.values());
+      const clientInput = removeInputs(
+        client?.config.build.rolldownOptions.input,
+        deckPages,
+      );
+      if (client !== undefined && !client.isBuilt) {
+        // The decks are built in their own environments. Plugins are created
+        // anew for each environment, so we can't tell the plugins of the
+        // client environment about this, but have to change its config.
+        if (clientInput !== undefined) {
+          client.config.build.rolldownOptions.input = clientInput;
+        }
+        if (isEmptyInput(clientInput)) {
+          // Only decks: empty the output directory ourselves.
+          if (shouldEmptyOutDir(client.config)) {
+            await emptyDir(
+              path.resolve(client.config.root, client.config.build.outDir),
+            );
+          }
+        } else {
+          await builder.build(client);
+        }
+      }
+      for (const name of pages.keys()) {
+        const environment = builder.environments[name];
+        if (environment !== undefined && !environment.isBuilt) {
+          await builder.build(environment);
+        }
+      }
+    },
+
+    applyToEnvironment(environment) {
+      const page = pages.get(environment.name);
+      if (page === undefined) {
+        return false;
+      }
+      return {
+        name: 'slider:self-contained:deck',
+        options(options) {
+          return { ...options, input: [page] };
+        },
+        generateBundle: {
+          // After Vite has emitted the HTML page.
+          order: 'post',
+          handler(_options, bundle) {
+            inlineBundle(bundle, keep, (message) => {
+              this.warn(message);
+            });
+          },
+        },
+      };
+    },
+  };
+}

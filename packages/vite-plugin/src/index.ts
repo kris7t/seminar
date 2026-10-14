@@ -6,6 +6,10 @@ import type { Plugin } from 'vite';
 
 import { sliderEntries } from './entries.ts';
 import { createViteImporter } from './importModule.ts';
+import {
+  sliderSelfContained,
+  type SelfContainedOptions,
+} from './selfContained.ts';
 
 export interface SliderPluginOptions extends RollupSliderPluginOptions {
   /**
@@ -13,6 +17,16 @@ export interface SliderPluginOptions extends RollupSliderPluginOptions {
    * pages (see {@link sliderEntries}). Defaults to `true`.
    */
   entries?: boolean;
+  /**
+   * Whether `vite build` turns the generated page of each deck into a single,
+   * self-contained HTML file, with all scripts, style sheets, fonts, and
+   * other assets inlined (see {@link sliderSelfContained}). Defaults to
+   * `true`. Disable it, e.g., when hosting decks with a Content Security
+   * Policy that forbids inline scripts.
+   *
+   * Only applies if `entries` is enabled.
+   */
+  selfContained?: boolean | SelfContainedOptions | undefined;
 }
 
 /**
@@ -27,6 +41,7 @@ export interface SliderPluginOptions extends RollupSliderPluginOptions {
  */
 export default function slider({
   entries = true,
+  selfContained = true,
   ...options
 }: SliderPluginOptions = {}): Plugin[] {
   let root = process.cwd();
@@ -41,7 +56,17 @@ export default function slider({
       root = config.root;
     },
   };
-  return entries ? [mdx, setRoot, sliderEntries()] : [mdx, setRoot];
+  if (!entries) {
+    return [mdx, setRoot];
+  }
+  return [
+    mdx,
+    setRoot,
+    sliderEntries(),
+    ...(selfContained === false
+      ? []
+      : [sliderSelfContained(selfContained === true ? {} : selfContained)]),
+  ];
 }
 
-export { sliderEntries };
+export { sliderEntries, sliderSelfContained, type SelfContainedOptions };

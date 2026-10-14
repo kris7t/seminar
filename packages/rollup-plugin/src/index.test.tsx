@@ -94,7 +94,9 @@ describe('.deck.mdx', () => {
     const math = screen.getByRole('math');
     expect(math.getAttribute('data-latex')).toBe('x^2');
     expect(math.namespaceURI).toBe('http://www.w3.org/1998/Math/MathML');
-    const svg = math.parentElement?.querySelector('svg');
+    const svg = math
+      .closest('[class*="SliderFormula-root"]')
+      ?.querySelector('svg');
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
     // Glyphs of the Fira font of the default theme.
     expect(svg?.querySelector('path')?.id).toMatch(/^MJX-\d+-FIRA-/);

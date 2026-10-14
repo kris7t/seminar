@@ -22,6 +22,13 @@ async function compileDeck(
   return { code: String(file), messages: file.messages.map(String) };
 }
 
+/** Returns the MathML of the formulas in the compiled code. */
+function mathml(code: string): string[] {
+  return [...code.matchAll(/mathml: ("(?:[^"\\]|\\.)*")/g)].map(
+    ([, value]) => JSON.parse(value ?? '""') as string,
+  );
+}
+
 /** Returns the font of the glyphs in the compiled code, e.g., `NCM`. */
 function fonts(code: string): string[] {
   return [...new Set(code.match(/(?<=id: "MJX-\d+-)[A-Z]+/g))];
@@ -30,7 +37,7 @@ function fonts(code: string): string[] {
 describe('rehypeMath', () => {
   it('renders inline and display math', async () => {
     const { code, messages } = await compileDeck(
-      '## Math\n\nInline $x^{2}$\n\n$$\n\\int f\n$$',
+      '## Math\n\nInline $x^{2}$\n\n$$\n\\int \\pi\n$$',
     );
     expect(messages).toEqual([]);
     expect(code).toContain('Formula as _SliderFormula');
@@ -42,8 +49,12 @@ describe('rehypeMath', () => {
     ]);
     // The SVG is hidden from assistive technology, which reads the MathML.
     expect(code).toContain('"aria-hidden": "true"');
-    expect(code).toContain('_components.math');
-    expect(code).toContain('"data-latex": "x^{2}"');
+    const [inline, display] = mathml(code);
+    expect(inline).toMatch(/^<math [^>]*data-latex="x\^\{2\}"/);
+    // Non-ASCII characters are character references, so that self-contained
+    // builds don't keep fonts for them.
+    expect(display).toContain('&#x3C0;');
+    expect(display).not.toMatch(/[\u0080-\u{10FFFF}]/u);
     expect(fonts(code)).toEqual(['NCM']);
   });
 
@@ -52,12 +63,14 @@ describe('rehypeMath', () => {
       '$$\n\\begin{equation}a \\label{a}\\end{equation}\n$$\n\n$$\n\\begin{equation}b\\end{equation}\n$$\n\nSee $\\eqref{a}$',
     );
     expect(code).toContain('fullWidth: true');
-    // The MathML of the labels of the equations, then of the reference.
-    expect(code.match(/children: "\(?\d\)?"/g)).toEqual([
-      'children: "1"',
-      'children: "2"',
-      'children: "(1)"',
-    ]);
+    // The labels of the equations, then the reference.
+    expect(
+      mathml(code).map((math) =>
+        [...math.matchAll(/<mtext>(\(?\d\)?)<\/mtext>/g)].map(
+          ([, text]) => text,
+        ),
+      ),
+    ).toEqual([['1'], ['2'], ['(1)']]);
     // Links would navigate away from the slide.
     expect(code).not.toContain('_components.a,');
   });
@@ -149,7 +162,7 @@ describe('rehypeMath', () => {
     );
     expect(messages).toEqual([]);
     expect(fonts(code)).toEqual(['FIRA']);
-    expect(code).toContain('"data-latex": "\\\\R \\\\T"');
+    expect(mathml(code)[0]).toContain('data-latex="\\R \\T"');
     expect(onDependency).toHaveBeenCalledWith(DECK_PATH, THEME_PATH);
   });
 
@@ -158,7 +171,7 @@ describe('rehypeMath', () => {
       `---\ntheme: ./test-theme.ts\nmath:\n  font: newcm\n  macros:\n    T: \\text{deck}\n---\n\n$\\R \\T$`,
     );
     expect(fonts(code)).toEqual(['NCM']);
-    expect(code).toContain('children: "deck"');
+    expect(mathml(code)[0]).toContain('<mtext>deck</mtext>');
   });
 
   it('reports invalid options', async () => {

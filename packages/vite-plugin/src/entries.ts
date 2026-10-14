@@ -1,32 +1,24 @@
-import { existsSync, globSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { readDeckFrontmatter } from '@slider/mdx';
-import type { Plugin, UserConfig } from 'vite';
+import type { Plugin } from 'vite';
 
-const DECK_SUFFIX = '.deck.mdx';
-const HTML_SUFFIX = '.html';
+import {
+  DECK_SUFFIX,
+  findDecks,
+  getDeckPath,
+  getHtmlPath,
+  HTML_SUFFIX,
+  type Input,
+} from './decks.ts';
 
 /** Query that marks the script that renders a deck. */
 const ENTRY_QUERY = '?slider-entry';
 
 /** Prefix of the virtual modules that render decks. */
 const ENTRY_PREFIX = '\0slider-entry:';
-
-type Input = NonNullable<
-  NonNullable<NonNullable<UserConfig['build']>['rolldownOptions']>['input']
->;
-
-/** Returns the deck that `htmlPath` is generated for, e.g., `talk.html`. */
-function getDeckPath(htmlPath: string): string {
-  return htmlPath.slice(0, -HTML_SUFFIX.length) + DECK_SUFFIX;
-}
-
-/** Returns the HTML page generated for `deckPath`, e.g., `talk.deck.mdx`. */
-function getHtmlPath(deckPath: string): string {
-  return deckPath.slice(0, -DECK_SUFFIX.length) + HTML_SUFFIX;
-}
 
 /** Whether `htmlPath` is not a real file, but generated for a deck. */
 function isGenerated(htmlPath: string): boolean {
@@ -126,12 +118,7 @@ export function sliderEntries(): Plugin {
 
     config(config) {
       root = path.resolve(config.root ?? process.cwd());
-      const decks = globSync(`**/*${DECK_SUFFIX}`, {
-        cwd: root,
-        exclude: ['**/node_modules/**'],
-      })
-        .map((deck) => path.join(root, deck))
-        .filter((deck) => !existsSync(getHtmlPath(deck)));
+      const decks = findDecks(root);
       if (decks.length === 0) {
         return undefined;
       }

@@ -22,7 +22,8 @@
   },
   "dependencies": {
     "@slider/mdx": "0.0.0",
-    "@slider/rollup-plugin": "0.0.0"
+    "@slider/rollup-plugin": "0.0.0",
+    "postcss": "^8.5.30"
   },
   "peerDependencies": {
     "vite": "^8.0.0"
