@@ -1,20 +1,21 @@
 import { Box, ButtonBase, Typography } from '@mui/material';
 import {
+  use,
   useEffect,
   useMemo,
   useRef,
-  useState,
   type JSX,
   type MouseEventHandler,
   type ReactNode,
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { SlideStateContext } from '../state/SlideStateContext.ts';
 import {
   SLIDE_VIEW_ATTRIBUTE,
-  SlideViewContext,
   type SlideView,
 } from '../slide/SlideViewContext.ts';
+import { SlideViewProvider } from '../slide/SlideViewProvider.tsx';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
@@ -43,6 +44,12 @@ function Thumbnail({
   const view = useMemo<SlideView>(
     () => ({ index, kind: 'thumbnail', interactive: false }),
     [index],
+  );
+  // Show the steps last shown on the slide.
+  const slideState = use(SlideStateContext);
+  const stepStore = useMemo(
+    () => new StepStore({ position: slideState.stepPosition(index) }),
+    [slideState, index],
   );
   // Keep the focus on the current slide, so that Enter selects it when the
   // arrow keys change the current slide.
@@ -87,7 +94,9 @@ function Thumbnail({
             pointerEvents: 'none',
           }}
         >
-          <SlideViewContext value={view}>{slide}</SlideViewContext>
+          <StepStoreContext value={stepStore}>
+            <SlideViewProvider view={view}>{slide}</SlideViewProvider>
+          </StepStoreContext>
         </Box>
       </Box>
       <Typography
@@ -132,11 +141,12 @@ export interface SlideOverviewProps {
 }
 
 /**
- * Shows the slides of the deck in a grid of thumbnail views, with all of their
- * steps, and goes to a slide when it is clicked.
+ * Shows the slides of the deck in a grid of thumbnail views, with the steps
+ * last shown on each, and goes to a slide when it is clicked, keeping its
+ * steps.
  *
- * The arrow keys and the other navigation keys still change the current slide,
- * which is highlighted, and Enter goes to it.
+ * The navigation keys move between the slides without changing their steps,
+ * and Enter goes to the highlighted slide.
  *
  * Should be rendered with the theme of the slides.
  */
@@ -146,10 +156,9 @@ export function SlideOverview({
   onContextMenu,
 }: SlideOverviewProps): JSX.Element {
   const { slideIndex, goTo } = useDeck();
-  // Thumbnails show all steps of their slides.
-  const [stepStore] = useState(() => new StepStore({ showAll: true }));
   const onSelect = (index: number) => {
-    goTo(index);
+    // Keep the steps shown in the thumbnail.
+    goTo(index, 'restore');
     onClose();
   };
   return (
@@ -166,28 +175,26 @@ export function SlideOverview({
         bgcolor: 'grey.900',
       }}
     >
-      <StepStoreContext value={stepStore}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(auto-fill, minmax(${String(THUMBNAIL_WIDTH + 16)}px, 1fr))`,
-            justifyItems: 'center',
-            gap: 1,
-          }}
-        >
-          {slides.map((slide, index) => (
-            <Thumbnail
-              // Slides are positional, so their indices identify them.
-              // eslint-disable-next-line @eslint-react/no-array-index-key
-              key={index}
-              index={index}
-              slide={slide}
-              current={index === slideIndex}
-              onSelect={onSelect}
-            />
-          ))}
-        </Box>
-      </StepStoreContext>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(auto-fill, minmax(${String(THUMBNAIL_WIDTH + 16)}px, 1fr))`,
+          justifyItems: 'center',
+          gap: 1,
+        }}
+      >
+        {slides.map((slide, index) => (
+          <Thumbnail
+            // Slides are positional, so their indices identify them.
+            // eslint-disable-next-line @eslint-react/no-array-index-key
+            key={index}
+            index={index}
+            slide={slide}
+            current={index === slideIndex}
+            onSelect={onSelect}
+          />
+        ))}
+      </Box>
     </Box>
   );
 }

@@ -1,6 +1,7 @@
 export type { MathConfig, SliderConfig } from './config/SliderConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
+export type { GoToSteps } from './deck/useDeckNavigation.ts';
 export { INTERACTIVE_ATTRIBUTE } from './interaction/interaction.ts';
 export type {
   SlideMaster,
@@ -38,6 +39,14 @@ export {
   type FormulaProps,
 } from './formula/Formula.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
+export {
+  SlideStateScope,
+  type SlideStateScopeProps,
+} from './state/SlideStateScope.tsx';
+export {
+  useSlideState,
+  type SlideStateOptions,
+} from './state/useSlideState.ts';
 export {
   SLIDE_VIEW_ATTRIBUTE,
   useSlideView,

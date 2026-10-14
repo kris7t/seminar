@@ -2,20 +2,35 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useMemo,
   useState,
   useSyncExternalStore,
 } from 'react';
 
+import type { SlideStateStore } from '../state/SlideStateStore.ts';
 import { StepStore } from '../steps/StepStore.ts';
 import { formatLocation, parseLocation } from './location.ts';
+
+/** Which steps of a slide to show when going to it. See `goTo`. */
+export type GoToSteps = 'start' | 'end' | 'restore';
 
 export interface DeckNavigation {
   /** Zero-based index of the current slide. */
   slideIndex: number;
-  /** Keeps track of the steps of the current slide. */
+  /**
+   * Keeps track of the steps of the current slide in the audience view, which
+   * navigation goes through.
+   */
   stepStore: StepStore;
-  /** Goes to the beginning of a slide. */
-  goTo: (slideIndex: number) => void;
+  /**
+   * Goes to a slide. `steps` sets which of its steps are shown:
+   *
+   * - `'start'` (the default): none.
+   * - `'end'`: all of them.
+   * - `'restore'`: those last shown on the slide, or none if it hasn't been
+   *   shown yet.
+   */
+  goTo: (slideIndex: number, steps?: GoToSteps) => void;
   /** Goes to the next step, or to the next slide after the last step. */
   next: () => void;
   /**
@@ -23,9 +38,15 @@ export interface DeckNavigation {
    * before the first step.
    */
   previous: () => void;
-  /** Goes to the beginning of the next slide, skipping any steps. */
+  /**
+   * Goes to the next slide, skipping any steps, and shows the steps last shown
+   * on it (or none if it hasn't been shown yet).
+   */
   nextSlide: () => void;
-  /** Goes to the beginning of the previous slide, skipping any steps. */
+  /**
+   * Goes to the previous slide, skipping any steps, and shows the steps last
+   * shown on it.
+   */
   previousSlide: () => void;
   /** Goes to the first step of the current slide. */
   firstStep: () => void;
@@ -46,10 +67,14 @@ function readLocation(slideIds: readonly (string | undefined)[]) {
  *
  * See {@link parseLocation} for the format of the location hash.
  *
+ * The position in the steps of each slide is kept in `slideState`, so that
+ * other views of the slide show the same step.
+ *
  * @param slideIds The ids of the slides, or `undefined` for slides without one.
  */
 export function useDeckNavigation(
   slideIds: readonly (string | undefined)[],
+  slideState: SlideStateStore,
 ): DeckNavigation {
   const slideCount = slideIds.length;
   const clamp = useCallback(
@@ -57,50 +82,51 @@ export function useDeckNavigation(
     [slideCount],
   );
 
-  const [{ stepStore, initialIndex }] = useState(() => {
+  const [initialIndex] = useState(() => {
     const location = readLocation(slideIds);
-    return {
-      stepStore: new StepStore({ target: location?.step ?? [] }),
-      initialIndex: location?.slideIndex ?? 0,
-    };
+    const index = location?.slideIndex ?? 0;
+    if (location !== undefined) {
+      slideState.stepPosition(index).set({ path: location.step, toEnd: false });
+    }
+    return index;
   });
   const [requestedIndex, setRequestedIndex] = useState(initialIndex);
   const slideIndex = clamp(requestedIndex);
+  const stepStore = useMemo(
+    () => new StepStore({ position: slideState.stepPosition(slideIndex) }),
+    [slideState, slideIndex],
+  );
   const step = useSyncExternalStore(stepStore.subscribe, stepStore.getPath);
 
-  const goToSlide = useCallback(
-    (index: number, toEnd = false) => {
-      setRequestedIndex(clamp(index));
-      stepStore.reset([], toEnd);
-    },
-    [clamp, stepStore],
-  );
   const goTo = useCallback(
-    (index: number) => {
-      goToSlide(index);
+    (index: number, steps: GoToSteps = 'start') => {
+      const newIndex = clamp(index);
+      setRequestedIndex(newIndex);
+      // The position of each slide is kept, so restoring needs nothing else.
+      if (steps !== 'restore') {
+        slideState
+          .stepPosition(newIndex)
+          .set({ path: [], toEnd: steps === 'end' });
+      }
     },
-    [goToSlide],
+    [clamp, slideState],
   );
   const next = useCallback(() => {
     if (!stepStore.next() && slideIndex < slideCount - 1) {
-      goToSlide(slideIndex + 1);
+      goTo(slideIndex + 1);
     }
-  }, [stepStore, slideIndex, slideCount, goToSlide]);
+  }, [stepStore, slideIndex, slideCount, goTo]);
   const previous = useCallback(() => {
     if (!stepStore.previous() && slideIndex > 0) {
-      goToSlide(slideIndex - 1, true);
+      goTo(slideIndex - 1, 'end');
     }
-  }, [stepStore, slideIndex, goToSlide]);
+  }, [stepStore, slideIndex, goTo]);
   const nextSlide = useCallback(() => {
-    if (slideIndex < slideCount - 1) {
-      goToSlide(slideIndex + 1);
-    }
-  }, [slideIndex, slideCount, goToSlide]);
+    goTo(slideIndex + 1, 'restore');
+  }, [goTo, slideIndex]);
   const previousSlide = useCallback(() => {
-    if (slideIndex > 0) {
-      goToSlide(slideIndex - 1);
-    }
-  }, [slideIndex, goToSlide]);
+    goTo(slideIndex - 1, 'restore');
+  }, [goTo, slideIndex]);
   const firstStep = useCallback(() => {
     stepStore.reset();
   }, [stepStore]);
@@ -118,7 +144,9 @@ export function useDeckNavigation(
       location === undefined ? slideIndex : clamp(location.slideIndex);
     if (location !== undefined) {
       setRequestedIndex(newIndex);
-      stepStore.reset(location.step);
+      slideState
+        .stepPosition(newIndex)
+        .set({ path: location.step, toEnd: false });
     }
     // If we stay on the same slide, the steps of the slide are already known,
     // so we can restore the canonical hash right away. Otherwise, the effect

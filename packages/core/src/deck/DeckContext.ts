@@ -1,13 +1,21 @@
 import { createContext, use, type Context } from 'react';
 
 import type { ResolvedTocEntry } from '../toc/tableOfContents.ts';
+import type { GoToSteps } from './useDeckNavigation.ts';
 
 export interface DeckState {
   /** Zero-based index of the currently shown slide. */
   slideIndex: number;
   slideCount: number;
-  /** Goes to the beginning of a slide. */
-  goTo: (slideIndex: number) => void;
+  /**
+   * Goes to a slide. `steps` sets which of its steps are shown:
+   *
+   * - `'start'` (the default): none.
+   * - `'end'`: all of them.
+   * - `'restore'`: those last shown on the slide, or none if it hasn't been
+   *   shown yet.
+   */
+  goTo: (slideIndex: number, steps?: GoToSteps) => void;
   /** Goes to the next step, or to the next slide after the last step. */
   next: () => void;
   /**
@@ -15,9 +23,15 @@ export interface DeckState {
    * before the first step.
    */
   previous: () => void;
-  /** Goes to the beginning of the next slide, skipping any steps. */
+  /**
+   * Goes to the next slide, skipping any steps, and shows the steps last shown
+   * on it (or none if it hasn't been shown yet).
+   */
   nextSlide: () => void;
-  /** Goes to the beginning of the previous slide, skipping any steps. */
+  /**
+   * Goes to the previous slide, skipping any steps, and shows the steps last
+   * shown on it.
+   */
   previousSlide: () => void;
   /** Goes to the first step of the current slide. */
   firstStep: () => void;

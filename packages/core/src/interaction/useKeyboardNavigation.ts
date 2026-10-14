@@ -13,12 +13,15 @@ export interface KeyboardNavigationOptions {
  *
  * - Arrow keys and Space (Shift+Space backwards) go to the next or previous
  *   step, moving to another slide after the last or before the first step.
- * - Page Up and Page Down go to the beginning of the previous or next slide.
- * - Home and End go to the beginning of the first or last slide.
+ * - Page Up and Page Down go to the previous or next slide, showing the steps
+ *   last shown on it.
+ * - Home goes to the beginning of the first slide, and End to the last step
+ *   of the last slide.
  * - Shift+Home and Shift+End go to the first or last step of the slide.
  * - `:` (as in Vim) asks for a slide number to go to.
  * - `o` shows or hides the overview of the slides, and Escape or Enter hide
- *   it, staying on the selected slide.
+ *   it, staying on the selected slide. In the overview, the keys above move
+ *   between slides without changing their steps.
  * - Escape moves the focus away from the focused element, so that the keys
  *   it uses navigate again.
  *
@@ -70,21 +73,24 @@ export function useKeyboardNavigation(
       if (usesKey(getInteraction(event.target), event.key)) {
         return;
       }
+      // The overview shows the steps of each slide, which we keep.
+      const forward = showOverview ? nextSlide : next;
+      const backward = showOverview ? previousSlide : previous;
       switch (event.key) {
         case 'ArrowRight':
         case 'ArrowDown':
-          next();
+          forward();
           break;
         case ' ':
           if (event.shiftKey) {
-            previous();
+            backward();
           } else {
-            next();
+            forward();
           }
           break;
         case 'ArrowLeft':
         case 'ArrowUp':
-          previous();
+          backward();
           break;
         case 'PageDown':
           nextSlide();
@@ -96,14 +102,14 @@ export function useKeyboardNavigation(
           if (event.shiftKey) {
             firstStep();
           } else {
-            goTo(0);
+            goTo(0, showOverview ? 'restore' : 'start');
           }
           break;
         case 'End':
           if (event.shiftKey) {
             lastStep();
           } else {
-            goTo(slideCount - 1);
+            goTo(slideCount - 1, showOverview ? 'restore' : 'end');
           }
           break;
         case ':':

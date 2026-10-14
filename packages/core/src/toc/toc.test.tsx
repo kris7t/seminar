@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
+import { Step } from '../steps/Step.tsx';
 import {
   findCurrentEntry,
   resolveToc,
@@ -125,6 +126,25 @@ describe('TocSidebar', () => {
     await user.click(within(nav).getByText('Custom'));
     expect(window.location.hash).toBe('#slide=3');
     expect(current()).toBe('Custom');
+  });
+
+  it('starts slides from the beginning', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck toc={[{ slide: 0 }, { slide: 1 }]} defaultShowToc>
+        <Slide title="First">
+          <Step>Later</Step>
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{PageDown}');
+    await user.click(
+      within(screen.getByRole('navigation')).getByRole('button', {
+        name: 'First',
+      }),
+    );
+    expect(window.location.hash).toBe('#slide=1');
   });
 
   it('is disabled without a table of contents', async () => {

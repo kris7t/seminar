@@ -127,7 +127,7 @@ export function DeckMenu({
         icon: LastPageIcon,
         shortcut: 'End',
         action: () => {
-          deck.goTo(slideCount - 1);
+          deck.goTo(slideCount - 1, 'end');
         },
       },
       {

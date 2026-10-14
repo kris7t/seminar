@@ -43,7 +43,7 @@ describe('SlideOverview', () => {
     cleanup();
   });
 
-  it('shows all slides in thumbnail views with all steps', async () => {
+  it('shows all slides in thumbnail views', async () => {
     const user = userEvent.setup();
     renderDeck();
     await user.keyboard('o');
@@ -53,16 +53,45 @@ describe('SlideOverview', () => {
         .map((button) => button.getAttribute('aria-label')),
     ).toEqual(['Slide 1', 'Slide 2', 'Slide 3']);
     expect(current()).toBe('Slide 1');
-    expect(
-      within(overview())
-        .getByText('Later')
-        .classList.contains(stepClasses.active),
-    ).toBe(true);
     // Slides are not in the buttons, which would change their styles.
     expect(within(overview()).getByText('Later').closest('button')).toBeNull();
     // Each thumbnail knows its slide.
     expect(within(overview()).getByText('2 / 3')).toBeDefined();
     expect(within(overview()).getByText('thumbnail false')).toBeDefined();
+  });
+
+  it('shows and keeps the steps last shown on each slide', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    const isShown = () =>
+      within(overview())
+        .getByText('Later')
+        .classList.contains(stepClasses.active);
+    await user.keyboard('o');
+    expect(isShown()).toBe(false);
+    await user.keyboard('{Escape}{ArrowRight}{PageDown}o');
+    expect(isShown()).toBe(true);
+    // Moving through the overview doesn't change the steps.
+    await user.keyboard('{ArrowLeft}{ArrowRight}{ArrowLeft}{Home}{End}');
+    expect(isShown()).toBe(true);
+    await user.click(
+      within(overview()).getByRole('button', { name: 'Slide 1' }),
+    );
+    expect(window.location.hash).toBe('#slide=1&step=1');
+  });
+
+  it('goes to the last step of the last slide with End', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First" />
+        <Slide title="Last">
+          <Step data-name="step">Later</Step>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{End}');
+    expect(window.location.hash).toBe('#slide=2&step=1');
   });
 
   it('goes to a clicked slide', async () => {

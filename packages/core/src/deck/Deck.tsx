@@ -24,15 +24,17 @@ import { DeckMenu } from '../menu/DeckMenu.tsx';
 import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { useDeckNavigation } from './useDeckNavigation.ts';
+import { SlideStateContext } from '../state/SlideStateContext.ts';
+import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { resolveToc, type TocEntry } from '../toc/tableOfContents.ts';
 import { TocSidebar } from '../toc/TocSidebar.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
 import {
   SLIDE_VIEW_ATTRIBUTE,
-  SlideViewContext,
   type SlideView,
 } from '../slide/SlideViewContext.ts';
+import { SlideViewProvider } from '../slide/SlideViewProvider.tsx';
 
 export interface DeckProps {
   /**
@@ -97,6 +99,7 @@ export function Deck({
   const slides = Children.toArray(children);
   const slideCount = slides.length;
   const slideIds = slides.map(getSlideId);
+  const [slideState] = useState(() => new SlideStateStore());
   const {
     slideIndex,
     stepStore,
@@ -107,7 +110,7 @@ export function Deck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slideIds);
+  } = useDeckNavigation(slideIds, slideState);
   const toc = useMemo(() => {
     // eslint-disable-next-line @eslint-react/no-children-to-array
     const tocSlides = Children.toArray(children);
@@ -174,79 +177,81 @@ export function Deck({
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <DeckContext value={deck}>
-        <StepStoreContext value={stepStore}>
-          <Box sx={{ position: 'fixed', inset: 0, display: 'flex' }}>
-            {showToc && toc.length > 0 && (
-              // Outside of the slides, so that clicks don't navigate.
-              <ThemeProvider theme={uiTheme}>
-                <TocSidebar
-                  onClose={() => {
-                    setShowToc(false);
-                  }}
-                />
-              </ThemeProvider>
-            )}
-            <Box
-              ref={containerRef}
-              onClick={mouseNavigation ? onClick : undefined}
-              onContextMenu={onContextMenu}
-              sx={[
-                {
-                  flex: 1,
-                  minWidth: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  bgcolor: 'common.black',
-                },
-                mouseNavigation && {
-                  userSelect: 'none',
-                  [SELECTABLE_SELECTOR]: { userSelect: 'text' },
-                },
-              ]}
-            >
+        <SlideStateContext value={slideState}>
+          <StepStoreContext value={stepStore}>
+            <Box sx={{ position: 'fixed', inset: 0, display: 'flex' }}>
+              {showToc && toc.length > 0 && (
+                // Outside of the slides, so that clicks don't navigate.
+                <ThemeProvider theme={uiTheme}>
+                  <TocSidebar
+                    onClose={() => {
+                      setShowToc(false);
+                    }}
+                  />
+                </ThemeProvider>
+              )}
               <Box
-                sx={{
-                  flex: 'none',
-                  position: 'relative',
-                  width: SLIDE_WIDTH,
-                  height: SLIDE_HEIGHT,
-                  overflow: 'hidden',
-                  bgcolor: 'background.default',
-                  color: 'text.primary',
-                }}
-                style={{ transform: `scale(${String(scale)})` }}
-                {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+                ref={containerRef}
+                onClick={mouseNavigation ? onClick : undefined}
+                onContextMenu={onContextMenu}
+                sx={[
+                  {
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    bgcolor: 'common.black',
+                  },
+                  mouseNavigation && {
+                    userSelect: 'none',
+                    [SELECTABLE_SELECTOR]: { userSelect: 'text' },
+                  },
+                ]}
               >
-                {/* The overview shows the slide instead. */}
-                {!showOverview && (
-                  <SlideViewContext value={view}>
-                    {slides[slideIndex]}
-                  </SlideViewContext>
-                )}
+                <Box
+                  sx={{
+                    flex: 'none',
+                    position: 'relative',
+                    width: SLIDE_WIDTH,
+                    height: SLIDE_HEIGHT,
+                    overflow: 'hidden',
+                    bgcolor: 'background.default',
+                    color: 'text.primary',
+                  }}
+                  style={{ transform: `scale(${String(scale)})` }}
+                  {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+                >
+                  {/* The overview shows the slide instead. */}
+                  {!showOverview && (
+                    <SlideViewProvider key={slideIndex} view={view}>
+                      {slides[slideIndex]}
+                    </SlideViewProvider>
+                  )}
+                </Box>
               </Box>
             </Box>
-          </Box>
-          {showOverview && (
-            <SlideOverview
-              slides={slides}
-              onClose={() => {
-                setShowOverview(false);
-              }}
-              onContextMenu={onContextMenu}
-            />
-          )}
-          {/* Outside of the slides, so that events don't bubble to them. */}
-          <ThemeProvider theme={uiTheme}>
-            <DeckMenu
-              anchorPosition={menuPosition}
-              onClose={closeMenu}
-              onGoToSlide={openGoToSlide}
-            />
-            <GoToSlideDialog open={goToSlideOpen} onClose={closeGoToSlide} />
-          </ThemeProvider>
-        </StepStoreContext>
+            {showOverview && (
+              <SlideOverview
+                slides={slides}
+                onClose={() => {
+                  setShowOverview(false);
+                }}
+                onContextMenu={onContextMenu}
+              />
+            )}
+            {/* Outside of the slides, so that events don't bubble to them. */}
+            <ThemeProvider theme={uiTheme}>
+              <DeckMenu
+                anchorPosition={menuPosition}
+                onClose={closeMenu}
+                onGoToSlide={openGoToSlide}
+              />
+              <GoToSlideDialog open={goToSlideOpen} onClose={closeGoToSlide} />
+            </ThemeProvider>
+          </StepStoreContext>
+        </SlideStateContext>
       </DeckContext>
     </ThemeProvider>
   );

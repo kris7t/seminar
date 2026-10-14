@@ -1,3 +1,5 @@
+import { createStepPosition, type StepPosition } from './StepPosition.ts';
+
 /**
  * Position of a slide in its steps.
  *
@@ -106,7 +108,9 @@ function pathsEqual(a: StepPath, b: StepPath): boolean {
 }
 
 /**
- * Keeps track of the steppers on the current slide and the current step.
+ * Keeps track of the steppers of a slide in a view, and resolves the position
+ * in the steps of the slide, which may be shared with other views, against
+ * them.
  *
  * Steppers are ordered by the position of their elements in the document.
  * The level of a stepper is determined by the closest enclosing element of
@@ -120,22 +124,31 @@ export class StepStore {
   readonly #listeners = new Set<() => void>();
   readonly #groups = new Map<string, StepNode>();
   readonly #statuses = new WeakMap<StepNode, StepStatus>();
-  #target: StepPath;
-  #toEnd = false;
+  readonly #position: StepPosition;
+  #unsubscribePosition: (() => void) | undefined;
   #layout: Layout | undefined;
   #path: StepPath = [];
   #pathValid = false;
 
   /**
+   * @param options.position The position in the steps of the slide, which may
+   *   be shared with the stores of other views. Defaults to a position of
+   *   this store, which starts at `options.target`.
    * @param options.target Initial path to show.
    * @param options.showAll Whether to show all steps without navigation, e.g.,
    *   when rendering a slide outside of a deck.
    */
   constructor({
+    position,
     target = [],
     showAll = false,
-  }: { target?: StepPath; showAll?: boolean } = {}) {
-    this.#target = target;
+  }: {
+    position?: StepPosition;
+    target?: StepPath;
+    showAll?: boolean;
+  } = {}) {
+    this.#position =
+      position ?? createStepPosition({ path: target, toEnd: false });
     this.#showAll = showAll;
   }
 
@@ -180,9 +193,18 @@ export class StepStore {
   }
 
   subscribe = (listener: () => void): (() => void) => {
+    // Only follow the position while someone listens, so that stores of
+    // unmounted views don't leak.
+    this.#unsubscribePosition ??= this.#position.subscribe(() => {
+      this.#invalidatePath();
+    });
     this.#listeners.add(listener);
     return () => {
       this.#listeners.delete(listener);
+      if (this.#listeners.size === 0) {
+        this.#unsubscribePosition?.();
+        this.#unsubscribePosition = undefined;
+      }
     };
   };
 
@@ -224,9 +246,11 @@ export class StepStore {
    * @param toEnd Whether to also show all steps nested in `target`.
    */
   reset(target: StepPath = [], toEnd = false): void {
-    this.#target = target;
-    this.#toEnd = toEnd;
-    this.#invalidatePath();
+    this.#position.set({ path: target, toEnd });
+    if (this.#unsubscribePosition === undefined) {
+      // Nobody follows the position, so we have to forget the path ourselves.
+      this.#invalidatePath();
+    }
   }
 
   /**
@@ -413,15 +437,16 @@ export class StepStore {
 
   #resolvePath(): StepPath {
     const { levelSizes } = this.#getLayout();
+    const { path: target, toEnd } = this.#position.get();
     const path: number[] = [];
-    for (const position of this.#target) {
+    for (const position of target) {
       const size = levelSizes.get(levelKey(path)) ?? 0;
       if (!Number.isInteger(position) || position < 0 || position > size) {
         break;
       }
       path.push(position);
     }
-    if (this.#toEnd) {
+    if (toEnd) {
       // Go to the last step of each nested level, including the levels nested
       // in step 0 if there are no other steps.
       for (;;) {

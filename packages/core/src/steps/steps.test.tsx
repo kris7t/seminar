@@ -124,7 +124,12 @@ describe('steps', () => {
     renderNested();
     await user.keyboard('{ArrowRight}{PageDown}');
     expect(window.location.hash).toBe('#slide=2');
+    // Returns to the steps last shown on the slide.
     await user.keyboard('{PageUp}');
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    expect(shownItems()).toEqual(['*1']);
+    // Other navigation starts the slide from the beginning.
+    await user.keyboard('{PageDown}{Home}');
     expect(window.location.hash).toBe('#slide=1');
     expect(shownItems()).toEqual([]);
   });
