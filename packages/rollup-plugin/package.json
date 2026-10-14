@@ -1,0 +1,31 @@
+{
+  "name": "@slider/rollup-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Rollup and Vite plugin for slider presentations",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@slider/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@mdx-js/rollup": "^3.1.1",
+    "@slider/mdx": "0.0.0"
+  },
+  "devDependencies": {
+    "@slider/core": "0.0.0",
+    "rollup": "^4.64.6"
+  }
+}

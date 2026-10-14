@@ -22,6 +22,7 @@ export default defineConfig(
             '*.ts',
             'packages/*/*.config.ts',
             'packages/*/vitest.setup.ts',
+            'packages/*/client.d.ts',
           ],
         },
         tsconfigRootDir: import.meta.dirname,

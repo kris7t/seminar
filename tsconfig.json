@@ -2,6 +2,8 @@
   "files": [],
   "references": [
     { "path": "./packages/core" },
+    { "path": "./packages/mdx" },
+    { "path": "./packages/rollup-plugin" },
     { "path": "./packages/example" }
   ]
 }

@@ -1,78 +1,8 @@
 import { Box, Link, Stack, Typography } from '@mui/material';
-import {
-  createSlideTheme,
-  Deck,
-  Slide,
-  Step,
-  Together,
-  Steps,
-  type SlideMasterProps,
-} from '@slider/core';
+import { Deck, Slide, Step, Together, Steps } from '@slider/core';
 import type { JSX } from 'react';
 
-/** Master added to the theme, so that slides can refer to it by name. */
-function SectionMaster({ title, children }: SlideMasterProps): JSX.Element {
-  return (
-    <Stack
-      component="section"
-      sx={{
-        height: '100%',
-        justifyContent: 'center',
-        gap: 2,
-        px: 10,
-        bgcolor: 'primary.main',
-        color: 'primary.contrastText',
-      }}
-    >
-      <Typography variant="h2" component="h1">
-        {title}
-      </Typography>
-      {children}
-    </Stack>
-  );
-}
-
-/** Master passed directly to a single slide. */
-function ClosingMaster({ title, children }: SlideMasterProps): JSX.Element {
-  return (
-    <Stack
-      component="section"
-      sx={{
-        height: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 3,
-        textAlign: 'center',
-      }}
-    >
-      <Typography variant="h1" component="h1" color="primary">
-        {title}
-      </Typography>
-      {children}
-    </Stack>
-  );
-}
-
-const theme = createSlideTheme({
-  palette: {
-    primary: { main: '#00639b' },
-    secondary: { main: '#b3261e' },
-  },
-  master: {
-    section: SectionMaster,
-  },
-  components: {
-    SliderSlideNumber: {
-      styleOverrides: {
-        root: ({ theme }) => ({
-          color: '#fff',
-          backgroundColor: theme.palette.primary.main,
-          padding: 2,
-        }),
-      },
-    },
-  },
-});
+import { ClosingMaster, theme } from './theme.tsx';
 
 export function ExampleDeck(): JSX.Element {
   return (

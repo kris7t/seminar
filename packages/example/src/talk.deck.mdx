@@ -1,0 +1,47 @@
+import { Step, Together } from '@slider/core';
+
+import { ClosingMaster } from './theme.tsx';
+
+# slider
+
+Scientific talks and lectures in Markdown
+
+## Why slider? \{#why}
+
+- Keep your slides in plain text under version control
+- Write content in Markdown, style it with themes
+- Present from any modern web browser
+
+## Writing slides
+
+- `#` starts a title slide, `##` a content slide
+- `---` starts a slide without a title
+- Slide ids come from the headings, e.g., `#writing-slides`
+
+<Step>
+  Use `\{#id .section}` after a heading to set slide props, or
+  `\{master=ClosingMaster}` to use an imported component as the master.
+</Step>
+
+## Steps \{.section}
+
+Revealing content in steps
+
+## Revealing content
+
+<ul>
+  <Step component="li" with="first">
+    Some points are visible up front
+  </Step>
+  <Step component="li">others appear one by one</Step>
+  <Together>
+    <Step component="li">and several items</Step>
+    <Step component="li">can appear at once</Step>
+  </Together>
+</ul>
+
+---
+
+\{#questions master=ClosingMaster}
+
+Questions?

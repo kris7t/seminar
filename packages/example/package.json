@@ -23,6 +23,8 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@slider/mdx": "0.0.0",
+    "@slider/rollup-plugin": "0.0.0",
     "@vitejs/plugin-react": "^6.1.2",
     "vite": "^8.3.4"
   }

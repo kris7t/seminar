@@ -7,10 +7,14 @@
     "allowImportingTsExtensions": true,
     "tsBuildInfoFile": "../../node_modules/.cache/tsc/example.tsbuildinfo",
     "lib": ["es2024", "dom", "dom.iterable"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "@slider/mdx/client"],
     "jsx": "react-jsx",
     "customConditions": ["@slider/source"]
   },
   "include": ["src"],
-  "references": [{ "path": "../core/tsconfig.lib.json" }]
+  "references": [
+    { "path": "../core/tsconfig.lib.json" },
+    { "path": "../mdx/tsconfig.lib.json" },
+    { "path": "../rollup-plugin/tsconfig.lib.json" }
+  ]
 }

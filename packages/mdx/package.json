@@ -1,0 +1,46 @@
+{
+  "name": "@slider/mdx",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MDX support for slider presentations",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@slider/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./client.d.ts"
+    }
+  },
+  "files": [
+    "client.d.ts",
+    "dist",
+    "src",
+    "!src/**/*.test.*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@mdx-js/mdx": "^3.1.1",
+    "acorn": "^8.19.0",
+    "github-slugger": "^2.0.0",
+    "mdast-util-to-string": "^4.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/estree": "^1.0.9",
+    "@types/estree-jsx": "^1.0.5",
+    "@types/mdast": "^4.0.4",
+    "@types/mdx": "^2.0.14",
+    "@types/react": "^19.3.0",
+    "mdast-util-mdx": "^3.0.0",
+    "react": "^19.3.1",
+    "unified": "^11.0.5",
+    "vfile": "^6.0.3"
+  }
+}
