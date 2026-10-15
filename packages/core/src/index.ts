@@ -77,6 +77,7 @@ export {
   type StepsProps,
 } from './steps/Steps.tsx';
 export type { StepPath, StepPhase } from './steps/StepStore.ts';
+export type { StepRange } from './steps/stepRange.ts';
 export {
   BUILT_IN_APPEARANCE_RANKS,
   BUILT_IN_STEP_VARIANTS,

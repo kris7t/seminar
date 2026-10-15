@@ -172,6 +172,12 @@ function createSlide(
   return slide;
 }
 
+/** Attributes of slides that restrict their steps, see `StepRange`. */
+const STEP_BOUNDS = ['from', 'after', 'to', 'before'] as const;
+
+/** A step path, which may start with the name of a group. */
+const STEP_BOUND_PATTERN = /^(?:\d+|[A-Za-z_][\w-]*)(?:\.\d+)*$/;
+
 /** Attributes that are flags of slides, which aren't passed as props. */
 const FLAGS: ReadonlySet<string> = new Set(['spare', 'noslide']);
 
@@ -342,6 +348,15 @@ function createSlideElement(
       `The bare word \`${master.name}\` sets the master of the slide to the master \`${master.name}\` of the theme, not to \`${master.name}\` in the document. Write \`master=${master.name}\` to use that as the master, or \`{String(${master.name})}\` to show its value in a heading.`,
       { place },
     );
+  }
+  for (const bound of STEP_BOUNDS) {
+    const value = attributes.get(bound);
+    if (value !== undefined && !STEP_BOUND_PATTERN.test(value)) {
+      file.message(
+        `Expected \`${bound}\` to be a step path like \`2\`, \`1.1\`, or \`group.1\`, not \`${value}\``,
+        { place },
+      );
+    }
   }
   const props = new Map(attributes);
   if (id !== undefined && !attributes.has('id')) {

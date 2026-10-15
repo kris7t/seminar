@@ -565,6 +565,23 @@ depth: 3
     });
   });
 
+  it('passes ranges of steps to the slide', async () => {
+    expect(await slides('## A {after=1 to=parse.2}')).toEqual([
+      {
+        master: 'content',
+        id: 'a',
+        after: '1',
+        to: 'parse.2',
+        title: 'A',
+        children: '',
+      },
+    ]);
+    const file = await compile('## A {from=1.x}', { ...sliderMdxOptions() });
+    expect(file.messages.map(String)).toEqual([
+      expect.stringContaining('Expected `from` to be a step path'),
+    ]);
+  });
+
   describe('masters', () => {
     it('uses masters in the theme by name', async () => {
       expect(

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from './Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
+import { Step } from '../steps/Step.tsx';
 
 function renderDeck() {
   return render(
@@ -130,6 +131,39 @@ describe('Deck', () => {
     navigateTo('#part');
     // The location hash shows the id of the slide.
     expect(window.location.hash).toBe('#second');
+  });
+
+  it('only goes through the steps in the range of slides', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First" />
+        <Slide title="Second" after="1" before="4">
+          <Step>a</Step>
+          <Step>b</Step>
+          <Step>c</Step>
+          <Step>d</Step>
+        </Slide>
+        <Slide title="Third" />
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=2&step=2');
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=2&step=3');
+    // Step 4 is past the end of the range.
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=3');
+    await user.keyboard('{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=2&step=3');
+    await user.keyboard('{Shift>}{Home}{/Shift}');
+    expect(window.location.hash).toBe('#slide=2&step=2');
+    await user.keyboard('{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=1');
+    // Steps outside the range can be shown explicitly.
+    navigateTo('#slide=2&step=4');
+    await user.keyboard('{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=2&step=3');
   });
 
   it('starts at the slide in the location hash', () => {

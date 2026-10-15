@@ -15,6 +15,12 @@ export interface StepTarget {
   group?: string | undefined;
   /** Whether to also show all steps nested in `path`. */
   toEnd: boolean;
+  /**
+   * Whether to show the closest step in the range of steps of the slide
+   * instead, if the step isn't in it (see `StepRange`), e.g., when entering
+   * the slide.
+   */
+  inRange?: boolean | undefined;
 }
 
 /**
@@ -28,7 +34,11 @@ export interface StepPosition {
   subscribe(listener: () => void): () => void;
 }
 
-export const INITIAL_STEP_TARGET: StepTarget = { path: [], toEnd: false };
+export const INITIAL_STEP_TARGET: StepTarget = {
+  path: [],
+  toEnd: false,
+  inRange: true,
+};
 
 /** Creates a {@link StepPosition} that only a single view uses. */
 export function createStepPosition(

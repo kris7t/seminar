@@ -41,6 +41,9 @@ function Entry({
   store,
 }: EntryProps): JSX.Element {
   const phase = phaseOf(path, current);
+  // Going through the slide skips steps outside its range, but they can still
+  // be chosen here.
+  const skipped = !store.isInRange(path);
   return (
     <ListItemButton
       selected={phase === 'current'}
@@ -60,6 +63,10 @@ function Entry({
               phase === 'parent' && { fontWeight: 500 },
               phase === 'future' && { color: 'text.secondary' },
               label === '' && { fontStyle: 'italic' },
+              skipped && {
+                color: 'text.disabled',
+                textDecoration: 'line-through',
+              },
             ],
           },
         }}
@@ -100,12 +107,16 @@ export interface StepTreeProps {
  * which highlights the current step, and goes to a step when clicked.
  *
  * The first entry goes to the beginning of the slide, before any of its steps.
+ * Steps outside the range of the slide (see `StepRange`), which going through
+ * the slide skips, are struck through.
  *
  * Should be rendered with the {@link uiTheme}.
  */
 export function StepTree({ store }: StepTreeProps): JSX.Element {
   const tree = useSyncExternalStore(store.subscribe, store.getTree);
   const current = useSyncExternalStore(store.subscribe, store.getPath);
+  // Re-renders the entries when the range changes.
+  useSyncExternalStore(store.subscribe, store.getRange);
   if (tree.length === 0) {
     return (
       <Typography

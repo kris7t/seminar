@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import type { SlideStateStore } from '../state/SlideStateStore.ts';
+import type { StepTarget } from '../steps/StepPosition.ts';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';
 import {
   formatLocation,
@@ -99,6 +100,19 @@ function locationOf(
   return { slideIndex, step: path, group };
 }
 
+/**
+ * Returns the step to show for `location`, which is the first step in the
+ * range of the slide if it doesn't refer to a step.
+ */
+function targetOf({ step, group }: DeckLocation): StepTarget {
+  return {
+    path: step,
+    group,
+    toEnd: false,
+    inRange: step.length === 0 && group === undefined,
+  };
+}
+
 function readLocation(
   slideIds: readonly (string | undefined)[],
   aliases: ReadonlyMap<string, number>,
@@ -142,11 +156,7 @@ export function useDeckNavigation(
     const location = readLocation(slideIds, aliases);
     const index = location?.slideIndex ?? findFirstSlide(spares);
     if (location !== undefined) {
-      slideState.stepPosition(index).set({
-        path: location.step,
-        group: location.group,
-        toEnd: false,
-      });
+      slideState.stepPosition(index).set(targetOf(location));
     }
     return index;
   });
@@ -157,7 +167,12 @@ export function useDeckNavigation(
     [slideState, slideIndex],
   );
   const step = useSyncExternalStore(stepStore.subscribe, stepStore.getPath);
-  // Steps may appear without the path changing, so this is followed on its own.
+  // Steps may appear without the path changing, so these are followed on their
+  // own.
+  const atFirstStep = useSyncExternalStore(
+    stepStore.subscribe,
+    () => !stepStore.hasPrevious(),
+  );
   const atLastStep = useSyncExternalStore(
     stepStore.subscribe,
     () => !stepStore.hasNext(),
@@ -171,7 +186,7 @@ export function useDeckNavigation(
       if (steps !== 'restore') {
         slideState
           .stepPosition(newIndex)
-          .set({ path: [], toEnd: steps === 'end' });
+          .set({ path: [], toEnd: steps === 'end', inRange: true });
       }
     },
     [clamp, slideState],
@@ -199,12 +214,10 @@ export function useDeckNavigation(
     }
   }, [goTo, previousSlideIndex]);
   const firstStep = useCallback(() => {
-    stepStore.reset();
+    stepStore.first();
   }, [stepStore]);
   const lastStep = useCallback(() => {
-    // The path of the last step depends on the steps that get rendered, so we
-    // let the store resolve it.
-    stepStore.reset([], true);
+    stepStore.last();
   }, [stepStore]);
 
   // Fires when the user follows a link to a slide, edits the URL, or moves
@@ -215,9 +228,7 @@ export function useDeckNavigation(
       location === undefined ? slideIndex : clamp(location.slideIndex);
     if (location !== undefined) {
       setRequestedIndex(newIndex);
-      slideState
-        .stepPosition(newIndex)
-        .set({ path: location.step, group: location.group, toEnd: false });
+      slideState.stepPosition(newIndex).set(targetOf(location));
     }
     // If we stay on the same slide, the steps of the slide are already known,
     // so we can restore the canonical hash right away. Otherwise, the effect
@@ -253,7 +264,7 @@ export function useDeckNavigation(
   return {
     slideIndex,
     stepStore,
-    atFirstStep: step.length === 0,
+    atFirstStep,
     atLastStep,
     nextSlideIndex,
     previousSlideIndex,

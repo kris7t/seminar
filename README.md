@@ -84,6 +84,13 @@ Presenter notes, shown only to the presenter.
   group `name`, at its level, and `:step{title=…}` names a step in the step
   tree (Shift+T), which otherwise shows its text. `<Step>`, `<Steps>`, and
   `<Together>` from `@slider/core` do the same in JSX.
+- **Step ranges:** `{from=…}` or `{after=…}`, and `{to=…}` or `{before=…}`
+  on a slide restrict the steps that going through it shows, e.g.,
+  `{after=1 to=parse}`, inclusive with `from` and `to`, and exclusive with
+  `after` and `before`. A step stands for the steps nested in it, too, unless
+  it ends with `.0`: `{to=1}` ends at 1.9, but `{to=1.0}` before 1.1. The
+  step tree strikes through the skipped steps, which can still be chosen
+  there.
 - **Step styles:** `:step{variant=…}` or a shorthand like `:step{only}`, or
   `{steps=…}` on a slide, sets how steps look before, during, and after their
   turn: `reveal` (the default), `dim` (past steps are dimmed), `preview`

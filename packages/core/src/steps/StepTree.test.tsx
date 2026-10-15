@@ -69,6 +69,31 @@ describe('StepTree', () => {
     expect(screen.getByText('A long text').hasAttribute('title')).toBe(false);
   });
 
+  it('strikes through steps outside the range, which can be chosen', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First" from="2">
+          <Step>A</Step>
+          <Step>B</Step>
+        </Slide>
+      </Deck>,
+    );
+    const struck = () =>
+      within(screen.getByRole('navigation', { name: 'Steps' }))
+        .getAllByRole('button')
+        .filter((button) =>
+          getComputedStyle(
+            button.querySelector('.MuiListItemText-primary') ?? button,
+          ).textDecoration.includes('line-through'),
+        )
+        .map((button) => button.textContent);
+    expect(struck()).toEqual(['Start of the slide', 'A']);
+    expect(window.location.hash).toBe('#slide=1&step=2');
+    await user.click(screen.getByRole('button', { name: 'A' }));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+  });
+
   it('goes to steps and highlights the current one', async () => {
     const user = userEvent.setup();
     renderDeck();

@@ -1,8 +1,15 @@
 import { useTheme } from '@mui/material';
-import { createElement, type JSX, type ReactNode } from 'react';
+import {
+  createElement,
+  use,
+  useLayoutEffect,
+  type JSX,
+  type ReactNode,
+} from 'react';
 
 import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
 import type { StepVariant } from '../steps/Step.tsx';
+import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepVariantContext } from '../steps/StepVariantContext.ts';
 
 export interface SlideProps {
@@ -29,6 +36,17 @@ export interface SlideProps {
   className?: string | undefined;
   /** Variant of the steps on the slide that don't set their own. */
   steps?: StepVariant | undefined;
+  /**
+   * The first step to show when going through the slide, e.g., `2`, `1.1`, or
+   * the name of a step group (see `StepRange`).
+   */
+  from?: string | undefined;
+  /** The step after which to start showing steps (see `StepRange`). */
+  after?: string | undefined;
+  /** The last step to show (see `StepRange`). */
+  to?: string | undefined;
+  /** The step before which to stop showing steps (see `StepRange`). */
+  before?: string | undefined;
   /**
    * Whether the slide is spare, e.g., a backup slide for questions. Going
    * through the {@link Deck} skips spare slides, but they can be chosen,
@@ -59,9 +77,28 @@ export function Slide({
   title,
   className,
   steps,
+  from,
+  after,
+  to,
+  before,
   children,
 }: SlideProps): JSX.Element {
   const theme = useTheme();
+  // Before painting, so that the slide doesn't show a step outside the range.
+  const store = use(StepStoreContext);
+  useLayoutEffect(() => {
+    store.setRange(
+      from === undefined &&
+        after === undefined &&
+        to === undefined &&
+        before === undefined
+        ? undefined
+        : { from, after, to, before },
+    );
+    return () => {
+      store.setRange(undefined);
+    };
+  }, [store, from, after, to, before]);
   // Masters are looked up rather than defined during render, so their state is
   // preserved. Use `createElement` to avoid tripping `static-components`.
   return (

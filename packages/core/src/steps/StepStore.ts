@@ -1,5 +1,12 @@
 import { createStepPosition, type StepPosition } from './StepPosition.ts';
 import {
+  compareStepPaths,
+  isInStepRange,
+  parseStepRange,
+  type StepBounds,
+  type StepRange,
+} from './stepRange.ts';
+import {
   moreHidden,
   SHOWN,
   type RankedAppearance,
@@ -255,6 +262,8 @@ export class StepStore {
   readonly #position: StepPosition;
   #unsubscribePosition: (() => void) | undefined;
   #layout: Layout | undefined;
+  #range: StepRange | undefined;
+  #bounds: StepBounds = {};
   #tree: readonly StepTreeEntry[] | undefined;
   #path: StepPath = [];
   #pathValid = false;
@@ -277,7 +286,8 @@ export class StepStore {
     target?: StepPath;
     toEnd?: boolean;
   } = {}) {
-    this.#position = position ?? createStepPosition({ path: target, toEnd });
+    this.#position =
+      position ?? createStepPosition({ path: target, toEnd, inRange: true });
   }
 
   /**
@@ -365,12 +375,65 @@ export class StepStore {
   }
 
   /**
+   * Restricts the steps that going through the slide shows (see
+   * {@link StepRange}), or lifts the restriction if `range` is `undefined`.
+   */
+  setRange(range: StepRange | undefined): void {
+    const current = this.#range;
+    if (
+      current?.from === range?.from &&
+      current?.after === range?.after &&
+      current?.to === range?.to &&
+      current?.before === range?.before
+    ) {
+      return;
+    }
+    this.#range = range;
+    this.#bounds = range === undefined ? {} : parseStepRange(range);
+    this.#invalidatePath();
+  }
+
+  /** Returns the range set by {@link setRange}, which is stable. */
+  getRange = (): StepRange | undefined => this.#range;
+
+  /** Whether `path` is in the range of steps of the slide. */
+  isInRange(path: StepPath): boolean {
+    return isInStepRange(path, this.#bounds, ({ group, path: relative }) => {
+      if (group === undefined) {
+        return relative;
+      }
+      const groupPath = this.#groupPath(group);
+      return groupPath === undefined ? undefined : [...groupPath, ...relative];
+    });
+  }
+
+  /** Returns the paths of the steps of the slide in order, starting with []. */
+  #positions(): StepPath[] {
+    const positions: StepPath[] = [[]];
+    for (
+      let position = this.#findNext([]);
+      position !== undefined;
+      position = this.#findNext(position)
+    ) {
+      positions.push(position);
+    }
+    return positions;
+  }
+
+  /** Returns the paths of the steps in the range of the slide in order. */
+  #positionsInRange(): StepPath[] {
+    return this.#positions().filter((position) => this.isInRange(position));
+  }
+
+  /**
    * Shows `target`, dropping any steps that don't exist.
    *
    * @param toEnd Whether to also show all steps nested in `target`.
+   * @param inRange Whether to show the closest step in the range instead if
+   *   `target` isn't in it.
    */
-  reset(target: StepPath = [], toEnd = false): void {
-    this.#position.set({ path: target, toEnd });
+  reset(target: StepPath = [], toEnd = false, inRange = false): void {
+    this.#position.set({ path: target, toEnd, inRange });
     if (this.#unsubscribePosition === undefined) {
       // Nobody follows the position, so we have to forget the path ourselves.
       this.#invalidatePath();
@@ -385,7 +448,7 @@ export class StepStore {
    * @returns `false` if there are no more steps on the slide.
    */
   next(): boolean {
-    const target = this.#findNext();
+    const target = this.#findNextInRange();
     if (target === undefined) {
       return false;
     }
@@ -395,14 +458,24 @@ export class StepStore {
 
   /** Whether there are more steps on the slide, i.e., {@link next} would advance. */
   hasNext(): boolean {
-    return this.#findNext() !== undefined;
+    return this.#findNextInRange() !== undefined;
   }
 
-  #findNext(): StepPath | undefined {
+  /** Finds the next step after the current one that is in the range. */
+  #findNextInRange(): StepPath | undefined {
+    let position = this.#findNext(this.getPath());
+    while (position !== undefined && !this.isInRange(position)) {
+      position = this.#findNext(position);
+    }
+    return position;
+  }
+
+  /** Finds the step after `from`, regardless of the range. */
+  #findNext(from: StepPath): StepPath | undefined {
     const { levelSizes } = this.#getLayout();
     // Levels nested in step 0 are shown along with their enclosing level, so
     // we have to look for the next step in them first.
-    const path = [...this.getPath()];
+    const path = [...from];
     while (levelSizes.has(levelKey([...path, 0]))) {
       path.push(0);
     }
@@ -417,20 +490,43 @@ export class StepStore {
   }
 
   /**
-   * Goes back to the previous step, showing all steps nested inside it.
-   * This is the inverse of {@link next}.
+   * Goes back to the previous step in the range, showing all steps nested
+   * inside it. This is the inverse of {@link next}.
    *
-   * @returns `false` if no steps are shown on the slide.
+   * @returns `false` if there are no steps in the range before the current one.
    */
   previous(): boolean {
-    const path = this.getPath();
-    const position = path.at(-1);
-    if (position === undefined) {
+    const target = this.#findPreviousInRange();
+    if (target === undefined) {
       return false;
     }
-    // Show all steps nested in the previous step, including step 0.
-    this.reset([...path.slice(0, -1), position - 1], true);
+    this.reset(target);
     return true;
+  }
+
+  /**
+   * Whether there are steps in the range before the current one, i.e.,
+   * {@link previous} would go back.
+   */
+  hasPrevious(): boolean {
+    return this.#findPreviousInRange() !== undefined;
+  }
+
+  #findPreviousInRange(): StepPath | undefined {
+    const current = this.getPath();
+    return this.#positionsInRange()
+      .filter((position) => compareStepPaths(position, current) < 0)
+      .at(-1);
+  }
+
+  /** Goes to the first step in the range. */
+  first(): void {
+    this.reset([], false, true);
+  }
+
+  /** Goes to the last step in the range. */
+  last(): void {
+    this.reset([], true, true);
   }
 
   /**
@@ -741,7 +837,7 @@ export class StepStore {
 
   #resolvePath(): StepPath {
     const { levelSizes } = this.#getLayout();
-    const { path: relative, group, toEnd } = this.#position.get();
+    const { path: relative, group, toEnd, inRange } = this.#position.get();
     const groupPath = group === undefined ? [] : this.#groupPath(group);
     // Without the group, show the beginning of the slide.
     const target = groupPath === undefined ? [] : [...groupPath, ...relative];
@@ -764,7 +860,19 @@ export class StepStore {
         path.push(size);
       }
     }
-    return trimPath(path);
+    const resolved = trimPath(path);
+    if (inRange !== true || this.isInRange(resolved)) {
+      return resolved;
+    }
+    // Show the closest step in the range instead.
+    const positions = this.#positionsInRange();
+    const first = positions[0];
+    if (first === undefined) {
+      return resolved;
+    }
+    return compareStepPaths(resolved, first) < 0
+      ? first
+      : (positions.at(-1) ?? first);
   }
 
   #computeStatus(node: StepNode): StepStatus {
