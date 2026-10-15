@@ -23,6 +23,7 @@ import { uiTheme } from '../menu/uiTheme.ts';
 import { correctRipples } from '../slide/rippleScale.ts';
 import { SlideMirror } from '../slide/SlideMirror.tsx';
 import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
+import { SelectionFrame } from '../slide/SelectionFrame.tsx';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import type { AudienceWindow as AudienceWindowState } from './usePresenterView.ts';
@@ -179,7 +180,7 @@ export function AudienceWindow({
             bgcolor: 'common.black',
           }}
         >
-          <Box
+          <SelectionFrame
             ref={setFrame}
             sx={SLIDE_FRAME_STYLES}
             style={{ transform: `scale(${String(scale)})` }}
@@ -197,7 +198,7 @@ export function AudienceWindow({
             {interaction !== undefined && (
               <InteractionMirror store={interaction} frame={frame} />
             )}
-          </Box>
+          </SelectionFrame>
         </Box>
         {needsClick && screen !== undefined && (
           <ThemeProvider theme={uiTheme}>

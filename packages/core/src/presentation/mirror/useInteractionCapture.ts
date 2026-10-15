@@ -5,8 +5,10 @@ import {
   MIRRORED_CLASSES,
   NO_INTERACTION,
   pathOf,
+  positionOf,
   type InteractionState,
   type InteractionStore,
+  type SelectionState,
 } from './interactionState.ts';
 
 /** Events after which the interaction may have changed. */
@@ -23,6 +25,21 @@ const EVENTS = [
   'select',
   'scroll',
 ] as const;
+
+/** Captures the text selected on the slide in `frame`, if any. */
+function captureSelection(frame: Element): SelectionState | undefined {
+  const selection = frame.ownerDocument.getSelection();
+  if (selection === null || selection.rangeCount === 0) {
+    return undefined;
+  }
+  const range = selection.getRangeAt(0);
+  if (range.collapsed) {
+    return undefined;
+  }
+  const start = positionOf(frame, range.startContainer, range.startOffset);
+  const end = positionOf(frame, range.endContainer, range.endOffset);
+  return start === undefined || end === undefined ? undefined : { start, end };
+}
 
 function capture(
   frame: Element,
@@ -65,6 +82,8 @@ function capture(
             scrollTop: focused.scrollTop,
           }
         : undefined,
+    // Text fields have a selection of their own.
+    selection: isTextField(focused) ? undefined : captureSelection(frame),
     press,
   };
 }

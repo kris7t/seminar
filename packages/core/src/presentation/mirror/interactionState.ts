@@ -17,6 +17,23 @@ export interface InputState {
 }
 
 /**
+ * A boundary of a range: a position in an element, or a character offset in
+ * one of its child nodes, e.g., a text node.
+ */
+export interface NodePosition {
+  path: ElementPath;
+  /** The index of the child node, or `undefined` for the element itself. */
+  child: number | undefined;
+  offset: number;
+}
+
+/** The selected text on the slide, outside of text fields. */
+export interface SelectionState {
+  start: NodePosition;
+  end: NodePosition;
+}
+
+/**
  * A press of the primary mouse button, which starts effects like the ripple of
  * Material UI buttons.
  */
@@ -43,6 +60,7 @@ export interface InteractionState {
   /** Elements with {@link MIRRORED_CLASSES}. */
   classes: readonly { path: ElementPath; className: string }[];
   input: InputState | undefined;
+  selection: SelectionState | undefined;
   /** The last press, which may have been released already. */
   press: PressState | undefined;
 }
@@ -53,6 +71,7 @@ export const NO_INTERACTION: InteractionState = {
   focusVisible: false,
   classes: [],
   input: undefined,
+  selection: undefined,
   press: undefined,
 };
 
@@ -121,6 +140,40 @@ export function resolvePath(
     }
   }
   return current;
+}
+
+/** Returns the position of `offset` in `node` in `root`, if it's in `root`. */
+export function positionOf(
+  root: Element,
+  node: Node,
+  offset: number,
+): NodePosition | undefined {
+  // Checks the type of the node instead of its class, like `isTextField`.
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const path = pathOf(root, node as Element);
+    return path === undefined ? undefined : { path, child: undefined, offset };
+  }
+  const parent = node.parentElement;
+  const path = parent === null ? undefined : pathOf(root, parent);
+  if (parent === null || path === undefined) {
+    return undefined;
+  }
+  return {
+    path,
+    child: Array.prototype.indexOf.call(parent.childNodes, node),
+    offset,
+  };
+}
+
+/** Returns the node at `position` in `root`, if there is one. */
+export function resolvePosition(
+  root: Element,
+  position: NodePosition,
+): Node | undefined {
+  const element = resolvePath(root, position.path);
+  return position.child === undefined
+    ? element
+    : element?.childNodes[position.child];
 }
 
 /**

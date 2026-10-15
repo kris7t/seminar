@@ -1,11 +1,16 @@
 import { Box, keyframes } from '@mui/material';
 import { useEffect, useState, type JSX } from 'react';
 
+import {
+  SELECTION_BACKGROUND_PROPERTY,
+  SELECTION_HIGHLIGHT,
+} from '../../slide/SelectionFrame.tsx';
 import { SLIDE_WIDTH } from '../../theme/createSlideTheme.ts';
 import { textFieldOverlay, type TextRect } from './caret.ts';
 import {
   isTextField,
   resolvePath,
+  resolvePosition,
   type InteractionState,
   type InteractionStore,
 } from './interactionState.ts';
@@ -16,6 +21,65 @@ const blink = keyframes`
     opacity: 0;
   }
 `;
+
+/**
+ * Returns the custom highlights of the window of `frame`, if the browser
+ * supports them, unlike jsdom.
+ */
+function highlightsOf(
+  frame: HTMLElement,
+):
+  | { registry: HighlightRegistry; create: (range: Range) => Highlight }
+  | undefined {
+  const view = frame.ownerDocument.defaultView as Partial<
+    Window & typeof globalThis
+  > | null;
+  const registry = view?.CSS?.highlights;
+  const HighlightOfView = view?.Highlight;
+  return registry === undefined || HighlightOfView === undefined
+    ? undefined
+    : { registry, create: (range) => new HighlightOfView(range) };
+}
+
+/**
+ * Highlights the selected text of the presenter with the CSS Custom Highlight
+ * API, since browsers only show the selection of the focused window as such.
+ * Does nothing in browsers without it.
+ */
+function applySelection(
+  frame: HTMLElement,
+  selection: InteractionState['selection'],
+) {
+  const highlights = highlightsOf(frame);
+  if (highlights === undefined) {
+    return;
+  }
+  const { registry, create } = highlights;
+  const start =
+    selection === undefined
+      ? undefined
+      : resolvePosition(frame, selection.start);
+  const end =
+    selection === undefined ? undefined : resolvePosition(frame, selection.end);
+  if (selection === undefined || start === undefined || end === undefined) {
+    registry.delete(SELECTION_HIGHLIGHT);
+    return;
+  }
+  const range = frame.ownerDocument.createRange();
+  try {
+    range.setStart(start, selection.start.offset);
+    range.setEnd(end, selection.end.offset);
+  } catch {
+    // The slide may have changed since.
+    registry.delete(SELECTION_HIGHLIGHT);
+    return;
+  }
+  registry.set(SELECTION_HIGHLIGHT, create(range));
+}
+
+function clearSelection(frame: HTMLElement) {
+  highlightsOf(frame)?.registry.delete(SELECTION_HIGHLIGHT);
+}
 
 /** Where to draw the caret and the selection of a text field. */
 interface Overlay {
@@ -156,6 +220,7 @@ function apply(
 ): Overlay | undefined {
   const state = store.get();
   applyPress(frame, state.press, mirroredPress);
+  applySelection(frame, state.selection);
   for (const attribute of Object.values(MIRROR_ATTRIBUTES)) {
     for (const element of frame.querySelectorAll(`[${attribute}]`)) {
       element.removeAttribute(attribute);
@@ -256,9 +321,9 @@ export interface InteractionMirrorProps {
 /**
  * Shows how the presenter interacts with the slide in its copy for the
  * audience: marks the hovered and focused elements, so that their styles
- * apply (see {@link mirrorStylisPlugin}), and draws the caret and the
- * selection of the focused text field, which browsers only draw in the
- * focused window.
+ * apply (see {@link mirrorStylisPlugin}), draws the caret and the selection of
+ * the focused text field, which browsers only draw in the focused window, and
+ * highlights the selected text, styled by the {@link SelectionFrame}.
  *
  * Components that keep their focus in their state, like Material UI text
  * fields, get synthetic `focusin` and `focusout` events, and presses of the
@@ -329,6 +394,7 @@ export function InteractionMirror({
       unsubscribe();
       observer.disconnect();
       dispatchFocus(mirroredFocus.element, 'focusout', undefined);
+      clearSelection(frame);
       if (mirroredPress.element !== undefined && !mirroredPress.released) {
         dispatchMouse(mirroredPress.element, 'mouseup', 0.5, 0.5);
       }
@@ -353,7 +419,7 @@ export function InteractionMirror({
         <Box
           key={`${String(rect.left)},${String(rect.top)}`}
           data-mirror-selection=""
-          sx={{ bgcolor: 'primary.main', opacity: 0.3 }}
+          sx={{ bgcolor: `var(${SELECTION_BACKGROUND_PROPERTY})` }}
           style={place(rect)}
         />
       ))}

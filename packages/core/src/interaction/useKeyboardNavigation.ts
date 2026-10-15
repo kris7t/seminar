@@ -30,8 +30,8 @@ export interface KeyboardNavigationOptions {
    */
   onLaserPointer: () => boolean;
   /**
-   * Handles Escape before moving the focus, e.g., to leave the presenter
-   * view.
+   * Handles Escape if nothing is focused or selected, e.g., to leave the
+   * presenter view.
    *
    * @returns Whether Escape was handled.
    */
@@ -83,6 +83,8 @@ export function useKeyboardNavigation(
     toc,
     showToc,
     setShowToc,
+    mouseNavigation,
+    setMouseNavigation,
   }: DeckState,
   {
     onGoToSlide,
@@ -172,15 +174,25 @@ export function useKeyboardNavigation(
           event.preventDefault();
           return;
         }
-        if (onEscape()) {
+        // Dismiss the focus and the selected text first, so that leaving a
+        // text field doesn't also leave the presenter view.
+        const focused =
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement !== document.body
+            ? document.activeElement
+            : undefined;
+        const selection = window.getSelection();
+        if (
+          focused !== undefined ||
+          (selection !== null && !selection.isCollapsed)
+        ) {
+          focused?.blur();
+          selection?.removeAllRanges();
           event.preventDefault();
           return;
         }
-        if (
-          document.activeElement instanceof HTMLElement &&
-          document.activeElement !== document.body
-        ) {
-          document.activeElement.blur();
+        if (onEscape()) {
+          event.preventDefault();
         }
         return;
       }
@@ -269,6 +281,10 @@ export function useKeyboardNavigation(
         case 'O':
           setShowOverview(!showOverview);
           break;
+        case 's':
+        case 'S':
+          setMouseNavigation(!mouseNavigation);
+          break;
         default:
           return;
       }
@@ -294,6 +310,8 @@ export function useKeyboardNavigation(
     toc,
     showToc,
     setShowToc,
+    mouseNavigation,
+    setMouseNavigation,
     onGoToSlide,
     onPresent,
     onPresenterView,

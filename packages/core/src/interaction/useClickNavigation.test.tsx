@@ -144,6 +144,31 @@ describe('click navigation', () => {
     expect(window.location.hash).toBe('#slide=1&step=1');
   });
 
+  it('first unfocuses the focused element', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    const field = screen.getByLabelText('Field');
+    await user.click(field);
+    expect(document.activeElement).toBe(field);
+    await user.click(screen.getByText('Text'));
+    expect(document.activeElement).not.toBe(field);
+    expect(window.location.hash).toBe('#slide=1');
+    await user.click(screen.getByText('Text'));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+  });
+
+  it('first clears the selected text', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    const selection = window.getSelection();
+    selection?.selectAllChildren(screen.getByText('Text'));
+    await user.click(screen.getByText('Title'));
+    expect(selection?.isCollapsed).toBe(true);
+    expect(window.location.hash).toBe('#slide=1');
+    await user.click(screen.getByText('Title'));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+  });
+
   it('can be disabled', async () => {
     const user = userEvent.setup();
     render(

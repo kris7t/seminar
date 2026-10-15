@@ -49,6 +49,7 @@ import { usePresentation } from '../presentation/usePresentation.ts';
 import { usePresenterView } from '../presentation/usePresenterView.ts';
 import { correctRipples } from '../slide/rippleScale.ts';
 import { SlideMirror } from '../slide/SlideMirror.tsx';
+import { SelectionFrame } from '../slide/SelectionFrame.tsx';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
 import { SwipeHint } from '../swipe/SwipeHint.tsx';
 import {
@@ -480,7 +481,7 @@ export function Deck({
                               </Box>
                             </Box>
                           ))}
-                      <Box
+                      <SelectionFrame
                         ref={setPresenterFrame}
                         sx={SLIDE_FRAME_STYLES}
                         style={{
@@ -504,7 +505,7 @@ export function Deck({
                         {presenting && pointerMode === 'laser' && (
                           <MirroredPointer store={pointer} mode="laser" />
                         )}
-                      </Box>
+                      </SelectionFrame>
                     </Box>
                     {/* The presenter view shows the notes in its panel instead. */}
                     {notes !== undefined && !showOverview && !presenting && (
@@ -518,14 +519,19 @@ export function Deck({
                     )}
                   </Box>
                   {presenting && (
-                    // Outside of the slides, so that clicks don't navigate.
                     <ThemeProvider theme={darkUiTheme}>
                       <Box
+                        // Clicking the panel navigates, too, so that the
+                        // presenter can advance without the mouse pointer
+                        // showing on the slide. Only the toolbar has controls.
+                        onClick={mouseNavigation ? onClick : undefined}
+                        {...menuHandlers}
                         sx={[
                           { display: 'flex', minWidth: 0, minHeight: 0 },
                           stacked
                             ? { flex: 1 }
                             : { flex: 'none', width: SIDE_PANEL_WIDTH },
+                          mouseNavigation && { userSelect: 'none' },
                         ]}
                       >
                         <PresenterPanel

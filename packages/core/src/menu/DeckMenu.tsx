@@ -313,6 +313,7 @@ export function DeckMenu({
         key: 'text-selection',
         label: 'Text selection',
         checked: !mouseNavigation,
+        shortcut: 'S',
         toggle: () => {
           setMouseNavigation(!mouseNavigation);
         },

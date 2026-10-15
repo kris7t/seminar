@@ -94,9 +94,12 @@ long-press, or use the menu button in the top right corner for all actions.
 | N                     | Show only the notes in the presenter view      |
 | M                     | Show the pointer to the audience, or hide it   |
 | L                     | Turn the pointer into a laser pointer, or back |
-| Esc                   | Close the overview or the presenter view       |
+| S                     | Select text with the mouse instead of clicking |
+| Esc                   | Unfocus, close the overview or presenter view  |
 
 Clicking a slide goes to the next step, and Shift+click to the previous one.
+If a text field is focused or some text is selected, a click dismisses them
+first.
 On touch screens, tap to go to the next step, swipe to change slides, and pinch
 to open the overview.
 
@@ -104,14 +107,16 @@ to open the overview.
 
 The presenter view opens a separate window for the audience, while the deck
 window shows the current slide, previews of the next step and slide, the
-notes, and a toolbar with a timer and the clock. With several screens in a
+notes, and a toolbar with a timer and the clock. Clicking the previews or the
+notes also goes to the next step, so the mouse pointer doesn't have to be over
+the slide, where the audience sees it. With several screens in a
 Chromium-based browser, Start presentation asks which screen to show the
 slides on.
 
 Both windows render the same slide with shared state, so interactive slides
 work in front of the audience. While the mirrored pointer is on, the audience
-also sees the mouse pointer, hover and focus styles, the caret and selection
-of text fields, and the ripples of buttons.
+also sees the mouse pointer and its shape, hover and focus styles, the caret
+and selection of text fields, selected text, and the ripples of buttons.
 
 ## Packages
 

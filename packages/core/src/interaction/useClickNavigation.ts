@@ -22,6 +22,10 @@ interface Press {
   y: number;
   /** Whether it started on an interactive element. */
   interactive: boolean;
+  /** The element that was focused before the press, if any. */
+  focused: HTMLElement | undefined;
+  /** Whether some text was selected before the press. */
+  selected: boolean;
   /**
    * Whether it was a touch, for which the browser already only sends clicks
    * for taps.
@@ -32,6 +36,9 @@ interface Press {
 /**
  * Returns a click handler that goes to the next step on click, and to the
  * previous step on Shift+click.
+ *
+ * If an element on the slide was focused or some text was selected, a click
+ * dismisses them instead.
  *
  * Clicks on interactive elements, such as links, buttons, form controls, and
  * elements with the `data-slider-interactive` attribute, are ignored (see
@@ -56,6 +63,12 @@ export function useClickNavigation(
           y: event.clientY,
           interactive: getInteraction(event.target) !== undefined,
           touch: event.pointerType === 'touch',
+          focused:
+            document.activeElement instanceof HTMLElement &&
+            document.activeElement !== document.body
+              ? document.activeElement
+              : undefined,
+          selected: hasSelection(),
         };
       }
     };
@@ -77,6 +90,20 @@ export function useClickNavigation(
             Math.hypot(event.clientX - press.x, event.clientY - press.y) >
               CLICK_SLOP))
       ) {
+        return;
+      }
+      // The first click dismisses what the user was interacting with on the
+      // slide, like a focused text field or selected text, as clicking outside
+      // of them does elsewhere.
+      const focused =
+        press?.focused !== undefined &&
+        press.focused !== event.currentTarget &&
+        event.currentTarget.contains(press.focused)
+          ? press.focused
+          : undefined;
+      if (focused !== undefined || press?.selected === true) {
+        focused?.blur();
+        window.getSelection()?.removeAllRanges();
         return;
       }
       if (

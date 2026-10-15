@@ -41,17 +41,71 @@ const CURSOR_SHAPES: Readonly<Record<string, CursorShape>> = {
   none: 'none',
 };
 
-/** Returns the shape of the mouse cursor over `element`. */
-export function cursorShape(element: Element): CursorShape {
+/**
+ * Whether the text in `element` can be selected. `auto` takes the value of
+ * the parent, but browsers report it as `auto`.
+ */
+function isSelectable(element: Element): boolean {
   const view = element.ownerDocument.defaultView;
-  const cursor = view?.getComputedStyle(element).cursor ?? 'auto';
+  for (
+    let current: Element | null = element;
+    current !== null && view !== null;
+    current = current.parentElement
+  ) {
+    const value = view.getComputedStyle(current).userSelect;
+    if (value === 'none') {
+      return false;
+    }
+    if (value !== '' && value !== 'auto') {
+      return true;
+    }
+  }
+  return true;
+}
+
+/** Whether the point at `x` and `y` is on the text right in `element`. */
+function isOverText(element: Element, x: number, y: number): boolean {
+  const range = element.ownerDocument.createRange();
+  for (const node of element.childNodes) {
+    if (node.nodeType !== Node.TEXT_NODE || node.textContent?.trim() === '') {
+      continue;
+    }
+    range.selectNodeContents(node);
+    for (const rect of range.getClientRects()) {
+      if (
+        x >= rect.left &&
+        x <= rect.right &&
+        y >= rect.top &&
+        y <= rect.bottom
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Returns the shape of the mouse cursor over `element`, at the point at `x`
+ * and `y`, if known, in client coordinates.
+ */
+export function cursorShape(
+  element: Element,
+  point?: { x: number; y: number },
+): CursorShape {
+  const view = element.ownerDocument.defaultView;
+  const style = view?.getComputedStyle(element);
+  const cursor = style?.cursor ?? 'auto';
   // Custom images come first, followed by a keyword as a fallback.
   const keyword = cursor.split(',').at(-1)?.trim() ?? 'auto';
   if (keyword === 'auto') {
-    // Browsers show a caret over text that can be edited, and over other text
-    // too, but most text isn't selectable with mouse navigation.
+    // Browsers show a caret over text that can be edited or selected, which
+    // most text can't be with mouse navigation.
     return isTextField(element) ||
-      (element as Partial<HTMLElement>).isContentEditable === true
+      (element as Partial<HTMLElement>).isContentEditable === true ||
+      (point !== undefined &&
+        isOverText(element, point.x, point.y) &&
+        isSelectable(element))
       ? 'text'
       : 'default';
   }
@@ -170,7 +224,7 @@ export function usePointerTracking(
         y: ((event.clientY - rect.top) * SLIDE_HEIGHT) / rect.height,
         cursor:
           event.target instanceof Element
-            ? cursorShape(event.target)
+            ? cursorShape(event.target, { x: event.clientX, y: event.clientY })
             : 'default',
         idle: false,
       });

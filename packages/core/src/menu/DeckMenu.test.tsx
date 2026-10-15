@@ -245,6 +245,17 @@ describe('DeckMenu', () => {
     ).toBe('true');
   });
 
+  it('toggles text selection with S', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('s');
+    await user.click(screen.getByText('First'));
+    expect(window.location.hash).toBe('#slide=1');
+    await user.keyboard('s');
+    await user.click(screen.getByText('First'));
+    expect(window.location.hash).not.toBe('#slide=1');
+  });
+
   it.each(['g', ':'])('opens the slide number dialog with %s', async (key) => {
     const user = userEvent.setup();
     renderDeck();

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { isTextField, pathOf, resolvePath } from './interactionState.ts';
+import {
+  isTextField,
+  pathOf,
+  positionOf,
+  resolvePath,
+  resolvePosition,
+} from './interactionState.ts';
 import { rewriteSelector } from './mirrorStylisPlugin.ts';
 
 describe('rewriteSelector', () => {
@@ -41,6 +47,31 @@ describe('element paths', () => {
     );
     expect(resolvePath(b, [0, 5])).toBeUndefined();
     expect(pathOf(a, b)).toBeUndefined();
+  });
+});
+
+describe('node positions', () => {
+  it('finds the same text in another copy', () => {
+    const html = '<p>a<b>bold</b>c</p>';
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    const copy = document.createElement('div');
+    copy.innerHTML = html;
+    const text = root.querySelector('p')?.lastChild;
+    if (text === null || text === undefined) {
+      throw new Error('No text');
+    }
+    const position = positionOf(root, text, 1);
+    expect(position).toEqual({ path: [0], child: 2, offset: 1 });
+    expect(
+      position === undefined ? undefined : resolvePosition(copy, position),
+    ).toBe(copy.querySelector('p')?.lastChild);
+    const bold = root.querySelector('b');
+    expect(bold === null ? undefined : positionOf(root, bold, 1)).toEqual({
+      path: [0, 0],
+      child: undefined,
+      offset: 1,
+    });
   });
 });
 

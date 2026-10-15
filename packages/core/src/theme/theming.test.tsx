@@ -11,6 +11,7 @@ import {
   MirroredPointer,
   mirroredPointerClasses,
 } from '../presentation/pointer.tsx';
+import { selectionFrameClasses } from '../slide/SelectionFrame.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { slideNumberClasses } from '../slide/SlideNumber.tsx';
 import { createSlideTheme } from './createSlideTheme.ts';
@@ -175,5 +176,28 @@ describe('theming', () => {
     expect(laser === null ? undefined : getComputedStyle(laser).width).toBe(
       '32px',
     );
+  });
+
+  it('applies style overrides to the selection', () => {
+    const theme = createSlideTheme({
+      components: {
+        SliderSelection: {
+          styleOverrides: { root: { '--SliderSelection-background': 'pink' } },
+        },
+      },
+    });
+    const { container } = render(
+      <Deck theme={theme}>
+        <Slide title="Content" />
+      </Deck>,
+    );
+    const frame = container.querySelector(`.${selectionFrameClasses.root}`);
+    expect(
+      frame === null
+        ? undefined
+        : getComputedStyle(frame).getPropertyValue(
+            '--SliderSelection-background',
+          ),
+    ).toBe('pink');
   });
 });

@@ -421,6 +421,27 @@ describe('the presenter view', () => {
     },
   );
 
+  it('first unfocuses the focused element on Escape', async () => {
+    const { close, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First">
+          <input aria-label="Field" />
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    const field = screen.getByLabelText('Field');
+    await user.click(field);
+    await user.keyboard('{Escape}');
+    expect(document.activeElement).not.toBe(field);
+    expect(close).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(close).toHaveBeenCalled();
+    remove();
+  });
+
   it('closes when the audience window is closed', async () => {
     const { audience, remove } = fakeAudienceWindow();
     const user = userEvent.setup();
@@ -495,6 +516,29 @@ describe('the presenter toolbar', () => {
     expect(
       screen.getByRole('region', { name: 'Slide overview' }),
     ).toBeDefined();
+    remove();
+  });
+
+  it('navigates on clicks on the panel, but not on the toolbar', async () => {
+    const { remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First">
+          <Step>a</Step>
+          <Notes>Some notes</Notes>
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    await user.click(screen.getByText('Some notes'));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    await user.click(screen.getByLabelText('Time elapsed'));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    await user.keyboard('s');
+    await user.click(screen.getByText('Some notes'));
+    expect(window.location.hash).toBe('#slide=1&step=1');
     remove();
   });
 
