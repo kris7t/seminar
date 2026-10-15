@@ -26,6 +26,7 @@ import { useFitScale } from './useFitScale.ts';
 import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
 import { useClickNavigation } from '../interaction/useClickNavigation.ts';
+import { useWheelNavigation } from '../interaction/useWheelNavigation.ts';
 import { useContextMenu } from '../interaction/useContextMenu.ts';
 import { composeHandlers } from '../interaction/composeHandlers.ts';
 import { usePinchIn } from '../interaction/usePinchIn.ts';
@@ -326,6 +327,7 @@ export function Deck({
     onEscape,
   });
   const onClick = useClickNavigation(next, previous);
+  const onWheel = useWheelNavigation(next, previous);
   const swipe = useSwipeNavigation({
     hasMoreSteps: () => stepStore.hasNext(),
     canGoNext: slideIndex < slideCount - 1,
@@ -389,6 +391,7 @@ export function Deck({
                   <Box
                     ref={containerRef}
                     onClick={mouseNavigation ? onClick : undefined}
+                    onWheel={mouseNavigation ? onWheel : undefined}
                     {...composeHandlers(
                       composeHandlers(menuHandlers, swipe.handlers),
                       pinchHandlers,
@@ -525,6 +528,7 @@ export function Deck({
                         // presenter can advance without the mouse pointer
                         // showing on the slide. Only the toolbar has controls.
                         onClick={mouseNavigation ? onClick : undefined}
+                        onWheel={mouseNavigation ? onWheel : undefined}
                         {...menuHandlers}
                         sx={[
                           { display: 'flex', minWidth: 0, minHeight: 0 },

@@ -105,7 +105,8 @@ long-press, or use the menu button in the top right corner for all actions.
 | S                     | Select text with the mouse instead of clicking |
 | Esc                   | Unfocus, close the overview or presenter view  |
 
-Clicking a slide goes to the next step, and Shift+click to the previous one.
+Clicking a slide or scrolling down goes to the next step, and Shift+click or
+scrolling up to the previous one.
 If a text field is focused or some text is selected, a click dismisses them
 first.
 On touch screens, tap to go to the next step, swipe to change slides, and pinch
