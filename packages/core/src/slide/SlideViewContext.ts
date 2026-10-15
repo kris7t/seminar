@@ -15,8 +15,15 @@ import { createContext, use, type Context } from 'react';
  * - `'preview'`: the next or previous slide coming into view next to the
  *   audience view while swiping between slides, showing the steps last shown
  *   on it.
+ * - `'probe'`: a rendering that is never shown, which finds the steps of the
+ *   slide, e.g., to mark the slides with steps in the table of contents. Its
+ *   elements are in a document without a window, so they don't load images,
+ *   media, or frames, and it has state of its own. Slides should still render
+ *   their steps in it, but may leave out anything else that is expensive to
+ *   set up, like connections or timers.
  */
-export type SlideViewKind = 'audience' | 'presenter' | 'thumbnail' | 'preview';
+export type SlideViewKind =
+  'audience' | 'presenter' | 'thumbnail' | 'preview' | 'probe';
 
 /** A rendering of a slide. See {@link useSlideView}. */
 export interface SlideView {

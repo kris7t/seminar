@@ -18,6 +18,7 @@ import { useDeck } from '../deck/DeckContext.ts';
 import { RecapIcon } from '../slide/RecapIcon.tsx';
 import { RecappedIcon } from '../slide/RecappedIcon.tsx';
 import { SpareIcon } from '../slide/SpareIcon.tsx';
+import { StepsIcon } from '../slide/StepsIcon.tsx';
 import type { ContextMenuHandlers } from '../interaction/useContextMenu.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
@@ -60,6 +61,8 @@ interface ThumbnailProps {
   /** The title of the slide in the table of contents, if any. */
   title: ReactNode;
   current: boolean;
+  /** Whether the slide has steps, which is shown by its number. */
+  steps: boolean;
   /** Whether the slide is spare, which is shown by its number. */
   spare: boolean;
   /** Whether the slide is a recap, which is shown by its number. */
@@ -74,6 +77,7 @@ function Thumbnail({
   slide,
   title,
   current,
+  steps,
   spare,
   recap,
   recapped,
@@ -152,9 +156,11 @@ function Thumbnail({
         }}
       >
         {index + 1}
+        {/* In the order of the table of contents. */}
+        {spare && <SpareIcon fontSize="inherit" />}
         {recap && <RecapIcon fontSize="inherit" />}
         {recapped && <RecappedIcon fontSize="inherit" />}
-        {spare && <SpareIcon fontSize="inherit" />}
+        {steps && <StepsIcon fontSize="inherit" />}
       </Typography>
       {/*
        * Covers the thumbnail instead of containing it, since the contents of
@@ -190,9 +196,10 @@ function Thumbnail({
             <Box component="span" sx={VISUALLY_HIDDEN}>
               {`Slide ${String(index + 1)}`}
               {title !== undefined && <>: {title}</>}
+              {spare && ' (spare)'}
               {recap && ' (recap)'}
               {recapped && ' (recapped later)'}
-              {spare && ' (spare)'}
+              {steps && ' (with steps)'}
             </Box>
           </ButtonBase>
         </Tooltip>
@@ -227,7 +234,7 @@ export function SlideOverview({
   onClose,
   menuHandlers,
 }: SlideOverviewProps): JSX.Element {
-  const { overviewIndex, goTo, toc, spares, recapOf } = useDeck();
+  const { overviewIndex, goTo, toc, spares, recapOf, hasSteps } = useDeck();
   const groups = useMemo(
     () => groupSlides(toc, slides.length),
     [toc, slides.length],
@@ -303,6 +310,7 @@ export function SlideOverview({
                   slide={slides[index]}
                   title={titles[index]}
                   current={index === overviewIndex}
+                  steps={hasSteps[index] === true}
                   spare={spares[index] === true}
                   recap={recapOf[index] !== undefined}
                   recapped={recapOf.includes(index)}

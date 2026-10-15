@@ -12,6 +12,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type JSX,
   type ReactNode,
 } from 'react';
@@ -71,6 +72,7 @@ import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { resolveToc, type TocEntry } from '../toc/tableOfContents.ts';
 import { Sidebar, type SidebarSection } from '../sidebar/Sidebar.tsx';
 import { StepTree } from '../steps/StepTree.tsx';
+import { useStepProbe } from '../steps/StepProbe.tsx';
 import { TocList } from '../toc/TocList.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
 import { getSlideNotes } from '../notes/Notes.tsx';
@@ -229,6 +231,23 @@ export function Deck({
     firstStep,
     lastStep,
   } = useDeckNavigation(slideIds, aliases, spares, slideState);
+  const { hasSteps: probedSteps, probe } = useStepProbe(slides);
+  // The current slide knows its steps even before it is probed, or after its
+  // components gain steps, but not while it isn't shown, e.g., in the
+  // overview.
+  const currentHasSteps = useSyncExternalStore(
+    stepStore.subscribe,
+    () => stepStore.getTree().length > 0,
+  );
+  const hasSteps = useMemo(
+    () =>
+      slides.map(
+        (_, index) =>
+          probedSteps[index] === true ||
+          (index === slideIndex && currentHasSteps),
+      ),
+    [slides, slideIndex, currentHasSteps, probedSteps],
+  );
   const toc = useMemo(
     () => resolveToc(tocEntries ?? [], slides, slideIds),
     [tocEntries, slides, slideIds],
@@ -356,6 +375,7 @@ export function Deck({
       lastSlideIndex,
       spares,
       recapOf,
+      hasSteps,
       goTo,
       next,
       previous,
@@ -386,6 +406,7 @@ export function Deck({
       lastSlideIndex,
       spares,
       recapOf,
+      hasSteps,
       goTo,
       next,
       previous,
@@ -709,6 +730,7 @@ export function Deck({
                 )}
               </Box>
             </Box>
+            {probe}
             {showOverview && (
               <SlideOverview
                 slides={slides}

@@ -30,6 +30,11 @@ export interface DeckState {
   /** The slide that each slide recaps, if it's a recap. */
   recapOf: readonly (number | undefined)[];
   /**
+   * Whether each slide has steps, which is found by rendering the slides when
+   * the browser is idle, so it may be `false` until then.
+   */
+  hasSteps: readonly boolean[];
+  /**
    * Goes to a slide. `steps` sets which of its steps are shown:
    *
    * - `'start'` (the default): none.

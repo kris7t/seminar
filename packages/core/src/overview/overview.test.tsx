@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -12,8 +12,9 @@ function ViewKind() {
   return <span>{`${kind} ${String(interactive)}`}</span>;
 }
 
-function renderDeck() {
-  return render(
+/** Renders a deck, and waits for it to find the steps of its slides. */
+async function renderDeck() {
+  const result = render(
     <Deck>
       <Slide title="First">
         <Step data-name="step">Later</Step>
@@ -24,6 +25,8 @@ function renderDeck() {
       <Slide title="Third" />
     </Deck>,
   );
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  return result;
 }
 
 const overview = () => screen.getByRole('region', { name: 'Slide overview' });
@@ -45,14 +48,18 @@ describe('SlideOverview', () => {
 
   it('shows all slides in thumbnail views', async () => {
     const user = userEvent.setup();
-    renderDeck();
+    await renderDeck();
     await user.keyboard('o');
     expect(
       within(overview())
         .getAllByRole('button')
         .map((button) => button.textContent),
-    ).toEqual(['Slide 1: First', 'Slide 2: Second', 'Slide 3: Third']);
-    expect(current()).toBe('Slide 1: First');
+    ).toEqual([
+      'Slide 1: First (with steps)',
+      'Slide 2: Second',
+      'Slide 3: Third',
+    ]);
+    expect(current()).toBe('Slide 1: First (with steps)');
     // Slides are not in the buttons, which would change their styles.
     expect(within(overview()).getByText('Later').closest('button')).toBeNull();
     // Each thumbnail knows its slide.
@@ -62,7 +69,7 @@ describe('SlideOverview', () => {
 
   it('shows and keeps the steps last shown on each slide', async () => {
     const user = userEvent.setup();
-    renderDeck();
+    await renderDeck();
     const isShown = () =>
       !within(overview())
         .getByText('Later')
@@ -75,7 +82,9 @@ describe('SlideOverview', () => {
     await user.keyboard('{ArrowLeft}{ArrowRight}{ArrowLeft}{Home}{End}');
     expect(isShown()).toBe(true);
     await user.click(
-      within(overview()).getByRole('button', { name: 'Slide 1: First' }),
+      within(overview()).getByRole('button', {
+        name: 'Slide 1: First (with steps)',
+      }),
     );
     expect(window.location.hash).toBe('#slide=1&step=1');
   });
@@ -169,7 +178,7 @@ describe('SlideOverview', () => {
 
   it('goes to a clicked slide', async () => {
     const user = userEvent.setup();
-    renderDeck();
+    await renderDeck();
     await user.keyboard('o');
     await user.click(
       within(overview()).getByRole('button', { name: 'Slide 2: Second' }),
@@ -181,7 +190,7 @@ describe('SlideOverview', () => {
 
   it('changes the current slide with the keyboard', async () => {
     const user = userEvent.setup();
-    renderDeck();
+    await renderDeck();
     await user.keyboard('o{ArrowRight}{ArrowRight}');
     expect(current()).toBe('Slide 3: Third');
     await user.keyboard('{ArrowLeft}{Enter}');
@@ -191,7 +200,7 @@ describe('SlideOverview', () => {
 
   it('closes with Escape and o without going anywhere', async () => {
     const user = userEvent.setup();
-    renderDeck();
+    await renderDeck();
     await user.keyboard('o{ArrowRight}');
     // Selecting a slide doesn't go to it.
     expect(window.location.hash).toBe('#slide=1');
@@ -205,7 +214,7 @@ describe('SlideOverview', () => {
 
   it('opens from the context menu', async () => {
     const user = userEvent.setup();
-    renderDeck();
+    await renderDeck();
     await user.pointer({
       keys: '[MouseRight]',
       target: screen.getByRole('heading'),

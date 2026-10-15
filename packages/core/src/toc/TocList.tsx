@@ -1,4 +1,5 @@
 import {
+  Box,
   IconButton,
   List,
   ListItem,
@@ -12,6 +13,7 @@ import { scrollIntoView } from '../sidebar/Sidebar.tsx';
 import { RecapIcon } from '../slide/RecapIcon.tsx';
 import { RecappedIcon } from '../slide/RecappedIcon.tsx';
 import { SpareIcon } from '../slide/SpareIcon.tsx';
+import { StepsIcon } from '../slide/StepsIcon.tsx';
 import { findCurrentEntry, type ResolvedTocEntry } from './tableOfContents.ts';
 
 interface RenderEntriesOptions {
@@ -20,7 +22,10 @@ interface RenderEntriesOptions {
   current: number | undefined;
   spares: readonly boolean[];
   recapOf: readonly (number | undefined)[];
+  hasSteps: readonly boolean[];
   goTo: (slideIndex: number) => void;
+  /** Goes to a slide, if it isn't the current one, and shows its steps. */
+  showSteps: (slideIndex: number) => void;
 }
 
 /**
@@ -42,7 +47,9 @@ function renderEntries({
   current,
   spares,
   recapOf,
+  hasSteps,
   goTo,
+  showSteps,
 }: RenderEntriesOptions): JSX.Element[] {
   return entries.flatMap((entry) => {
     const isCurrent = entry.hasSlide && entry.slideIndex === current;
@@ -68,25 +75,48 @@ function renderEntries({
               Icon: RecappedIcon,
             }
           : undefined;
+    const steps = entry.hasSlide && hasSteps[entry.slideIndex] === true;
+    const buttons = (link === undefined ? 0 : 1) + (steps ? 1 : 0);
     return [
       <ListItem
         key={`entry-${String(entry.slideIndex)}-${String(entry.hasSlide)}`}
         disablePadding
-        // Without the space below inline content, so that the button is
-        // centered on the entry.
-        sx={{ '& .MuiListItemSecondaryAction-root': { display: 'flex' } }}
+        sx={[
+          // Without the space below inline content, so that the buttons are
+          // centered on the entry.
+          { '& .MuiListItemSecondaryAction-root': { display: 'flex' } },
+          // Room for the buttons next to the entry.
+          buttons > 1 && { '& > .MuiListItemButton-root': { pr: 9 } },
+        ]}
         secondaryAction={
-          link === undefined ? undefined : (
-            <IconButton
-              edge="end"
-              size="small"
-              aria-label={link.label}
-              onClick={() => {
-                goTo(link.target);
-              }}
-            >
-              <link.Icon titleAccess={link.label} />
-            </IconButton>
+          buttons === 0 ? undefined : (
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {/* Steps on the edge, so that their buttons line up. */}
+              {link !== undefined && (
+                <IconButton
+                  edge={steps ? false : 'end'}
+                  size="small"
+                  aria-label={link.label}
+                  onClick={() => {
+                    goTo(link.target);
+                  }}
+                >
+                  <link.Icon titleAccess={link.label} />
+                </IconButton>
+              )}
+              {steps && (
+                <IconButton
+                  edge="end"
+                  size="small"
+                  aria-label="Show the steps"
+                  onClick={() => {
+                    showSteps(entry.slideIndex);
+                  }}
+                >
+                  <StepsIcon titleAccess="Show the steps" />
+                </IconButton>
+              )}
+            </Box>
           )
         }
       >
@@ -122,7 +152,9 @@ function renderEntries({
         current,
         spares,
         recapOf,
+        hasSteps,
         goTo,
+        showSteps,
       }),
     ];
   });
@@ -135,7 +167,14 @@ function renderEntries({
  * Should be rendered with the {@link uiTheme}.
  */
 export function TocList(): JSX.Element {
-  const { toc, slideIndex, spares, recapOf, goTo } = useDeck();
+  const { toc, slideIndex, spares, recapOf, hasSteps, goTo, setShowSteps } =
+    useDeck();
+  const showSteps = (index: number) => {
+    if (index !== slideIndex) {
+      goTo(index);
+    }
+    setShowSteps(true);
+  };
   const current = findCurrentEntry(toc, slideIndex);
   return (
     <List
@@ -154,7 +193,9 @@ export function TocList(): JSX.Element {
         current,
         spares,
         recapOf,
+        hasSteps,
         goTo,
+        showSteps,
       })}
     </List>
   );

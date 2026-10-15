@@ -182,6 +182,42 @@ describe('TocList', () => {
     expect(window.location.hash).toBe('#a');
   });
 
+  it('shows the steps of slides with steps', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck toc={[{ slide: 0 }, { slide: 1 }, { slide: 2 }]} defaultShowToc>
+        <Slide title="First" />
+        <Slide id="second" title="Second">
+          <Step>Later</Step>
+        </Slide>
+        <Slide recap="second" />
+      </Deck>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Table of contents' });
+    // Found when the deck is idle, without showing the slides.
+    const [ofSecond, ofRecap] = await within(nav).findAllByRole('button', {
+      name: 'Show the steps',
+    });
+    if (ofSecond === undefined || ofRecap === undefined) {
+      throw new Error('No buttons to show the steps');
+    }
+    expect(
+      within(nav).getByRole('button', { name: 'Go to the recapped slide' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('navigation', { name: 'Steps' })).toBeNull();
+    await user.click(ofSecond);
+    expect(window.location.hash).toBe('#second');
+    expect(screen.getByRole('navigation', { name: 'Steps' })).toBeDefined();
+    // Stays on the slide and keeps its steps.
+    await user.keyboard('{ArrowRight}');
+    await user.click(ofSecond);
+    expect(window.location.hash).toBe('#second&step=1');
+    expect(screen.getByRole('navigation', { name: 'Steps' })).toBeDefined();
+    await user.click(ofRecap);
+    // Recaps continue from the steps shown on the slide.
+    expect(window.location.hash).toBe('#second-recap&step=1');
+  });
+
   it('starts slides from the beginning', async () => {
     const user = userEvent.setup();
     render(

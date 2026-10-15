@@ -1,0 +1,137 @@
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { useState, type JSX } from 'react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { Deck } from '../deck/Deck.tsx';
+import { useDeck } from '../deck/DeckContext.ts';
+import { Slide } from '../slide/Slide.tsx';
+import { useSlideView, type SlideView } from '../slide/SlideViewContext.ts';
+import { useSlideState } from '../state/useSlideState.ts';
+import { Step } from './Step.tsx';
+
+function HasSteps(): JSX.Element {
+  const { hasSteps } = useDeck();
+  return <span data-testid="has-steps">{hasSteps.map(String).join(' ')}</span>;
+}
+
+const idle = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+describe('useStepProbe', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '#');
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('finds the steps of slides that were not shown', async () => {
+    render(
+      <Deck>
+        <Slide title="First">
+          <HasSteps />
+        </Slide>
+        <Slide title="Second">
+          <Step>Later</Step>
+        </Slide>
+        <Slide title="Third" />
+      </Deck>,
+    );
+    expect(screen.getByTestId('has-steps').textContent).toBe(
+      'false false false',
+    );
+    await idle();
+    expect(screen.getByTestId('has-steps').textContent).toBe(
+      'false true false',
+    );
+  });
+
+  it('renders slides in probe views that load nothing', async () => {
+    const views: { view: SlideView; shown: boolean }[] = [];
+    function Probed(): JSX.Element {
+      const view = useSlideView();
+      return (
+        <img
+          alt=""
+          ref={(element) => {
+            if (element !== null) {
+              views.push({ view, shown: element.ownerDocument === document });
+            }
+          }}
+        />
+      );
+    }
+    render(
+      <Deck>
+        <Slide title="First" />
+        <Slide title="Second">
+          <Probed />
+        </Slide>
+      </Deck>,
+    );
+    await idle();
+    expect(views).toEqual([
+      {
+        view: { index: 1, kind: 'probe', interactive: false },
+        // In a document without a window, which doesn't load the image.
+        shown: false,
+      },
+    ]);
+  });
+
+  it('keeps the state of the slides to themselves', async () => {
+    let created = 0;
+    function Counter(): JSX.Element {
+      const [count] = useSlideState(() => {
+        created += 1;
+        return created;
+      });
+      return <span>{`Count ${String(count)}`}</span>;
+    }
+    render(
+      <Deck>
+        <Slide title="First" />
+        <Slide title="Second">
+          <Counter />
+        </Slide>
+      </Deck>,
+    );
+    await idle();
+    expect(created).toBe(1);
+    act(() => {
+      window.location.hash = '#slide=2';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    // The slide sets up its own state, rather than the one of the probe.
+    expect(await screen.findByText('Count 2')).toBeDefined();
+  });
+
+  it('leaves out slides that fail in the probe', async () => {
+    function Failing(): JSX.Element {
+      const { kind } = useSlideView();
+      const [failing] = useState(kind === 'probe');
+      if (failing) {
+        throw new Error('Not in the probe');
+      }
+      return <span>Shown</span>;
+    }
+    render(
+      <Deck>
+        <Slide title="First">
+          <HasSteps />
+        </Slide>
+        <Slide title="Second">
+          <Failing />
+          <Step>Later</Step>
+        </Slide>
+        <Slide title="Third">
+          <Step>Later</Step>
+        </Slide>
+      </Deck>,
+    );
+    await idle();
+    expect(screen.getByTestId('has-steps').textContent).toBe(
+      'false false true',
+    );
+  });
+});
