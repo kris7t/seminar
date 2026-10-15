@@ -101,6 +101,37 @@ describe('Deck', () => {
     expect(window.location.hash).toBe('#slide=3');
   });
 
+  it('starts at the first slide that is not spare', () => {
+    render(
+      <Deck>
+        <Slide title="Detour" spare />
+        <Slide title="First" />
+      </Deck>,
+    );
+    expect(window.location.hash).toBe('#slide=2');
+    cleanup();
+    window.history.replaceState(null, '', '#');
+    render(
+      <Deck>
+        <Slide title="Backup" spare />
+        <Slide title="More backup" spare />
+      </Deck>,
+    );
+    expect(window.location.hash).toBe('#slide=1');
+  });
+
+  it('goes to slides by their aliases', () => {
+    render(
+      <Deck>
+        <Slide title="First" />
+        <Slide id="second" aliases={['part', 'second']} title="Second" />
+      </Deck>,
+    );
+    navigateTo('#part');
+    // The location hash shows the id of the slide.
+    expect(window.location.hash).toBe('#second');
+  });
+
   it('starts at the slide in the location hash', () => {
     window.history.replaceState(null, '', '#slide=3');
     renderDeck();

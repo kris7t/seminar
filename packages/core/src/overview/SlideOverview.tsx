@@ -204,13 +204,15 @@ export function SlideOverview({
         WebkitTouchCallout: 'none',
       }}
     >
-      {groups.map(({ title, level, slides: groupSlides }) => {
+      {groups.map(({ title, level, start, slides: groupSlides }) => {
         // Divisions of only spare slides are dimmed like their thumbnails.
-        const spare = groupSlides.every((index) => spares[index] === true);
+        const spare =
+          groupSlides.length > 0 &&
+          groupSlides.every((index) => spares[index] === true);
         return (
           <Box
             component="section"
-            key={groupSlides[0]}
+            key={`${String(start)}-${String(level)}`}
             sx={{ '& + &': { mt: 3 } }}
           >
             {title !== undefined && (

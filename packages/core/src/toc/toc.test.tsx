@@ -57,12 +57,36 @@ describe('resolveToc', () => {
     expect(toc).toEqual([
       {
         slideIndex: 0,
+        hasSlide: true,
         title: 'A',
-        children: [{ slideIndex: 1, title: 'Slide 2', children: [] }],
+        children: [
+          { slideIndex: 1, hasSlide: true, title: 'Slide 2', children: [] },
+        ],
       },
-      { slideIndex: 2, title: 'X', children: [] },
+      { slideIndex: 2, hasSlide: true, title: 'X', children: [] },
     ]);
     expect(findCurrentEntry(toc, 1)).toBe(1);
+    expect(findCurrentEntry(toc, 2)).toBe(2);
+  });
+
+  it('resolves entries without slides to their first nested slide', () => {
+    const toc = resolveToc(
+      [
+        { title: 'Group', children: [{ slide: 'missing' }, { slide: 2 }] },
+        { title: 'Empty', children: [{ slide: 'missing' }] },
+      ],
+      slides,
+      ['a', undefined, 'c'],
+    );
+    expect(toc).toEqual([
+      {
+        slideIndex: 2,
+        hasSlide: false,
+        title: 'Group',
+        children: [{ slideIndex: 2, hasSlide: true, title: 'C', children: [] }],
+      },
+    ]);
+    // Only the entry of the slide is current.
     expect(findCurrentEntry(toc, 2)).toBe(2);
   });
 

@@ -28,13 +28,14 @@ function decode(component: string): string {
 function parseSlide(
   slide: string,
   slideIds: readonly (string | undefined)[],
+  aliases: ReadonlyMap<string, number>,
 ): number | undefined {
   const match = SLIDE_NUMBER_PATTERN.exec(slide);
   if (match?.[1] !== undefined) {
     return Math.max(Number.parseInt(match[1], 10) - 1, 0);
   }
   const index = slideIds.indexOf(slide);
-  return index >= 0 ? index : undefined;
+  return index >= 0 ? index : aliases.get(slide);
 }
 
 const NUMBER_PATTERN = /^\d+$/;
@@ -61,8 +62,8 @@ function parseStep(
 /**
  * Parses a location hash of the form `#<slide>` or `#<slide>&step=<path>`.
  *
- * `<slide>` is either the id of a slide or `slide=<n>` with a 1-based slide
- * number. `<path>` is a step path with dot-separated step numbers, e.g., `2.1`
+ * `<slide>` is either the id of a slide, one of the `aliases` of the slides,
+ * or `slide=<n>` with a 1-based slide number. `<path>` is a step path with dot-separated step numbers, e.g., `2.1`
  * (see {@link StepPath}), which may start with the name of a step group
  * instead, e.g., `parse` for its first step, or `parse.1` for the first step
  * nested in it. Invalid parts of the step path are dropped.
@@ -72,10 +73,11 @@ function parseStep(
 export function parseLocation(
   hash: string,
   slideIds: readonly (string | undefined)[],
+  aliases: ReadonlyMap<string, number> = new Map(),
 ): DeckLocation | undefined {
   const fragment = hash.startsWith('#') ? hash.slice(1) : hash;
   const [slide = '', ...params] = fragment.split('&').map(decode);
-  const slideIndex = parseSlide(slide, slideIds);
+  const slideIndex = parseSlide(slide, slideIds, aliases);
   if (slideIndex === undefined) {
     return undefined;
   }

@@ -99,8 +99,11 @@ function locationOf(
   return { slideIndex, step: path, group };
 }
 
-function readLocation(slideIds: readonly (string | undefined)[]) {
-  return parseLocation(window.location.hash, slideIds);
+function readLocation(
+  slideIds: readonly (string | undefined)[],
+  aliases: ReadonlyMap<string, number>,
+) {
+  return parseLocation(window.location.hash, slideIds, aliases);
 }
 
 /**
@@ -115,11 +118,17 @@ function readLocation(slideIds: readonly (string | undefined)[]) {
  * Going forward and back skips spare slides, unless the current slide is
  * spare (see {@link findNextSlide}).
  *
+ * Without a slide in the location hash, the deck starts at the first slide
+ * that isn't spare.
+ *
  * @param slideIds The ids of the slides, or `undefined` for slides without one.
+ * @param aliases Further ids that refer to slides, e.g., of divisions of the
+ *   deck without slides of their own, by the index of the slide.
  * @param spares Whether each slide is spare.
  */
 export function useDeckNavigation(
   slideIds: readonly (string | undefined)[],
+  aliases: ReadonlyMap<string, number>,
   spares: readonly boolean[],
   slideState: SlideStateStore,
 ): DeckNavigation {
@@ -130,8 +139,8 @@ export function useDeckNavigation(
   );
 
   const [initialIndex] = useState(() => {
-    const location = readLocation(slideIds);
-    const index = location?.slideIndex ?? 0;
+    const location = readLocation(slideIds, aliases);
+    const index = location?.slideIndex ?? findFirstSlide(spares);
     if (location !== undefined) {
       slideState.stepPosition(index).set({
         path: location.step,
@@ -201,7 +210,7 @@ export function useDeckNavigation(
   // Fires when the user follows a link to a slide, edits the URL, or moves
   // through the browser history.
   const onHashChange = useEffectEvent(() => {
-    const location = readLocation(slideIds);
+    const location = readLocation(slideIds, aliases);
     const newIndex =
       location === undefined ? slideIndex : clamp(location.slideIndex);
     if (location !== undefined) {

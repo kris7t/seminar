@@ -13,6 +13,12 @@ export interface SlideProps {
    */
   id?: string;
   /**
+   * Further ids that refer to the slide in the location hash, e.g., of a
+   * division of the deck without a slide of its own, whose first slide this
+   * is. The location hash shows the `id` of the slide instead.
+   */
+  aliases?: readonly string[] | undefined;
+  /**
    * The master that lays out the slide: either the name of a master in
    * `theme.master` or a master component. Defaults to `'content'`.
    */

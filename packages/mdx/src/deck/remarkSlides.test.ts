@@ -327,6 +327,17 @@ author: Someone
   });
 
   describe('table of contents', () => {
+    it('puts slides of headings deeper than the depth at the content level', async () => {
+      const module = await compileDeck(
+        '---\ndepth: 2\n---\n\n# Talk\n\n## A\n\n#### Deep :slide{section}\n\n## B',
+      );
+      expect(renderDeck(module).props).toMatchObject({
+        toc: [
+          { slide: 0, children: [{ slide: 1 }, { slide: 2 }, { slide: 3 }] },
+        ],
+      });
+    });
+
     it('nests slides by the levels of their headings', async () => {
       const module = await compileDeck(`Intro
 
@@ -458,6 +469,98 @@ More
       });
       expect(file.messages.map(String)).toEqual([
         expect.stringContaining('Expected `spare` to be `true` or `false`'),
+      ]);
+    });
+  });
+
+  describe('divisions without slides', () => {
+    it('only start divisions in the table of contents', async () => {
+      const source = `---
+depth: 3
+---
+
+# Talk {noslide}
+
+## Main
+
+### Point
+
+## Backup {noslide spare}
+
+Content right after the heading
+
+### Detail
+`;
+      expect(
+        (await slides(source)).map(({ title, spare }) => [
+          title ?? '(untitled)',
+          spare === true,
+        ]),
+      ).toEqual([
+        ['Main', false],
+        ['Point', false],
+        ['(untitled)', true],
+        ['Detail', true],
+      ]);
+      expect(renderDeck(await compileDeck(source)).props).toMatchObject({
+        toc: [
+          {
+            title: 'Talk',
+            children: [
+              { slide: 0, children: [{ slide: 1 }] },
+              { title: 'Backup', children: [{ slide: 2 }, { slide: 3 }] },
+            ],
+          },
+        ],
+      });
+    });
+
+    it('refer to the first slide that is not spare by their ids', async () => {
+      expect(
+        (
+          await slides(`---
+depth: 3
+---
+
+# Talk {noslide}
+
+## Intro {spare}
+
+## Main {#main-part noslide}
+
+### Point
+
+## Backup {noslide spare}
+
+### Detail
+`)
+        ).map(({ id, aliases }) => [id, aliases]),
+      ).toEqual([
+        ['intro', undefined],
+        ['point', ['talk', 'main-part']],
+        ['detail', ['backup']],
+      ]);
+    });
+
+    it('warn about masters, which they have no slide for', async () => {
+      const file = await compile(
+        '# Foo {subsection noslide}\n\n## Bar :slide{noslide master=X}\n\n### Baz',
+        { ...sliderMdxOptions() },
+      );
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining('Ignoring the master `subsection`'),
+        expect.stringContaining('Ignoring the master `X`'),
+      ]);
+    });
+
+    it('are ignored on content slides and ::slide', async () => {
+      const file = await compile(
+        '## Section\n\n### Content {noslide}\n\n::slide{noslide}',
+        { ...sliderMdxOptions() },
+      );
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining('Ignoring `noslide` on a heading of a content'),
+        expect.stringContaining('Ignoring `noslide` on `::slide`'),
       ]);
     });
   });

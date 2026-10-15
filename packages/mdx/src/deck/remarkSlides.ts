@@ -67,6 +67,18 @@ interface SlideDraft {
   spare?: boolean;
   /** Where the slide starts in the document, if known. */
   place?: Position | undefined;
+  /**
+   * Whether the heading only starts a division in the table of contents and
+   * the overview, but no slide, because of the `noslide` attribute.
+   */
+  noSlide?: boolean;
+  /** The text of the heading, the title of divisions without slides. */
+  headingText?: string;
+  /**
+   * Ids of divisions without slides that refer to this slide, set by
+   * {@link resolveDivisionIds}.
+   */
+  aliases?: string[];
   /** Title of the slide in the table of contents, if set explicitly. */
   tocTitle?: string | undefined;
   /** Level of the heading of the slide, if any. */
@@ -75,7 +87,7 @@ interface SlideDraft {
 
 /** An entry of the table of contents, as in `@slider/core`. */
 interface TocEntry {
-  slide: number;
+  slide?: number;
   title?: string;
   children?: TocEntry[];
 }
@@ -83,21 +95,35 @@ interface TocEntry {
 /**
  * Creates the table of contents of the deck, where the slides are nested by
  * the levels of their headings, e.g., the content slides of a section in its
- * section slide. Slides without headings are at the level of content slides.
+ * section slide. Slides without headings, and those with headings deeper than
+ * the depth, are at the level of content slides.
  * The titles are taken from the slides by the `Deck`, which also names slides
- * without titles.
+ * without titles. Headings with `noslide` get entries without slides.
  */
 function createToc(slides: readonly SlideDraft[], depth: number): TocEntry[] {
   // Slides without headings are at the level of content slides.
   const contentLevel = Math.max(depth, 1);
   const toc: TocEntry[] = [];
   const stack: { level: number; entry: TocEntry }[] = [];
-  for (const [index, slide] of slides.entries()) {
-    const level = slide.level ?? contentLevel;
-    const entry: TocEntry =
-      slide.tocTitle === undefined
-        ? { slide: index }
-        : { slide: index, title: slide.tocTitle };
+  let index = 0;
+  for (const slide of slides) {
+    // Headings deeper than the depth, e.g., with `:slide`, start content
+    // slides, too.
+    const level =
+      slide.level !== undefined && slide.level < contentLevel
+        ? slide.level
+        : contentLevel;
+    let entry: TocEntry;
+    if (slide.noSlide === true) {
+      // Titled by the heading, since there is no slide to take it from.
+      entry = { title: slide.tocTitle ?? slide.headingText ?? '' };
+    } else {
+      entry =
+        slide.tocTitle === undefined
+          ? { slide: index }
+          : { slide: index, title: slide.tocTitle };
+      index += 1;
+    }
     while ((stack.at(-1)?.level ?? 0) >= level) {
       stack.pop();
     }
@@ -146,6 +172,9 @@ function createSlide(
   return slide;
 }
 
+/** Attributes that are flags of slides, which aren't passed as props. */
+const FLAGS: ReadonlySet<string> = new Set(['spare', 'noslide']);
+
 /**
  * Applies the attributes of a `:slide` directive to a slide.
  *
@@ -161,11 +190,13 @@ function applyAttributes(
   { id, classes, attributes }: Attributes,
 ) {
   slide.id = id ?? slide.id;
-  // `spare` is a flag rather than a master.
+  // Flags rather than masters.
   const bareWords = [...attributes]
-    .filter(([key, value]) => value === '' && key !== 'spare')
+    .filter(([key, value]) => value === '' && !FLAGS.has(key))
     .map(([key]) => key);
   slide.spareAttribute = attributes.get('spare');
+  const noSlide = attributes.get('noslide');
+  slide.noSlide = noSlide === '' || noSlide === 'true';
   const master = attributes.get('master');
   const bareWord = bareWords.at(-1);
   if (master !== undefined && master !== '') {
@@ -179,7 +210,7 @@ function applyAttributes(
   for (const [key, value] of attributes) {
     if (key === 'title') {
       slide.tocTitle = value;
-    } else if (key !== 'master' && key !== 'spare' && value !== '') {
+    } else if (key !== 'master' && !FLAGS.has(key) && value !== '') {
       slide.attributes.set(key, value);
     }
   }
@@ -215,6 +246,33 @@ function resolveSpares(slides: SlideDraft[], depth: number, file: VFile) {
     // Headings above the deepest level start divisions.
     if (level !== undefined && level < depth) {
       divisions.push({ level, spare });
+    }
+  }
+}
+
+/**
+ * Lets the ids of divisions without slides refer to the first slide of the
+ * division that isn't spare, or to its first slide if all of them are, by
+ * making them aliases of that slide. Must run after {@link resolveSpares}.
+ */
+function resolveDivisionIds(slides: readonly SlideDraft[]) {
+  for (const [index, division] of slides.entries()) {
+    const { noSlide, id, level } = division;
+    if (noSlide !== true || id === undefined || level === undefined) {
+      continue;
+    }
+    const members: SlideDraft[] = [];
+    for (const slide of slides.slice(index + 1)) {
+      if (slide.level !== undefined && slide.level <= level) {
+        break;
+      }
+      if (slide.noSlide !== true) {
+        members.push(slide);
+      }
+    }
+    const target = members.find(({ spare }) => spare !== true) ?? members[0];
+    if (target !== undefined) {
+      (target.aliases ??= []).push(id);
     }
   }
 }
@@ -264,7 +322,16 @@ function collectBindings(nodes: RootContent[]): Set<string> {
 }
 
 function createSlideElement(
-  { master, id, attributes, title, children, place, spare }: SlideDraft,
+  {
+    master,
+    id,
+    attributes,
+    title,
+    children,
+    place,
+    spare,
+    aliases,
+  }: SlideDraft,
   bindings: Set<string>,
   file: VFile,
 ): MdxJsxFlowElement {
@@ -304,6 +371,9 @@ function createSlideElement(
     attributes: [
       masterAttribute,
       ...(spare === true ? [createExpressionAttribute('spare', 'true')] : []),
+      ...(aliases === undefined
+        ? []
+        : [createExpressionAttribute('aliases', JSON.stringify(aliases))]),
       ...[...props].map(([name, value]) => createStringAttribute(name, value)),
     ],
     children: [...titleElement, ...(children as MdxJsxFlowElement['children'])],
@@ -448,6 +518,26 @@ export function remarkSlides({
         );
         current.level = node.depth;
         current.place = node.position;
+        if (current.noSlide === true) {
+          if (node.depth < depth) {
+            current.headingText = toString(node);
+            if (
+              current.master.mayBeComponent ||
+              current.master.bareWord === true
+            ) {
+              file.message(
+                `Ignoring the master \`${current.master.name}\` of a heading with \`noslide\`, which has no slide to lay out`,
+                { place: node.position },
+              );
+            }
+          } else {
+            current.noSlide = false;
+            file.message(
+              'Ignoring `noslide` on a heading of a content slide, since only title, section, and subsection headings start divisions',
+              { place: node.position },
+            );
+          }
+        }
         slides.push(current);
       } else if (node.type === 'thematicBreak') {
         current = createSlide('content', undefined, undefined);
@@ -462,9 +552,17 @@ export function remarkSlides({
           title,
         );
         current.place = node.position;
+        if (current.noSlide === true) {
+          current.noSlide = false;
+          file.message(
+            'Ignoring `noslide` on `::slide`, which always starts a slide',
+            { place: node.position },
+          );
+        }
         slides.push(current);
       } else {
-        if (current === undefined) {
+        // Content after a heading without a slide gets a slide of its own.
+        if (current === undefined || current.noSlide === true) {
           current = createSlide('content', undefined, undefined);
           slides.push(current);
         }
@@ -473,6 +571,7 @@ export function remarkSlides({
     }
 
     resolveSpares(slides, depth, file);
+    resolveDivisionIds(slides);
     const bindings = collectBindings(esm);
     const themeSource = getThemeSource(frontmatter, file);
     const deck: MdxJsxFlowElement = {
@@ -485,9 +584,9 @@ export function remarkSlides({
         createToc(slides, depth),
         file,
       ),
-      children: slides.map((slide) =>
-        createSlideElement(slide, bindings, file),
-      ),
+      children: slides
+        .filter(({ noSlide }) => noSlide !== true)
+        .map((slide) => createSlideElement(slide, bindings, file)),
     };
     tree.children = [
       createEsm(

@@ -69,7 +69,11 @@ Presenter notes, shown only to the presenter.
   going through the deck skips, but which can be chosen from the table of
   contents, the overview, or by number, and the arrow keys go on from it.
   Spare title, section, and subsection slides make the slides in them spare,
-  unless they have `{spare=false}`. `:slide{…}` in a heading does the same, and also makes
+  unless they have `{spare=false}`. `{noslide}` on a title, section, or
+  subsection heading only groups the slides under it in the table of contents
+  and the overview, without a slide of its own. Its id goes to its first
+  slide that isn't spare. Without a slide in the address, the deck starts at
+  its first slide that isn't spare. `:slide{…}` in a heading does the same, and also makes
   headings deeper than `depth:` slides.
 - **Steps:** list items with `:step` at their start or end appear in new
   steps, and so do paragraphs with `:step`. `:step{with=previous}` and

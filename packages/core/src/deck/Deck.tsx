@@ -140,6 +140,26 @@ function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
   return undefined;
 }
 
+/** Returns the slides that the aliases of the slides refer to. */
+function getAliases(
+  slides: ReturnType<typeof Children.toArray>,
+): Map<string, number> {
+  const aliases = new Map<string, number>();
+  for (const [index, slide] of slides.entries()) {
+    if (isValidElement<{ aliases?: unknown }>(slide)) {
+      const { aliases: slideAliases } = slide.props;
+      if (Array.isArray(slideAliases)) {
+        for (const alias of slideAliases) {
+          if (typeof alias === 'string' && !aliases.has(alias)) {
+            aliases.set(alias, index);
+          }
+        }
+      }
+    }
+  }
+  return aliases;
+}
+
 function isSpare(slide: ReturnType<typeof Children.toArray>[number]) {
   return (
     isValidElement<{ spare?: unknown }>(slide) && slide.props.spare === true
@@ -198,7 +218,7 @@ export function Deck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slideIds, spares, slideState);
+  } = useDeckNavigation(slideIds, getAliases(slides), spares, slideState);
   const toc = useMemo(() => {
     // eslint-disable-next-line @eslint-react/no-children-to-array
     const tocSlides = Children.toArray(children);

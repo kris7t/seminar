@@ -14,6 +14,19 @@ interface RenderEntriesOptions {
   goTo: (slideIndex: number) => void;
 }
 
+/**
+ * Whether the slide of `entry` is spare, or if it has no slide, whether all
+ * the slides nested in it are.
+ */
+function isSpareEntry(
+  entry: ResolvedTocEntry,
+  spares: readonly boolean[],
+): boolean {
+  return entry.hasSlide
+    ? spares[entry.slideIndex] === true
+    : entry.children.every((child) => isSpareEntry(child, spares));
+}
+
 function renderEntries({
   entries,
   level,
@@ -21,43 +34,45 @@ function renderEntries({
   spares,
   goTo,
 }: RenderEntriesOptions): JSX.Element[] {
-  return entries.flatMap((entry) => [
-    <ListItemButton
-      key={`entry-${String(entry.slideIndex)}`}
-      selected={entry.slideIndex === current}
-      aria-current={entry.slideIndex === current ? 'page' : undefined}
-      ref={entry.slideIndex === current ? scrollIntoView : undefined}
-      onClick={() => {
-        goTo(entry.slideIndex);
-      }}
-      sx={{ pl: 2 + level * 2 }}
-    >
-      <ListItemText
-        slotProps={{
-          primary: {
-            variant: 'body2',
-            sx: [
-              level === 0 && { fontWeight: 500 },
-              spares[entry.slideIndex] === true && { color: 'text.secondary' },
-            ],
-          },
+  return entries.flatMap((entry) => {
+    const isCurrent = entry.hasSlide && entry.slideIndex === current;
+    const spare = isSpareEntry(entry, spares);
+    return [
+      <ListItemButton
+        key={`entry-${String(entry.slideIndex)}-${String(entry.hasSlide)}`}
+        selected={isCurrent}
+        aria-current={isCurrent ? 'page' : undefined}
+        ref={isCurrent ? scrollIntoView : undefined}
+        onClick={() => {
+          goTo(entry.slideIndex);
         }}
+        sx={{ pl: 2 + level * 2 }}
       >
-        {entry.title}
-      </ListItemText>
-      {/* Spare slides are skipped when going through the deck. */}
-      {spares[entry.slideIndex] === true && (
-        <SpareIcon sx={{ ml: 1, color: 'text.secondary' }} />
-      )}
-    </ListItemButton>,
-    ...renderEntries({
-      entries: entry.children,
-      level: level + 1,
-      current,
-      spares,
-      goTo,
-    }),
-  ]);
+        <ListItemText
+          slotProps={{
+            primary: {
+              variant: 'body2',
+              sx: [
+                level === 0 && { fontWeight: 500 },
+                spare && { color: 'text.secondary' },
+              ],
+            },
+          }}
+        >
+          {entry.title}
+        </ListItemText>
+        {/* Spare slides are skipped when going through the deck. */}
+        {spare && <SpareIcon sx={{ ml: 1, color: 'text.secondary' }} />}
+      </ListItemButton>,
+      ...renderEntries({
+        entries: entry.children,
+        level: level + 1,
+        current,
+        spares,
+        goTo,
+      }),
+    ];
+  });
 }
 
 /**
