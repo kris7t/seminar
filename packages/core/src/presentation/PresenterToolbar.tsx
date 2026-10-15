@@ -139,6 +139,13 @@ export interface PresenterToolbarProps {
    * table of contents, may leave narrower than the window.
    */
   width: number;
+  /**
+   * When to count the time elapsed from, in milliseconds since the epoch,
+   * e.g., when the presenter view was opened.
+   */
+  timerStart: number;
+  /** Resets the time elapsed. */
+  onResetTimer: () => void;
   /** Opens the dialog for going to a slide by number. */
   onGoToSlide: () => void;
   /** Whether the panel shows only the notes. */
@@ -160,8 +167,8 @@ export interface PresenterToolbarProps {
  * Toolbar of the presenter view with slide controls, the time elapsed since
  * the presentation started, and the current time.
  *
- * The time elapsed counts from when the toolbar is shown, i.e., when the
- * presenter view opens, and can be reset.
+ * The time elapsed counts from `timerStart`, e.g., when the presenter view
+ * opened, or when it was last reset.
  *
  * In a narrower presenter view, the buttons for actions that aren't specific to
  * it are left out, and in a narrow one, only the slide number, the time, and
@@ -174,6 +181,8 @@ export interface PresenterToolbarProps {
  */
 export function PresenterToolbar({
   width,
+  timerStart: start,
+  onResetTimer,
   onGoToSlide,
   notesOnly,
   setNotesOnly,
@@ -195,7 +204,6 @@ export function PresenterToolbar({
     mouseNavigation,
     setMouseNavigation,
   } = deck;
-  const [start, setStart] = useState(Date.now);
   const now = useNow(start);
   const reduced = width < MIN_FULL_TOOLBAR_WIDTH;
   const compact = width < MIN_REDUCED_TOOLBAR_WIDTH;
@@ -334,10 +342,9 @@ export function PresenterToolbar({
         </Typography>
         <ToolButton
           label="Reset time elapsed"
+          shortcut="R"
           icon={RestartAltIcon}
-          onClick={() => {
-            setStart(Date.now());
-          }}
+          onClick={onResetTimer}
         />
         <Typography
           aria-label="Current time"

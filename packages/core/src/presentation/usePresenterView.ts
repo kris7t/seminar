@@ -22,6 +22,8 @@ export interface AudienceWindow {
   container: HTMLElement;
   /** Puts the styles of the rendered slides into the window. */
   cache: EmotionCache;
+  /** When the window was opened, in milliseconds since the epoch. */
+  openedAt: number;
 }
 
 /**
@@ -108,7 +110,12 @@ export function usePresenterView(): PresenterView {
       console.warn('The audience window was blocked by the browser.');
       return false;
     }
-    setAudience({ window: opened, screen, ...setUpDocument(opened) });
+    setAudience({
+      window: opened,
+      screen,
+      ...setUpDocument(opened),
+      openedAt: Date.now(),
+    });
     return true;
   }, []);
 

@@ -113,6 +113,7 @@ long-press, or use the menu button in the top right corner for all actions.
 | N                     | Show only the notes in the presenter view      |
 | M                     | Show the pointer to the audience, or hide it   |
 | L                     | Turn the pointer into a laser pointer, or back |
+| R                     | Reset the time elapsed in the presenter view   |
 | S                     | Select text with the mouse instead of clicking |
 | Esc                   | Unfocus, close the overview or presenter view  |
 

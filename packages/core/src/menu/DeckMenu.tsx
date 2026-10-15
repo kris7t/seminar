@@ -11,6 +11,7 @@ import LastPageIcon from '@mui/icons-material/LastPage';
 import MouseIcon from '@mui/icons-material/Mouse';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import SlideshowIcon from '@mui/icons-material/Slideshow';
@@ -44,6 +45,8 @@ export interface PresenterSettings {
   pointerMode: PointerMode;
   onMirrorPointer: () => void;
   onLaserPointer: () => void;
+  /** Resets the time elapsed. */
+  onResetTimer: () => void;
 }
 
 export interface DeckMenuProps {
@@ -290,6 +293,12 @@ export function DeckMenu({
               shortcut: 'L',
               action: presenterSettings.onLaserPointer,
               checked: presenterSettings.pointerMode === 'laser',
+            },
+            {
+              label: 'Reset time elapsed',
+              icon: RestartAltIcon,
+              shortcut: 'R',
+              action: presenterSettings.onResetTimer,
             },
           ],
         ]),

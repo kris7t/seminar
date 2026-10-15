@@ -221,6 +221,16 @@ export function Deck({
       setPointerMode('laser');
     }
   }, [pointerMode, modeBeforeLaser, setPointerMode, setModeBeforeLaser]);
+  // The time elapsed counts from when the presenter view was opened, or from
+  // when it was last reset, whichever is later.
+  const [timerResetAt, setTimerResetAt] = useState(0);
+  const timerStart = Math.max(
+    presenterView.audience?.openedAt ?? 0,
+    timerResetAt,
+  );
+  const resetTimer = useCallback(() => {
+    setTimerResetAt(Date.now());
+  }, []);
   const stacked = presenting && presenterLayout === 'stacked';
   const view = useMemo<SlideView>(
     () => ({
@@ -316,6 +326,12 @@ export function Deck({
     }
     return presenting;
   }, [presenting, toggleLaserPointer]);
+  const onResetTimer = useCallback(() => {
+    if (presenting) {
+      resetTimer();
+    }
+    return presenting;
+  }, [presenting, resetTimer]);
   const onFocusNotes = useCallback(() => {
     if (!presenting) {
       return false;
@@ -330,6 +346,7 @@ export function Deck({
     onFocusNotes,
     onMirrorPointer,
     onLaserPointer,
+    onResetTimer,
     onEscape,
   });
   const onClick = useClickNavigation(next, previous);
@@ -565,6 +582,8 @@ export function Deck({
                   <ThemeProvider theme={darkUiTheme}>
                     <PresenterToolbar
                       width={presenterAreaSize.width}
+                      timerStart={timerStart}
+                      onResetTimer={resetTimer}
                       onGoToSlide={openGoToSlide}
                       notesOnly={notesOnly}
                       setNotesOnly={setNotesOnly}
@@ -611,6 +630,7 @@ export function Deck({
                         pointerMode,
                         onMirrorPointer: toggleMirrorPointer,
                         onLaserPointer: toggleLaserPointer,
+                        onResetTimer: resetTimer,
                       }
                     : undefined
                 }

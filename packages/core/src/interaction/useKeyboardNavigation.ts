@@ -30,6 +30,12 @@ export interface KeyboardNavigationOptions {
    */
   onLaserPointer: () => boolean;
   /**
+   * Resets the time elapsed shown in the presenter view.
+   *
+   * @returns Whether the key was handled, i.e., the presenter view is open.
+   */
+  onResetTimer: () => boolean;
+  /**
    * Handles Escape if nothing is focused or selected, e.g., to leave the
    * presenter view.
    *
@@ -55,6 +61,7 @@ export interface KeyboardNavigationOptions {
  * - `n` shows only the notes in the presenter view, or the previews, too.
  * - `m` shows or hides the pointer of the presenter to the audience, and `l`
  *   turns it into a laser pointer, or back.
+ * - `r` resets the time elapsed in the presenter view.
  * - `o` shows or hides the overview of the slides. In the overview, the keys
  *   above select a slide instead, where Up and Down jump between the
  *   divisions of the deck, like sections. Enter goes to the selected slide,
@@ -93,6 +100,7 @@ export function useKeyboardNavigation(
     onFocusNotes,
     onMirrorPointer,
     onLaserPointer,
+    onResetTimer,
     onEscape,
   }: KeyboardNavigationOptions,
 ): void {
@@ -277,6 +285,12 @@ export function useKeyboardNavigation(
             return;
           }
           break;
+        case 'r':
+        case 'R':
+          if (!onResetTimer()) {
+            return;
+          }
+          break;
         case 'o':
         case 'O':
           setShowOverview(!showOverview);
@@ -318,6 +332,7 @@ export function useKeyboardNavigation(
     onFocusNotes,
     onMirrorPointer,
     onLaserPointer,
+    onResetTimer,
     onEscape,
   ]);
 }

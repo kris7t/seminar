@@ -501,6 +501,20 @@ describe('the presenter toolbar', () => {
       vi.advanceTimersByTime(1000);
     });
     expect(elapsed.textContent).toBe('0:01');
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(elapsed.textContent).toBe('0:06');
+    await user.keyboard('r');
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(elapsed.textContent).toBe('0:01');
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(
+      screen.getByRole('menuitem', { name: /Reset time elapsed/ }),
+    );
+    expect(elapsed.textContent).toBe('0:00');
     const focusNotes = screen.getByRole('button', { name: 'Focus on notes' });
     expect(focusNotes.getAttribute('aria-pressed')).toBe('false');
     const panel = screen.getByRole('complementary', { name: 'Presenter view' });
