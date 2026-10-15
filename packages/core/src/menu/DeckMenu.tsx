@@ -1,3 +1,4 @@
+import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
 import CheckIcon from '@mui/icons-material/Check';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import GridViewIcon from '@mui/icons-material/GridView';
@@ -8,6 +9,7 @@ import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
+import SlideshowIcon from '@mui/icons-material/Slideshow';
 import TagIcon from '@mui/icons-material/Tag';
 import {
   Dialog,
@@ -25,6 +27,7 @@ import type { ComponentType, JSX, ReactNode } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
+import { useFullscreen } from '../notes/useFullscreen.ts';
 
 export interface DeckMenuProps {
   /** Position of the menu, or `undefined` if the menu is closed. */
@@ -32,6 +35,8 @@ export interface DeckMenuProps {
   onClose: () => void;
   /** Opens the dialog for going to a slide by number. */
   onGoToSlide: () => void;
+  /** Starts or stops the presentation. */
+  onPresent: () => void;
 }
 
 interface Action {
@@ -92,7 +97,9 @@ export function DeckMenu({
   anchorPosition,
   onClose,
   onGoToSlide,
+  onPresent,
 }: DeckMenuProps): JSX.Element {
+  const fullscreen = useFullscreen();
   const deck = useDeck();
   const {
     slideIndex,
@@ -111,6 +118,21 @@ export function DeckMenu({
   const isLastSlide = slideIndex === slideCount - 1;
 
   const groups: Action[][] = [
+    [
+      fullscreen
+        ? {
+            label: 'Stop presentation',
+            icon: CancelPresentationIcon,
+            shortcut: 'P',
+            action: onPresent,
+          }
+        : {
+            label: 'Start presentation',
+            icon: SlideshowIcon,
+            shortcut: 'P',
+            action: onPresent,
+          },
+    ],
     [
       {
         label: 'Next step',

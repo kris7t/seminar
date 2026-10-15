@@ -7,6 +7,8 @@ import { getInteraction, usesKey } from './interaction.ts';
 export interface KeyboardNavigationOptions {
   /** Opens the dialog for going to a slide by number. */
   onGoToSlide: () => void;
+  /** Starts or stops the presentation. */
+  onPresent: () => void;
 }
 
 /**
@@ -21,6 +23,7 @@ export interface KeyboardNavigationOptions {
  * - Shift+Home and Shift+End go to the first or last step of the slide.
  * - `g` (or `:`, as in Vim) asks for a slide number to go to.
  * - `t` shows or hides the table of contents.
+ * - `p` starts the presentation in full screen, or stops it.
  * - `o` shows or hides the overview of the slides. In the overview, the keys
  *   above select a slide instead, where Up and Down jump between the
  *   divisions of the deck, like sections. Enter goes to the selected slide,
@@ -50,7 +53,7 @@ export function useKeyboardNavigation(
     showToc,
     setShowToc,
   }: DeckState,
-  { onGoToSlide }: KeyboardNavigationOptions,
+  { onGoToSlide, onPresent }: KeyboardNavigationOptions,
 ): void {
   useEffect(() => {
     /**
@@ -193,6 +196,10 @@ export function useKeyboardNavigation(
           }
           setShowToc(!showToc);
           break;
+        case 'p':
+        case 'P':
+          onPresent();
+          break;
         case 'o':
         case 'O':
           setShowOverview(!showOverview);
@@ -223,5 +230,6 @@ export function useKeyboardNavigation(
     showToc,
     setShowToc,
     onGoToSlide,
+    onPresent,
   ]);
 }

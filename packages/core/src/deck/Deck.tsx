@@ -28,6 +28,8 @@ import { useClickNavigation } from '../interaction/useClickNavigation.ts';
 import { useContextMenu } from '../interaction/useContextMenu.ts';
 import { composeHandlers } from '../interaction/composeHandlers.ts';
 import { usePinchIn } from '../interaction/usePinchIn.ts';
+import { ScreenDialog } from '../presentation/ScreenDialog.tsx';
+import { usePresentation } from '../presentation/usePresentation.ts';
 import { SlidePreview } from '../swipe/SlidePreview.tsx';
 import { SwipeHint } from '../swipe/SwipeHint.tsx';
 import {
@@ -229,7 +231,11 @@ export function Deck({
   const closeGoToSlide = useCallback(() => {
     setGoToSlideOpen(false);
   }, []);
-  useKeyboardNavigation(deck, { onGoToSlide: openGoToSlide });
+  const presentation = usePresentation();
+  useKeyboardNavigation(deck, {
+    onGoToSlide: openGoToSlide,
+    onPresent: presentation.toggle,
+  });
   const onClick = useClickNavigation(next, previous);
   const swipe = useSwipeNavigation({
     hasMoreSteps: () => stepStore.hasNext(),
@@ -238,7 +244,11 @@ export function Deck({
     nextSlide,
     previousSlide,
     width: containerSize.width,
-    disabled: menuPosition !== undefined || showOverview || goToSlideOpen,
+    disabled:
+      menuPosition !== undefined ||
+      showOverview ||
+      goToSlideOpen ||
+      presentation.screens !== undefined,
   });
   // Zooming out of the slide shows all slides.
   const pinchHandlers = usePinchIn(
@@ -390,9 +400,15 @@ export function Deck({
                 anchorPosition={menuPosition}
                 onClose={closeMenu}
                 onGoToSlide={openGoToSlide}
+                onPresent={presentation.toggle}
               />
               <GoToSlideDialog open={goToSlideOpen} onClose={closeGoToSlide} />
               <SwipeHint open={swipe.showHint} />
+              <ScreenDialog
+                screens={presentation.screens}
+                onChoose={presentation.choose}
+                onClose={presentation.cancel}
+              />
             </ThemeProvider>
           </StepStoreContext>
         </SlideStateContext>
