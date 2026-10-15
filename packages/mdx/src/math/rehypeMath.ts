@@ -9,8 +9,8 @@ import type {
 import path from 'node:path';
 import type { VFile } from 'vfile';
 
-import { createStringAttribute } from '../estree.ts';
-import { FORMULA } from '../remarkSlides.ts';
+import { createStringAttribute } from '../utils/estree.ts';
+import { EXPLICIT_JSX_HAST, FORMULA } from '../utils/jsx.ts';
 import {
   createMathRenderer,
   DEFAULT_FONT,
@@ -22,11 +22,6 @@ import {
   loadThemeConfig,
   type ModuleImporter,
 } from './themeConfig.ts';
-
-/** See {@link remarkSlides}. */
-const EXPLICIT_JSX = {
-  _mdxExplicitJsx: true,
-} as MdxJsxFlowElementHast['data'];
 
 /**
  * Options for rendering math. See `MathConfig` in `@slider/core`.
@@ -300,7 +295,7 @@ function createFormula(
     name: FORMULA,
     attributes,
     children,
-    data: EXPLICIT_JSX,
+    data: EXPLICIT_JSX_HAST,
   };
 }
 

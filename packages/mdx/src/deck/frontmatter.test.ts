@@ -12,7 +12,7 @@ describe('readDeckFrontmatter', () => {
   it('takes the title from the first heading that starts a slide', () => {
     expect(
       readDeckFrontmatter(
-        '---\ndepth: 2\n---\n\nIntro\n\n### Not a slide\n\n## First \\{#first}',
+        '---\ndepth: 2\n---\n\nIntro\n\n### Not a slide\n\n## First :slide{#first}',
       ),
     ).toEqual({ title: 'First', mouseNavigation: true, depth: 2 });
   });

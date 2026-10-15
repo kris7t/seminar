@@ -1,14 +1,9 @@
-export {
-  parseAttributeBlock,
-  splitLeadingAttributeBlock,
-  splitTrailingAttributeBlock,
-  type AttributeBlock,
-} from './attributes.ts';
+export { directiveHandlers } from './directives/directiveHandlers.ts';
 export {
   getDeckFrontmatter,
   readDeckFrontmatter,
   type DeckDefaults,
-} from './frontmatter.ts';
+} from './deck/frontmatter.ts';
 export {
   rehypeMath,
   type MathConfig,
@@ -23,6 +18,11 @@ export {
   type ModuleImporter,
 } from './math/themeConfig.ts';
 export { sliderMdxOptions, type SliderMdxOptions } from './options.ts';
-export { recmaSlideTitles } from './recmaSlideTitles.ts';
-export { rehypeListSteps } from './rehypeListSteps.ts';
-export { remarkSlides, type RemarkSlidesOptions } from './remarkSlides.ts';
+export { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
+export { rehypeListSteps } from './steps/rehypeListSteps.ts';
+export {
+  remarkHeadingAttributes,
+  rewriteHeadingAttributes,
+} from './directives/remarkHeadingAttributes.ts';
+export { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
+export { remarkSteps } from './steps/remarkSteps.ts';

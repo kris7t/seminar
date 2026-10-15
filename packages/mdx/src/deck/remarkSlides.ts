@@ -1,21 +1,32 @@
 import type { Declaration, Program } from 'estree';
 import GithubSlugger from 'github-slugger';
-import type { Paragraph, PhrasingContent, Root, RootContent } from 'mdast';
+import type { PhrasingContent, Root, RootContent } from 'mdast';
+import type {} from 'mdast-util-directive';
 import type { MdxJsxFlowElement } from 'mdast-util-mdx';
 import { toString } from 'mdast-util-to-string';
 import type { VFile } from 'vfile';
 
 import {
-  splitTrailingAttributeBlock,
-  type AttributeBlock,
-} from './attributes.ts';
-import { NOTES } from './remarkNotes.ts';
+  getAttributes,
+  hasDirective,
+  takeDirective,
+  type Attributes,
+} from '../directives/directives.ts';
+import {
+  DECK,
+  EXPLICIT_JSX,
+  FORMULA,
+  NOTES,
+  SLIDE,
+  STEP,
+  THEME,
+} from '../utils/jsx.ts';
 import {
   createEsm,
   createExpressionAttribute,
   createSpreadAttribute,
   createStringAttribute,
-} from './estree.ts';
+} from '../utils/estree.ts';
 import { getDeckFrontmatter, type DeckDefaults } from './frontmatter.ts';
 import { SLIDE_TITLE_MARKER } from './marker.ts';
 
@@ -39,11 +50,6 @@ interface MasterReference {
 }
 
 interface SlideDraft {
-  /**
-   * Whether the slide has no content so far, so that an attribute block in
-   * its own paragraph still applies to it.
-   */
-  open: boolean;
   master: MasterReference;
   id: string | undefined;
   attributes: Map<string, string>;
@@ -54,30 +60,6 @@ interface SlideDraft {
   /** Level of the heading of the slide, if any. */
   level: number | undefined;
 }
-
-/**
- * Marks generated JSX elements as written explicitly, like JSX in the MDX
- * source. Otherwise, MDX treats them like elements generated from Markdown,
- * which can be replaced with the `components` passed to the document. In
- * particular, the slide title marker wouldn't be compiled to a string tag.
- */
-const EXPLICIT_JSX = { _mdxExplicitJsx: true } as MdxJsxFlowElement['data'];
-
-const DECK = '_SliderDeck';
-export const SLIDE = '_SliderSlide';
-export const STEP = '_SliderStep';
-export const FORMULA = '_SliderFormula';
-const THEME = '_SliderTheme';
-
-/**
- * Matches a slide break with an (escaped) attribute block, e.g.,
- * `*** \{#id}`, which is parsed as a paragraph.
- */
-const ATTRIBUTED_BREAK_PATTERN =
-  /^\s*(?:\*{3,}|-{3,}|_{3,})\s*(\{[^{}]*\})\s*$/;
-
-/** Matches an (escaped) attribute block on its own, e.g., `\{#id}`. */
-const ATTRIBUTE_BLOCK_PATTERN = /^\s*(\{[^{}]*\})\s*$/;
 
 /** An entry of the table of contents, as in `@slider/core`. */
 interface TocEntry {
@@ -135,12 +117,11 @@ function getMaster(level: number, depth: number): string {
 function createSlide(
   master: string,
   id: string | undefined,
-  block: AttributeBlock | undefined,
+  attributes: Attributes | undefined,
   file: VFile,
   title?: PhrasingContent[],
 ): SlideDraft {
   const slide: SlideDraft = {
-    open: true,
     master: { name: master, mayBeComponent: false },
     id,
     attributes: new Map<string, string>(),
@@ -148,54 +129,14 @@ function createSlide(
     children: [],
     level: undefined,
   };
-  if (block !== undefined) {
-    applyAttributes(slide, block, file);
+  if (attributes !== undefined) {
+    applyAttributes(slide, attributes, file);
   }
   return slide;
 }
 
 /**
- * Removes a trailing attribute block from the last text of `children`.
- *
- * @returns The attribute block, if any.
- */
-function extractTrailingAttributes(
-  children: PhrasingContent[],
-): AttributeBlock | undefined {
-  const last = children.at(-1);
-  if (last?.type !== 'text') {
-    return undefined;
-  }
-  const split = splitTrailingAttributeBlock(last.value);
-  if (split === undefined) {
-    return undefined;
-  }
-  const [text, block] = split;
-  if (text === '') {
-    children.pop();
-  } else {
-    last.value = text;
-  }
-  return block;
-}
-
-/**
- * Returns the attribute block of a paragraph that matches `pattern`, if any.
- */
-function matchAttributeBlock(
-  node: Paragraph,
-  pattern: RegExp,
-): AttributeBlock | undefined {
-  const match = pattern.exec(toString(node));
-  if (match?.[1] === undefined) {
-    return undefined;
-  }
-  return splitTrailingAttributeBlock(match[1])?.[1];
-}
-
-/** Applies a further attribute block to a slide. */
-/**
- * Applies an attribute block to a slide.
+ * Applies the attributes of a `:slide` directive to a slide.
  *
  * The master is set either with `master=Name`, which refers to a component
  * imported in the document if there is one, or a class like `.name`, which
@@ -203,7 +144,7 @@ function matchAttributeBlock(
  */
 function applyAttributes(
   slide: SlideDraft,
-  { id, classes, attributes }: AttributeBlock,
+  { id, classes, attributes }: Attributes,
   file: VFile,
 ) {
   slide.id = id ?? slide.id;
@@ -388,22 +329,26 @@ function createDeckAttributes(
  *   Deeper headings stay in the slides. The `depth` is taken from the
  *   frontmatter, and defaults to the deepest level of the headings of the
  *   document, but at most 4.
+ * - A heading of any level with a `:slide` directive also starts a slide, with
+ *   the `content` master if it's deeper than the `depth`.
  * - A thematic break (`***` or `---`) starts a slide with the `content`
  *   master and no title. Formatters like Prettier rewrite `***` to `---`, so
  *   both are slide breaks.
+ * - A `::slide` leaf directive starts a slide with the `content` master, with
+ *   its label as the title, if any, e.g., `::slide[Title]{#id}`.
  * - Content before the first slide break forms an untitled content slide.
  *
- * Slides started by headings get the slug of the heading as their id. Headings
- * and slide breaks may end with an attribute block like `\{#id .section}` (the
- * opening brace is escaped, since MDX would parse it as an expression
- * otherwise) to set the id and other props of the slide. The master of the
- * slide is set either with a class, like `.section`, which names a master in
- * the theme, or with `master=Name`, which refers to a component imported in the
- * document if there is one, and to a master in the theme otherwise.
- * `title="…"` sets the title of the slide in the table of contents, e.g., for
- * slides without a heading, instead of the title shown on the slide.
- * The attribute block may also follow in its own paragraph, which is how
- * formatters write it after a slide break.
+ * Slides with titles get the slug of the title as their id. A `:slide`
+ * directive in a heading, e.g., `## Title :slide{#id .section}`, which
+ * {@link remarkHeadingAttributes} also lets write as `## Title {#id .section}`,
+ * or the
+ * attributes of a `::slide` directive set the id and other props of the
+ * slide. The master of the slide is set either with a class, like `.section`,
+ * which names a master in the theme, or with `master=Name`, which refers to a
+ * component imported in the document if there is one, and to a master in the
+ * theme otherwise. `title="…"` sets the title of the slide in the table of
+ * contents, e.g., for slides without a title, instead of the title shown on
+ * the slide.
  *
  * The document becomes a `Deck` that receives the props of the MDX component.
  * Settings for the deck are taken from the frontmatter (which requires
@@ -434,13 +379,16 @@ export function remarkSlides({
         // Already read by `getDeckFrontmatter`.
       } else if (node.type === 'mdxjsEsm') {
         esm.push(node);
-      } else if (node.type === 'heading' && node.depth <= depth) {
-        const block = extractTrailingAttributes(node.children);
+      } else if (
+        node.type === 'heading' &&
+        (node.depth <= depth || hasDirective(node.children, 'slide'))
+      ) {
+        const directive = takeDirective(node.children, 'slide');
         const slug = slugger.slug(toString(node));
         current = createSlide(
           getMaster(node.depth, depth),
           slug === '' ? undefined : slug,
-          block,
+          directive === undefined ? undefined : getAttributes(directive),
           file,
           node.children,
         );
@@ -449,33 +397,22 @@ export function remarkSlides({
       } else if (node.type === 'thematicBreak') {
         current = createSlide('content', undefined, undefined, file);
         slides.push(current);
-      } else if (
-        node.type === 'paragraph' &&
-        matchAttributeBlock(node, ATTRIBUTED_BREAK_PATTERN) !== undefined
-      ) {
+      } else if (node.type === 'leafDirective' && node.name === 'slide') {
+        const title = node.children.length > 0 ? node.children : undefined;
+        const slug = title === undefined ? '' : slugger.slug(toString(node));
         current = createSlide(
           'content',
-          undefined,
-          matchAttributeBlock(node, ATTRIBUTED_BREAK_PATTERN),
+          slug === '' ? undefined : slug,
+          getAttributes(node),
           file,
+          title,
         );
         slides.push(current);
-      } else if (
-        current?.open === true &&
-        node.type === 'paragraph' &&
-        matchAttributeBlock(node, ATTRIBUTE_BLOCK_PATTERN) !== undefined
-      ) {
-        const block = matchAttributeBlock(node, ATTRIBUTE_BLOCK_PATTERN);
-        if (block !== undefined) {
-          applyAttributes(current, block, file);
-        }
-        current.open = false;
       } else {
         if (current === undefined) {
           current = createSlide('content', undefined, undefined, file);
           slides.push(current);
         }
-        current.open = false;
         current.children.push(node);
       }
     }

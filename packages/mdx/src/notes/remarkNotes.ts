@@ -3,11 +3,7 @@ import type { ContainerDirective } from 'mdast-util-directive';
 import type { MdxJsxFlowElement } from 'mdast-util-mdx';
 import type { VFile } from 'vfile';
 
-/** Name of the `Notes` component in the compiled deck. */
-export const NOTES = '_SliderNotes';
-
-/** See {@link remarkSlides}. */
-const EXPLICIT_JSX = { _mdxExplicitJsx: true } as MdxJsxFlowElement['data'];
+import { EXPLICIT_JSX, NOTES } from '../utils/jsx.ts';
 
 function isNotes(node: Nodes): node is ContainerDirective {
   return node.type === 'containerDirective' && node.name === 'notes';

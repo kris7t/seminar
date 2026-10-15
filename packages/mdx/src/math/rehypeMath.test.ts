@@ -7,8 +7,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { sliderMdxOptions, type SliderMdxOptions } from '../options.ts';
 
-const DECK_PATH = fileURLToPath(new URL('../test.deck.mdx', import.meta.url));
-const THEME_PATH = fileURLToPath(new URL('../test-theme.ts', import.meta.url));
+const DECK_PATH = fileURLToPath(
+  new URL('../test/test.deck.mdx', import.meta.url),
+);
+const THEME_PATH = fileURLToPath(new URL('../test/theme.ts', import.meta.url));
 
 async function compileDeck(
   source: string,
@@ -157,7 +159,7 @@ describe('rehypeMath', () => {
   it('uses the slider export of other themes', async () => {
     const onDependency = vi.fn();
     const { code, messages } = await compileDeck(
-      '---\ntheme: ./test-theme.ts\n---\n\n$\\R \\T$',
+      '---\ntheme: ./theme.ts\n---\n\n$\\R \\T$',
       { onDependency },
     );
     expect(messages).toEqual([]);
@@ -168,7 +170,7 @@ describe('rehypeMath', () => {
 
   it('overrides the theme with the frontmatter', async () => {
     const { code } = await compileDeck(
-      `---\ntheme: ./test-theme.ts\nmath:\n  font: newcm\n  macros:\n    T: \\text{deck}\n---\n\n$\\R \\T$`,
+      `---\ntheme: ./theme.ts\nmath:\n  font: newcm\n  macros:\n    T: \\text{deck}\n---\n\n$\\R \\T$`,
     );
     expect(fonts(code)).toEqual(['NCM']);
     expect(mathml(code)[0]).toContain('<mtext>deck</mtext>');

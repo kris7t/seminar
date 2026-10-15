@@ -1,5 +1,6 @@
 import type { Root } from 'mdast';
 import { toString } from 'mdast-util-to-string';
+import remarkDirective from 'remark-directive';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkMath from 'remark-math';
 import remarkMdx from 'remark-mdx';
@@ -8,7 +9,8 @@ import { unified } from 'unified';
 import { VFile } from 'vfile';
 import { parse as parseYaml } from 'yaml';
 
-import { splitTrailingAttributeBlock } from './attributes.ts';
+import { hasDirective } from '../directives/directives.ts';
+import { remarkHeadingAttributes } from '../directives/remarkHeadingAttributes.ts';
 
 function parseFrontmatter(value: string, file: VFile): Record<string, unknown> {
   const data: unknown = parseYaml(value);
@@ -68,9 +70,14 @@ function getDepth(
  */
 function getFirstHeading(tree: Root, depth: number): string | undefined {
   for (const node of tree.children) {
-    if (node.type === 'heading' && (depth === 0 || node.depth <= depth)) {
-      const text = toString(node);
-      return splitTrailingAttributeBlock(text)?.[0] ?? text;
+    if (
+      node.type === 'heading' &&
+      (depth === 0 ||
+        node.depth <= depth ||
+        hasDirective(node.children, 'slide'))
+    ) {
+      // Directives like `:slide{#id}` have no text.
+      return toString(node).trim();
     }
   }
   return undefined;
@@ -134,10 +141,12 @@ export function readDeckFrontmatter(
   const file = new VFile(path === undefined ? source : { value: source, path });
   const tree = unified()
     .use(remarkParse)
+    .use(remarkHeadingAttributes)
     .use(remarkMdx)
     .use(remarkFrontmatter)
     // Braces in math are not JavaScript expressions.
     .use(remarkMath)
+    .use(remarkDirective)
     .parse(file);
   return getDeckFrontmatter(tree, file);
 }

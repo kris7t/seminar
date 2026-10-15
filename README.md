@@ -41,11 +41,13 @@ Subtitle of the title slide
 
 ## A section
 
-### A content slide
+### A content slide {#content}
 
 - Bullet points are shown up front
-- \{step} This one appears in a new step
+- :step This one appears in a new step
 - and the ones after it along with it
+
+:step So does this paragraph.
 
 <Calculator />
 
@@ -55,15 +57,21 @@ Presenter notes, shown only to the presenter.
 ```
 
 - **Slides:** `#` starts the title slide, `##` a section, `###` a content slide,
-  and `---` a slide without a title. `depth:` in the frontmatter shifts these
-  levels.
-- **Slide props:** an attribute block after a heading sets the id, the master,
-  or the title in the table of contents, e.g., `\{#intro title=Introduction}`.
-  Ids appear in the address, e.g., `#intro`.
-- **Steps:** list items marked with `\{step}`, at their start or end, appear in
-  new steps. `\{with=previous}` and `\{with=initial}` attach them to other
-  steps, and `\{group=name}` reveals items together. `<Step>`, `<Steps>`, and
-  `<Together>` from `@slider/core` do the same in JSX.
+  `---` a slide without a title, and `::slide[Title]` a slide with a title but
+  no heading. `depth:` in the frontmatter shifts these levels.
+- **Slide props:** attributes at the end of a heading, or of `::slide`, set
+  the id, the master, or the title in the table of contents, e.g.,
+  `## Intro {#intro .section title=Introduction}`. Ids appear in the address,
+  e.g., `#intro`. `:slide{…}` in a heading does the same, and also makes
+  headings deeper than `depth:` slides.
+- **Steps:** list items with `:step` at their start or end appear in new
+  steps, and so do paragraphs with `:step`. `:step{with=previous}` and
+  `:step{with=initial}` attach them to other steps, and `:step{group=name}`
+  reveals items together. `<Step>`, `<Steps>`, and `<Together>` from
+  `@slider/core` do the same in JSX.
+- **Colons:** a colon followed by a word starts a directive like `:step`.
+  Unknown ones, like in `10:30`, stay text, but write `\:step` for a literal
+  `:step`.
 - **Math:** `$…$` and `$$…$$` are typeset with MathJax at build time, with
   MathML for screen readers. Themes choose the math font.
 - **Notes:** `:::notes` blocks or `<Notes>` elements hold presenter notes.

@@ -8,10 +8,13 @@ import {
   type MathConfig,
   type RehypeMathOptions,
 } from './math/rehypeMath.ts';
-import { recmaSlideTitles } from './recmaSlideTitles.ts';
-import { remarkNotes } from './remarkNotes.ts';
-import { rehypeListSteps } from './rehypeListSteps.ts';
-import { remarkSlides, type RemarkSlidesOptions } from './remarkSlides.ts';
+import { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
+import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts';
+import { remarkNotes } from './notes/remarkNotes.ts';
+import { directiveHandlers } from './directives/directiveHandlers.ts';
+import { rehypeListSteps } from './steps/rehypeListSteps.ts';
+import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
+import { remarkSteps } from './steps/remarkSteps.ts';
 
 export interface SliderMdxOptions
   extends RemarkSlidesOptions, Omit<RehypeMathOptions, 'math'> {
@@ -26,11 +29,13 @@ export interface SliderMdxOptions
  * Options for compiling `.deck.mdx` documents into decks with MDX. Pass them
  * to `@mdx-js/mdx` or one of its integrations.
  *
- * Decks support directives (with `remark-directive`), e.g., `:::notes` for
- * presenter notes (see {@link remarkNotes}). Other directives are left to
- * other remark plugins. As usual with `remark-directive`, a colon followed by
- * a word in text, like `a:b`, starts a text directive, so write `a\:b`
- * instead.
+ * Decks use directives (with `remark-directive`): `:::notes` for presenter
+ * notes (see {@link remarkNotes}), `:step` for steps (see
+ * {@link remarkSteps}), and `:slide` and `::slide` for slides (see
+ * {@link remarkSlides}). Other directives are left to other remark plugins,
+ * and kept as text if none handles them (see {@link directiveHandlers}),
+ * since a colon followed by a word, like in `10:30`, is parsed as a
+ * directive.
  */
 export function sliderMdxOptions({
   math,
@@ -39,14 +44,17 @@ export function sliderMdxOptions({
   ...options
 }: SliderMdxOptions = {}): Pick<
   CompileOptions,
-  'remarkPlugins' | 'rehypePlugins' | 'recmaPlugins'
+  'remarkPlugins' | 'remarkRehypeOptions' | 'rehypePlugins' | 'recmaPlugins'
 > {
   return {
+    remarkRehypeOptions: { handlers: directiveHandlers },
     remarkPlugins: [
+      remarkHeadingAttributes,
       remarkFrontmatter,
       ...(math === false ? [] : [remarkMath]),
       remarkDirective,
       remarkNotes,
+      remarkSteps,
       [remarkSlides, options],
     ],
     rehypePlugins: [

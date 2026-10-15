@@ -82,6 +82,13 @@ export default function slider({
     return mdx({
       ...options,
       include,
+      remarkRehypeOptions: {
+        ...options.remarkRehypeOptions,
+        handlers: {
+          ...sliderOptions.remarkRehypeOptions?.handlers,
+          ...options.remarkRehypeOptions?.handlers,
+        },
+      },
       remarkPlugins: [
         ...(sliderOptions.remarkPlugins ?? []),
         ...(remarkPlugins ?? []),
