@@ -222,6 +222,7 @@ export function PresenterPanel({
               flex: 1,
               minHeight: 0,
               overflowY: 'auto',
+              scrollbarWidth: 'thin',
               typography: 'body1',
               fontSize: '1.25rem',
             },

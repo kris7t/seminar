@@ -1,4 +1,4 @@
-import { Box, ButtonBase, ThemeProvider } from '@mui/material';
+import { Box, ButtonBase } from '@mui/material';
 import {
   useCallback,
   useState,
@@ -9,7 +9,7 @@ import {
 
 import type { Size } from '../deck/useFitScale.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
-import { darkUiTheme } from '../menu/uiTheme.ts';
+import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
 import { SLIDE_HEIGHT } from '../theme/createSlideTheme.ts';
 import { useFullscreen } from './useFullscreen.ts';
 
@@ -79,7 +79,7 @@ export function NotesDisplay({
   const expandedHeight = size.height * 0.6;
   const fits = notesHeight <= barHeight;
   return (
-    <ThemeProvider theme={darkUiTheme}>
+    <UiThemeProvider dark>
       {/* Also measures the notes when they don't fit. */}
       <Box
         ref={measureRef}
@@ -139,7 +139,11 @@ export function NotesDisplay({
               NOTES_STYLES,
               { flex: 1, minWidth: 0 },
               expanded
-                ? { maxHeight: expandedHeight - 16, overflowY: 'auto' }
+                ? {
+                    maxHeight: expandedHeight - 16,
+                    overflowY: 'auto',
+                    scrollbarWidth: 'thin',
+                  }
                 : {
                     maxHeight: COLLAPSED_HEIGHT,
                     overflow: 'hidden',
@@ -167,6 +171,6 @@ export function NotesDisplay({
           </ButtonBase>
         </Box>
       )}
-    </ThemeProvider>
+    </UiThemeProvider>
   );
 }

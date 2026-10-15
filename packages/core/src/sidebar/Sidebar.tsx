@@ -90,7 +90,12 @@ function Section({
         <Box
           id={id}
           ref={followCurrent}
-          sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            scrollbarWidth: 'thin',
+          }}
         >
           {children}
         </Box>

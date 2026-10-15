@@ -61,7 +61,8 @@ import {
 import { DeckMenu } from '../menu/DeckMenu.tsx';
 import { MenuButton } from '../menu/MenuButton.tsx';
 import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
-import { darkUiTheme, uiTheme } from '../menu/uiTheme.ts';
+import { uiTheme } from '../menu/uiTheme.ts';
+import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
 import { useDeckNavigation } from './useDeckNavigation.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
@@ -421,9 +422,9 @@ export function Deck({
               {sidebarSections.some(({ expanded }) => expanded) && (
                 // Outside of the slides, so that clicks don't navigate. Dark
                 // like the rest of the presenter view.
-                <ThemeProvider theme={presenting ? darkUiTheme : uiTheme}>
+                <UiThemeProvider dark={presenting}>
                   <Sidebar sections={sidebarSections} />
-                </ThemeProvider>
+                </UiThemeProvider>
               )}
               {/*
                * Always rendered, so that the slide isn't remounted when the
@@ -585,7 +586,7 @@ export function Deck({
                     )}
                   </Box>
                   {presenting && (
-                    <ThemeProvider theme={darkUiTheme}>
+                    <UiThemeProvider dark>
                       <Box
                         // Clicking the panel navigates, too, so that the
                         // presenter can advance without the mouse pointer
@@ -609,11 +610,11 @@ export function Deck({
                           notesOnly={notesOnly}
                         />
                       </Box>
-                    </ThemeProvider>
+                    </UiThemeProvider>
                   )}
                 </Box>
                 {presenting && (
-                  <ThemeProvider theme={darkUiTheme}>
+                  <UiThemeProvider dark>
                     <PresenterToolbar
                       width={presenterAreaSize.width}
                       timerStart={timerStart}
@@ -627,7 +628,7 @@ export function Deck({
                       menuOpen={menuPosition !== undefined}
                       onOpenMenu={openMenu}
                     />
-                  </ThemeProvider>
+                  </UiThemeProvider>
                 )}
               </Box>
             </Box>

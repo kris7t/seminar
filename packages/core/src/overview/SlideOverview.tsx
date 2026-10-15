@@ -189,6 +189,8 @@ export function SlideOverview({
         overflowY: 'auto',
         p: 2,
         bgcolor: 'grey.900',
+        // Dark scrollbars on the dark background.
+        colorScheme: 'dark',
         WebkitTouchCallout: 'none',
       }}
     >
