@@ -156,6 +156,101 @@ describe('::include', () => {
     ]);
   });
 
+  it('includes divisions without slides', async () => {
+    const source =
+      '---\ndepth: 3\n---\n\n# Mine\n\n::include[./talk.deck.mdx#backup]';
+    expect(
+      (await includedSlides(source)).map(({ id, spare, aliases }) => [
+        id,
+        spare,
+        aliases,
+      ]),
+    ).toEqual([
+      ['mine', undefined, undefined],
+      // Spare like a division of this deck, and the target of its id.
+      ['extra', undefined, ['backup']],
+    ]);
+    expect(await tocOf(source)).toEqual([
+      {
+        slide: 0,
+        children: [
+          { title: 'Backup', children: [{ slide: 1, title: 'Extra' }] },
+        ],
+      },
+    ]);
+    expect(
+      (await includedSlides(`${source}{spare}`)).map(({ spare }) => spare),
+    ).toEqual([undefined, true]);
+  });
+
+  it('keeps the levels of divisions', async () => {
+    // A section stays a section, even after a subsection.
+    expect(
+      await tocOf(
+        '---\ndepth: 4\n---\n\n# Mine\n\n## Part\n\n### Sub\n\n::include[./talk.deck.mdx#basics]',
+      ),
+    ).toEqual([
+      {
+        slide: 0,
+        children: [
+          { slide: 1, children: [{ slide: 2 }] },
+          {
+            slide: 3,
+            title: 'Basics',
+            children: [
+              { slide: 4, title: 'Intro' },
+              { slide: 5, title: 'Details' },
+              { slide: 6, title: 'Intro' },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('keeps content slides and divisions, whatever the depths', async () => {
+    // The included deck has a depth of 3.
+    expect(
+      await tocOf(
+        '---\ndepth: 2\n---\n\n# Mine\n\n::include[./talk.deck.mdx#details]\n\n::include[./talk.deck.mdx#basics]',
+      ),
+    ).toEqual([
+      {
+        slide: 0,
+        children: [
+          { slide: 1, title: 'Details' },
+          // The section stays a section, although the deck has no sections.
+          {
+            slide: 2,
+            title: 'Basics',
+            children: [
+              { slide: 3, title: 'Intro' },
+              { slide: 4, title: 'Details' },
+              { slide: 5, title: 'Intro' },
+            ],
+          },
+        ],
+      },
+    ]);
+    expect(
+      await tocOf(
+        '---\ndepth: 4\n---\n\n# A\n\n## B\n\n### C\n\n::include[./talk.deck.mdx#details]',
+      ),
+    ).toEqual([
+      {
+        slide: 0,
+        children: [
+          {
+            slide: 1,
+            children: [
+              { slide: 2, children: [{ slide: 3, title: 'Details' }] },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
   it('includes ranges of slides, and recaps slides outside them', async () => {
     const slides = await includedSlides(
       '---\ndepth: 3\n---\n\n::include[./talk.deck.mdx]{after=intro to=backup}',
@@ -189,6 +284,151 @@ describe('::include', () => {
       'intro-recap',
       'extra',
     ]);
+  });
+
+  describe('of slides included before', () => {
+    /** Summarizes the slides by their ids and what they recap. */
+    async function summary(source: string) {
+      return (await includedSlides(source)).map(({ id, recap, title }) =>
+        recap === undefined ? [id, title] : [id, `recap of ${recap as string}`],
+      );
+    }
+
+    it('recaps them', async () => {
+      expect(
+        await summary(
+          '::include[./talk.deck.mdx#details]\n\n::include[./talk.deck.mdx#details]{to=1}',
+        ),
+      ).toEqual([
+        ['details', 'Details'],
+        [undefined, 'recap of details'],
+      ]);
+    });
+
+    it('recaps them in overlapping ranges', async () => {
+      expect(
+        await summary(
+          '::include[./talk.deck.mdx#basics]\n\n::include[./talk.deck.mdx]{from=details to=details}',
+        ),
+      ).toEqual([
+        ['basics', 'Basics'],
+        ['intro', 'Intro'],
+        ['details', 'Details'],
+        ['intro-recap', 'recap of intro'],
+        [undefined, 'recap of details'],
+      ]);
+    });
+
+    it('recaps them for recaps of them', async () => {
+      const slides = await includedSlides(
+        '::include[./talk.deck.mdx#intro]\n\n::include[./talk.deck.mdx]{after=intro to=basics}',
+      );
+      expect(slides.map(({ id, recap, after }) => [id, recap, after])).toEqual([
+        ['intro', undefined, undefined],
+        ['details', undefined, undefined],
+        // Continues where the previous showing ended, like other recaps.
+        ['intro-recap', 'intro', undefined],
+      ]);
+    });
+
+    it('recaps them when included by other decks', async () => {
+      expect(
+        await summary(
+          '::include[./talk.deck.mdx#details]\n\n::include[./other.deck.mdx]',
+        ),
+      ).toEqual([
+        ['details', 'Details'],
+        ['wrapper', 'Wrapper'],
+        [undefined, 'recap of details'],
+      ]);
+    });
+
+    it('copies them with copy', async () => {
+      expect(
+        await summary(
+          '::include[./talk.deck.mdx#details]\n\n::include[./talk.deck.mdx#details]{copy}\n\n::include[./talk.deck.mdx#details]',
+        ),
+      ).toEqual([
+        ['details', 'Details'],
+        ['details-1', 'Details'],
+        [undefined, 'recap of details'],
+      ]);
+    });
+  });
+
+  describe('of this deck', () => {
+    it('recaps slides, repeating their ranges', async () => {
+      const slides = await includedSlides(
+        '## A {to=1}\n\n- :step a\n- :step b\n\n## B\n\n::include[#a]\n\n::include[.#a]{#again after=1}',
+      );
+      expect(
+        slides.map(({ id, recap, from, after, to }) => [
+          id,
+          recap,
+          from,
+          after,
+          to,
+        ]),
+      ).toEqual([
+        ['a', undefined, undefined, undefined, '1'],
+        ['b', undefined, undefined, undefined, undefined],
+        // Starts from the beginning, unlike `::recap`.
+        [undefined, 'a', '0', undefined, '1'],
+        ['again', 'a', undefined, '1', '1'],
+      ]);
+    });
+
+    it('copies slides with copy', async () => {
+      const slides = await includedSlides(
+        '## A\n\nText\n\n::recap[#a]\n\n## C\n\n::include[.]{from=a before=c copy}',
+      );
+      expect(
+        slides.map(({ id, recap, title, children }) => [
+          id,
+          recap ?? title,
+          children,
+        ]),
+      ).toEqual([
+        ['a', 'A', '<p>Text</p>'],
+        [undefined, 'a', undefined],
+        ['c', 'C', undefined],
+        ['a-1', 'A', '<p>Text</p>'],
+        // Recaps the copy.
+        [undefined, 'a-1', undefined],
+      ]);
+    });
+
+    it('includes divisions, also later in the deck', async () => {
+      const source =
+        '---\ndepth: 3\n---\n\n# Talk\n\n::include[#part]\n\n## Part\n\n### X';
+      expect(
+        (await includedSlides(source)).map(({ id, recap }) => [id, recap]),
+      ).toEqual([
+        ['talk', undefined],
+        [undefined, 'part'],
+        [undefined, 'x'],
+        ['part', undefined],
+        ['x', undefined],
+      ]);
+      expect(await tocOf(source)).toEqual([
+        {
+          slide: 0,
+          children: [
+            { slide: 1, children: [{ slide: 2 }] },
+            { slide: 3, children: [{ slide: 4 }] },
+          ],
+        },
+      ]);
+    });
+
+    it('reports ranges that contain the include', async () => {
+      expect(
+        await messages('## A\n\n::include[.]\n\n::include[#missing]'),
+      ).toEqual([
+        expect.stringContaining('contain the `::include` itself'),
+        expect.stringContaining("Can't find the slide `missing` in this deck"),
+      ]);
+    });
   });
 
   it('reports mistakes', async () => {

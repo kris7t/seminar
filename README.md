@@ -105,8 +105,12 @@ Presenter notes, shown only to the presenter.
   `id` is a division, e.g., a section, the division is included with its
   slides, their ranges of steps, recaps, and `spare`. `::include[./other.deck.mdx]`
   includes the whole deck, or the slides `{from=id}` or `{after=id}` to
-  `{to=id}` or `{before=id}`. Included divisions are nested in the division
-  of the directive, so the deck needs the `depth:` to hold them. The slides
+  `{to=id}` or `{before=id}`. Included sections stay sections, and included content slides stay content slides. Slides
+  included again, e.g., in overlapping ranges, or through other decks, recap
+  the first inclusion, continuing its steps, unless the include has `{copy}`. `::include[#id]` and
+  `::include[.]{from=…}` include slides of the deck itself: as recaps that
+  repeat their own steps, unlike `::recap`, which continues them, or as copies
+  with their own state with `{copy}`. The slides
   are imported from the other deck, which resolves its own imports, and
   bundlers only keep the included slides and what they import.
 - **Step styles:** `:step{variant=…}` or a shorthand like `:step{only}`, or

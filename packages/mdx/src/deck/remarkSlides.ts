@@ -20,11 +20,16 @@ import {
   createStringAttribute,
 } from '../utils/estree.ts';
 import { getDeckFrontmatter, type DeckDefaults } from './frontmatter.ts';
-import { includeSlides, type IncludeContext } from './includes.ts';
+import {
+  expandSelfIncludes,
+  includeSlides,
+  type IncludeContext,
+} from './includes.ts';
 import { SLIDE_TITLE_MARKER } from './marker.ts';
 import {
   buildSlides,
   createToc,
+  finishSlides,
   resolveDivisionIds,
   resolveSpares,
   isStepBound,
@@ -41,45 +46,6 @@ export interface RemarkSlidesOptions extends DeckDefaults {
    * time, e.g., a deck it includes slides from, so that it can be watched.
    */
   onDependency?: ((deckPath: string, dependency: string) => void) | undefined;
-}
-
-/**
- * Makes the ids of the slides unique, e.g., if slides included from another
- * deck have the ids of slides of this deck, by adding numbers to the ids of
- * later slides. Recaps among included slides refer to the slides included
- * with them by their new ids.
- */
-function dedupeIds(slides: readonly SlideDraft[]) {
-  const used = new Set<string>();
-  const renamed = new Map<object, Map<string, string>>();
-  for (const slide of slides) {
-    const { id, includeGroup } = slide;
-    if (id === undefined) {
-      continue;
-    }
-    let unique = id;
-    for (let n = 1; used.has(unique); n += 1) {
-      unique = `${id}-${String(n)}`;
-    }
-    used.add(unique);
-    if (unique !== id) {
-      slide.id = unique;
-      if (includeGroup !== undefined) {
-        let group = renamed.get(includeGroup);
-        if (group === undefined) {
-          group = new Map();
-          renamed.set(includeGroup, group);
-        }
-        group.set(id, unique);
-      }
-    }
-  }
-  for (const slide of slides) {
-    const { recap, includeGroup } = slide;
-    if (recap !== undefined && includeGroup !== undefined) {
-      slide.recap = renamed.get(includeGroup)?.get(recap) ?? recap;
-    }
-  }
 }
 
 /**
@@ -353,6 +319,7 @@ export function remarkSlides({
       esm: includeEsm,
       imports: { count: 0 },
       stack: [],
+      shown: new Map(),
       onDependency:
         onDependency === undefined || file.history.length === 0
           ? undefined
@@ -365,12 +332,12 @@ export function remarkSlides({
       depth,
       slugger,
       esm,
-      onInclude: (directive, parentLevel) =>
-        includeSlides(directive, includeContext, parentLevel),
+      onInclude: (directive) => includeSlides(directive, includeContext),
     });
-    dedupeIds(slides);
+    expandSelfIncludes(slides, file, depth);
+    finishSlides(slides, slugger);
     resolveSpares(slides, depth, file);
-    resolveDivisionIds(slides);
+    resolveDivisionIds(slides, depth);
     const bindings = collectBindings(esm);
     const themeSource = getThemeSource(frontmatter, file);
     const deck: MdxJsxFlowElement = {

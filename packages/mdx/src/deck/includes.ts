@@ -15,8 +15,10 @@ import { slideExportName } from './recmaSlideExports.ts';
 import {
   buildSlides,
   createSlide,
+  finishSlides,
   resolveDivisionIds,
   STEP_BOUNDS,
+  structureLevels,
   type SlideDraft,
 } from './slideDrafts.ts';
 
@@ -34,6 +36,11 @@ export interface IncludeContext {
   stack: readonly string[];
   /** Tells that the deck depends on another file, e.g., to watch it. */
   onDependency?: ((dependency: string) => void) | undefined;
+  /**
+   * The slides that show each included slide first, by its origin (see
+   * `SlideDraft`), which later includes of the slide recap.
+   */
+  shown: Map<string, SlideDraft>;
 }
 
 /** The slides of an included deck, as {@link buildSlides} creates them. */
@@ -117,20 +124,26 @@ function readStructure(
     imports: { count: 0 },
     stack: [...context.stack, deckPath],
     onDependency: context.onDependency,
+    shown: new Map(),
   };
+  const slugger = new GithubSlugger();
+  // Like `remarkSlides`, so that the slides are those of the compiled deck.
   const slides = buildSlides(tree.children, {
     file,
     depth,
-    slugger: new GithubSlugger(),
+    slugger,
     esm: [],
-    onInclude: (directive, parentLevel) =>
-      includeSlides(directive, nested, parentLevel),
+    onInclude: (directive) => includeSlides(directive, nested),
   });
-  resolveDivisionIds(slides);
+  expandSelfIncludes(slides, file, depth);
+  finishSlides(slides, slugger);
+  resolveDivisionIds(slides, depth);
   deriveRecapIds(slides);
   const exports = new Map<SlideDraft, number>();
   for (const slide of slides) {
     if (slide.noSlide !== true) {
+      // Slides included by the deck keep where they come from.
+      slide.origin ??= `${deckPath}#${String(exports.size)}`;
       exports.set(slide, exports.size);
     }
   }
@@ -219,11 +232,11 @@ function titleText(slide: SlideDraft): string | undefined {
 }
 
 /** Attributes of `::include` by the form of the directive. */
-const CONTENT_ATTRIBUTES = new Set(['title', 'spare', ...STEP_BOUNDS]);
+const CONTENT_ATTRIBUTES = new Set(['title', 'spare', 'copy', ...STEP_BOUNDS]);
 
-const DIVISION_ATTRIBUTES = new Set(['title', 'spare', ...STEP_BOUNDS]);
+const DIVISION_ATTRIBUTES = new Set(['title', 'spare', 'copy', ...STEP_BOUNDS]);
 
-const RANGE_ATTRIBUTES = new Set<string>(STEP_BOUNDS);
+const RANGE_ATTRIBUTES = new Set<string>(['copy', ...STEP_BOUNDS]);
 
 /**
  * Includes slides of another deck for an `::include` directive:
@@ -242,6 +255,12 @@ const RANGE_ATTRIBUTES = new Set<string>(STEP_BOUNDS);
  * When a recap is included without the slide it recaps, the first recap of
  * the slide is included as a slide, and the others recap that one.
  *
+ * A slide is only included once: later includes of it, by this or other
+ * directives, e.g., in overlapping ranges, or in decks that include the same
+ * slide, recap it, with their own ranges of steps, and continue where the
+ * previous showing ended without one. With `copy`, the directive includes
+ * the slides as new slides instead, which other directives don't recap.
+ *
  * The path is resolved like an import of the deck, e.g., relative to it or
  * from a package, and the slides are imported from the compiled deck, where
  * they resolve their own imports, so that the bundler only keeps the included
@@ -251,7 +270,6 @@ const RANGE_ATTRIBUTES = new Set<string>(STEP_BOUNDS);
 export function includeSlides(
   directive: LeafDirective,
   context: IncludeContext,
-  parentLevel = 0,
 ): SlideDraft[] {
   const { file } = context;
   const place = directive.position;
@@ -259,12 +277,21 @@ export function includeSlides(
   const hash = label.lastIndexOf('#');
   const specifier = hash < 0 ? label : label.slice(0, hash);
   const targetId = hash < 0 ? undefined : label.slice(hash + 1);
-  if (specifier === '' || targetId === '') {
+  if (targetId === '' || (specifier === '' && targetId === undefined)) {
     file.message(
       'Expected `::include` to refer to a deck, e.g., `::include[./talk.deck.mdx#intro]`',
       { place },
     );
     return [];
+  }
+  /** Includes slides of this deck once all of them are known. */
+  const includeSelf = () => {
+    const placeholder = createSlide('content', undefined, undefined);
+    placeholder.selfInclude = directive;
+    return [placeholder];
+  };
+  if (specifier === '' || specifier === '.') {
+    return includeSelf();
   }
   // Documents without a path are resolved against the working directory.
   const from =
@@ -275,7 +302,10 @@ export function includeSlides(
   let structure: DeckStructure;
   try {
     deckPath = resolveDeck(specifier, from);
-    if (deckPath === from || context.stack.includes(deckPath)) {
+    if (deckPath === from) {
+      return includeSelf();
+    }
+    if (context.stack.includes(deckPath)) {
       file.message(`Can't include \`${specifier}\`, which includes this deck`, {
         place,
       });
@@ -289,8 +319,9 @@ export function includeSlides(
     return [];
   }
   const { slides: source, exports, depth } = structure;
-  const group = {};
   const { id, classes, attributes } = getAttributes(directive);
+  const copy = attributes.get('copy');
+  const isCopy = copy === '' || copy === 'true';
 
   // Imports each component once.
   const imported = new Map<number, string>();
@@ -312,25 +343,43 @@ export function includeSlides(
     }
     return name;
   };
-  // Included divisions are nested in the division of the directive, while
-  // content slides stay at the level of content slides.
-  let shift = 0;
-  const shiftLevel = (level: number | undefined) =>
-    level === undefined || level >= depth ? undefined : level + shift;
-  /** Creates the included slide that renders `rendered`. */
-  const include = (
+  // Divisions keep their levels, e.g., sections stay sections, whatever the
+  // depth of this deck, while other slides are content slides of this deck.
+  const levelOf = (slide: SlideDraft) =>
+    slide.division === true ? slide.level : undefined;
+  /**
+   * Shows `rendered` for `slide`, which is either the slide itself or a recap
+   * of it, as a slide, or as a recap of the slide that already shows it.
+   *
+   * @returns The slide, and whether it's a recap.
+   */
+  const show = (
     slide: SlideDraft,
     rendered: SlideDraft,
     slideId: string | undefined,
-  ): SlideDraft => {
+    recapId: string | undefined,
+  ): { draft: SlideDraft; isRecap: boolean } => {
+    const { origin } = rendered;
+    const shown =
+      isCopy || origin === undefined ? undefined : context.shown.get(origin);
+    if (shown !== undefined) {
+      const draft = createSlide('content', recapId, undefined);
+      draft.recapTarget = shown;
+      draft.place = place;
+      return { draft, isRecap: true };
+    }
     const draft = createSlide('content', slideId, undefined);
     const name = importSlide(rendered);
     if (name !== undefined) {
       draft.include = name;
     }
+    draft.origin = origin;
     draft.tocText = titleText(slide.recap === undefined ? slide : rendered);
     draft.place = place;
-    return draft;
+    if (!isCopy && origin !== undefined) {
+      context.shown.set(origin, draft);
+    }
+    return { draft, isRecap: false };
   };
   const report = (allowed: ReadonlySet<string>, form: string) => {
     for (const attribute of [
@@ -351,18 +400,17 @@ export function includeSlides(
     }
     return index;
   };
-  const isDivision = (slide: SlideDraft) =>
-    slide.level !== undefined && slide.level < depth;
+  const isDivision = (slide: SlideDraft) => slide.division === true;
   /** Returns the index after the division at `index`, or the slide. */
   const endOf = (index: number) => {
     const slide = source[index];
     if (slide === undefined || !isDivision(slide)) {
       return index + 1;
     }
-    const level = slide.level ?? 0;
-    const end = source.findIndex(
-      (other, otherIndex) =>
-        otherIndex > index && other.level !== undefined && other.level <= level,
+    const levels = structureLevels(source, depth);
+    const level = levels[index] ?? 0;
+    const end = levels.findIndex(
+      (other, otherIndex) => otherIndex > index && other <= level,
     );
     return end < 0 ? source.length : end;
   };
@@ -385,9 +433,9 @@ export function includeSlides(
         );
         return [];
       }
-      const draft = include(target, original, id ?? target.id);
+      const { draft, isRecap } = show(target, original, id ?? target.id, id);
       copyRange(draft, target.attributes);
-      if (target.recap !== undefined) {
+      if (target.recap !== undefined && !isRecap) {
         setRecapStart(draft, source, index, original);
       }
       // The directive overrides the start and the end of the range.
@@ -406,7 +454,6 @@ export function includeSlides(
       }
       draft.tocTitle = attributes.get('title');
       draft.spareAttribute = attributes.get('spare');
-      draft.includeGroup = group;
       return [draft];
     }
     report(DIVISION_ATTRIBUTES, 'a division');
@@ -418,7 +465,6 @@ export function includeSlides(
         );
       }
     }
-    shift = parentLevel + 1 - (target.level ?? 1);
     const included = includeRange(index, endOf(index));
     const division = included[0];
     if (division !== undefined) {
@@ -446,8 +492,6 @@ export function includeSlides(
   const start = fromIndex ?? (afterIndex === undefined ? 0 : endOf(afterIndex));
   const end =
     toIndex === undefined ? (beforeIndex ?? source.length) : endOf(toIndex);
-  // The top level of the deck is nested in the division of the directive.
-  shift = parentLevel;
   return includeRange(start, end);
 
   /**
@@ -456,8 +500,9 @@ export function includeSlides(
    */
   function includeRange(start: number, end: number): SlideDraft[] {
     const range = source.slice(start, end);
-    // The included slides that recaps of slides outside the range recap.
-    const recapped = new Map<SlideDraft, string | undefined>();
+    // The slides of this directive that show each slide, which recaps of the
+    // slide among the included slides recap.
+    const showing = new Map<SlideDraft, SlideDraft>();
     const drafts: SlideDraft[] = [];
     for (const [offset, slide] of range.entries()) {
       const index = start + offset;
@@ -466,7 +511,8 @@ export function includeSlides(
         draft.noSlide = true;
         draft.headingText = slide.headingText;
         draft.tocTitle = slide.tocTitle;
-        draft.level = shiftLevel(slide.level);
+        draft.level = levelOf(slide);
+        draft.division = slide.division === true;
         draft.spareAttribute = slide.spareAttribute;
         draft.place = place;
         drafts.push(draft);
@@ -474,47 +520,285 @@ export function includeSlides(
       }
       const original =
         slide.recap === undefined ? slide : findOriginal(source, slide);
-      // Recaps refer to the included slide by its id.
-      const recapTarget =
-        original === undefined || original === slide
-          ? undefined
-          : range.includes(original)
-            ? original.id
-            : recapped.get(original);
-      let draft: SlideDraft;
       if (original === undefined) {
         file.message(
           `Can't find the slide that \`${slide.id ?? 'a recap'}\` in \`${specifier}\` recaps`,
           { place },
         );
         continue;
-      } else if (original === slide) {
-        draft = include(slide, slide, slide.id);
-        draft.level = shiftLevel(slide.level);
-        draft.tocTitle = slide.tocTitle;
+      }
+      const shown = showing.get(original);
+      let draft: SlideDraft;
+      if (shown === undefined) {
+        // The slide, the first recap of a slide outside the range, or a
+        // recap of a slide that was included before.
+        const result = show(
+          slide,
+          original,
+          slide.id,
+          slide.recap === undefined ? undefined : slide.id,
+        );
+        draft = result.draft;
         copyRange(draft, slide.attributes);
-      } else if (recapTarget !== undefined) {
-        // Recaps the included slide.
+        if (slide.recap !== undefined && !result.isRecap) {
+          setRecapStart(draft, source, index, original);
+        }
+        showing.set(original, draft);
+      } else {
+        // Recaps the slide among the included slides.
         draft = createSlide('content', slide.id, undefined);
-        draft.recap = recapTarget;
-        draft.tocTitle = slide.tocTitle;
+        draft.recapTarget = shown;
         draft.place = place;
         copyRange(draft, slide.attributes);
-      } else {
-        // The first recap of a slide outside the range shows the slide, and
-        // so do recaps of slides without ids, which can't be referred to.
-        draft = include(slide, original, slide.id);
-        draft.tocTitle = slide.tocTitle;
-        copyRange(draft, slide.attributes);
-        setRecapStart(draft, source, index, original);
-        recapped.set(original, slide.id);
       }
+      // Recaps keep the structure of the included slides, too.
+      draft.level = levelOf(slide);
+      draft.division = slide.division === true;
+      draft.tocTitle = slide.tocTitle;
       draft.spareAttribute = slide.spareAttribute;
       drafts.push(draft);
     }
-    for (const draft of drafts) {
-      draft.includeGroup = group;
-    }
     return drafts;
   }
+}
+
+/** Copies `slide`, for a copy of a slide of this deck, which has its own state. */
+function copySlide(slide: SlideDraft): SlideDraft {
+  const copy: SlideDraft = {
+    ...slide,
+    master: { ...slide.master },
+    attributes: new Map(slide.attributes),
+    title: structuredClone(slide.title),
+    children: structuredClone(slide.children),
+  };
+  // Divisions without slides refer to the slide, not to the copy.
+  delete copy.aliases;
+  delete copy.origin;
+  return copy;
+}
+
+/**
+ * Recaps `slide` of this deck, repeating its range of steps, i.e., from the
+ * beginning if it doesn't have a start, unlike `::recap`, which continues
+ * where the previous showing ended.
+ */
+function repeatSlide(slide: SlideDraft): SlideDraft {
+  const draft = createSlide('content', undefined, undefined);
+  if (slide.recap === undefined && slide.recapTarget === undefined) {
+    draft.recapTarget = slide;
+  } else {
+    // Recaps the slide that the recap recaps.
+    if (slide.recap !== undefined) {
+      draft.recap = slide.recap;
+    }
+    if (slide.recapTarget !== undefined) {
+      draft.recapTarget = slide.recapTarget;
+    }
+  }
+  copyRange(draft, slide.attributes);
+  if (!hasAny(draft.attributes, START_BOUNDS)) {
+    if (slide.fromLast === true) {
+      draft.fromLast = true;
+    } else {
+      draft.attributes.set('from', '0');
+    }
+  }
+  draft.tocTitle = slide.tocTitle;
+  return draft;
+}
+
+/**
+ * Replaces the `::include` directives of slides of this deck, e.g.,
+ * `::include[#id]`, with the included slides, once all slides are built, in
+ * the order of the directives. The forms are those of `includeSlides`, but
+ * the slides are recapped, repeating their own ranges of steps, unlike
+ * `::recap`, or copied, with their own state, with `copy`. Ranges that
+ * include the directive itself are reported.
+ */
+export function expandSelfIncludes(
+  slides: SlideDraft[],
+  file: VFile,
+  depth: number,
+): void {
+  for (let index = 0; index < slides.length; index += 1) {
+    const placeholder = slides[index];
+    if (placeholder?.selfInclude === undefined) {
+      continue;
+    }
+    const included = expandSelfInclude(slides, index, file, depth);
+    slides.splice(index, 1, ...included);
+    index += included.length - 1;
+  }
+}
+
+function expandSelfInclude(
+  slides: readonly SlideDraft[],
+  placeholderIndex: number,
+  file: VFile,
+  depth: number,
+): SlideDraft[] {
+  const directive = slides[placeholderIndex]?.selfInclude;
+  if (directive === undefined) {
+    return [];
+  }
+  const place = directive.position;
+  const label = toString(directive).trim();
+  const hash = label.lastIndexOf('#');
+  const targetId = hash < 0 ? undefined : label.slice(hash + 1);
+  const { id, classes, attributes } = getAttributes(directive);
+  const copy = attributes.get('copy');
+  const isCopy = copy === '' || copy === 'true';
+  const report = (allowed: ReadonlySet<string>, form: string) => {
+    for (const attribute of [
+      ...classes.map((name) => `.${name}`),
+      ...[...attributes.keys()].filter((key) => !allowed.has(key)),
+    ]) {
+      file.message(`Ignoring \`${attribute}\` on \`::include\` of ${form}`, {
+        place,
+      });
+    }
+  };
+  const findIndex = (slideId: string) => {
+    const index = slides.findIndex(
+      (slide) => slide.id === slideId && slide.selfInclude === undefined,
+    );
+    if (index < 0) {
+      file.message(`Can't find the slide \`${slideId}\` in this deck`, {
+        place,
+      });
+    }
+    return index;
+  };
+  const isDivision = (slide: SlideDraft) => slide.division === true;
+  const endOf = (index: number) => {
+    const slide = slides[index];
+    if (slide === undefined || !isDivision(slide)) {
+      return index + 1;
+    }
+    const levels = structureLevels(slides, depth);
+    const level = levels[index] ?? 0;
+    const end = levels.findIndex(
+      (other, otherIndex) => otherIndex > index && other <= level,
+    );
+    return end < 0 ? slides.length : end;
+  };
+  // Divisions keep their levels, e.g., sections stay sections, whatever the
+  // depth of this deck, while other slides are content slides of this deck.
+  const levelOf = (slide: SlideDraft) =>
+    slide.division === true ? slide.level : undefined;
+  const includeRange = (start: number, end: number): SlideDraft[] => {
+    if (start <= placeholderIndex && placeholderIndex < end) {
+      file.message(
+        "Can't include slides of this deck that contain the `::include` itself",
+        { place },
+      );
+      return [];
+    }
+    // The copies of the slides, which recaps of them among the copies recap.
+    const copies = new Map<SlideDraft, SlideDraft>();
+    const drafts: SlideDraft[] = [];
+    for (const slide of slides.slice(start, end)) {
+      // Includes of this deck later in the range aren't expanded yet.
+      if (slide.selfInclude !== undefined) {
+        continue;
+      }
+      let draft: SlideDraft;
+      if (slide.noSlide === true || isCopy) {
+        draft = copySlide(slide);
+        const original =
+          slide.recapTarget ??
+          (slide.recap === undefined
+            ? undefined
+            : findSlide(slides, slide.recap));
+        const copied =
+          original === undefined ? undefined : copies.get(original);
+        if (copied !== undefined) {
+          delete draft.recap;
+          draft.recapTarget = copied;
+        }
+        copies.set(slide, draft);
+      } else {
+        draft = repeatSlide(slide);
+      }
+      draft.level = levelOf(slide);
+      draft.division = slide.division === true;
+      draft.place = place;
+      drafts.push(draft);
+    }
+    return drafts;
+  };
+
+  if (targetId !== undefined) {
+    const index = findIndex(targetId);
+    const target = slides[index];
+    if (target === undefined) {
+      return [];
+    }
+    if (!isDivision(target)) {
+      report(CONTENT_ATTRIBUTES, 'a slide');
+      const draft = isCopy ? copySlide(target) : repeatSlide(target);
+      if (isCopy) {
+        draft.id = id ?? target.id;
+      } else if (id !== undefined) {
+        draft.id = id;
+      }
+      // The directive overrides the start and the end of the range.
+      if (hasAny(attributes, START_BOUNDS)) {
+        draft.fromLast = false;
+        for (const bound of START_BOUNDS) {
+          draft.attributes.delete(bound);
+        }
+        copyRange(draft, attributes, START_BOUNDS);
+      }
+      if (hasAny(attributes, END_BOUNDS)) {
+        for (const bound of END_BOUNDS) {
+          draft.attributes.delete(bound);
+        }
+        copyRange(draft, attributes, END_BOUNDS);
+      }
+      draft.tocTitle = attributes.get('title') ?? draft.tocTitle;
+      draft.spareAttribute = attributes.get('spare');
+      draft.level = undefined;
+      draft.division = false;
+      draft.place = place;
+      return [draft];
+    }
+    report(DIVISION_ATTRIBUTES, 'a division');
+    for (const bound of STEP_BOUNDS) {
+      if (attributes.has(bound)) {
+        file.message(
+          `Ignoring \`${bound}\` on \`::include\` of a division, whose slides keep their own ranges of steps`,
+          { place },
+        );
+      }
+    }
+    const included = includeRange(index, endOf(index));
+    const division = included[0];
+    if (division !== undefined) {
+      if (id !== undefined) {
+        division.id = id;
+      }
+      division.tocTitle = attributes.get('title') ?? division.tocTitle;
+      division.spareAttribute = attributes.get('spare');
+    }
+    return included;
+  }
+
+  report(RANGE_ATTRIBUTES, 'a deck');
+  const bound = (name: (typeof STEP_BOUNDS)[number]) => {
+    const value = attributes.get(name);
+    if (value === undefined) {
+      return undefined;
+    }
+    const index = findIndex(value);
+    return index < 0 ? undefined : index;
+  };
+  const fromIndex = bound('from');
+  const afterIndex = bound('after');
+  const toIndex = bound('to');
+  const beforeIndex = bound('before');
+  const start = fromIndex ?? (afterIndex === undefined ? 0 : endOf(afterIndex));
+  const end =
+    toIndex === undefined ? (beforeIndex ?? slides.length) : endOf(toIndex);
+  return includeRange(start, end);
 }

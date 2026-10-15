@@ -57,8 +57,21 @@ export interface SlideDraft {
    * deck (see `::include`), which renders the slide instead of `children`.
    */
   include?: string;
-  /** Identifies the slides included by the same `::include` together. */
-  includeGroup?: object;
+  /**
+   * Identifies the slide that an included slide shows by the deck that
+   * defines it and its index there, so that the slide is only included once.
+   */
+  origin?: string | undefined;
+  /**
+   * An `::include` of slides of this deck, which is replaced by the included
+   * slides once all slides are built, see `expandSelfIncludes`.
+   */
+  selfInclude?: LeafDirective;
+  /**
+   * The slide that this slide recaps, for recaps created by `::include`,
+   * whose `recap` is set to its id by {@link finishSlides}.
+   */
+  recapTarget?: SlideDraft;
   /** Whether to only show the last step, e.g., for included recaps. */
   fromLast?: boolean;
   /**
@@ -73,6 +86,12 @@ export interface SlideDraft {
   aliases?: string[];
   /** Title of the slide in the table of contents, if set explicitly. */
   tocTitle?: string | undefined;
+  /**
+   * Whether the slide starts a division, like a section, i.e., its heading is
+   * above the depth of its deck, which may be another deck for included
+   * slides.
+   */
+  division?: boolean;
   /** Level of the heading of the slide, if any. */
   level: number | undefined;
 }
@@ -82,6 +101,28 @@ export interface TocEntry {
   slide?: number;
   title?: string;
   children?: TocEntry[];
+}
+
+/**
+ * Returns the level of each slide in the structure of the deck: the level of
+ * the heading of divisions, and a level below the deepest division for other
+ * slides, i.e., the level of the content slides of the deck, or deeper for
+ * divisions included from decks with a greater depth.
+ */
+export function structureLevels(
+  slides: readonly SlideDraft[],
+  depth: number,
+): number[] {
+  const contentLevel = Math.max(
+    depth,
+    1,
+    ...slides.map(({ division, level }) =>
+      division === true && level !== undefined ? level + 1 : 0,
+    ),
+  );
+  return slides.map(({ division, level }) =>
+    division === true && level !== undefined ? level : contentLevel,
+  );
 }
 
 /**
@@ -96,8 +137,7 @@ export function createToc(
   slides: readonly SlideDraft[],
   depth: number,
 ): TocEntry[] {
-  // Slides without headings are at the level of content slides.
-  const contentLevel = Math.max(depth, 1);
+  const levels = structureLevels(slides, depth);
   const toc: TocEntry[] = [];
   const stack: { level: number; entry: TocEntry }[] = [];
   // Included slides, and recaps of them, are titled by their text, since the
@@ -109,17 +149,14 @@ export function createToc(
     }
   }
   let index = 0;
-  for (const slide of slides) {
+  for (const [position, slide] of slides.entries()) {
     const title =
       slide.tocTitle ??
       slide.tocText ??
       (slide.recap === undefined ? undefined : texts.get(slide.recap));
     // Headings deeper than the depth, e.g., with `:slide`, start content
     // slides, too.
-    const level =
-      slide.level !== undefined && slide.level < contentLevel
-        ? slide.level
-        : contentLevel;
+    const level = levels[position] ?? 0;
     let entry: TocEntry;
     if (slide.noSlide === true) {
       // Titled by the heading, since there is no slide to take it from.
@@ -301,14 +338,14 @@ export function resolveSpares(
   depth: number,
   file: VFile,
 ): void {
+  const levels = structureLevels(slides, depth);
   // The enclosing divisions of the current slide, outermost first.
   const divisions: { level: number; spare: boolean }[] = [];
-  for (const slide of slides) {
-    const { level, spareAttribute, place } = slide;
-    if (level !== undefined) {
-      while ((divisions.at(-1)?.level ?? 0) >= level) {
-        divisions.pop();
-      }
+  for (const [index, slide] of slides.entries()) {
+    const { spareAttribute, place } = slide;
+    const level = levels[index] ?? 0;
+    while ((divisions.at(-1)?.level ?? 0) >= level) {
+      divisions.pop();
     }
     let spare = divisions.at(-1)?.spare ?? false;
     if (spareAttribute === '' || spareAttribute === 'true') {
@@ -322,8 +359,7 @@ export function resolveSpares(
       );
     }
     slide.spare = spare;
-    // Headings above the deepest level start divisions.
-    if (level !== undefined && level < depth) {
+    if (slide.division === true) {
       divisions.push({ level, spare });
     }
   }
@@ -334,15 +370,20 @@ export function resolveSpares(
  * division that isn't spare, or to its first slide if all of them are, by
  * making them aliases of that slide. Must run after {@link resolveSpares}.
  */
-export function resolveDivisionIds(slides: readonly SlideDraft[]): void {
+export function resolveDivisionIds(
+  slides: readonly SlideDraft[],
+  depth: number,
+): void {
+  const levels = structureLevels(slides, depth);
   for (const [index, division] of slides.entries()) {
-    const { noSlide, id, level } = division;
-    if (noSlide !== true || id === undefined || level === undefined) {
+    const { noSlide, id } = division;
+    const level = levels[index] ?? 0;
+    if (noSlide !== true || id === undefined) {
       continue;
     }
     const members: SlideDraft[] = [];
-    for (const slide of slides.slice(index + 1)) {
-      if (slide.level !== undefined && slide.level <= level) {
+    for (const [offset, slide] of slides.slice(index + 1).entries()) {
+      if ((levels[index + 1 + offset] ?? 0) <= level) {
         break;
       }
       if (slide.noSlide !== true) {
@@ -369,9 +410,7 @@ export interface BuildContext {
    * Returns the slides included by an `::include` directive, see
    * `includeSlides`. Without it, the directive is reported and ignored.
    */
-  onInclude?:
-    | ((directive: LeafDirective, parentLevel: number) => SlideDraft[])
-    | undefined;
+  onInclude?: ((directive: LeafDirective) => SlideDraft[]) | undefined;
 }
 
 /**
@@ -384,8 +423,6 @@ export function buildSlides(
 ): SlideDraft[] {
   const slides: SlideDraft[] = [];
   let current: SlideDraft | undefined;
-  // The levels of the divisions that the current slide is in.
-  const divisions: number[] = [];
 
   for (const node of nodes) {
     if (node.type === 'yaml') {
@@ -405,13 +442,8 @@ export function buildSlides(
         node.children,
       );
       current.level = node.depth;
+      current.division = node.depth < depth;
       current.place = node.position;
-      while ((divisions.at(-1) ?? 0) >= node.depth) {
-        divisions.pop();
-      }
-      if (node.depth < depth) {
-        divisions.push(node.depth);
-      }
       if (current.noSlide === true) {
         if (node.depth < depth) {
           current.headingText = toString(node);
@@ -442,7 +474,7 @@ export function buildSlides(
           place: node.position,
         });
       } else {
-        slides.push(...onInclude(node, divisions.at(-1) ?? 0));
+        slides.push(...onInclude(node));
       }
       // Content after the included slides gets a slide of its own.
       current = undefined;
@@ -481,4 +513,60 @@ export function buildSlides(
   }
 
   return slides;
+}
+
+/** Follows the `recapTarget` of `slide` to the slide it recaps, if any. */
+function findRecapTarget(slide: SlideDraft): SlideDraft | undefined {
+  const visited = new Set<SlideDraft>();
+  let target = slide.recapTarget;
+  while (target?.recapTarget !== undefined && !visited.has(target)) {
+    visited.add(target);
+    target = target.recapTarget;
+  }
+  return target;
+}
+
+/**
+ * Makes the ids of the slides unique, e.g., if slides included from another
+ * deck have the ids of slides of this deck, by adding numbers to the ids of
+ * later slides.
+ */
+function dedupeIds(slides: readonly SlideDraft[]) {
+  const used = new Set<string>();
+  for (const slide of slides) {
+    const { id } = slide;
+    if (id === undefined) {
+      continue;
+    }
+    let unique = id;
+    for (let n = 1; used.has(unique); n += 1) {
+      unique = `${id}-${String(n)}`;
+    }
+    used.add(unique);
+    slide.id = unique;
+  }
+}
+
+/**
+ * Finishes the slides after {@link buildSlides}: gives the slides that recaps
+ * created by `::include` recap an id if they have none, makes the ids unique,
+ * and refers to the slides by their ids in the recaps.
+ */
+export function finishSlides(
+  slides: readonly SlideDraft[],
+  slugger: GithubSlugger,
+): void {
+  for (const slide of slides) {
+    const target = findRecapTarget(slide);
+    if (target !== undefined && target.id === undefined) {
+      target.id = slugger.slug(target.tocText ?? 'slide');
+    }
+  }
+  dedupeIds(slides);
+  for (const slide of slides) {
+    const target = findRecapTarget(slide);
+    if (target?.id !== undefined) {
+      slide.recap = target.id;
+    }
+  }
 }
