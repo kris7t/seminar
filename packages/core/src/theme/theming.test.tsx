@@ -1,9 +1,16 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { ThemeProvider } from '@mui/material';
+
 import { Deck } from '../deck/Deck.tsx';
 import { contentMasterClasses } from '../masters/ContentMaster.tsx';
 import { titleMasterClasses } from '../masters/TitleMaster.tsx';
+import {
+  createPointerStore,
+  MirroredPointer,
+  mirroredPointerClasses,
+} from '../presentation/pointer.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { slideNumberClasses } from '../slide/SlideNumber.tsx';
 import { createSlideTheme } from './createSlideTheme.ts';
@@ -132,6 +139,41 @@ describe('theming', () => {
     );
     expect(getComputedStyle(screen.getByText('Content')).color).toBe(
       'rgb(255, 0, 255)',
+    );
+  });
+
+  it('applies style overrides to the pointer', () => {
+    const theme = createSlideTheme({
+      components: {
+        SliderPointer: {
+          styleOverrides: {
+            cursor: { '--SliderPointer-fill': 'yellow' },
+            laser: { width: 32 },
+          },
+        },
+      },
+    });
+    const store = createPointerStore();
+    store.set({ x: 10, y: 20, cursor: 'default', idle: false });
+    const { container, rerender } = render(
+      <ThemeProvider theme={theme}>
+        <MirroredPointer store={store} mode="mirror" />
+      </ThemeProvider>,
+    );
+    const cursor = container.querySelector(`.${mirroredPointerClasses.cursor}`);
+    expect(
+      cursor === null
+        ? undefined
+        : getComputedStyle(cursor).getPropertyValue('--SliderPointer-fill'),
+    ).toBe('yellow');
+    rerender(
+      <ThemeProvider theme={theme}>
+        <MirroredPointer store={store} mode="laser" />
+      </ThemeProvider>,
+    );
+    const laser = container.querySelector(`.${mirroredPointerClasses.laser}`);
+    expect(laser === null ? undefined : getComputedStyle(laser).width).toBe(
+      '32px',
     );
   });
 });

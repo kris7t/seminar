@@ -15,7 +15,7 @@ import { Notes } from '../notes/Notes.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
-import { POINTER_IDLE_TIMEOUT } from './pointer.tsx';
+import { cursorShape, POINTER_IDLE_TIMEOUT } from './pointer.tsx';
 import { formatElapsed } from './PresenterToolbar.tsx';
 
 function fakeScreen(label: string, isInternal: boolean) {
@@ -294,6 +294,17 @@ describe('the presenter view', () => {
     });
     expect(pointer()?.style.left).toBe('100px');
     expect(pointer()?.style.top).toBe('100px');
+    expect(pointer()?.dataset['cursor']).toBe('default');
+    const link = document.createElement('span');
+    link.style.cursor = 'pointer';
+    frame.append(link);
+    fireEvent.pointerMove(link, {
+      pointerType: 'mouse',
+      clientX: 150,
+      clientY: 100,
+    });
+    expect(pointer()?.dataset['cursor']).toBe('pointer');
+    link.remove();
     // Touch doesn't hover.
     fireEvent.pointerMove(frame, {
       pointerType: 'touch',
@@ -542,6 +553,29 @@ describe('the presenter toolbar', () => {
       ),
     ).toEqual(['Go to slide (G)', 'Reset time elapsed', 'Menu']);
     remove();
+  });
+});
+
+describe('cursorShape', () => {
+  function shapeOf(element: HTMLElement, cursor: string) {
+    element.style.cursor = cursor;
+    document.body.append(element);
+    const shape = cursorShape(element);
+    element.remove();
+    return shape;
+  }
+
+  it('reads the cursor of the element', () => {
+    const span = document.createElement('span');
+    expect(shapeOf(span, 'text')).toBe('text');
+    expect(shapeOf(span, 'url(hand.png), pointer')).toBe('pointer');
+    expect(shapeOf(span, 'grabbing')).toBe('grab');
+    expect(shapeOf(span, 'wait')).toBe('default');
+  });
+
+  it('shows a caret over text fields', () => {
+    expect(shapeOf(document.createElement('input'), 'auto')).toBe('text');
+    expect(shapeOf(document.createElement('span'), 'auto')).toBe('default');
   });
 });
 
