@@ -9,6 +9,7 @@ import {
   splitTrailingAttributeBlock,
   type AttributeBlock,
 } from './attributes.ts';
+import { NOTES } from './remarkNotes.ts';
 import {
   createEsm,
   createExpressionAttribute,
@@ -495,7 +496,7 @@ export function remarkSlides({
     };
     tree.children = [
       createEsm(
-        `import { Deck as ${DECK}, Slide as ${SLIDE}, Step as ${STEP}, Formula as ${FORMULA} } from ${JSON.stringify(importSource)};`,
+        `import { Deck as ${DECK}, Slide as ${SLIDE}, Step as ${STEP}, Formula as ${FORMULA}, Notes as ${NOTES} } from ${JSON.stringify(importSource)};`,
       ),
       ...(themeSource === undefined
         ? []

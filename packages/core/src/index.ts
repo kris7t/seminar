@@ -38,6 +38,7 @@ export {
   type FormulaClassKey,
   type FormulaProps,
 } from './formula/Formula.tsx';
+export { Notes, type NotesProps } from './notes/Notes.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
 export {
   SlideStateScope,

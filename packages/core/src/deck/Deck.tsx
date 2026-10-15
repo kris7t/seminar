@@ -30,6 +30,8 @@ import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { resolveToc, type TocEntry } from '../toc/tableOfContents.ts';
 import { TocSidebar } from '../toc/TocSidebar.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
+import { getSlideNotes } from '../notes/Notes.tsx';
+import { NotesDisplay } from '../notes/NotesDisplay.tsx';
 import {
   SLIDE_VIEW_ATTRIBUTE,
   type SlideView,
@@ -127,13 +129,17 @@ export function Deck({
       }
       setOverviewShown(shown);
     },
-    [slideIndex],
+    [slideIndex, setOverviewIndex, setOverviewShown],
   );
   const view = useMemo<SlideView>(
     () => ({ index: slideIndex, kind: 'audience', interactive: true }),
     [slideIndex],
   );
-  const [containerRef, scale] = useFitScale(SLIDE_WIDTH, SLIDE_HEIGHT);
+  const [containerRef, scale, containerSize] = useFitScale(
+    SLIDE_WIDTH,
+    SLIDE_HEIGHT,
+  );
+  const notes = getSlideNotes(slides[slideIndex]);
   const [mouseNavigation, setMouseNavigation] = useState(
     defaultMouseNavigation,
   );
@@ -176,6 +182,9 @@ export function Deck({
       showOverview,
       setShowOverview,
       overviewIndex,
+      setMouseNavigation,
+      setShowToc,
+      setOverviewIndex,
     ],
   );
   const [goToSlideOpen, setGoToSlideOpen] = useState(false);
@@ -211,6 +220,7 @@ export function Deck({
                 onContextMenu={onContextMenu}
                 sx={[
                   {
+                    position: 'relative',
                     flex: 1,
                     minWidth: 0,
                     display: 'flex',
@@ -245,6 +255,15 @@ export function Deck({
                     </SlideViewProvider>
                   )}
                 </Box>
+                {notes !== undefined && !showOverview && (
+                  <NotesDisplay
+                    // Collapse the notes on another slide.
+                    key={slideIndex}
+                    notes={notes}
+                    size={containerSize}
+                    scale={scale}
+                  />
+                )}
               </Box>
             </Box>
             {showOverview && (

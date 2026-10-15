@@ -18,3 +18,7 @@ export function Step(): null {
 export function Formula(): null {
   return null;
 }
+
+export function Notes(): null {
+  return null;
+}
