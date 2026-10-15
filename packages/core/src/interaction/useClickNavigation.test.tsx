@@ -17,6 +17,7 @@ function renderDeck() {
     <Deck>
       <Slide title="Title">
         <p>Text</p>
+        <input aria-label="Field" />
         <button type="button">Button</button>
         <a href="#nowhere">Link</a>
         <div role="button">Role button</div>
@@ -112,6 +113,35 @@ describe('click navigation', () => {
     fireEvent.click(text);
     expect(window.location.hash).toBe('#slide=1');
     window.getSelection()?.removeAllRanges();
+  });
+
+  it('ignores selecting by dragging out of a text field', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    await user.pointer([
+      { keys: '[MouseLeft>]', target: screen.getByLabelText('Field') },
+      { target: screen.getByText('Text') },
+      { keys: '[/MouseLeft]' },
+    ]);
+    expect(window.location.hash).toBe('#slide=1');
+  });
+
+  it('ignores dragging on the slide', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    const text = screen.getByText('Text');
+    await user.pointer([
+      {
+        keys: '[MouseLeft>]',
+        target: text,
+        coords: { clientX: 10, clientY: 10 },
+      },
+      { target: text, coords: { clientX: 60, clientY: 10 } },
+      { keys: '[/MouseLeft]' },
+    ]);
+    expect(window.location.hash).toBe('#slide=1');
+    await user.click(text);
+    expect(window.location.hash).toBe('#slide=1&step=1');
   });
 
   it('can be disabled', async () => {

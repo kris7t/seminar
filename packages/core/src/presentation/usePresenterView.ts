@@ -1,6 +1,7 @@
 import createCache, { type EmotionCache } from '@emotion/cache';
 import { useCallback, useEffect, useState } from 'react';
 
+import { mirrorStylisPlugin } from './mirror/mirrorStylisPlugin.ts';
 import type { ScreenDetailed } from './screens.ts';
 
 /** Name of the audience window, so that a reloaded deck reuses it. */
@@ -44,7 +45,12 @@ function setUpDocument(
   }
   const container = doc.createElement('div');
   doc.body.append(container);
-  const cache = createCache({ key: 'slider-audience', container: doc.head });
+  const cache = createCache({
+    key: 'slider-audience',
+    container: doc.head,
+    // Show hover and focus of the presenter to the audience.
+    stylisPlugins: [mirrorStylisPlugin],
+  });
   return { container, cache };
 }
 

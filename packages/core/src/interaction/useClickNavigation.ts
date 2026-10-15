@@ -1,10 +1,32 @@
-import { useCallback, type MouseEvent, type MouseEventHandler } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type MouseEvent,
+  type MouseEventHandler,
+} from 'react';
 
 import { getInteraction } from './interaction.ts';
+
+/** How far the mouse may move between press and release of a click. */
+const CLICK_SLOP = 5;
 
 function hasSelection(): boolean {
   const selection = window.getSelection();
   return selection !== null && !selection.isCollapsed;
+}
+
+/** Where the last press of the primary button started. */
+interface Press {
+  x: number;
+  y: number;
+  /** Whether it started on an interactive element. */
+  interactive: boolean;
+  /**
+   * Whether it was a touch, for which the browser already only sends clicks
+   * for taps.
+   */
+  touch: boolean;
 }
 
 /**
@@ -13,7 +35,11 @@ function hasSelection(): boolean {
  *
  * Clicks on interactive elements, such as links, buttons, form controls, and
  * elements with the `data-slider-interactive` attribute, are ignored (see
- * {@link getInteraction}). Click handlers can also opt out by calling
+ * {@link getInteraction}), and so are clicks that started on them, or that
+ * moved too much between press and release to be clicks, e.g., when
+ * selecting text in a field by dragging out of it, since the browser sends
+ * these to an element that contains both ends. Click handlers can also opt
+ * out by calling
  * `event.preventDefault()` or `event.stopPropagation()`, since they run
  * before this one.
  */
@@ -21,8 +47,38 @@ export function useClickNavigation(
   next: () => void,
   previous: () => void,
 ): MouseEventHandler<HTMLElement> {
+  const pressRef = useRef<Press>(undefined);
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button === 0) {
+        pressRef.current = {
+          x: event.clientX,
+          y: event.clientY,
+          interactive: getInteraction(event.target) !== undefined,
+          touch: event.pointerType === 'touch',
+        };
+      }
+    };
+    window.addEventListener('pointerdown', onPointerDown, { capture: true });
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, {
+        capture: true,
+      });
+    };
+  }, []);
   return useCallback(
     (event: MouseEvent<HTMLElement>) => {
+      const press = pressRef.current;
+      pressRef.current = undefined;
+      if (
+        press !== undefined &&
+        (press.interactive ||
+          (!press.touch &&
+            Math.hypot(event.clientX - press.x, event.clientY - press.y) >
+              CLICK_SLOP))
+      ) {
+        return;
+      }
       if (
         event.defaultPrevented ||
         event.button !== 0 ||

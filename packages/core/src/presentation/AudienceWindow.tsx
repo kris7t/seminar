@@ -20,6 +20,7 @@ import { createPortal } from 'react-dom';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
+import { correctRipples } from '../slide/rippleScale.ts';
 import { SlideMirror } from '../slide/SlideMirror.tsx';
 import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
@@ -30,6 +31,8 @@ import {
   type PointerMode,
   type PointerStore,
 } from './pointer.tsx';
+import { InteractionMirror } from './mirror/InteractionMirror.tsx';
+import type { InteractionStore } from './mirror/interactionState.ts';
 import { enterFullscreen } from './screens.ts';
 
 function useFitScale(target: Window): number {
@@ -66,6 +69,11 @@ export interface AudienceWindowProps {
   pointer?: PointerStore | undefined;
   /** How to show the pointer. */
   pointerMode?: PointerMode;
+  /**
+   * How the presenter interacts with the slide, like hover and focus, to show
+   * to the audience.
+   */
+  interaction?: InteractionStore | undefined;
 }
 
 /**
@@ -90,7 +98,13 @@ export function AudienceWindow({
   onClose,
   pointer,
   pointerMode = 'mirror',
+  interaction,
 }: AudienceWindowProps): JSX.Element {
+  const [frame, setFrame] = useState<HTMLElement | null>(null);
+  useEffect(
+    () => (frame === null ? undefined : correctRipples(frame)),
+    [frame],
+  );
   const { slideIndex } = useDeck();
   const [needsClick, setNeedsClick] = useState(false);
   const scale = useFitScale(target);
@@ -166,6 +180,7 @@ export function AudienceWindow({
           }}
         >
           <Box
+            ref={setFrame}
             sx={SLIDE_FRAME_STYLES}
             style={{ transform: `scale(${String(scale)})` }}
             {...{ [SLIDE_VIEW_ATTRIBUTE]: 'audience' }}
@@ -178,6 +193,9 @@ export function AudienceWindow({
             />
             {pointer !== undefined && (
               <MirroredPointer store={pointer} mode={pointerMode} />
+            )}
+            {interaction !== undefined && (
+              <InteractionMirror store={interaction} frame={frame} />
             )}
           </Box>
         </Box>

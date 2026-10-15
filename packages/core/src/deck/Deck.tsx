@@ -9,6 +9,7 @@ import {
   Children,
   isValidElement,
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type JSX,
@@ -36,6 +37,8 @@ import {
   usePointerTracking,
   type PointerMode,
 } from '../presentation/pointer.tsx';
+import { createInteractionStore } from '../presentation/mirror/interactionState.ts';
+import { useInteractionCapture } from '../presentation/mirror/useInteractionCapture.ts';
 import { PresenterPanel } from '../presentation/PresenterPanel.tsx';
 import { PresenterToolbar } from '../presentation/PresenterToolbar.tsx';
 import {
@@ -44,6 +47,7 @@ import {
 } from '../presentation/presenterLayout.ts';
 import { usePresentation } from '../presentation/usePresentation.ts';
 import { usePresenterView } from '../presentation/usePresenterView.ts';
+import { correctRipples } from '../slide/rippleScale.ts';
 import { SlideMirror } from '../slide/SlideMirror.tsx';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
 import { SwipeHint } from '../swipe/SwipeHint.tsx';
@@ -186,6 +190,22 @@ export function Deck({
   // The mode to return to when the laser pointer is turned off.
   const [modeBeforeLaser, setModeBeforeLaser] = useState<PointerMode>('mirror');
   const pointerHandlers = usePointerTracking(pointer, pointerMode);
+  const [interaction] = useState(createInteractionStore);
+  const [presenterFrame, setPresenterFrame] = useState<HTMLElement | null>(
+    null,
+  );
+  // Hover, focus, and the caret belong to the mirrored pointer. Otherwise, the
+  // audience only sees the state of the slide, like the text of fields.
+  // The deck always shows its slide scaled.
+  useEffect(
+    () =>
+      presenterFrame === null ? undefined : correctRipples(presenterFrame),
+    [presenterFrame],
+  );
+  useInteractionCapture(
+    presenting && pointerMode === 'mirror' ? presenterFrame : null,
+    interaction,
+  );
   const toggleMirrorPointer = useCallback(() => {
     setPointerMode(pointerMode === 'mirror' ? 'off' : 'mirror');
   }, [pointerMode, setPointerMode]);
@@ -461,6 +481,7 @@ export function Deck({
                             </Box>
                           ))}
                       <Box
+                        ref={setPresenterFrame}
                         sx={SLIDE_FRAME_STYLES}
                         style={{
                           transform: `scale(${String(scale)})`,
@@ -562,6 +583,7 @@ export function Deck({
                   onClose={presenterView.close}
                   pointer={pointer}
                   pointerMode={pointerMode}
+                  interaction={interaction}
                 />
               )}
               <ScreenDialog

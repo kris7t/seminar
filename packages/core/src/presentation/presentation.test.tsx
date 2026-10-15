@@ -7,6 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
+import { Button } from '@mui/material';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
@@ -492,5 +493,72 @@ describe('formatElapsed', () => {
     expect(formatElapsed(0)).toBe('0:00');
     expect(formatElapsed(65_000)).toBe('1:05');
     expect(formatElapsed(3_725_000)).toBe('1:02:05');
+  });
+});
+
+describe('mirroring the interaction', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '#');
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('mirrors the ripple of buttons without clicking them', async () => {
+    const { audience, remove } = fakeAudienceWindow();
+    const onClick = vi.fn<() => void>();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First">
+          <Button onClick={onClick}>Press</Button>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    const ripples = () =>
+      audience.document.querySelectorAll('.MuiTouchRipple-ripple').length;
+    expect(ripples()).toBe(0);
+    await user.pointer({
+      keys: '[MouseLeft>]',
+      target: screen.getByRole('button', { name: 'Press' }),
+    });
+    await waitFor(() => {
+      expect(ripples()).toBe(1);
+    });
+    await user.pointer({ keys: '[/MouseLeft]' });
+    // Only the presenter view handles the click.
+    expect(onClick).toHaveBeenCalledOnce();
+    remove();
+  });
+
+  it('only shows focus with the mirrored pointer', async () => {
+    const { audience, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First">
+          <input aria-label="Field" />
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    const mirrored = () =>
+      audience.document
+        .querySelector('input')
+        ?.hasAttribute('data-mirror-focus');
+    await user.click(screen.getByLabelText('Field'));
+    await waitFor(() => {
+      expect(mirrored()).toBe(true);
+    });
+    // The toolbar doesn't take the focus from the field.
+    await user.click(screen.getByRole('button', { name: 'Laser pointer' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Field'));
+    await waitFor(() => {
+      expect(mirrored()).toBe(false);
+    });
+    remove();
   });
 });
