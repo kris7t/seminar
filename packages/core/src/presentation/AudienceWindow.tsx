@@ -1,0 +1,195 @@
+import { CacheProvider } from '@emotion/react';
+import {
+  Box,
+  ButtonBase,
+  CssBaseline,
+  ThemeProvider,
+  Typography,
+  type Theme,
+} from '@mui/material';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useState,
+  useSyncExternalStore,
+  type JSX,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
+
+import { useDeck } from '../deck/DeckContext.ts';
+import { uiTheme } from '../menu/uiTheme.ts';
+import { SlideMirror } from '../slide/SlideMirror.tsx';
+import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
+import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
+import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
+import type { AudienceWindow as AudienceWindowState } from './usePresenterView.ts';
+import { enterFullscreen } from './screens.ts';
+
+function useFitScale(target: Window): number {
+  const subscribe = useCallback(
+    (listener: () => void) => {
+      target.addEventListener('resize', listener);
+      return () => {
+        target.removeEventListener('resize', listener);
+      };
+    },
+    [target],
+  );
+  return useSyncExternalStore(subscribe, () =>
+    Math.min(
+      target.innerWidth / SLIDE_WIDTH,
+      target.innerHeight / SLIDE_HEIGHT,
+    ),
+  );
+}
+
+function isFullscreen(doc: Document): boolean {
+  // Missing in environments without the Fullscreen API.
+  return (doc.fullscreenElement ?? null) !== null;
+}
+
+export interface AudienceWindowProps {
+  audience: AudienceWindowState;
+  slides: readonly ReactNode[];
+  /** MUI theme of the slides. */
+  theme: Theme;
+  /** Ends the presenter view. */
+  onClose: () => void;
+}
+
+/**
+ * Shows the current slide to the audience in a separate window, without any
+ * controls, while the deck becomes the presenter view.
+ *
+ * The slide is rendered into the window by a portal, so it shares the state
+ * of the deck, like the current step, with the presenter view.
+ *
+ * Keys pressed in the window are handled as if they were pressed in the
+ * presenter view, so that a presentation remote works with either window
+ * focused, except that Escape ends the presenter view. So does leaving full
+ * screen, if the window was opened in full screen.
+ */
+export function AudienceWindow({
+  audience: { window: target, screen, container, cache },
+  slides,
+  theme,
+  onClose,
+}: AudienceWindowProps): JSX.Element {
+  const { slideIndex } = useDeck();
+  const [needsClick, setNeedsClick] = useState(false);
+  const scale = useFitScale(target);
+
+  const close = useEffectEvent(onClose);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+        return;
+      }
+      const forwarded = new KeyboardEvent('keydown', {
+        key: event.key,
+        code: event.code,
+        location: event.location,
+        repeat: event.repeat,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        cancelable: true,
+      });
+      if (!window.dispatchEvent(forwarded)) {
+        event.preventDefault();
+      }
+    };
+    target.addEventListener('keydown', onKeyDown);
+    return () => {
+      target.removeEventListener('keydown', onKeyDown);
+    };
+  }, [target]);
+
+  useEffect(() => {
+    if (screen === undefined) {
+      return undefined;
+    }
+    const { document: doc } = target;
+    let wasFullscreen = isFullscreen(doc);
+    if (!wasFullscreen) {
+      // Browsers may only allow this in response to a click in the window.
+      enterFullscreen(screen, doc).catch(() => {
+        setNeedsClick(true);
+      });
+    }
+    const onFullscreenChange = () => {
+      const fullscreen = isFullscreen(doc);
+      if (fullscreen) {
+        setNeedsClick(false);
+      } else if (wasFullscreen) {
+        // Leaving full screen with Escape ends the presenter view, too.
+        close();
+      }
+      wasFullscreen = fullscreen;
+    };
+    doc.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      doc.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, [target, screen]);
+
+  return createPortal(
+    <CacheProvider value={cache}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            overflow: 'hidden',
+            bgcolor: 'common.black',
+          }}
+        >
+          <Box
+            sx={SLIDE_FRAME_STYLES}
+            style={{ transform: `scale(${String(scale)})` }}
+            {...{ [SLIDE_VIEW_ATTRIBUTE]: 'audience' }}
+          >
+            <SlideMirror
+              key={slideIndex}
+              index={slideIndex}
+              slide={slides[slideIndex]}
+              kind="audience"
+            />
+          </Box>
+        </Box>
+        {needsClick && screen !== undefined && (
+          <ThemeProvider theme={uiTheme}>
+            <ButtonBase
+              onClick={() => {
+                enterFullscreen(screen, target.document).catch(
+                  (error: unknown) => {
+                    console.warn(
+                      'Could not show the slides in full screen:',
+                      error,
+                    );
+                  },
+                );
+              }}
+              sx={{
+                position: 'fixed',
+                inset: 0,
+                bgcolor: 'rgb(0 0 0 / 60%)',
+                color: 'common.white',
+              }}
+            >
+              <Typography variant="h5">Click to show in full screen</Typography>
+            </ButtonBase>
+          </ThemeProvider>
+        )}
+      </ThemeProvider>
+    </CacheProvider>,
+    container,
+  );
+}

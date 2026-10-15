@@ -9,6 +9,15 @@ export interface KeyboardNavigationOptions {
   onGoToSlide: () => void;
   /** Starts or stops the presentation. */
   onPresent: () => void;
+  /** Opens or closes the presenter view. */
+  onPresenterView: () => void;
+  /**
+   * Handles Escape before moving the focus, e.g., to leave the presenter
+   * view.
+   *
+   * @returns Whether Escape was handled.
+   */
+  onEscape: () => boolean;
 }
 
 /**
@@ -24,12 +33,13 @@ export interface KeyboardNavigationOptions {
  * - `g` (or `:`, as in Vim) asks for a slide number to go to.
  * - `t` shows or hides the table of contents.
  * - `p` starts the presentation in full screen, or stops it.
+ * - Shift+`p` opens or closes the presenter view.
  * - `o` shows or hides the overview of the slides. In the overview, the keys
  *   above select a slide instead, where Up and Down jump between the
  *   divisions of the deck, like sections. Enter goes to the selected slide,
  *   and Escape closes the overview without going anywhere.
- * - Escape moves the focus away from the focused element, so that the keys
- *   it uses navigate again.
+ * - Escape leaves the presenter view, or moves the focus away from the focused
+ *   element, so that the keys it uses navigate again.
  *
  * Keys used by the focused element are left to it (see {@link usesKey}).
  *
@@ -53,7 +63,12 @@ export function useKeyboardNavigation(
     showToc,
     setShowToc,
   }: DeckState,
-  { onGoToSlide, onPresent }: KeyboardNavigationOptions,
+  {
+    onGoToSlide,
+    onPresent,
+    onPresenterView,
+    onEscape,
+  }: KeyboardNavigationOptions,
 ): void {
   useEffect(() => {
     /**
@@ -133,6 +148,10 @@ export function useKeyboardNavigation(
           event.preventDefault();
           return;
         }
+        if (onEscape()) {
+          event.preventDefault();
+          return;
+        }
         if (
           document.activeElement instanceof HTMLElement &&
           document.activeElement !== document.body
@@ -198,7 +217,11 @@ export function useKeyboardNavigation(
           break;
         case 'p':
         case 'P':
-          onPresent();
+          if (event.shiftKey) {
+            onPresenterView();
+          } else {
+            onPresent();
+          }
           break;
         case 'o':
         case 'O':
@@ -231,5 +254,7 @@ export function useKeyboardNavigation(
     setShowToc,
     onGoToSlide,
     onPresent,
+    onPresenterView,
+    onEscape,
   ]);
 }

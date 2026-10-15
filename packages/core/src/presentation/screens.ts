@@ -8,6 +8,9 @@
 export interface ScreenDetailed extends Screen {
   readonly left: number;
   readonly top: number;
+  /** Position of the area of the screen available to windows. */
+  readonly availLeft: number;
+  readonly availTop: number;
   readonly isPrimary: boolean;
   readonly isInternal: boolean;
   readonly devicePixelRatio: number;
@@ -61,13 +64,16 @@ export async function getScreenDetails(): Promise<ScreenDetails | undefined> {
 }
 
 /**
- * Shows the whole page in full screen, on `screen` if given, which moves the
- * window there.
+ * Shows the whole page of `doc` in full screen, on `screen` if given, which
+ * moves its window there.
  */
-export async function enterFullscreen(screen?: ScreenDetailed): Promise<void> {
+export async function enterFullscreen(
+  screen?: ScreenDetailed,
+  doc: Document = document,
+): Promise<void> {
   const options: FullscreenOnScreenOptions = {
     navigationUI: 'hide',
     ...(screen === undefined ? {} : { screen }),
   };
-  await document.documentElement.requestFullscreen(options);
+  await doc.documentElement.requestFullscreen(options);
 }

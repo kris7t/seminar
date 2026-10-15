@@ -7,11 +7,12 @@ import {
   type ScreenDetailed,
   type ScreenDetails,
 } from './screens.ts';
+import type { PresenterView } from './usePresenterView.ts';
 
 export interface Presentation {
   /**
-   * Starts the presentation, or stops it if the page is in full screen
-   * already.
+   * Starts the presentation, or stops it if the page is in full screen or the
+   * presenter view is open already.
    */
   toggle: () => void;
   /**
@@ -19,7 +20,11 @@ export interface Presentation {
    * no choice has to be made.
    */
   screens: ScreenDetails | undefined;
-  /** Shows the presentation in full screen on a screen chosen from `screens`. */
+  /**
+   * Shows the presentation in full screen on a screen chosen from `screens`:
+   * in this window if it's on that screen, or in the audience window of the
+   * presenter view otherwise.
+   */
   choose: (screen: ScreenDetailed) => void;
   /** Closes the choice of screens without starting the presentation. */
   cancel: () => void;
@@ -34,13 +39,21 @@ function warnFailure(error: unknown) {
  *
  * If the device has more than one screen, and the browser can tell which
  * (only Chromium-based browsers can), it asks for the permission to see them,
- * and the presenter chooses which screen to show the presentation on.
+ * and the presenter chooses which screen to show the presentation on. If it's
+ * another screen, the slides are shown there by the audience window of the
+ * presenter view, and this window stays as it is.
+ *
  * Otherwise, the page is shown in full screen on the current screen.
  */
-export function usePresentation(): Presentation {
+export function usePresentation(presenterView: PresenterView): Presentation {
   const [screens, setScreens] = useState<ScreenDetails>();
 
+  const { audience, open, close } = presenterView;
   const toggle = useCallback(() => {
+    if (audience !== undefined) {
+      close();
+      return;
+    }
     // Missing in environments without the Fullscreen API.
     if ((document.fullscreenElement ?? null) !== null) {
       document.exitFullscreen().catch(warnFailure);
@@ -62,12 +75,19 @@ export function usePresentation(): Presentation {
       // Choosing in the dialog counts as a response of the user again.
       setScreens(details);
     }, warnFailure);
-  }, []);
+  }, [audience, close]);
 
-  const choose = useCallback((screen: ScreenDetailed) => {
-    setScreens(undefined);
-    enterFullscreen(screen).catch(warnFailure);
-  }, []);
+  const choose = useCallback(
+    (screen: ScreenDetailed) => {
+      setScreens(undefined);
+      if (screens !== undefined && screen !== screens.currentScreen) {
+        open(screen);
+      } else {
+        enterFullscreen().catch(warnFailure);
+      }
+    },
+    [screens, open],
+  );
 
   const cancel = useCallback(() => {
     setScreens(undefined);

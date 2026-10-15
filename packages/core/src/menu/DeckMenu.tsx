@@ -37,6 +37,10 @@ export interface DeckMenuProps {
   onGoToSlide: () => void;
   /** Starts or stops the presentation. */
   onPresent: () => void;
+  /** Whether the presenter view is open. */
+  presenterView: boolean;
+  /** Opens or closes the presenter view. */
+  onPresenterView: () => void;
 }
 
 interface Action {
@@ -98,8 +102,11 @@ export function DeckMenu({
   onClose,
   onGoToSlide,
   onPresent,
+  presenterView,
+  onPresenterView,
 }: DeckMenuProps): JSX.Element {
   const fullscreen = useFullscreen();
+  const presenting = fullscreen || presenterView;
   const deck = useDeck();
   const {
     slideIndex,
@@ -119,7 +126,7 @@ export function DeckMenu({
 
   const groups: Action[][] = [
     [
-      fullscreen
+      presenting
         ? {
             label: 'Stop presentation',
             icon: CancelPresentationIcon,
@@ -232,6 +239,19 @@ export function DeckMenu({
       ),
     ]),
     <Divider key="divider-settings" />,
+    <MenuItem
+      key="presenter-view"
+      role="menuitemcheckbox"
+      aria-checked={presenterView}
+      onClick={() => {
+        onClose();
+        onPresenterView();
+      }}
+    >
+      <ItemIcon>{presenterView && <CheckIcon fontSize="small" />}</ItemIcon>
+      <ListItemText>Presenter view</ListItemText>
+      {showShortcuts && <Shortcut>Shift+P</Shortcut>}
+    </MenuItem>,
     <MenuItem
       key="toc"
       role="menuitemcheckbox"

@@ -29,8 +29,11 @@ import { useContextMenu } from '../interaction/useContextMenu.ts';
 import { composeHandlers } from '../interaction/composeHandlers.ts';
 import { usePinchIn } from '../interaction/usePinchIn.ts';
 import { ScreenDialog } from '../presentation/ScreenDialog.tsx';
+import { AudienceWindow } from '../presentation/AudienceWindow.tsx';
 import { usePresentation } from '../presentation/usePresentation.ts';
-import { SlidePreview } from '../swipe/SlidePreview.tsx';
+import { usePresenterView } from '../presentation/usePresenterView.ts';
+import { SlideMirror } from '../slide/SlideMirror.tsx';
+import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
 import { SwipeHint } from '../swipe/SwipeHint.tsx';
 import {
   ENTER_DURATION,
@@ -101,18 +104,6 @@ const enter = keyframes`
   }
 `;
 
-/** Styles of a scaled slide in the middle of the area of the slides. */
-const FRAME_STYLES = {
-  position: 'absolute',
-  left: `calc(50% - ${String(SLIDE_WIDTH / 2)}px)`,
-  top: `calc(50% - ${String(SLIDE_HEIGHT / 2)}px)`,
-  width: SLIDE_WIDTH,
-  height: SLIDE_HEIGHT,
-  overflow: 'hidden',
-  bgcolor: 'background.default',
-  color: 'text.primary',
-} as const;
-
 function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
   if (isValidElement<{ id?: unknown }>(slide)) {
     const { id } = slide.props;
@@ -168,9 +159,16 @@ export function Deck({
     },
     [slideIndex, setOverviewIndex, setOverviewShown],
   );
+  const presenterView = usePresenterView();
+  const presenting = presenterView.audience !== undefined;
   const view = useMemo<SlideView>(
-    () => ({ index: slideIndex, kind: 'audience', interactive: true }),
-    [slideIndex],
+    () => ({
+      index: slideIndex,
+      // The audience window shows the slide to the audience instead.
+      kind: presenting ? 'presenter' : 'audience',
+      interactive: true,
+    }),
+    [slideIndex, presenting],
   );
   const [containerRef, scale, containerSize] = useFitScale(
     SLIDE_WIDTH,
@@ -231,10 +229,20 @@ export function Deck({
   const closeGoToSlide = useCallback(() => {
     setGoToSlideOpen(false);
   }, []);
-  const presentation = usePresentation();
+  const presentation = usePresentation(presenterView);
+  const closePresenterView = presenterView.close;
+  const onEscape = useCallback(() => {
+    if (!presenting) {
+      return false;
+    }
+    closePresenterView();
+    return true;
+  }, [presenting, closePresenterView]);
   useKeyboardNavigation(deck, {
     onGoToSlide: openGoToSlide,
     onPresent: presentation.toggle,
+    onPresenterView: presenterView.toggle,
+    onEscape,
   });
   const onClick = useClickNavigation(next, previous);
   const swipe = useSwipeNavigation({
@@ -352,16 +360,20 @@ export function Deck({
                           }}
                         >
                           <Box
-                            sx={FRAME_STYLES}
+                            sx={SLIDE_FRAME_STYLES}
                             style={{ transform: `scale(${String(scale)})` }}
                             {...{ [SLIDE_VIEW_ATTRIBUTE]: 'preview' }}
                           >
-                            <SlidePreview index={index} slide={slides[index]} />
+                            <SlideMirror
+                              index={index}
+                              slide={slides[index]}
+                              kind="preview"
+                            />
                           </Box>
                         </Box>
                       ))}
                   <Box
-                    sx={FRAME_STYLES}
+                    sx={SLIDE_FRAME_STYLES}
                     style={{ transform: `scale(${String(scale)})` }}
                     {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
                   >
@@ -401,9 +413,19 @@ export function Deck({
                 onClose={closeMenu}
                 onGoToSlide={openGoToSlide}
                 onPresent={presentation.toggle}
+                presenterView={presenting}
+                onPresenterView={presenterView.toggle}
               />
               <GoToSlideDialog open={goToSlideOpen} onClose={closeGoToSlide} />
               <SwipeHint open={swipe.showHint} />
+              {presenterView.audience !== undefined && (
+                <AudienceWindow
+                  audience={presenterView.audience}
+                  slides={slides}
+                  theme={theme}
+                  onClose={presenterView.close}
+                />
+              )}
               <ScreenDialog
                 screens={presentation.screens}
                 onChoose={presentation.choose}
