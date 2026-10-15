@@ -2,16 +2,21 @@ import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
 import CheckIcon from '@mui/icons-material/Check';
 import CoPresentIcon from '@mui/icons-material/CoPresent';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
+import FlareIcon from '@mui/icons-material/Flare';
 import GridViewIcon from '@mui/icons-material/GridView';
+import HighlightAltIcon from '@mui/icons-material/HighlightAlt';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 import LastPageIcon from '@mui/icons-material/LastPage';
+import MouseIcon from '@mui/icons-material/Mouse';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import SlideshowIcon from '@mui/icons-material/Slideshow';
+import SpeakerNotesIcon from '@mui/icons-material/SpeakerNotes';
 import TagIcon from '@mui/icons-material/Tag';
+import TocIcon from '@mui/icons-material/Toc';
 import {
   Dialog,
   Divider,
@@ -57,21 +62,17 @@ export interface DeckMenuProps {
   presenterSettings?: PresenterSettings | undefined;
 }
 
-interface Setting {
-  key: string;
-  label: string;
-  checked: boolean;
-  shortcut?: string;
-  toggle: () => void;
-  disabled?: boolean;
-}
-
-interface Action {
+interface Item {
   label: string;
   icon: ComponentType<SvgIconProps>;
   shortcut?: string;
   action: () => void;
   disabled?: boolean;
+  /**
+   * Whether the setting toggled by the item is on, if it's a toggle. Items of
+   * settings that are on show a checkmark instead of their icon.
+   */
+  checked?: boolean;
 }
 
 /**
@@ -148,7 +149,7 @@ export function DeckMenu({
   const isFirstSlide = slideIndex === 0;
   const isLastSlide = slideIndex === slideCount - 1;
 
-  const groups: Action[][] = [
+  const groups: Item[][] = [
     [
       presenting
         ? {
@@ -164,10 +165,11 @@ export function DeckMenu({
             action: onPresent,
           },
       {
-        label: presenterView ? 'Close presenter view' : 'Open presenter view',
+        label: 'Presenter view',
         icon: CoPresentIcon,
         shortcut: 'Shift+P',
         action: onPresenterView,
+        checked: presenterView,
       },
     ],
     [
@@ -242,108 +244,86 @@ export function DeckMenu({
         },
       },
     ],
-  ];
-
-  const items = [
-    ...groups.flatMap((group, i) => [
-      ...(i > 0 ? [<Divider key={`divider-${String(i)}`} />] : []),
-      ...group.map(
-        ({ label, icon: Icon, shortcut, action, disabled = false }) => (
-          <MenuItem
-            key={label}
-            disabled={disabled}
-            onClick={() => {
-              onClose();
-              action();
-            }}
-          >
-            <ItemIcon>
-              <Icon fontSize="small" />
-            </ItemIcon>
-            <ListItemText>{label}</ListItemText>
-            {showShortcuts && shortcut !== undefined && (
-              <Shortcut>{shortcut}</Shortcut>
-            )}
-          </MenuItem>
-        ),
-      ),
-    ]),
-  ];
-
-  const settings: Setting[][] = [
     ...(presenterSettings === undefined
       ? []
       : [
           [
             {
-              key: 'notes-only',
               label: 'Focus on notes',
-              checked: presenterSettings.notesOnly,
+              icon: SpeakerNotesIcon,
               shortcut: 'N',
-              toggle: presenterSettings.onFocusNotes,
+              action: presenterSettings.onFocusNotes,
+              checked: presenterSettings.notesOnly,
             },
             {
-              key: 'mirror-pointer',
               label: 'Show pointer to the audience',
-              checked: presenterSettings.pointerMode === 'mirror',
+              icon: MouseIcon,
               shortcut: 'M',
-              toggle: presenterSettings.onMirrorPointer,
+              action: presenterSettings.onMirrorPointer,
+              checked: presenterSettings.pointerMode === 'mirror',
             },
             {
-              key: 'laser-pointer',
               label: 'Laser pointer',
-              checked: presenterSettings.pointerMode === 'laser',
+              icon: FlareIcon,
               shortcut: 'L',
-              toggle: presenterSettings.onLaserPointer,
+              action: presenterSettings.onLaserPointer,
+              checked: presenterSettings.pointerMode === 'laser',
             },
           ],
         ]),
     [
       {
-        key: 'toc',
         label: 'Table of contents',
-        checked: showToc,
+        icon: TocIcon,
         shortcut: 'T',
-        toggle: () => {
+        action: () => {
           setShowToc(!showToc);
         },
         disabled: toc.length === 0,
+        checked: showToc,
       },
       {
-        key: 'text-selection',
         label: 'Text selection',
-        checked: !mouseNavigation,
+        icon: HighlightAltIcon,
         shortcut: 'S',
-        toggle: () => {
+        action: () => {
           setMouseNavigation(!mouseNavigation);
         },
+        checked: !mouseNavigation,
       },
     ],
   ];
 
-  items.push(
-    ...settings.flatMap((group, i) => [
-      <Divider key={`divider-settings-${String(i)}`} />,
-      ...group.map(({ key, label, checked, shortcut, toggle, disabled }) => (
+  const items = groups.flatMap((group, i) => [
+    ...(i > 0 ? [<Divider key={`divider-${String(i)}`} />] : []),
+    ...group.map(
+      ({ label, icon: Icon, shortcut, action, disabled = false, checked }) => (
         <MenuItem
-          key={key}
-          role="menuitemcheckbox"
-          aria-checked={checked}
-          disabled={disabled ?? false}
+          key={label}
+          disabled={disabled}
+          {...(checked === undefined
+            ? {}
+            : { role: 'menuitemcheckbox', 'aria-checked': checked })}
           onClick={() => {
             onClose();
-            toggle();
+            action();
           }}
         >
-          <ItemIcon>{checked && <CheckIcon fontSize="small" />}</ItemIcon>
+          <ItemIcon>
+            {checked === true ? (
+              <CheckIcon fontSize="small" />
+            ) : (
+              <Icon fontSize="small" />
+            )}
+          </ItemIcon>
           <ListItemText>{label}</ListItemText>
           {showShortcuts && shortcut !== undefined && (
             <Shortcut>{shortcut}</Shortcut>
           )}
         </MenuItem>
-      )),
-    ]),
-  );
+      ),
+    ),
+  ]);
 
   const open = anchorPosition !== undefined;
   if (asDialog) {

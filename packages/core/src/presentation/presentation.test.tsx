@@ -564,6 +564,11 @@ describe('the presenter toolbar', () => {
         .getByRole('menuitemcheckbox', { name: 'Show pointer to the audience' })
         .getAttribute('aria-checked'),
     ).toBe('true');
+    expect(
+      screen
+        .getByRole('menuitemcheckbox', { name: 'Presenter view' })
+        .getAttribute('aria-checked'),
+    ).toBe('true');
     await user.click(laser);
     expect(
       screen
@@ -573,12 +578,36 @@ describe('the presenter toolbar', () => {
     remove();
   });
 
-  it('only has the slide number, the time, and the menu if narrow', async () => {
+  it('toggles the table of contents and text selection in the toolbar', async () => {
+    const { remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck toc={[{ slide: 0, title: 'First' }]}>
+        <Slide title="First" />
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    const toc = screen.getByRole('button', { name: 'Table of contents' });
+    expect(toc.getAttribute('aria-pressed')).toBe('false');
+    await user.click(toc);
+    expect(toc.getAttribute('aria-pressed')).toBe('true');
+    const selection = screen.getByRole('button', { name: 'Text selection' });
+    expect(selection.getAttribute('aria-pressed')).toBe('false');
+    await user.click(selection);
+    expect(selection.getAttribute('aria-pressed')).toBe('true');
+    await user.keyboard('s');
+    expect(selection.getAttribute('aria-pressed')).toBe('false');
+    remove();
+  });
+
+  /** Returns the buttons of the toolbar in a viewport of `width`. */
+  async function toolbarButtons(width: number) {
     const matchMedia = window.matchMedia.bind(window);
     vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
       const list = matchMedia(query);
+      const maxWidth = /^\(max-width: ([\d.]+)px\)$/.exec(query)?.[1];
       Object.defineProperty(list, 'matches', {
-        value: query.startsWith('(max-width'),
+        value: maxWidth !== undefined && width <= Number(maxWidth),
       });
       return list;
     });
@@ -591,12 +620,34 @@ describe('the presenter toolbar', () => {
     );
     await user.keyboard('{Shift>}P{/Shift}');
     const toolbar = screen.getByRole('toolbar', { name: 'Presenter controls' });
-    expect(
-      [...toolbar.querySelectorAll('button')].map(
-        (button) => button.getAttribute('aria-label') ?? button.textContent,
-      ),
-    ).toEqual(['Go to slide (G)', 'Reset time elapsed', 'Menu']);
+    const buttons = [...toolbar.querySelectorAll('button')].map(
+      (button) => button.getAttribute('aria-label') ?? button.textContent,
+    );
     remove();
+    return buttons;
+  }
+
+  it('leaves out buttons not specific to the presenter view if narrower', async () => {
+    expect(await toolbarButtons(700)).toEqual([
+      'Previous slide',
+      'Previous step',
+      'Go to slide (G)',
+      'Next step',
+      'Next slide',
+      'Focus on notes',
+      'Show pointer to the audience',
+      'Laser pointer',
+      'Reset time elapsed',
+      'Menu',
+    ]);
+  });
+
+  it('only has the slide number, the time, and the menu if narrow', async () => {
+    expect(await toolbarButtons(600)).toEqual([
+      'Go to slide (G)',
+      'Reset time elapsed',
+      'Menu',
+    ]);
   });
 });
 

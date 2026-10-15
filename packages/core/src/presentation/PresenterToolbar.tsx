@@ -1,5 +1,6 @@
 import FlareIcon from '@mui/icons-material/Flare';
 import GridViewIcon from '@mui/icons-material/GridView';
+import HighlightAltIcon from '@mui/icons-material/HighlightAlt';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -8,6 +9,7 @@ import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SpeakerNotesIcon from '@mui/icons-material/SpeakerNotes';
+import TocIcon from '@mui/icons-material/Toc';
 import {
   Box,
   Button,
@@ -66,11 +68,20 @@ export function formatElapsed(milliseconds: number): string {
 
 /**
  * Narrowest viewport that shows all buttons of the toolbar, in pixels. In
- * narrower ones, the actions are only in the menu.
+ * narrower ones, only the buttons for navigating and the settings of the
+ * presenter view are shown, since the menu has the others.
  */
-const MIN_FULL_TOOLBAR_WIDTH = 720;
+const MIN_FULL_TOOLBAR_WIDTH = 800;
 
-const COMPACT_QUERY = `(max-width: ${String(MIN_FULL_TOOLBAR_WIDTH - 0.05)}px)`;
+/**
+ * Narrowest viewport that shows buttons other than the menu in the toolbar, in
+ * pixels. In narrower ones, the actions are only in the menu.
+ */
+const MIN_REDUCED_TOOLBAR_WIDTH = 640;
+
+function narrowerThan(width: number): string {
+  return `(max-width: ${String(width - 0.05)}px)`;
+}
 
 const CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
@@ -151,8 +162,9 @@ export interface PresenterToolbarProps {
  * The time elapsed counts from when the toolbar is shown, i.e., when the
  * presenter view opens, and can be reset.
  *
- * In narrow windows, only the slide number, the time, and the menu button are
- * shown, since the menu has all the other actions.
+ * In narrower windows, the buttons for actions that aren't specific to the
+ * presenter view are left out, and in narrow windows, only the slide number,
+ * the time, and the menu button are shown, since the menu has all the actions.
  *
  * Clicking the buttons doesn't move the focus to them, so that keys like
  * Space keep navigating the slides.
@@ -170,10 +182,19 @@ export function PresenterToolbar({
   onOpenMenu,
 }: PresenterToolbarProps): JSX.Element {
   const deck = useDeck();
-  const { slideIndex, slideCount } = deck;
+  const {
+    slideIndex,
+    slideCount,
+    toc,
+    showToc,
+    setShowToc,
+    mouseNavigation,
+    setMouseNavigation,
+  } = deck;
   const [start, setStart] = useState(Date.now);
   const now = useNow(start);
-  const compact = useMediaQuery(COMPACT_QUERY);
+  const reduced = useMediaQuery(narrowerThan(MIN_FULL_TOOLBAR_WIDTH));
+  const compact = useMediaQuery(narrowerThan(MIN_REDUCED_TOOLBAR_WIDTH));
   const slideNumber = (
     <Tooltip title="Go to slide (G)">
       <Button
@@ -238,14 +259,28 @@ export function PresenterToolbar({
             onClick={deck.nextSlide}
             disabled={slideIndex === slideCount - 1}
           />
-          <ToolButton
-            label="Slide overview"
-            shortcut="O"
-            icon={GridViewIcon}
-            onClick={() => {
-              deck.setShowOverview(true);
-            }}
-          />
+          {!reduced && (
+            <>
+              <ToolButton
+                label="Slide overview"
+                shortcut="O"
+                icon={GridViewIcon}
+                onClick={() => {
+                  deck.setShowOverview(true);
+                }}
+              />
+              <ToolButton
+                label="Table of contents"
+                shortcut="T"
+                icon={TocIcon}
+                pressed={showToc}
+                disabled={toc.length === 0}
+                onClick={() => {
+                  setShowToc(!showToc);
+                }}
+              />
+            </>
+          )}
           <ToolButton
             label="Focus on notes"
             shortcut="N"
@@ -269,12 +304,23 @@ export function PresenterToolbar({
             pressed={pointerMode === 'laser'}
             onClick={onLaserPointer}
           />
+          {!reduced && (
+            <ToolButton
+              label="Text selection"
+              shortcut="S"
+              icon={HighlightAltIcon}
+              pressed={!mouseNavigation}
+              onClick={() => {
+                setMouseNavigation(!mouseNavigation);
+              }}
+            />
+          )}
         </Group>
       )}
       <Group>
         <Typography
           aria-label="Time elapsed"
-          sx={{ fontVariantNumeric: 'tabular-nums' }}
+          sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
         >
           {formatElapsed(now - start)}
         </Typography>
@@ -291,6 +337,7 @@ export function PresenterToolbar({
             ml: 2,
             color: 'text.secondary',
             fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
           }}
         >
           {CLOCK_FORMAT.format(now)}
