@@ -95,6 +95,9 @@ export function NotesDisplay({
             px: 2,
             py: 1,
             color: 'text.secondary',
+            // Shown only if the notes fit, so this only clips them until they
+            // are measured, without a scrollbar flashing.
+            overflow: 'hidden',
           },
           !fits && { visibility: 'hidden' },
         ]}

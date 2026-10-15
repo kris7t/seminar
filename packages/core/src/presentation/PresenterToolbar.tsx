@@ -225,7 +225,9 @@ export function PresenterToolbar({
         gap: 2,
         height: TOOLBAR_HEIGHT,
         px: 1,
-        overflowX: 'auto',
+        // The buttons are chosen to fit, so this only clips them until the
+        // width is measured, without a scrollbar flashing.
+        overflow: 'hidden',
         bgcolor: 'background.default',
         color: 'text.primary',
         borderTop: 1,
