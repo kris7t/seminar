@@ -85,6 +85,19 @@ describe('arrangePreviews', () => {
     });
   });
 
+  it('puts previews side by side above the notes if nearly as large', () => {
+    expect(arrangePreviews('stacked', { width: 768, height: 470 }, 2)).toEqual({
+      size: { width: 376, height: 211.5 },
+      count: 2,
+      direction: 'row',
+      notes: 'below',
+    });
+    // Two previews would be less than half as wide.
+    expect(
+      arrangePreviews('stacked', { width: 368, height: 543 }, 2).count,
+    ).toBe(1);
+  });
+
   it('shrinks the preview next to the notes to leave them enough width', () => {
     expect(arrangePreviews('stacked', { width: 600, height: 300 }, 1)).toEqual({
       size: { width: 264, height: 148.5 },

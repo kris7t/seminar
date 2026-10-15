@@ -126,23 +126,63 @@ function arrangeBeside(content: Size, wanted: number): PreviewArrangement {
 
 /**
  * Arranges previews below the slide above the notes, e.g., in narrow windows,
- * leaving enough height for the notes.
+ * leaving enough height for the notes. Two previews are side by side, shrunk
+ * to fit the width if needed.
  */
 function arrangeAbove(content: Size, wanted: number): PreviewArrangement {
   const height =
     content.height - 2 * HEADING_HEIGHT - PANEL_GAP - MIN_NOTES_HEIGHT;
-  const size = orZero(
-    fromWidth(
-      Math.min(
-        (height * SLIDE_WIDTH) / SLIDE_HEIGHT,
-        content.width,
-        MAX_STACKED_PREVIEW_WIDTH,
-      ),
-    ),
+  const width = Math.min(
+    (height * SLIDE_WIDTH) / SLIDE_HEIGHT,
+    content.width,
+    MAX_STACKED_PREVIEW_WIDTH,
   );
-  return wanted >= 2 && 2 * size.width + PANEL_GAP <= content.width
-    ? { size, count: 2, direction: 'row', notes: 'below' }
-    : { size, count: Math.min(wanted, 1), direction: 'column', notes: 'below' };
+  return wanted >= 2
+    ? {
+        size: orZero(
+          fromWidth(Math.min(width, (content.width - PANEL_GAP) / 2)),
+        ),
+        count: 2,
+        direction: 'row',
+        notes: 'below',
+      }
+    : {
+        size: orZero(fromWidth(width)),
+        count: Math.min(wanted, 1),
+        direction: 'column',
+        notes: 'below',
+      };
+}
+
+/**
+ * How wide previews have to be compared to fewer, larger ones to show more of
+ * them.
+ */
+const MORE_PREVIEWS_RATIO = 0.75;
+
+/**
+ * Chooses the arrangement with the largest previews, unless one with more
+ * previews has ones nearly as large, since seeing the next step and the next
+ * slide is worth some size.
+ */
+function chooseArrangement(
+  arrangements: readonly [PreviewArrangement, ...PreviewArrangement[]],
+): PreviewArrangement {
+  const shown = arrangements.map((arrangement) =>
+    arrangement.size.width < MIN_PREVIEW_WIDTH
+      ? { ...arrangement, count: 0 }
+      : arrangement,
+  ) as [PreviewArrangement, ...PreviewArrangement[]];
+  const largest = Math.max(...shown.map(({ size }) => size.width));
+  return shown
+    .filter(({ size }) => size.width >= MORE_PREVIEWS_RATIO * largest)
+    .reduce((best, arrangement) =>
+      arrangement.count > best.count ||
+      (arrangement.count === best.count &&
+        arrangement.size.width > best.size.width)
+        ? arrangement
+        : best,
+    );
 }
 
 /**
@@ -154,34 +194,35 @@ function arrangeAbove(content: Size, wanted: number): PreviewArrangement {
  * Below the slide, the previews are next to the notes, unless the panel is so
  * narrow that they would be larger above the notes. Two previews next to the
  * notes are on top of each other if the panel is tall enough for them to be as
- * large as a single preview, and side by side otherwise.
+ * large as a single preview, and side by side otherwise. Two previews above
+ * the notes are side by side, and they are preferred to a single one if they
+ * are nearly as large (see {@link MORE_PREVIEWS_RATIO}).
  */
 export function arrangePreviews(
   layout: PresenterLayout,
   content: Size,
   wanted: number,
 ): PreviewArrangement {
-  let arrangement: PreviewArrangement;
   if (layout === 'side') {
     const size = previewSize(layout, content);
     const previews = 2 * (HEADING_HEIGHT + size.height + PANEL_GAP);
     const two =
       wanted >= 2 &&
       content.height - previews - HEADING_HEIGHT >= MIN_NOTES_HEIGHT;
-    arrangement = {
-      size,
-      count: two ? 2 : Math.min(wanted, 1),
-      direction: 'column',
-      notes: 'below',
-    };
-  } else {
-    const beside = arrangeBeside(content, wanted);
-    const above = arrangeAbove(content, wanted);
-    arrangement = above.size.width > beside.size.width ? above : beside;
+    return chooseArrangement([
+      {
+        size,
+        count: two ? 2 : Math.min(wanted, 1),
+        direction: 'column',
+        notes: 'below',
+      },
+    ]);
   }
-  return arrangement.size.width < MIN_PREVIEW_WIDTH
-    ? { ...arrangement, count: 0 }
-    : arrangement;
+  return chooseArrangement([
+    arrangeBeside(content, wanted),
+    arrangeAbove(content, Math.min(wanted, 1)),
+    ...(wanted >= 2 ? [arrangeAbove(content, wanted)] : []),
+  ]);
 }
 
 /**
