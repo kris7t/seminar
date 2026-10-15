@@ -30,6 +30,12 @@ import { composeHandlers } from '../interaction/composeHandlers.ts';
 import { usePinchIn } from '../interaction/usePinchIn.ts';
 import { ScreenDialog } from '../presentation/ScreenDialog.tsx';
 import { AudienceWindow } from '../presentation/AudienceWindow.tsx';
+import {
+  createPointerStore,
+  MirroredPointer,
+  usePointerTracking,
+  type PointerMode,
+} from '../presentation/pointer.tsx';
 import { PresenterPanel } from '../presentation/PresenterPanel.tsx';
 import { PresenterToolbar } from '../presentation/PresenterToolbar.tsx';
 import {
@@ -175,6 +181,22 @@ export function Deck({
   // doesn't resize the slide.
   const presenterLayout = choosePresenterLayout(presenterAreaSize);
   const [notesOnly, setNotesOnly] = useState(false);
+  const [pointer] = useState(createPointerStore);
+  const [pointerMode, setPointerMode] = useState<PointerMode>('mirror');
+  // The mode to return to when the laser pointer is turned off.
+  const [modeBeforeLaser, setModeBeforeLaser] = useState<PointerMode>('mirror');
+  const pointerHandlers = usePointerTracking(pointer, pointerMode);
+  const toggleMirrorPointer = useCallback(() => {
+    setPointerMode(pointerMode === 'mirror' ? 'off' : 'mirror');
+  }, [pointerMode, setPointerMode]);
+  const toggleLaserPointer = useCallback(() => {
+    if (pointerMode === 'laser') {
+      setPointerMode(modeBeforeLaser);
+    } else {
+      setModeBeforeLaser(pointerMode);
+      setPointerMode('laser');
+    }
+  }, [pointerMode, modeBeforeLaser, setPointerMode, setModeBeforeLaser]);
   const stacked = presenting && presenterLayout === 'stacked';
   const view = useMemo<SlideView>(
     () => ({
@@ -253,6 +275,19 @@ export function Deck({
     closePresenterView();
     return true;
   }, [presenting, closePresenterView]);
+  // Only used in the presenter view.
+  const onMirrorPointer = useCallback(() => {
+    if (presenting) {
+      toggleMirrorPointer();
+    }
+    return presenting;
+  }, [presenting, toggleMirrorPointer]);
+  const onLaserPointer = useCallback(() => {
+    if (presenting) {
+      toggleLaserPointer();
+    }
+    return presenting;
+  }, [presenting, toggleLaserPointer]);
   const onFocusNotes = useCallback(() => {
     if (!presenting) {
       return false;
@@ -265,6 +300,8 @@ export function Deck({
     onPresent: presentation.toggle,
     onPresenterView: presenterView.toggle,
     onFocusNotes,
+    onMirrorPointer,
+    onLaserPointer,
     onEscape,
   });
   const onClick = useClickNavigation(next, previous);
@@ -425,14 +462,26 @@ export function Deck({
                           ))}
                       <Box
                         sx={SLIDE_FRAME_STYLES}
-                        style={{ transform: `scale(${String(scale)})` }}
+                        style={{
+                          transform: `scale(${String(scale)})`,
+                          // The laser pointer replaces the mouse cursor.
+                          ...(presenting && pointerMode === 'laser'
+                            ? { cursor: 'none' }
+                            : {}),
+                        }}
                         {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+                        // Show the pointer of the presenter to the audience.
+                        {...(presenting ? pointerHandlers : {})}
                       >
                         {/* The overview shows the slide instead. */}
                         {!showOverview && (
                           <SlideViewProvider key={slideIndex} view={view}>
                             {slides[slideIndex]}
                           </SlideViewProvider>
+                        )}
+                        {/* The presenter sees the laser pointer, too. */}
+                        {presenting && pointerMode === 'laser' && (
+                          <MirroredPointer store={pointer} mode="laser" />
                         )}
                       </Box>
                     </Box>
@@ -475,6 +524,9 @@ export function Deck({
                       onGoToSlide={openGoToSlide}
                       notesOnly={notesOnly}
                       setNotesOnly={setNotesOnly}
+                      pointerMode={pointerMode}
+                      onMirrorPointer={toggleMirrorPointer}
+                      onLaserPointer={toggleLaserPointer}
                     />
                   </ThemeProvider>
                 )}
@@ -508,6 +560,8 @@ export function Deck({
                   slides={slides}
                   theme={theme}
                   onClose={presenterView.close}
+                  pointer={pointer}
+                  pointerMode={pointerMode}
                 />
               )}
               <ScreenDialog

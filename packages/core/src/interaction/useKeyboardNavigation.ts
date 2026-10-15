@@ -18,6 +18,18 @@ export interface KeyboardNavigationOptions {
    */
   onFocusNotes: () => boolean;
   /**
+   * Shows or hides the pointer of the presenter to the audience.
+   *
+   * @returns Whether the key was handled, i.e., the presenter view is open.
+   */
+  onMirrorPointer: () => boolean;
+  /**
+   * Turns the pointer of the presenter into a laser pointer, or back.
+   *
+   * @returns Whether the key was handled, i.e., the presenter view is open.
+   */
+  onLaserPointer: () => boolean;
+  /**
    * Handles Escape before moving the focus, e.g., to leave the presenter
    * view.
    *
@@ -41,6 +53,8 @@ export interface KeyboardNavigationOptions {
  * - `p` starts the presentation in full screen, or stops it.
  * - Shift+`p` opens or closes the presenter view.
  * - `n` shows only the notes in the presenter view, or the previews, too.
+ * - `m` shows or hides the pointer of the presenter to the audience, and `l`
+ *   turns it into a laser pointer, or back.
  * - `o` shows or hides the overview of the slides. In the overview, the keys
  *   above select a slide instead, where Up and Down jump between the
  *   divisions of the deck, like sections. Enter goes to the selected slide,
@@ -75,6 +89,8 @@ export function useKeyboardNavigation(
     onPresent,
     onPresenterView,
     onFocusNotes,
+    onMirrorPointer,
+    onLaserPointer,
     onEscape,
   }: KeyboardNavigationOptions,
 ): void {
@@ -237,6 +253,18 @@ export function useKeyboardNavigation(
             return;
           }
           break;
+        case 'm':
+        case 'M':
+          if (!onMirrorPointer()) {
+            return;
+          }
+          break;
+        case 'l':
+        case 'L':
+          if (!onLaserPointer()) {
+            return;
+          }
+          break;
         case 'o':
         case 'O':
           setShowOverview(!showOverview);
@@ -270,6 +298,8 @@ export function useKeyboardNavigation(
     onPresent,
     onPresenterView,
     onFocusNotes,
+    onMirrorPointer,
+    onLaserPointer,
     onEscape,
   ]);
 }

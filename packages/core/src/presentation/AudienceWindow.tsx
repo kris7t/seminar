@@ -25,6 +25,11 @@ import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import type { AudienceWindow as AudienceWindowState } from './usePresenterView.ts';
+import {
+  MirroredPointer,
+  type PointerMode,
+  type PointerStore,
+} from './pointer.tsx';
 import { enterFullscreen } from './screens.ts';
 
 function useFitScale(target: Window): number {
@@ -57,6 +62,10 @@ export interface AudienceWindowProps {
   theme: Theme;
   /** Ends the presenter view. */
   onClose: () => void;
+  /** The pointer of the presenter on the slide, to show to the audience. */
+  pointer?: PointerStore | undefined;
+  /** How to show the pointer. */
+  pointerMode?: PointerMode;
 }
 
 /**
@@ -65,6 +74,9 @@ export interface AudienceWindowProps {
  *
  * The slide is rendered into the window by a portal, so it shares the state
  * of the deck, like the current step, with the presenter view.
+ *
+ * The pointer of the presenter is shown on the slide while it's over the
+ * slide in the presenter view.
  *
  * Keys pressed in the window are handled as if they were pressed in the
  * presenter view, so that a presentation remote works with either window
@@ -76,6 +88,8 @@ export function AudienceWindow({
   slides,
   theme,
   onClose,
+  pointer,
+  pointerMode = 'mirror',
 }: AudienceWindowProps): JSX.Element {
   const { slideIndex } = useDeck();
   const [needsClick, setNeedsClick] = useState(false);
@@ -162,6 +176,9 @@ export function AudienceWindow({
               slide={slides[slideIndex]}
               kind="audience"
             />
+            {pointer !== undefined && (
+              <MirroredPointer store={pointer} mode={pointerMode} />
+            )}
           </Box>
         </Box>
         {needsClick && screen !== undefined && (

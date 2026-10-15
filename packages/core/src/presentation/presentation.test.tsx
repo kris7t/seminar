@@ -1,4 +1,11 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +13,8 @@ import { Deck } from '../deck/Deck.tsx';
 import { Notes } from '../notes/Notes.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
+import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
+import { POINTER_IDLE_TIMEOUT } from './pointer.tsx';
 import { formatElapsed } from './PresenterToolbar.tsx';
 
 function fakeScreen(label: string, isInternal: boolean) {
@@ -257,6 +266,103 @@ describe('the presenter view', () => {
     expect(panel.textContent).toContain('End of the presentation');
     expect(toolbar.textContent).toContain('2 / 2');
     expect(panel.textContent).toContain('No notes');
+    remove();
+  });
+
+  it('mirrors the pointer over the slide', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { audience, remove } = fakeAudienceWindow();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderDeck();
+    await user.keyboard('{Shift>}P{/Shift}');
+    const frame = document.querySelector('[data-slider-view="presenter"]');
+    if (!(frame instanceof HTMLElement)) {
+      throw new Error('No presenter view');
+    }
+    // The slide is shown at half size.
+    vi.spyOn(frame, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(100, 50, SLIDE_WIDTH / 2, SLIDE_HEIGHT / 2),
+    );
+    const pointer = () =>
+      audience.document.querySelector<SVGElement>('[data-slider-pointer]');
+    expect(pointer()).toBeNull();
+    fireEvent.pointerMove(frame, {
+      pointerType: 'mouse',
+      clientX: 150,
+      clientY: 100,
+    });
+    expect(pointer()?.style.left).toBe('100px');
+    expect(pointer()?.style.top).toBe('100px');
+    // Touch doesn't hover.
+    fireEvent.pointerMove(frame, {
+      pointerType: 'touch',
+      clientX: 200,
+      clientY: 100,
+    });
+    expect(pointer()?.style.left).toBe('100px');
+    fireEvent.pointerLeave(frame, { pointerType: 'mouse' });
+    expect(pointer()).toBeNull();
+    fireEvent.pointerMove(frame, {
+      pointerType: 'mouse',
+      clientX: 150,
+      clientY: 100,
+    });
+    expect(pointer()).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(POINTER_IDLE_TIMEOUT);
+    });
+    expect(pointer()).toBeNull();
+    vi.useRealTimers();
+    remove();
+  });
+
+  it('switches between pointer modes', async () => {
+    const { audience, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('{Shift>}P{/Shift}');
+    const frame = document.querySelector('[data-slider-view="presenter"]');
+    if (!(frame instanceof HTMLElement)) {
+      throw new Error('No presenter view');
+    }
+    vi.spyOn(frame, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, 0, SLIDE_WIDTH, SLIDE_HEIGHT),
+    );
+    const move = () => {
+      fireEvent.pointerMove(frame, {
+        pointerType: 'mouse',
+        clientX: 10,
+        clientY: 10,
+      });
+    };
+    const shown = (doc: Document) =>
+      doc
+        .querySelector('[data-slider-pointer]')
+        ?.getAttribute('data-slider-pointer') ?? 'none';
+    const mirror = screen.getByRole('button', {
+      name: 'Show pointer to the audience',
+    });
+    const laser = screen.getByRole('button', { name: 'Laser pointer' });
+    expect(mirror.getAttribute('aria-pressed')).toBe('true');
+    move();
+    expect(shown(audience.document)).toBe('mirror');
+    // Only the audience sees the mirrored pointer.
+    expect(shown(document)).toBe('none');
+    await user.keyboard('m');
+    expect(mirror.getAttribute('aria-pressed')).toBe('false');
+    expect(shown(audience.document)).toBe('none');
+    move();
+    expect(shown(audience.document)).toBe('none');
+    // The pointer shows up without moving it.
+    await user.keyboard('l');
+    expect(laser.getAttribute('aria-pressed')).toBe('true');
+    expect(shown(audience.document)).toBe('laser');
+    expect(shown(document)).toBe('laser');
+    // Turning the laser off goes back to no pointer.
+    await user.click(laser);
+    expect(shown(audience.document)).toBe('none');
+    await user.click(mirror);
+    expect(shown(audience.document)).toBe('mirror');
     remove();
   });
 

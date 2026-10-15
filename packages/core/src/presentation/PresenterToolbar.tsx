@@ -1,6 +1,8 @@
+import FlareIcon from '@mui/icons-material/Flare';
 import GridViewIcon from '@mui/icons-material/GridView';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
+import MouseIcon from '@mui/icons-material/Mouse';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -22,6 +24,7 @@ import {
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import type { PointerMode } from './pointer.tsx';
 
 /** Height of the toolbar, in pixels. */
 export const TOOLBAR_HEIGHT = 48;
@@ -89,7 +92,6 @@ function ToolButton({
       disabled={disabled}
       onClick={onClick}
       color={pressed === true ? 'primary' : 'inherit'}
-      sx={pressed === true ? { bgcolor: 'action.selected' } : {}}
     >
       <Icon />
     </IconButton>
@@ -119,6 +121,12 @@ export interface PresenterToolbarProps {
   /** Whether the panel shows only the notes. */
   notesOnly: boolean;
   setNotesOnly: (notesOnly: boolean) => void;
+  /** How the pointer of the presenter is shown to the audience. */
+  pointerMode: PointerMode;
+  /** Shows or hides the pointer to the audience. */
+  onMirrorPointer: () => void;
+  /** Turns the pointer into a laser pointer, or back. */
+  onLaserPointer: () => void;
 }
 
 /**
@@ -137,6 +145,9 @@ export function PresenterToolbar({
   onGoToSlide,
   notesOnly,
   setNotesOnly,
+  pointerMode,
+  onMirrorPointer,
+  onLaserPointer,
 }: PresenterToolbarProps): JSX.Element {
   const deck = useDeck();
   const { slideIndex, slideCount } = deck;
@@ -216,6 +227,20 @@ export function PresenterToolbar({
           onClick={() => {
             setNotesOnly(!notesOnly);
           }}
+        />
+        <ToolButton
+          label="Show pointer to the audience"
+          shortcut="M"
+          icon={MouseIcon}
+          pressed={pointerMode === 'mirror'}
+          onClick={onMirrorPointer}
+        />
+        <ToolButton
+          label="Laser pointer"
+          shortcut="L"
+          icon={FlareIcon}
+          pressed={pointerMode === 'laser'}
+          onClick={onLaserPointer}
         />
       </Group>
       <Group>
