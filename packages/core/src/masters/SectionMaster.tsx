@@ -3,6 +3,7 @@ import { styled, useThemeProps } from '@mui/material/styles';
 import type { JSX } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
+import { classNames } from '../utils/classNames.ts';
 import type { SlideMasterProps } from './SlideMaster.ts';
 
 export type SectionMasterProps = SlideMasterProps;
@@ -70,9 +71,12 @@ const SectionMasterSubtitle = styled('div', {
  */
 export function SectionMaster(inProps: SectionMasterProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SliderSectionMaster' });
-  const { title, children } = props;
+  const { title, className, children } = props;
   return (
-    <SectionMasterRoot className={sectionMasterClasses.root} ownerState={props}>
+    <SectionMasterRoot
+      className={classNames(sectionMasterClasses.root, className)}
+      ownerState={props}
+    >
       {title !== undefined && (
         <SectionMasterTitle
           className={sectionMasterClasses.title}

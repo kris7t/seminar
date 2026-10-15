@@ -19,6 +19,8 @@ export interface SlideProps {
   master?: string | SlideMaster;
   /** Title of the slide passed to the master. */
   title?: ReactNode;
+  /** Classes of the slide passed to the master. */
+  className?: string | undefined;
   /** Variant of the steps on the slide that don't set their own. */
   steps?: StepVariant | undefined;
   children?: ReactNode;
@@ -42,6 +44,7 @@ function resolveMaster(
 export function Slide({
   master = 'content',
   title,
+  className,
   steps,
   children,
 }: SlideProps): JSX.Element {
@@ -50,7 +53,11 @@ export function Slide({
   // preserved. Use `createElement` to avoid tripping `static-components`.
   return (
     <StepVariantContext value={steps}>
-      {createElement(resolveMaster(master, theme.master), { title }, children)}
+      {createElement(
+        resolveMaster(master, theme.master),
+        { title, className },
+        children,
+      )}
     </StepVariantContext>
   );
 }

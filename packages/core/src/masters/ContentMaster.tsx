@@ -3,6 +3,7 @@ import { styled, useThemeProps } from '@mui/material/styles';
 import type { JSX } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
+import { classNames } from '../utils/classNames.ts';
 import type { SlideMasterProps } from './SlideMaster.ts';
 import { SlideNumber } from '../slide/SlideNumber.tsx';
 
@@ -86,9 +87,12 @@ const ContentMasterSlideNumber = styled(SlideNumber, {
  */
 export function ContentMaster(inProps: ContentMasterProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SliderContentMaster' });
-  const { title, children, showSlideNumber = true } = props;
+  const { title, className, children, showSlideNumber = true } = props;
   return (
-    <ContentMasterRoot className={contentMasterClasses.root} ownerState={props}>
+    <ContentMasterRoot
+      className={classNames(contentMasterClasses.root, className)}
+      ownerState={props}
+    >
       {title !== undefined && (
         <ContentMasterTitle
           className={contentMasterClasses.title}

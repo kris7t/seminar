@@ -92,7 +92,7 @@ Intro
 
 Done
 
-::slide[Title with *markup*]{.closing}
+::slide[Title with *markup*]{master=closing}
 
 ::slide[Title with *markup*]
 `),
@@ -141,7 +141,7 @@ Done
 
   it('reads attribute blocks at the end of headings', async () => {
     expect(
-      await slides("## Results {#res .section}\n\n## Total {'sum'}"),
+      await slides("## Results {#res master=section}\n\n## Total {'sum'}"),
     ).toEqual([
       { master: 'section', id: 'res', title: 'Results', children: '' },
       { master: 'content', id: 'total-sum', title: 'Total sum', children: '' },
@@ -397,12 +397,25 @@ More
   describe('masters', () => {
     it('uses masters in the theme by name', async () => {
       expect(
-        (
-          await slides(
-            '## A :slide{master=section}\n\n## B :slide{.closing}\n\n## C :slide{.wide master=x}',
-          )
-        ).map(({ master }) => master),
-      ).toEqual(['section', 'closing', 'x']);
+        (await slides('## A :slide{master=section}\n\n## B')).map(
+          ({ master }) => master,
+        ),
+      ).toEqual(['section', 'content']);
+    });
+
+    it('passes classes to the master', async () => {
+      expect(
+        await slides('## A {.wide .dark master=section}\n\n::slide{.plain}'),
+      ).toEqual([
+        {
+          master: 'section',
+          id: 'a',
+          className: 'wide dark',
+          title: 'A',
+          children: '',
+        },
+        { master: 'content', className: 'plain', children: '' },
+      ]);
     });
 
     it('uses components imported in the document', async () => {
@@ -413,10 +426,10 @@ import { TwoColumn } from '${STUB_URL}';
 
 ## A :slide{master=TwoColumn}
 
-## B :slide{.TwoColumn}
+## B :slide{master=Other}
 `)
         ).map(({ master }) => master),
-      ).toEqual(['<TwoColumn>', 'TwoColumn']);
+      ).toEqual(['<TwoColumn>', 'Other']);
     });
 
     it('uses components declared in the document', async () => {

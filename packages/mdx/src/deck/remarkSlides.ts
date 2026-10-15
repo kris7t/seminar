@@ -118,7 +118,6 @@ function createSlide(
   master: string,
   id: string | undefined,
   attributes: Attributes | undefined,
-  file: VFile,
   title?: PhrasingContent[],
 ): SlideDraft {
   const slide: SlideDraft = {
@@ -130,7 +129,7 @@ function createSlide(
     level: undefined,
   };
   if (attributes !== undefined) {
-    applyAttributes(slide, attributes, file);
+    applyAttributes(slide, attributes);
   }
   return slide;
 }
@@ -138,34 +137,21 @@ function createSlide(
 /**
  * Applies the attributes of a `:slide` directive to a slide.
  *
- * The master is set either with `master=Name`, which refers to a component
- * imported in the document if there is one, or a class like `.name`, which
- * always refers to a master in the theme.
+ * `master=Name` sets the master, which refers to a component imported or
+ * declared in the document if there is one, and to a master in the theme
+ * otherwise. Classes are passed to the master as its `className`.
  */
 function applyAttributes(
   slide: SlideDraft,
   { id, classes, attributes }: Attributes,
-  file: VFile,
 ) {
   slide.id = id ?? slide.id;
-  const masterAttribute = attributes.get('master');
-  if (masterAttribute !== undefined) {
-    if (classes.length > 0) {
-      file.message(
-        `Ignoring the class \`.${classes.join(' .')}\` in favor of \`master=${masterAttribute}\``,
-      );
-    }
-    slide.master = { name: masterAttribute, mayBeComponent: true };
-  } else if (classes.length > 0) {
-    if (classes.length > 1) {
-      file.message(
-        `Expected a single class to select the master, got \`.${classes.join(' .')}\``,
-      );
-    }
-    const name = classes.at(-1);
-    if (name !== undefined) {
-      slide.master = { name, mayBeComponent: false };
-    }
+  const master = attributes.get('master');
+  if (master !== undefined) {
+    slide.master = { name: master, mayBeComponent: true };
+  }
+  if (classes.length > 0) {
+    slide.attributes.set('className', classes.join(' '));
   }
   for (const [key, value] of attributes) {
     if (key === 'title') {
@@ -339,16 +325,18 @@ function createDeckAttributes(
  * - Content before the first slide break forms an untitled content slide.
  *
  * Slides with titles get the slug of the title as their id. A `:slide`
- * directive in a heading, e.g., `## Title :slide{#id .section}`, which
- * {@link remarkHeadingAttributes} also lets write as `## Title {#id .section}`,
- * or the
- * attributes of a `::slide` directive set the id and other props of the
- * slide. The master of the slide is set either with a class, like `.section`,
- * which names a master in the theme, or with `master=Name`, which refers to a
- * component imported in the document if there is one, and to a master in the
- * theme otherwise. `title="…"` sets the title of the slide in the table of
- * contents, e.g., for slides without a title, instead of the title shown on
- * the slide.
+ * directive in a heading, e.g., `## Title :slide{#id .wide master=section}`,
+ * which {@link remarkHeadingAttributes} also lets write as
+ * `## Title {#id .wide master=section}`, or the attributes of a `::slide`
+ * directive set the id and other props of the slide:
+ *
+ * - `master=Name` sets the master of the slide: a component imported or
+ *   declared in the document if there is one, and a master in the theme
+ *   otherwise.
+ * - Classes, like `.wide`, are passed to the master as its `className`.
+ * - `title="…"` sets the title of the slide in the table of contents, e.g., for
+ *   slides without a title, instead of the title shown on the slide.
+ * - Other attributes are passed to the slide as props, e.g., `steps=dim`.
  *
  * The document becomes a `Deck` that receives the props of the MDX component.
  * Settings for the deck are taken from the frontmatter (which requires
@@ -389,13 +377,12 @@ export function remarkSlides({
           getMaster(node.depth, depth),
           slug === '' ? undefined : slug,
           directive === undefined ? undefined : getAttributes(directive),
-          file,
           node.children,
         );
         current.level = node.depth;
         slides.push(current);
       } else if (node.type === 'thematicBreak') {
-        current = createSlide('content', undefined, undefined, file);
+        current = createSlide('content', undefined, undefined);
         slides.push(current);
       } else if (node.type === 'leafDirective' && node.name === 'slide') {
         const title = node.children.length > 0 ? node.children : undefined;
@@ -404,13 +391,12 @@ export function remarkSlides({
           'content',
           slug === '' ? undefined : slug,
           getAttributes(node),
-          file,
           title,
         );
         slides.push(current);
       } else {
         if (current === undefined) {
-          current = createSlide('content', undefined, undefined, file);
+          current = createSlide('content', undefined, undefined);
           slides.push(current);
         }
         current.children.push(node);

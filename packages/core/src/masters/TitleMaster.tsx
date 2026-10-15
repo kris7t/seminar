@@ -3,6 +3,7 @@ import { styled, useThemeProps } from '@mui/material/styles';
 import type { JSX } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
+import { classNames } from '../utils/classNames.ts';
 import type { SlideMasterProps } from './SlideMaster.ts';
 
 export type TitleMasterProps = SlideMasterProps;
@@ -68,9 +69,12 @@ const TitleMasterSubtitle = styled('div', {
  */
 export function TitleMaster(inProps: TitleMasterProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SliderTitleMaster' });
-  const { title, children } = props;
+  const { title, className, children } = props;
   return (
-    <TitleMasterRoot className={titleMasterClasses.root} ownerState={props}>
+    <TitleMasterRoot
+      className={classNames(titleMasterClasses.root, className)}
+      ownerState={props}
+    >
       {title !== undefined && (
         <TitleMasterTitle
           className={titleMasterClasses.title}

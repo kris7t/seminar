@@ -52,6 +52,17 @@ describe('theming', () => {
     }
   });
 
+  it('passes the classes of slides to their masters', () => {
+    const { container } = render(
+      <Deck>
+        <Slide title="Content" className="wide" />
+      </Deck>,
+    );
+    expect(
+      container.querySelector(`.${contentMasterClasses.root}`)?.classList,
+    ).toContain('wide');
+  });
+
   it('applies default props from the theme', () => {
     const theme = createSlideTheme({
       components: {

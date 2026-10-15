@@ -3,6 +3,7 @@ import { styled, useThemeProps } from '@mui/material/styles';
 import type { JSX } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
+import { classNames } from '../utils/classNames.ts';
 import type { SlideMasterProps } from './SlideMaster.ts';
 
 export type SubsectionMasterProps = SlideMasterProps;
@@ -78,10 +79,10 @@ export function SubsectionMaster(inProps: SubsectionMasterProps): JSX.Element {
     props: inProps,
     name: 'SliderSubsectionMaster',
   });
-  const { title, children } = props;
+  const { title, className, children } = props;
   return (
     <SubsectionMasterRoot
-      className={subsectionMasterClasses.root}
+      className={classNames(subsectionMasterClasses.root, className)}
       ownerState={props}
     >
       {title !== undefined && (

@@ -31,8 +31,8 @@ Mention that the deck is a single HTML file after `vite build`.
 - `---` starts a slide without a title, and `::slide[Title]` one with a title
 - Slide ids come from the titles, e.g., `#writing-slides`
 
-:step End a heading with `{#id .section}` to set slide props, or
-`{master=ClosingMaster}` to use an imported component as the master.
+:step End a heading with `{#id .class master=section}` to set slide props, where
+`master=` also takes an imported component, like `ClosingMaster`.
 
 ## Steps
 

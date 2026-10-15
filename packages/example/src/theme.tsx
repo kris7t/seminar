@@ -17,10 +17,15 @@ import {
 import type { JSX } from 'react';
 
 /** Replaces the built-in `section` master of the theme. */
-function SectionMaster({ title, children }: SlideMasterProps): JSX.Element {
+function SectionMaster({
+  title,
+  className,
+  children,
+}: SlideMasterProps): JSX.Element {
   return (
     <Stack
       component="section"
+      className={className}
       sx={{
         height: '100%',
         justifyContent: 'center',
@@ -41,11 +46,13 @@ function SectionMaster({ title, children }: SlideMasterProps): JSX.Element {
 /** Master passed directly to a single slide, rather than through the theme. */
 export function ClosingMaster({
   title,
+  className,
   children,
 }: SlideMasterProps): JSX.Element {
   return (
     <Stack
       component="section"
+      className={className}
       sx={{
         height: '100%',
         alignItems: 'center',

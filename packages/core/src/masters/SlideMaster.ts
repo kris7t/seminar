@@ -3,6 +3,8 @@ import type { ComponentType, ReactNode } from 'react';
 /** Props passed from a {@link Slide} to its slide master. */
 export interface SlideMasterProps {
   title?: ReactNode;
+  /** Classes of the slide, which masters should add to their root element. */
+  className?: string | undefined;
   children?: ReactNode;
 }
 
