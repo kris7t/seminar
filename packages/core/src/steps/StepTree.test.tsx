@@ -57,6 +57,18 @@ describe('StepTree', () => {
     ]);
   });
 
+  it('labels steps with their titles, which are not tooltips', () => {
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First">
+          <Step title="Short">A long text</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(entries()).toEqual(['*Start of the slide', 'Short']);
+    expect(screen.getByText('A long text').hasAttribute('title')).toBe(false);
+  });
+
   it('goes to steps and highlights the current one', async () => {
     const user = userEvent.setup();
     renderDeck();

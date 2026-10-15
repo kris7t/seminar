@@ -40,6 +40,13 @@ export interface StepsProps extends Omit<
   group?: string | undefined;
   /** See the `in` option of {@link useSteps}. */
   in?: string | undefined;
+  /** See the `after` option of `useSteps`. */
+  after?: string | undefined;
+  /**
+   * Title of the step in the tree of steps, instead of its text. Unlike the
+   * HTML attribute, it isn't shown as a tooltip.
+   */
+  title?: string | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   /** Content to render depending on the current step. */
@@ -108,6 +115,8 @@ export function Steps(inProps: StepsProps): JSX.Element {
     with: withStep,
     group,
     in: parent,
+    after,
+    title,
     className,
     children,
     ...other
@@ -117,6 +126,8 @@ export function Steps(inProps: StepsProps): JSX.Element {
     with: withStep,
     group,
     in: parent,
+    after,
+    title,
     appearances: ALWAYS_SHOWN,
   });
   const { ref, stepIndex, phase, isOpen, inherited } = step;

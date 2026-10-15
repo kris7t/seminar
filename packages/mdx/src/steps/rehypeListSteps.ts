@@ -81,10 +81,12 @@ interface GroupUses {
   uses: Map<string, GroupUse[]>;
   /** Places where steps are nested in each group with `in`. */
   nested: Map<string, Position[]>;
+  /** Places where steps are placed after each group with `after`. */
+  followed: Map<string, Position[]>;
 }
 
 function createGroupUses(): GroupUses {
-  return { uses: new Map(), nested: new Map() };
+  return { uses: new Map(), nested: new Map(), followed: new Map() };
 }
 
 /** Names of the JSX elements counted as enclosing steps. */
@@ -124,14 +126,22 @@ function isStep(node: RootContent | ElementContent): boolean {
  * element of a group (the first one if there are several) places the group,
  * so `with` is ignored on the other elements.
  */
-function checkGroups({ uses: groups, nested }: GroupUses, file: VFile) {
-  for (const [group, places] of nested) {
-    if (!groups.has(group)) {
-      for (const place of places) {
-        file.message(
-          `There is no step group \`${group}\` on the slide to nest a step in`,
-          { place },
-        );
+function checkGroups(
+  { uses: groups, nested, followed }: GroupUses,
+  file: VFile,
+) {
+  for (const [references, purpose] of [
+    [nested, 'nest a step in'],
+    [followed, 'place a step after'],
+  ] as const) {
+    for (const [group, places] of references) {
+      if (!groups.has(group)) {
+        for (const place of places) {
+          file.message(
+            `There is no step group \`${group}\` on the slide to ${purpose}`,
+            { place },
+          );
+        }
       }
     }
   }
@@ -144,8 +154,9 @@ function checkGroups({ uses: groups, nested }: GroupUses, file: VFile) {
     if (anchor === undefined) {
       continue;
     }
-    // Groups that other steps are nested in may have a single element.
-    if (others.length === 0 && !nested.has(group)) {
+    // Groups that other steps are nested in or placed after may have a single
+    // element.
+    if (others.length === 0 && !nested.has(group) && !followed.has(group)) {
       file.message(
         `The step group \`${group}\` is only used once on the slide`,
         { place: anchor.place },
@@ -186,12 +197,17 @@ function convertChildren(
       child.type === 'element' && child.tagName === 'li'
         ? convertListItem(child)
         : child;
-    const parentGroup = getAttribute(converted, 'in');
-    if (parentGroup !== undefined && child.position !== undefined) {
-      groups.nested.set(parentGroup, [
-        ...(groups.nested.get(parentGroup) ?? []),
-        child.position,
-      ]);
+    for (const [attribute, references] of [
+      ['in', groups.nested],
+      ['after', groups.followed],
+    ] as const) {
+      const referenced = getAttribute(converted, attribute);
+      if (referenced !== undefined && child.position !== undefined) {
+        references.set(referenced, [
+          ...(references.get(referenced) ?? []),
+          child.position,
+        ]);
+      }
     }
     const group = getAttribute(converted, 'group');
     if (group !== undefined && child.position !== undefined) {
@@ -226,6 +242,9 @@ function convertChildren(
  *   the group up front. `with` is ignored on the other items of the group.
  * - `in=name` nests the step in the step of the group `name` on the slide, as
  *   if it was inside it, e.g., for callouts of a list item elsewhere.
+ * - `after=name` places the step right after the group `name` on the slide,
+ *   nested in the same step as the group.
+ * - `title` sets the title of the step in the tree of steps.
  * - Ids, classes, and other attributes are passed to the step.
  *
  * Must run after {@link remarkSlides}, which imports the `Step` component.

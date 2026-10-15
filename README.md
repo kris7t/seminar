@@ -69,8 +69,10 @@ Presenter notes, shown only to the presenter.
 - **Steps:** list items with `:step` at their start or end appear in new
   steps, and so do paragraphs with `:step`. `:step{with=previous}` and
   `:step{with=initial}` attach them to other steps, and `:step{group=name}`
-  reveals items together. `<Step>`, `<Steps>`, and `<Together>` from
-  `@slider/core` do the same in JSX.
+  reveals items together. `:step{after=name}` places a step right after the
+  group `name`, at its level, and `:step{title=…}` names a step in the step
+  tree (Shift+T), which otherwise shows its text. `<Step>`, `<Steps>`, and
+  `<Together>` from `@slider/core` do the same in JSX.
 - **Step styles:** `:step{variant=…}` or a shorthand like `:step{only}`, or
   `{steps=…}` on a slide, sets how steps look before, during, and after their
   turn: `reveal` (the default), `dim` (past steps are dimmed), `preview`

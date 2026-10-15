@@ -101,6 +101,18 @@ export interface UseStepsOptions {
    */
   in?: string | undefined;
   /**
+   * Name of the group to place this stepper right after, nested in the same
+   * stepper as the group, before the steppers that follow the group in
+   * document order. Steppers placed after the same group follow each other in
+   * document order. Takes precedence over `in`. Ignored if `with` is a handle.
+   */
+  after?: string | undefined;
+  /**
+   * Title of the stepper in the tree of steps, instead of the text of its
+   * elements. Ignored if `with` is a handle.
+   */
+  title?: string | undefined;
+  /**
    * How the stepper looks in each phase, which the steppers nested in it
    * inherit. Shown in all phases by default.
    */
@@ -133,7 +145,14 @@ function getUnlinkedStatus(): StepStatus {
  */
 export function useSteps(
   count: number,
-  { with: withStep, group, in: parent, appearances }: UseStepsOptions = {},
+  {
+    with: withStep,
+    group,
+    in: parent,
+    after,
+    title,
+    appearances,
+  }: UseStepsOptions = {},
 ): StepHandle {
   const store = use(StepStoreContext);
   const [ownNode] = useState(() => new StepNode());
@@ -150,9 +169,11 @@ export function useSteps(
             count,
             placement,
             parent,
+            after,
+            title,
             appearances,
           }),
-    [store, node, count, placement, parent, appearances],
+    [store, node, count, placement, parent, after, title, appearances],
   );
   const { stepIndex, phase, isOpen, inherited } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,

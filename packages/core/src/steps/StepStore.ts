@@ -75,6 +75,14 @@ export interface StepOptions {
    * enclosing its elements.
    */
   parent?: string | undefined;
+  /**
+   * Group of the stepper to place the stepper right after, on the level of
+   * that stepper, i.e., nested in the same stepper. Takes precedence over
+   * `parent` and the steppers enclosing the elements of the stepper.
+   */
+  after?: string | undefined;
+  /** Title of the stepper in the tree of steps, instead of its text. */
+  title?: string | undefined;
   /** How the stepper looks in each phase. Shown in all phases by default. */
   appearances?: RankedAppearances | undefined;
 }
@@ -96,8 +104,8 @@ export interface StepTreeEntry {
   /** The path that shows the step as the current one. */
   path: StepPath;
   /**
-   * The text shown by the step, without the text of the steps nested in it,
-   * or the empty string if it shows no text.
+   * The title of the step, or the text shown by it, without the text of the
+   * steps nested in it, or the empty string if it shows no text.
    */
   label: string;
   /** The steps nested in the step. */
@@ -184,6 +192,44 @@ function textOf(element: Element, skip: (element: Element) => boolean): string {
     visit(child);
   }
   return parts.join('').replaceAll(/\s+/g, ' ').trim();
+}
+
+/**
+ * Orders steppers, given in document order, keeping that order, except that
+ * steppers placed after another one come right after it, before the steppers
+ * that follow it in document order, and in document order among each other.
+ *
+ * @param predecessors The stepper each stepper is placed after, if any, which
+ *   mustn't form cycles.
+ * @returns The position of each stepper in the order.
+ */
+function orderSteppers(
+  sorted: readonly (readonly [StepNode, Anchor])[],
+  predecessors: Map<StepNode, StepNode>,
+): Map<StepNode, number> {
+  const successors = new Map<StepNode, StepNode[]>();
+  for (const [node] of sorted) {
+    const predecessor = predecessors.get(node);
+    if (predecessor !== undefined) {
+      successors.set(predecessor, [
+        ...(successors.get(predecessor) ?? []),
+        node,
+      ]);
+    }
+  }
+  const order = new Map<StepNode, number>();
+  const visit = (node: StepNode) => {
+    order.set(node, order.size);
+    for (const successor of successors.get(node) ?? []) {
+      visit(successor);
+    }
+  };
+  for (const [node] of sorted) {
+    if (!predecessors.has(node)) {
+      visit(node);
+    }
+  }
+  return order;
 }
 
 function pathsEqual(a: StepPath, b: StepPath): boolean {
@@ -420,7 +466,8 @@ export class StepStore {
       const labels = steppers
         .filter(([, { first, last }]) => first <= step && step <= last)
         .map(([node, { first, last }]) => {
-          const text = this.#textOf(node);
+          const text =
+            anchors.get(node)?.options.title?.trim() ?? this.#textOf(node);
           return last > first && text !== ''
             ? `${text} (${String(step - first + 1)}/${String(last - first + 1)})`
             : text;
@@ -476,19 +523,54 @@ export class StepStore {
         anchors.set(node, anchor);
       }
     }
-    const parents = new Map<StepNode, StepNode | undefined>();
-    for (const [node, { element, options }] of anchors) {
-      const explicit =
-        options.parent === undefined
-          ? undefined
-          : this.#groups.get(options.parent);
-      parents.set(
-        node,
-        explicit !== undefined && explicit !== node && anchors.has(explicit)
-          ? explicit
-          : this.#findParent(node, element, anchors),
-      );
+    // The steppers to place each stepper right after, if any.
+    const predecessors = new Map<StepNode, StepNode>();
+    const sorted = [...anchors].sort(([, x], [, y]) =>
+      compareDocumentOrder(x.element, y.element),
+    );
+    for (const [node, { options }] of sorted) {
+      const predecessor = this.#findGroup(options.after, node, anchors);
+      if (predecessor !== undefined) {
+        predecessors.set(node, predecessor);
+      }
     }
+    // Steppers may be placed after each other in a cycle, which we break at
+    // the first one in document order, which is placed by its elements.
+    for (const [node] of sorted) {
+      const chain = new Set<StepNode>();
+      let current: StepNode | undefined = node;
+      while (current !== undefined && !chain.has(current)) {
+        chain.add(current);
+        current = predecessors.get(current);
+      }
+      if (current === node) {
+        predecessors.delete(node);
+      }
+    }
+    const parents = new Map<StepNode, StepNode | undefined>();
+    const findParent = (node: StepNode): StepNode | undefined => {
+      if (parents.has(node)) {
+        return parents.get(node);
+      }
+      const anchor = anchors.get(node);
+      if (anchor === undefined) {
+        return undefined;
+      }
+      const predecessor = predecessors.get(node);
+      const parent =
+        predecessor === undefined
+          ? (this.#findGroup(anchor.options.parent, node, anchors) ??
+            this.#findParent(node, anchor.element, anchors))
+          : findParent(predecessor);
+      // A stepper placed after one nested in it ends up in itself.
+      const result = parent === node ? undefined : parent;
+      parents.set(node, result);
+      return result;
+    };
+    for (const node of anchors.keys()) {
+      findParent(node);
+    }
+    const order = orderSteppers(sorted, predecessors);
     const depths = new Map<StepNode, number>();
     const getDepth = (node: StepNode, visited: Set<StepNode>): number => {
       let depth = depths.get(node);
@@ -505,17 +587,18 @@ export class StepStore {
       return depth;
     };
     // Enclosing steppers are placed before the steppers nested in them, and
-    // steppers on the same level are placed in document order.
-    const sorted = [...anchors].sort(
-      ([a, { element: x }], [b, { element: y }]) =>
+    // steppers on the same level are placed in document order, except for
+    // those placed right after another one.
+    const placementOrder = sorted.toSorted(
+      ([a], [b]) =>
         getDepth(a, new Set()) - getDepth(b, new Set()) ||
-        compareDocumentOrder(x, y),
+        (order.get(a) ?? 0) - (order.get(b) ?? 0),
     );
     const placements = new Map<StepNode, Placement>();
     const levelSizes = new Map<string, number>();
     // Number of the last step of the previous stepper on each level.
     const previousSteps = new Map<string, number>();
-    for (const [node, { options }] of sorted) {
+    for (const [node, { options }] of placementOrder) {
       const { count, placement } = options;
       const parentNode = parents.get(node);
       const parent =
@@ -578,6 +661,18 @@ export class StepStore {
       }
     }
     return depth;
+  }
+
+  /** Returns the stepper of the group `name` if it is placed, except `node`. */
+  #findGroup(
+    name: string | undefined,
+    node: StepNode,
+    anchors: Map<StepNode, Anchor>,
+  ): StepNode | undefined {
+    const group = name === undefined ? undefined : this.#groups.get(name);
+    return group !== undefined && group !== node && anchors.has(group)
+      ? group
+      : undefined;
   }
 
   /** Finds the closest stepper enclosing `element` of `node`. */

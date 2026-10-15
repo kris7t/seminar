@@ -138,6 +138,13 @@ export interface StepProps
    * the group. See the `in` option of `useSteps`.
    */
   in?: string | undefined;
+  /** See the `after` option of `useSteps`. */
+  after?: string | undefined;
+  /**
+   * Title of the step in the tree of steps, instead of its text. Unlike the
+   * HTML attribute, it isn't shown as a tooltip.
+   */
+  title?: string | undefined;
   /**
    * How the step looks in its phases. Defaults to a shorthand like `only`
    * (see {@link StepVariantShorthands}), then to the `steps` of the slide,
@@ -224,6 +231,8 @@ export function Step(inProps: StepProps): JSX.Element {
     with: withStep,
     group,
     in: parent,
+    after,
+    title,
     variant: themeVariant,
     className,
     children,
@@ -239,6 +248,8 @@ export function Step(inProps: StepProps): JSX.Element {
     with: together ?? withStep,
     group,
     in: parent,
+    after,
+    title,
     appearances,
   });
   const { ref, phase, isOpen, inherited } = step;

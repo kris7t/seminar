@@ -167,6 +167,33 @@ describe('steps', () => {
     ]);
   });
 
+  it('places steps after groups with after, and titles them', async () => {
+    const file = await compile(
+      `
+- :step{group=a} A
+- :step B
+
+:step{after=a} After
+
+:step{after=typo} Lost
+`,
+      { ...sliderMdxOptions() },
+    );
+    expect(file.messages.map(String)).toEqual([
+      expect.stringContaining(
+        'There is no step group `typo` on the slide to place a step after',
+      ),
+    ]);
+    expect(
+      await content(
+        '- :step{group=a title="First item"} A\n\n:step{after=a} B',
+      ),
+    ).toEqual([
+      '<ul>\n<Step component="li" group="a" title="First item">A</Step>\n</ul>' +
+        '<Step component="p" after="a">B</Step>',
+    ]);
+  });
+
   it('passes shorthands of variants to the step', async () => {
     expect(await content('- :step{only} A\n\n:step{dim} B')).toEqual([
       '<ul>\n<Step component="li" only="">A</Step>\n</ul>' +
