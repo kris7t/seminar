@@ -7,6 +7,12 @@ export interface StepTarget {
    * is resolved.
    */
   path: StepPath;
+  /**
+   * Name of a step group whose first step `path` is relative to, e.g., the
+   * second step nested in it for the path `[2]`. If the slide has no such
+   * group, the beginning of the slide is shown.
+   */
+  group?: string | undefined;
   /** Whether to also show all steps nested in `path`. */
   toEnd: boolean;
 }

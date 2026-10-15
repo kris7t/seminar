@@ -694,9 +694,57 @@ export class StepStore {
     return undefined;
   }
 
+  /**
+   * Returns the path of the first step of the group `name`, or `undefined` if
+   * the slide has no such group.
+   */
+  #groupPath(name: string): StepPath | undefined {
+    const node = this.#groups.get(name);
+    const placement =
+      node === undefined ? undefined : this.#getLayout().placements.get(node);
+    return placement === undefined
+      ? undefined
+      : trimPath([...placement.level, placement.first]);
+  }
+
+  /**
+   * Describes `path` relative to the first step of a step group, if it is
+   * that step or nested in it, so that it can be referred to by the name of
+   * the group. If there are several such groups, the most nested one is used,
+   * or the first one in document order among those.
+   *
+   * @returns The name of the group, if any, and the rest of the path.
+   */
+  describePath(path: StepPath): { group?: string; path: StepPath } {
+    const { anchors } = this.#getLayout();
+    const groups = [...this.#groups]
+      .flatMap(([name, node]) => {
+        const anchor = anchors.get(node);
+        return anchor === undefined ? [] : [{ name, anchor }];
+      })
+      .sort((a, b) => compareDocumentOrder(a.anchor.element, b.anchor.element));
+    let best: { group?: string; path: StepPath } = { path };
+    let bestLength = 0;
+    for (const { name } of groups) {
+      const groupPath = this.#groupPath(name) ?? [];
+      if (
+        groupPath.length > bestLength &&
+        groupPath.length <= path.length &&
+        groupPath.every((step, depth) => step === path[depth])
+      ) {
+        best = { group: name, path: path.slice(groupPath.length) };
+        bestLength = groupPath.length;
+      }
+    }
+    return best;
+  }
+
   #resolvePath(): StepPath {
     const { levelSizes } = this.#getLayout();
-    const { path: target, toEnd } = this.#position.get();
+    const { path: relative, group, toEnd } = this.#position.get();
+    const groupPath = group === undefined ? [] : this.#groupPath(group);
+    // Without the group, show the beginning of the slide.
+    const target = groupPath === undefined ? [] : [...groupPath, ...relative];
     const path: number[] = [];
     for (const position of target) {
       const size = levelSizes.get(levelKey(path)) ?? 0;

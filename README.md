@@ -69,7 +69,9 @@ Presenter notes, shown only to the presenter.
 - **Steps:** list items with `:step` at their start or end appear in new
   steps, and so do paragraphs with `:step`. `:step{with=previous}` and
   `:step{with=initial}` attach them to other steps, and `:step{group=name}`
-  reveals items together. `:step{after=name}` places a step right after the
+  reveals items together. The address refers to steps of groups by name,
+  e.g., `#intro&step=name`, or `#intro&step=name.2` for the second step nested
+  in it, so that links survive steps added before them. `:step{after=name}` places a step right after the
   group `name`, at its level, and `:step{title=…}` names a step in the step
   tree (Shift+T), which otherwise shows its text. `<Step>`, `<Steps>`, and
   `<Together>` from `@slider/core` do the same in JSX.

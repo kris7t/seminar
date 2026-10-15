@@ -383,6 +383,35 @@ describe('steps', () => {
   });
 
   describe('groups', () => {
+    it('goes to the steps of groups by their names', () => {
+      window.history.replaceState(null, '', '#intro&step=b.1');
+      render(
+        <Deck>
+          <Slide id="intro">
+            <ul>
+              <Step component="li" data-name="a" group="a" />
+              <Step component="li" data-name="b" group="b">
+                <ul>
+                  <Item name="b.1" />
+                </ul>
+              </Step>
+              <Item name="c" />
+            </ul>
+          </Slide>
+        </Deck>,
+      );
+      expect(shownItems()).toEqual(['a', '*b', '*b.1']);
+      expect(window.location.hash).toBe('#intro&step=b.1');
+      navigateTo('#intro&step=c');
+      // Unknown groups go to the beginning of the slide.
+      expect(shownItems()).toEqual([]);
+      expect(window.location.hash).toBe('#intro');
+      navigateTo('#intro&step=3');
+      expect(window.location.hash).toBe('#intro&step=3');
+      navigateTo('#intro&step=a');
+      expect(shownItems()).toEqual(['*a']);
+    });
+
     it('shares steps between the elements of a group', async () => {
       const user = userEvent.setup();
       render(
@@ -402,7 +431,8 @@ describe('steps', () => {
       expect(shownItems()).toEqual(['*a1', '*a2']);
       await user.keyboard('{ArrowRight}');
       expect(shownItems()).toEqual(['a1', '*b1', 'a2', '*b2']);
-      expect(window.location.hash).toBe('#slide=1&step=2');
+      // Steps of groups are referred to by the names of the groups.
+      expect(window.location.hash).toBe('#slide=1&step=b');
     });
 
     it('places nested elements of a group at the outer level', async () => {
@@ -429,10 +459,10 @@ describe('steps', () => {
       expect(shownItems()).toEqual(['*x']);
       await user.keyboard('{ArrowRight}');
       expect(shownItems()).toEqual(['x', '*a1', '*a2']);
-      expect(window.location.hash).toBe('#slide=1&step=2');
+      expect(window.location.hash).toBe('#slide=1&step=a');
       await user.keyboard('{ArrowRight}');
       expect(shownItems()).toEqual(['x', '*a1', '*a1.1', '*a2']);
-      expect(window.location.hash).toBe('#slide=1&step=2.1');
+      expect(window.location.hash).toBe('#slide=1&step=a.1');
     });
 
     it('places the group by its first element', async () => {

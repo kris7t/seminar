@@ -6,6 +6,11 @@ export interface DeckLocation {
   slideIndex: number;
   /** Path of the current step on the slide. */
   step: StepPath;
+  /**
+   * Name of the step group whose first step `step` is relative to, if any
+   * (see `StepTarget`).
+   */
+  group?: string | undefined;
 }
 
 const SLIDE_NUMBER_PATTERN = /^slide=(\d+)$/;
@@ -32,18 +37,25 @@ function parseSlide(
   return index >= 0 ? index : undefined;
 }
 
-function parseStep(step: string | undefined): StepPath {
+const NUMBER_PATTERN = /^\d+$/;
+
+function parseStep(
+  step: string | undefined,
+): Pick<DeckLocation, 'step' | 'group'> {
   const path: number[] = [];
   if (step === undefined || step === '') {
-    return path;
+    return { step: path };
   }
-  for (const segment of step.split('.')) {
-    if (!/^\d+$/.test(segment)) {
+  const [first = '', ...rest] = step.split('.');
+  // A step path may start with the name of a group instead of a number.
+  const group = NUMBER_PATTERN.test(first) ? undefined : first;
+  for (const segment of group === undefined ? [first, ...rest] : rest) {
+    if (!NUMBER_PATTERN.test(segment)) {
       break;
     }
     path.push(Number.parseInt(segment, 10));
   }
-  return path;
+  return group === undefined ? { step: path } : { step: path, group };
 }
 
 /**
@@ -51,7 +63,9 @@ function parseStep(step: string | undefined): StepPath {
  *
  * `<slide>` is either the id of a slide or `slide=<n>` with a 1-based slide
  * number. `<path>` is a step path with dot-separated step numbers, e.g., `2.1`
- * (see {@link StepPath}). Invalid parts of the step path are dropped.
+ * (see {@link StepPath}), which may start with the name of a step group
+ * instead, e.g., `parse` for its first step, or `parse.1` for the first step
+ * nested in it. Invalid parts of the step path are dropped.
  *
  * @returns `undefined` if the hash does not refer to a slide.
  */
@@ -68,12 +82,12 @@ export function parseLocation(
   const step = params
     .find((param) => param.startsWith(STEP_PARAM))
     ?.slice(STEP_PARAM.length);
-  return { slideIndex, step: parseStep(step) };
+  return { slideIndex, ...parseStep(step) };
 }
 
 /** Formats a location hash that can be parsed by {@link parseLocation}. */
 export function formatLocation(
-  { slideIndex, step }: DeckLocation,
+  { slideIndex, step, group }: DeckLocation,
   slideIds: readonly (string | undefined)[],
 ): string {
   const id = slideIds[slideIndex];
@@ -81,5 +95,11 @@ export function formatLocation(
     id === undefined
       ? `slide=${String(slideIndex + 1)}`
       : encodeURIComponent(id);
-  return step.length === 0 ? `#${slide}` : `#${slide}&step=${step.join('.')}`;
+  const segments = [
+    ...(group === undefined ? [] : [encodeURIComponent(group)]),
+    ...step.map(String),
+  ];
+  return segments.length === 0
+    ? `#${slide}`
+    : `#${slide}&step=${segments.join('.')}`;
 }

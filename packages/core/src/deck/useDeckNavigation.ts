@@ -8,8 +8,12 @@ import {
 } from 'react';
 
 import type { SlideStateStore } from '../state/SlideStateStore.ts';
-import { StepStore } from '../steps/StepStore.ts';
-import { formatLocation, parseLocation } from './location.ts';
+import { StepStore, type StepPath } from '../steps/StepStore.ts';
+import {
+  formatLocation,
+  parseLocation,
+  type DeckLocation,
+} from './location.ts';
 
 /** Which steps of a slide to show when going to it. See `goTo`. */
 export type GoToSteps = 'start' | 'end' | 'restore';
@@ -61,6 +65,20 @@ export interface DeckNavigation {
   lastStep: () => void;
 }
 
+/**
+ * Returns the location of `step` on the slide, which refers to it by the name
+ * of a step group if possible, so that links keep working when steps are added
+ * before it.
+ */
+function locationOf(
+  slideIndex: number,
+  stepStore: StepStore,
+  step: StepPath,
+): DeckLocation {
+  const { group, path } = stepStore.describePath(step);
+  return { slideIndex, step: path, group };
+}
+
 function readLocation(slideIds: readonly (string | undefined)[]) {
   return parseLocation(window.location.hash, slideIds);
 }
@@ -90,7 +108,11 @@ export function useDeckNavigation(
     const location = readLocation(slideIds);
     const index = location?.slideIndex ?? 0;
     if (location !== undefined) {
-      slideState.stepPosition(index).set({ path: location.step, toEnd: false });
+      slideState.stepPosition(index).set({
+        path: location.step,
+        group: location.group,
+        toEnd: false,
+      });
     }
     return index;
   });
@@ -155,14 +177,14 @@ export function useDeckNavigation(
       setRequestedIndex(newIndex);
       slideState
         .stepPosition(newIndex)
-        .set({ path: location.step, toEnd: false });
+        .set({ path: location.step, group: location.group, toEnd: false });
     }
     // If we stay on the same slide, the steps of the slide are already known,
     // so we can restore the canonical hash right away. Otherwise, the effect
     // below will update the hash once the new slide is rendered.
     if (newIndex === slideIndex) {
       const newHash = formatLocation(
-        { slideIndex, step: stepStore.getPath() },
+        locationOf(slideIndex, stepStore, stepStore.getPath()),
         slideIds,
       );
       if (window.location.hash !== newHash) {
@@ -178,7 +200,10 @@ export function useDeckNavigation(
     };
   }, []);
 
-  const hash = formatLocation({ slideIndex, step }, slideIds);
+  const hash = formatLocation(
+    locationOf(slideIndex, stepStore, step),
+    slideIds,
+  );
   useEffect(() => {
     if (window.location.hash !== hash) {
       window.history.replaceState(window.history.state, '', hash);
