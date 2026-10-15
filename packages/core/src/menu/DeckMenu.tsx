@@ -239,6 +239,8 @@ export function DeckMenu({
         },
         disabled: atEnd,
       },
+    ],
+    [
       {
         label: 'Go to slide…',
         icon: TagIcon,
@@ -252,6 +254,16 @@ export function DeckMenu({
         action: () => {
           deck.setShowOverview(!deck.showOverview);
         },
+      },
+      {
+        label: 'Table of contents',
+        icon: TocIcon,
+        shortcut: 'T',
+        action: () => {
+          setShowToc(!showToc);
+        },
+        disabled: toc.length === 0,
+        checked: showToc,
       },
     ],
     ...(presenterSettings === undefined
@@ -282,16 +294,6 @@ export function DeckMenu({
           ],
         ]),
     [
-      {
-        label: 'Table of contents',
-        icon: TocIcon,
-        shortcut: 'T',
-        action: () => {
-          setShowToc(!showToc);
-        },
-        disabled: toc.length === 0,
-        checked: showToc,
-      },
       {
         label: 'Text selection',
         icon: HighlightAltIcon,
