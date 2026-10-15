@@ -53,7 +53,17 @@ export interface DeckState {
   setShowToc: (shown: boolean) => void;
   /** Whether all slides are shown in a grid to select one. */
   showOverview: boolean;
+  /**
+   * Shows or hides the overview. When shown, the current slide is selected
+   * in it.
+   */
   setShowOverview: (shown: boolean) => void;
+  /**
+   * The slide selected in the overview, which only becomes the current slide
+   * once it is chosen.
+   */
+  overviewIndex: number;
+  setOverviewIndex: (slideIndex: number) => void;
 }
 
 export const DeckContext: Context<DeckState | undefined> = createContext<

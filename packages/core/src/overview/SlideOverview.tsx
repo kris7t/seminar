@@ -1,4 +1,4 @@
-import { Box, ButtonBase, Typography } from '@mui/material';
+import { Box, ButtonBase, ThemeProvider, Typography } from '@mui/material';
 import {
   use,
   useEffect,
@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { uiTheme } from '../menu/uiTheme.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import {
   SLIDE_VIEW_ATTRIBUTE,
@@ -17,8 +18,14 @@ import {
 } from '../slide/SlideViewContext.ts';
 import { SlideViewProvider } from '../slide/SlideViewProvider.tsx';
 import { StepStore } from '../steps/StepStore.ts';
+import { groupSlides } from './groupSlides.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
+
+/** Typography of the headings of divisions by their level. */
+const HEADING_VARIANTS = ['h4', 'h5', 'h6'] as const;
+
+const HEADING_ELEMENTS = ['h2', 'h3', 'h4'] as const;
 
 /** Scale of the thumbnails of the slides. */
 const THUMBNAIL_SCALE = 0.2;
@@ -141,12 +148,16 @@ export interface SlideOverviewProps {
 }
 
 /**
- * Shows the slides of the deck in a grid of thumbnail views, with the steps
+ * Shows the slides of the deck in grids of thumbnail views, with the steps
  * last shown on each, and goes to a slide when it is clicked, keeping its
  * steps.
  *
+ * The slides are grouped by the divisions of the table of contents, like
+ * sections, with their titles as headings (see {@link groupSlides}).
+ *
  * The navigation keys move between the slides without changing their steps,
- * and Enter goes to the highlighted slide.
+ * Up and Down jump between the divisions, and Enter goes to the highlighted
+ * slide.
  *
  * Should be rendered with the theme of the slides.
  */
@@ -155,7 +166,11 @@ export function SlideOverview({
   onClose,
   onContextMenu,
 }: SlideOverviewProps): JSX.Element {
-  const { slideIndex, goTo } = useDeck();
+  const { overviewIndex, goTo, toc } = useDeck();
+  const groups = useMemo(
+    () => groupSlides(toc, slides.length),
+    [toc, slides.length],
+  );
   const onSelect = (index: number) => {
     // Keep the steps shown in the thumbnail.
     goTo(index, 'restore');
@@ -175,26 +190,43 @@ export function SlideOverview({
         bgcolor: 'grey.900',
       }}
     >
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(auto-fill, minmax(${String(THUMBNAIL_WIDTH + 16)}px, 1fr))`,
-          justifyItems: 'center',
-          gap: 1,
-        }}
-      >
-        {slides.map((slide, index) => (
-          <Thumbnail
-            // Slides are positional, so their indices identify them.
-            // eslint-disable-next-line @eslint-react/no-array-index-key
-            key={index}
-            index={index}
-            slide={slide}
-            current={index === slideIndex}
-            onSelect={onSelect}
-          />
-        ))}
-      </Box>
+      {groups.map(({ title, level, slides: groupSlides }) => (
+        <Box
+          component="section"
+          key={groupSlides[0]}
+          sx={{ '& + &': { mt: 3 } }}
+        >
+          {title !== undefined && (
+            // The headings are part of the user interface, not the slides.
+            <ThemeProvider theme={uiTheme}>
+              <Typography
+                variant={HEADING_VARIANTS[level] ?? 'h6'}
+                component={HEADING_ELEMENTS[level] ?? 'h4'}
+                sx={{ color: 'common.white', mx: 1, mb: 1 }}
+              >
+                {title}
+              </Typography>
+            </ThemeProvider>
+          )}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(auto-fill, ${String(THUMBNAIL_WIDTH + 16)}px)`,
+              gap: 1,
+            }}
+          >
+            {groupSlides.map((index) => (
+              <Thumbnail
+                key={index}
+                index={index}
+                slide={slides[index]}
+                current={index === overviewIndex}
+                onSelect={onSelect}
+              />
+            ))}
+          </Box>
+        </Box>
+      ))}
     </Box>
   );
 }

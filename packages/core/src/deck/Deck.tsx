@@ -117,7 +117,18 @@ export function Deck({
     return resolveToc(tocEntries ?? [], tocSlides, tocSlides.map(getSlideId));
   }, [tocEntries, children]);
   const [showToc, setShowToc] = useState(defaultShowToc);
-  const [showOverview, setShowOverview] = useState(false);
+  const [overviewShown, setOverviewShown] = useState(false);
+  const showOverview = overviewShown;
+  const [overviewIndex, setOverviewIndex] = useState(0);
+  const setShowOverview = useCallback(
+    (shown: boolean) => {
+      if (shown) {
+        setOverviewIndex(slideIndex);
+      }
+      setOverviewShown(shown);
+    },
+    [slideIndex],
+  );
   const view = useMemo<SlideView>(
     () => ({ index: slideIndex, kind: 'audience', interactive: true }),
     [slideIndex],
@@ -146,6 +157,8 @@ export function Deck({
       setShowToc,
       showOverview,
       setShowOverview,
+      overviewIndex,
+      setOverviewIndex,
     }),
     [
       slideIndex,
@@ -161,6 +174,8 @@ export function Deck({
       toc,
       showToc,
       showOverview,
+      setShowOverview,
+      overviewIndex,
     ],
   );
   const [goToSlideOpen, setGoToSlideOpen] = useState(false);

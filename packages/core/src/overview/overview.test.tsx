@@ -94,6 +94,49 @@ describe('SlideOverview', () => {
     expect(window.location.hash).toBe('#slide=2&step=1');
   });
 
+  it('groups slides by divisions and jumps between them', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck
+        toc={[
+          {
+            slide: 0,
+            children: [
+              { slide: 1, children: [{ slide: 2 }, { slide: 3 }] },
+              { slide: 4, children: [{ slide: 5 }] },
+            ],
+          },
+        ]}
+      >
+        <Slide master="title" title="Talk" />
+        <Slide master="section" title="Part one" />
+        <Slide title="A" />
+        <Slide title="B" />
+        <Slide master="section" title="Part two" />
+        <Slide title="C" />
+      </Deck>,
+    );
+    await user.keyboard('o');
+    expect(
+      within(overview())
+        .getAllByRole('heading', { level: 2 })
+        .map(({ textContent }) => textContent),
+    ).toEqual(['Talk']);
+    expect(
+      within(overview())
+        .getAllByRole('heading', { level: 3 })
+        .map(({ textContent }) => textContent),
+    ).toEqual(['Part one', 'Part two']);
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(current()).toBe('Slide 3');
+    await user.keyboard('{ArrowDown}');
+    expect(current()).toBe('Slide 5');
+    await user.keyboard('{ArrowUp}{ArrowUp}');
+    expect(current()).toBe('Slide 1');
+    await user.keyboard('{ArrowUp}');
+    expect(current()).toBe('Slide 1');
+  });
+
   it('goes to a clicked slide', async () => {
     const user = userEvent.setup();
     renderDeck();
@@ -116,11 +159,16 @@ describe('SlideOverview', () => {
     expect(window.location.hash).toBe('#slide=2');
   });
 
-  it('closes with Escape and o', async () => {
+  it('closes with Escape and o without going anywhere', async () => {
     const user = userEvent.setup();
     renderDeck();
-    await user.keyboard('o{Escape}');
+    await user.keyboard('o{ArrowRight}');
+    // Selecting a slide doesn't go to it.
+    expect(window.location.hash).toBe('#slide=1');
+    await user.keyboard('{Escape}');
     expect(screen.queryByRole('region')).toBeNull();
+    expect(window.location.hash).toBe('#slide=1');
+    expect(screen.getByRole('heading').textContent).toBe('First');
     await user.keyboard('oo');
     expect(screen.queryByRole('region')).toBeNull();
   });

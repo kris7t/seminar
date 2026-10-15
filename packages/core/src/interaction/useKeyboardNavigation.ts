@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
 import type { DeckState } from '../deck/DeckContext.ts';
+import { findAdjacentGroup, groupSlides } from '../overview/groupSlides.ts';
 import { getInteraction, usesKey } from './interaction.ts';
 
 export interface KeyboardNavigationOptions {
@@ -20,9 +21,10 @@ export interface KeyboardNavigationOptions {
  * - Shift+Home and Shift+End go to the first or last step of the slide.
  * - `g` (or `:`, as in Vim) asks for a slide number to go to.
  * - `t` shows or hides the table of contents.
- * - `o` shows or hides the overview of the slides, and Escape or Enter hide
- *   it, staying on the selected slide. In the overview, the keys above move
- *   between slides without changing their steps.
+ * - `o` shows or hides the overview of the slides. In the overview, the keys
+ *   above select a slide instead, where Up and Down jump between the
+ *   divisions of the deck, like sections. Enter goes to the selected slide,
+ *   and Escape closes the overview without going anywhere.
  * - Escape moves the focus away from the focused element, so that the keys
  *   it uses navigate again.
  *
@@ -42,6 +44,8 @@ export function useKeyboardNavigation(
     lastStep,
     showOverview,
     setShowOverview,
+    overviewIndex,
+    setOverviewIndex,
     toc,
     showToc,
     setShowToc,
@@ -49,6 +53,66 @@ export function useKeyboardNavigation(
   { onGoToSlide }: KeyboardNavigationOptions,
 ): void {
   useEffect(() => {
+    /**
+     * Moves the selection of the overview, which only changes the current
+     * slide when the overview is closed with Enter.
+     *
+     * @returns Whether the key was handled.
+     */
+    const onOverviewKey = (event: KeyboardEvent): boolean => {
+      const select = (index: number) => {
+        setOverviewIndex(Math.max(0, Math.min(index, slideCount - 1)));
+      };
+      // Up and Down jump between the divisions of the deck, if it has any.
+      const jump = (direction: 1 | -1) => {
+        const groups = groupSlides(toc, slideCount);
+        if (groups.length <= 1) {
+          select(overviewIndex + direction);
+        } else {
+          const target = findAdjacentGroup(groups, overviewIndex, direction);
+          if (target !== undefined) {
+            select(target);
+          }
+        }
+      };
+      switch (event.key) {
+        case 'ArrowRight':
+        case 'PageDown':
+          select(overviewIndex + 1);
+          return true;
+        case 'ArrowLeft':
+        case 'PageUp':
+          select(overviewIndex - 1);
+          return true;
+        case ' ':
+          select(overviewIndex + (event.shiftKey ? -1 : 1));
+          return true;
+        case 'ArrowDown':
+          jump(1);
+          return true;
+        case 'ArrowUp':
+          jump(-1);
+          return true;
+        // There are no steps to go through in the overview.
+        case 'Home':
+          if (!event.shiftKey) {
+            select(0);
+          }
+          return true;
+        case 'End':
+          if (!event.shiftKey) {
+            select(slideCount - 1);
+          }
+          return true;
+        case 'Enter':
+          // Keep the steps shown in the thumbnail.
+          goTo(overviewIndex, 'restore');
+          setShowOverview(false);
+          return true;
+        default:
+          return false;
+      }
+    };
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
@@ -77,24 +141,25 @@ export function useKeyboardNavigation(
       if (usesKey(getInteraction(event.target), event.key)) {
         return;
       }
-      // The overview shows the steps of each slide, which we keep.
-      const forward = showOverview ? nextSlide : next;
-      const backward = showOverview ? previousSlide : previous;
+      if (showOverview && onOverviewKey(event)) {
+        event.preventDefault();
+        return;
+      }
       switch (event.key) {
         case 'ArrowRight':
         case 'ArrowDown':
-          forward();
+          next();
           break;
         case ' ':
           if (event.shiftKey) {
-            backward();
+            previous();
           } else {
-            forward();
+            next();
           }
           break;
         case 'ArrowLeft':
         case 'ArrowUp':
-          backward();
+          previous();
           break;
         case 'PageDown':
           nextSlide();
@@ -106,14 +171,14 @@ export function useKeyboardNavigation(
           if (event.shiftKey) {
             firstStep();
           } else {
-            goTo(0, showOverview ? 'restore' : 'start');
+            goTo(0);
           }
           break;
         case 'End':
           if (event.shiftKey) {
             lastStep();
           } else {
-            goTo(slideCount - 1, showOverview ? 'restore' : 'end');
+            goTo(slideCount - 1, 'end');
           }
           break;
         case 'g':
@@ -131,12 +196,6 @@ export function useKeyboardNavigation(
         case 'o':
         case 'O':
           setShowOverview(!showOverview);
-          break;
-        case 'Enter':
-          if (!showOverview) {
-            return;
-          }
-          setShowOverview(false);
           break;
         default:
           return;
@@ -158,6 +217,8 @@ export function useKeyboardNavigation(
     lastStep,
     showOverview,
     setShowOverview,
+    overviewIndex,
+    setOverviewIndex,
     toc,
     showToc,
     setShowToc,
