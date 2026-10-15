@@ -31,9 +31,10 @@ function setUpDocument(
   target: Window,
 ): Pick<AudienceWindow, 'container' | 'cache'> {
   const { document: doc } = target;
-  doc.title = `${document.title} – Audience`;
   doc.head.replaceChildren();
   doc.body.replaceChildren();
+  // After clearing the head, which would remove the title element.
+  doc.title = document.title;
   // Copy the styles that don't come from Emotion, like fonts. Emotion styles
   // of this window may be in the CSSOM only, so they are rendered again.
   for (const style of document.head.querySelectorAll(
@@ -117,6 +118,18 @@ export function usePresenterView(): PresenterView {
       close();
     }
   }, [audience, open, close]);
+
+  // Tell the windows apart, e.g., when sharing one of them in a video call.
+  useEffect(() => {
+    if (audience === undefined) {
+      return undefined;
+    }
+    const title = document.title;
+    document.title = `${title} (presenter view)`;
+    return () => {
+      document.title = title;
+    };
+  }, [audience]);
 
   useEffect(() => {
     if (audience === undefined) {

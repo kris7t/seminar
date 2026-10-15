@@ -135,8 +135,11 @@ describe('click navigation', () => {
         </Slide>
       </Deck>,
     );
-    // The area of the slides, next to the (closed) table of contents.
-    const root = container.firstElementChild?.lastElementChild ?? null;
+    // The area of the slides, which holds the frame of the slide in the track
+    // that moves the slides while swiping.
+    const root =
+      container.querySelector('[data-slider-view]')?.parentElement
+        ?.parentElement ?? null;
     expect(root).not.toBeNull();
     if (root !== null) {
       expect(getComputedStyle(root).userSelect).toBe('none');

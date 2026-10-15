@@ -9,7 +9,7 @@ import {
 
 import type { Size } from '../deck/useFitScale.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
-import { uiTheme } from '../menu/uiTheme.ts';
+import { darkUiTheme } from '../menu/uiTheme.ts';
 import { SLIDE_HEIGHT } from '../theme/createSlideTheme.ts';
 import { useFullscreen } from './useFullscreen.ts';
 
@@ -79,7 +79,7 @@ export function NotesDisplay({
   const expandedHeight = size.height * 0.6;
   const fits = notesHeight <= barHeight;
   return (
-    <ThemeProvider theme={uiTheme}>
+    <ThemeProvider theme={darkUiTheme}>
       {/* Also measures the notes when they don't fit. */}
       <Box
         ref={measureRef}
@@ -94,7 +94,7 @@ export function NotesDisplay({
             right: 0,
             px: 2,
             py: 1,
-            color: 'grey.400',
+            color: 'text.secondary',
           },
           !fits && { visibility: 'hidden' },
         ]}
@@ -116,7 +116,7 @@ export function NotesDisplay({
               gap: 1,
               px: 2,
               pb: 1,
-              color: 'common.white',
+              color: 'text.primary',
             },
             expanded
               ? {

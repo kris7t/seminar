@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Deck } from '../deck/Deck.tsx';
 import { Notes } from '../notes/Notes.tsx';
 import { Slide } from '../slide/Slide.tsx';
+import { Step } from '../steps/Step.tsx';
+import { formatElapsed } from './PresenterToolbar.tsx';
 
 function fakeScreen(label: string, isInternal: boolean) {
   return {
@@ -194,6 +196,7 @@ describe('the presenter view', () => {
   }
 
   it('mirrors the slides without controls', async () => {
+    document.title = 'Deck';
     const { audience, open, remove } = fakeAudienceWindow();
     const user = userEvent.setup();
     renderDeck();
@@ -203,6 +206,8 @@ describe('the presenter view', () => {
       'slider-audience',
       expect.not.stringContaining('fullscreen'),
     );
+    expect(audience.document.title).toBe('Deck');
+    expect(document.title).toBe('Deck (presenter view)');
     const body = audience.document.body;
     expect(body.textContent).toContain('First');
     expect(body.textContent).not.toContain('Some notes');
@@ -214,6 +219,44 @@ describe('the presenter view', () => {
     ).not.toBeNull();
     await user.keyboard('{ArrowRight}');
     expect(body.textContent).toContain('Second');
+    remove();
+  });
+
+  it('shows the next step and the notes in a panel', async () => {
+    const { remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First">
+          <Step>Revealed</Step>
+          <Notes>Some notes</Notes>
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    expect(screen.queryByRole('complementary')).toBeNull();
+    await user.keyboard('{Shift>}P{/Shift}');
+    const panel = screen.getByRole('complementary', { name: 'Presenter view' });
+    const toolbar = screen.getByRole('toolbar', { name: 'Presenter controls' });
+    expect(toolbar.textContent).toContain('1 / 2');
+    expect(panel.textContent).toContain('Some notes');
+    expect(panel.textContent).toContain('Next step');
+    // The preview shows the step, which is still hidden on the slide.
+    const preview = panel.querySelector('[data-slider-view="preview"]');
+    expect(preview?.textContent).toContain('Revealed');
+    expect(
+      getComputedStyle(screen.getAllByText('Revealed')[0] ?? document.body)
+        .visibility,
+    ).toBe('hidden');
+    await user.keyboard('{ArrowRight}');
+    expect(panel.textContent).toContain('Next slide');
+    expect(
+      panel.querySelector('[data-slider-view="preview"]')?.textContent,
+    ).toContain('Second');
+    await user.keyboard('{ArrowRight}');
+    expect(panel.textContent).toContain('End of the presentation');
+    expect(toolbar.textContent).toContain('2 / 2');
+    expect(panel.textContent).toContain('No notes');
     remove();
   });
 
@@ -234,6 +277,7 @@ describe('the presenter view', () => {
   it.each(['this', 'the audience'])(
     'closes on Escape in %s window',
     async (which) => {
+      document.title = 'Deck';
       const { audience, close, remove } = fakeAudienceWindow();
       const user = userEvent.setup();
       renderDeck();
@@ -251,6 +295,7 @@ describe('the presenter view', () => {
         });
       }
       expect(close).toHaveBeenCalled();
+      expect(document.title).toBe('Deck');
       expect(
         document.querySelector('[data-slider-view="audience"]'),
       ).not.toBeNull();
@@ -270,5 +315,76 @@ describe('the presenter view', () => {
       document.querySelector('[data-slider-view="audience"]'),
     ).not.toBeNull();
     remove();
+  });
+});
+
+describe('the presenter toolbar', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '#');
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('navigates and keeps time', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { remove } = fakeAudienceWindow();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <Deck>
+        <Slide title="First">
+          <Step>a</Step>
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    const toolbar = screen.getByRole('toolbar', { name: 'Presenter controls' });
+    const elapsed = screen.getByLabelText('Time elapsed');
+    expect(elapsed.textContent).toBe('0:00');
+    await user.click(screen.getByRole('button', { name: 'Next step' }));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    // Clicking doesn't take the focus, so Space keeps navigating.
+    expect(toolbar.contains(document.activeElement)).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Next slide' }));
+    expect(window.location.hash).toBe('#slide=2');
+    act(() => {
+      vi.advanceTimersByTime(65_000);
+    });
+    expect(elapsed.textContent).toBe('1:05');
+    await user.click(
+      screen.getByRole('button', { name: 'Reset time elapsed' }),
+    );
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(elapsed.textContent).toBe('0:01');
+    const focusNotes = screen.getByRole('button', { name: 'Focus on notes' });
+    expect(focusNotes.getAttribute('aria-pressed')).toBe('false');
+    const panel = screen.getByRole('complementary', { name: 'Presenter view' });
+    expect(panel.textContent).toContain('End of the presentation');
+    await user.click(focusNotes);
+    expect(focusNotes.getAttribute('aria-pressed')).toBe('true');
+    expect(panel.textContent).not.toContain('End of the presentation');
+    expect(panel.textContent).toContain('Notes');
+    await user.keyboard('n');
+    expect(focusNotes.getAttribute('aria-pressed')).toBe('false');
+    expect(panel.textContent).toContain('End of the presentation');
+    await user.click(screen.getByRole('button', { name: 'Slide overview' }));
+    expect(
+      screen.getByRole('region', { name: 'Slide overview' }),
+    ).toBeDefined();
+    remove();
+  });
+});
+
+describe('formatElapsed', () => {
+  it('shows hours only when needed', () => {
+    expect(formatElapsed(0)).toBe('0:00');
+    expect(formatElapsed(65_000)).toBe('1:05');
+    expect(formatElapsed(3_725_000)).toBe('1:02:05');
   });
 });

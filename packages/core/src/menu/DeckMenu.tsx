@@ -1,5 +1,6 @@
 import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
 import CheckIcon from '@mui/icons-material/Check';
+import CoPresentIcon from '@mui/icons-material/CoPresent';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import GridViewIcon from '@mui/icons-material/GridView';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
@@ -139,6 +140,12 @@ export function DeckMenu({
             shortcut: 'P',
             action: onPresent,
           },
+      {
+        label: presenterView ? 'Close presenter view' : 'Open presenter view',
+        icon: CoPresentIcon,
+        shortcut: 'Shift+P',
+        action: onPresenterView,
+      },
     ],
     [
       {
@@ -239,19 +246,6 @@ export function DeckMenu({
       ),
     ]),
     <Divider key="divider-settings" />,
-    <MenuItem
-      key="presenter-view"
-      role="menuitemcheckbox"
-      aria-checked={presenterView}
-      onClick={() => {
-        onClose();
-        onPresenterView();
-      }}
-    >
-      <ItemIcon>{presenterView && <CheckIcon fontSize="small" />}</ItemIcon>
-      <ListItemText>Presenter view</ListItemText>
-      {showShortcuts && <Shortcut>Shift+P</Shortcut>}
-    </MenuItem>,
     <MenuItem
       key="toc"
       role="menuitemcheckbox"

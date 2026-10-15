@@ -12,6 +12,12 @@ export interface KeyboardNavigationOptions {
   /** Opens or closes the presenter view. */
   onPresenterView: () => void;
   /**
+   * Shows only the notes in the presenter view, or the previews, too.
+   *
+   * @returns Whether the key was handled, i.e., the presenter view is open.
+   */
+  onFocusNotes: () => boolean;
+  /**
    * Handles Escape before moving the focus, e.g., to leave the presenter
    * view.
    *
@@ -34,6 +40,7 @@ export interface KeyboardNavigationOptions {
  * - `t` shows or hides the table of contents.
  * - `p` starts the presentation in full screen, or stops it.
  * - Shift+`p` opens or closes the presenter view.
+ * - `n` shows only the notes in the presenter view, or the previews, too.
  * - `o` shows or hides the overview of the slides. In the overview, the keys
  *   above select a slide instead, where Up and Down jump between the
  *   divisions of the deck, like sections. Enter goes to the selected slide,
@@ -67,6 +74,7 @@ export function useKeyboardNavigation(
     onGoToSlide,
     onPresent,
     onPresenterView,
+    onFocusNotes,
     onEscape,
   }: KeyboardNavigationOptions,
 ): void {
@@ -223,6 +231,12 @@ export function useKeyboardNavigation(
             onPresent();
           }
           break;
+        case 'n':
+        case 'N':
+          if (!onFocusNotes()) {
+            return;
+          }
+          break;
         case 'o':
         case 'O':
           setShowOverview(!showOverview);
@@ -255,6 +269,7 @@ export function useKeyboardNavigation(
     onGoToSlide,
     onPresent,
     onPresenterView,
+    onFocusNotes,
     onEscape,
   ]);
 }
