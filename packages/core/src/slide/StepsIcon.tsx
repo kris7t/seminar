@@ -1,18 +1,17 @@
 import AutoAwesomeMotionOutlinedIcon from '@mui/icons-material/AutoAwesomeMotionOutlined';
-import type { SvgIconProps } from '@mui/material';
 import type { JSX } from 'react';
+
+import { SmallStepsIcon, type MarkIconProps } from './smallIcons.tsx';
 
 /**
  * Marks a slide with steps, e.g., in the table of contents and the overview,
  * like the steps in the sidebar, but outlined to be lighter. Labeled for
  * assistive technology, and shows its label as a tooltip.
  */
-export function StepsIcon(props: SvgIconProps): JSX.Element {
-  return (
-    <AutoAwesomeMotionOutlinedIcon
-      fontSize="small"
-      titleAccess="Slide with steps"
-      {...props}
-    />
-  );
+export function StepsIcon({
+  small = false,
+  ...props
+}: MarkIconProps): JSX.Element {
+  const Icon = small ? SmallStepsIcon : AutoAwesomeMotionOutlinedIcon;
+  return <Icon fontSize="small" titleAccess="Slide with steps" {...props} />;
 }

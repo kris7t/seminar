@@ -182,11 +182,11 @@ function Thumbnail({
       >
         {index + 1}
         {/* In the order of the table of contents. */}
-        {spare && <SpareIcon fontSize="inherit" />}
-        {recap && <RecapIcon fontSize="inherit" />}
-        {recapped && <RecappedIcon fontSize="inherit" />}
-        {state && <StateIcon changed={stateChanged} fontSize="inherit" />}
-        {steps && <StepsIcon fontSize="inherit" />}
+        {spare && <SpareIcon small fontSize="inherit" />}
+        {recap && <RecapIcon small fontSize="inherit" />}
+        {recapped && <RecappedIcon small fontSize="inherit" />}
+        {state && <StateIcon small changed={stateChanged} fontSize="inherit" />}
+        {steps && <StepsIcon small fontSize="inherit" />}
       </Typography>
       {/*
        * Covers the thumbnail instead of containing it, since the contents of

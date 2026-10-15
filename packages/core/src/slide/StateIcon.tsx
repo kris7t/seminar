@@ -1,8 +1,10 @@
-import DataObjectOutlinedIcon from '@mui/icons-material/DataObjectOutlined';
-import { Badge, type SvgIconProps } from '@mui/material';
+import CodeIcon from '@mui/icons-material/Code';
+import { Badge } from '@mui/material';
 import type { JSX } from 'react';
 
-export interface StateIconProps extends SvgIconProps {
+import { SmallCodeIcon, type MarkIconProps } from './smallIcons.tsx';
+
+export interface StateIconProps extends MarkIconProps {
   /** Whether the state of the slide was changed, which adds a dot. */
   changed: boolean;
 }
@@ -13,9 +15,14 @@ export interface StateIconProps extends SvgIconProps {
  * unsaved changes. Labeled for assistive technology, and shows its label as a
  * tooltip.
  */
-export function StateIcon({ changed, ...props }: StateIconProps): JSX.Element {
+export function StateIcon({
+  changed,
+  small = false,
+  ...props
+}: StateIconProps): JSX.Element {
+  const Icon = small ? SmallCodeIcon : CodeIcon;
   const icon = (
-    <DataObjectOutlinedIcon
+    <Icon
       fontSize="small"
       titleAccess={changed ? 'Changed state' : 'Slide with state'}
       {...props}

@@ -1,12 +1,18 @@
-import HistoryIcon from '@mui/icons-material/History';
-import type { SvgIconProps } from '@mui/material';
+import SubdirectoryArrowLeftIcon from '@mui/icons-material/SubdirectoryArrowLeft';
 import type { JSX } from 'react';
+
+import { SmallRecapIcon, type MarkIconProps } from './smallIcons.tsx';
 
 /**
  * Marks a recap of a slide, e.g., in the table of contents and the overview,
- * mirroring the {@link RecappedIcon} of the recapped slide.
- * Labeled for assistive technology, and shows its label as a tooltip.
+ * with an arrow back to the recapped slide, mirroring the
+ * {@link RecappedIcon} of the recapped slide. Labeled for assistive
+ * technology, and shows its label as a tooltip.
  */
-export function RecapIcon(props: SvgIconProps): JSX.Element {
-  return <HistoryIcon fontSize="small" titleAccess="Recap" {...props} />;
+export function RecapIcon({
+  small = false,
+  ...props
+}: MarkIconProps): JSX.Element {
+  const Icon = small ? SmallRecapIcon : SubdirectoryArrowLeftIcon;
+  return <Icon fontSize="small" titleAccess="Recap" {...props} />;
 }
