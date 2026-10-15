@@ -108,6 +108,7 @@ long-press, or use the menu button in the top right corner for all actions.
 | G or :                | Go to a slide by number                        |
 | O                     | Overview of all slides                         |
 | T                     | Table of contents                              |
+| Shift+T               | Steps of the current slide                     |
 | P                     | Start the presentation in full screen, or stop |
 | Shift+P               | Open or close the presenter view               |
 | N                     | Show only the notes in the presenter view      |

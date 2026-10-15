@@ -55,7 +55,8 @@ export interface KeyboardNavigationOptions {
  *   of the last slide.
  * - Shift+Home and Shift+End go to the first or last step of the slide.
  * - `g` (or `:`, as in Vim) asks for a slide number to go to.
- * - `t` shows or hides the table of contents.
+ * - `t` shows or hides the table of contents, and Shift+`t` the steps of the
+ *   current slide.
  * - `p` starts the presentation in full screen, or stops it.
  * - Shift+`p` opens or closes the presenter view.
  * - `n` shows only the notes in the presenter view, or the previews, too.
@@ -90,6 +91,8 @@ export function useKeyboardNavigation(
     toc,
     showToc,
     setShowToc,
+    showSteps,
+    setShowSteps,
     mouseNavigation,
     setMouseNavigation,
   }: DeckState,
@@ -254,10 +257,13 @@ export function useKeyboardNavigation(
           break;
         case 't':
         case 'T':
-          if (toc.length === 0) {
+          if (event.shiftKey) {
+            setShowSteps(!showSteps);
+          } else if (toc.length > 0) {
+            setShowToc(!showToc);
+          } else {
             return;
           }
-          setShowToc(!showToc);
           break;
         case 'p':
         case 'P':
@@ -324,6 +330,8 @@ export function useKeyboardNavigation(
     toc,
     showToc,
     setShowToc,
+    showSteps,
+    setShowSteps,
     mouseNavigation,
     setMouseNavigation,
     onGoToSlide,

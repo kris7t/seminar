@@ -91,6 +91,19 @@ export class StepNode {
   >();
 }
 
+/** A step of a slide in the tree of its steps, see {@link StepStore.getTree}. */
+export interface StepTreeEntry {
+  /** The path that shows the step as the current one. */
+  path: StepPath;
+  /**
+   * The text shown by the step, without the text of the steps nested in it,
+   * or the empty string if it shows no text.
+   */
+  label: string;
+  /** The steps nested in the step. */
+  children: readonly StepTreeEntry[];
+}
+
 interface Placement {
   /** Path of the step containing the level of this stepper. */
   level: StepPath;
@@ -145,6 +158,34 @@ function trimPath(path: number[]): number[] {
   return path;
 }
 
+/** Elements whose text isn't shown, or not as text. */
+const TEXTLESS_SELECTOR =
+  'annotation, script, style, template, [aria-hidden="true"]';
+
+/**
+ * Returns the text in `element`, collapsing whitespace, and leaving out the
+ * elements for which `skip` returns `true`, along with their contents.
+ */
+function textOf(element: Element, skip: (element: Element) => boolean): string {
+  const parts: string[] = [];
+  const visit = (node: Node) => {
+    if (node instanceof Element) {
+      if (node.matches(TEXTLESS_SELECTOR) || skip(node)) {
+        return;
+      }
+      for (const child of node.childNodes) {
+        visit(child);
+      }
+    } else if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.textContent ?? '');
+    }
+  };
+  for (const child of element.childNodes) {
+    visit(child);
+  }
+  return parts.join('').replaceAll(/\s+/g, ' ').trim();
+}
+
 function pathsEqual(a: StepPath, b: StepPath): boolean {
   return a.length === b.length && a.every((step, i) => step === b[i]);
 }
@@ -168,6 +209,7 @@ export class StepStore {
   readonly #position: StepPosition;
   #unsubscribePosition: (() => void) | undefined;
   #layout: Layout | undefined;
+  #tree: readonly StepTreeEntry[] | undefined;
   #path: StepPath = [];
   #pathValid = false;
 
@@ -345,8 +387,72 @@ export class StepStore {
     return true;
   }
 
+  /**
+   * Returns the steps of the slide as a tree, where the steps on each level
+   * are followed by the steps nested in them. Steps nested in step 0 of a
+   * level, which is shown along with the level, come before the other steps of
+   * the level. The result is stable while the steppers don't change, but it
+   * doesn't follow changes of their text.
+   */
+  getTree = (): readonly StepTreeEntry[] => {
+    this.#tree ??= this.#computeTree([]);
+    return this.#tree;
+  };
+
+  #computeTree(level: StepPath): StepTreeEntry[] {
+    const { anchors, placements, levelSizes } = this.#getLayout();
+    const key = levelKey(level);
+    const size = levelSizes.get(key);
+    if (size === undefined) {
+      return [];
+    }
+    // Steppers on this level in document order.
+    const steppers = [...anchors]
+      .sort(([, x], [, y]) => compareDocumentOrder(x.element, y.element))
+      .flatMap(([node]) => {
+        const placement = placements.get(node);
+        return placement !== undefined && levelKey(placement.level) === key
+          ? [[node, placement] as const]
+          : [];
+      });
+    const entries = this.#computeTree([...level, 0]);
+    for (let step = 1; step <= size; step += 1) {
+      const labels = steppers
+        .filter(([, { first, last }]) => first <= step && step <= last)
+        .map(([node, { first, last }]) => {
+          const text = this.#textOf(node);
+          return last > first && text !== ''
+            ? `${text} (${String(step - first + 1)}/${String(last - first + 1)})`
+            : text;
+        })
+        .filter((label) => label !== '');
+      const path = [...level, step];
+      entries.push({
+        path,
+        label: labels.join(' · '),
+        children: this.#computeTree(path),
+      });
+    }
+    return entries;
+  }
+
+  /** Returns the text of the elements of `node`, in document order. */
+  #textOf(node: StepNode): string {
+    return [...node.elements.keys()]
+      .sort(compareDocumentOrder)
+      .map((element) =>
+        textOf(element, (descendant) => {
+          const owner = this.#owners.get(descendant);
+          return owner !== undefined && owner !== node;
+        }),
+      )
+      .filter((text) => text !== '')
+      .join(' ');
+  }
+
   #invalidateLayout() {
     this.#layout = undefined;
+    this.#tree = undefined;
     this.#invalidatePath();
   }
 

@@ -67,7 +67,9 @@ import { SlideStateContext } from '../state/SlideStateContext.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { resolveToc, type TocEntry } from '../toc/tableOfContents.ts';
-import { TocSidebar } from '../toc/TocSidebar.tsx';
+import { Sidebar, type SidebarSection } from '../sidebar/Sidebar.tsx';
+import { StepTree } from '../steps/StepTree.tsx';
+import { TocList } from '../toc/TocList.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
 import { getSlideNotes } from '../notes/Notes.tsx';
 import { NotesDisplay } from '../notes/NotesDisplay.tsx';
@@ -104,6 +106,11 @@ export interface DeckProps {
   toc?: TocEntry[] | undefined;
   /** Whether the table of contents is shown initially. Defaults to `false`. */
   defaultShowToc?: boolean;
+  /**
+   * Whether the steps of the current slide are shown initially. Defaults to
+   * `false`.
+   */
+  defaultShowSteps?: boolean;
 }
 
 const SELECTABLE_SELECTOR = [
@@ -141,6 +148,7 @@ export function Deck({
   defaultMouseNavigation = true,
   toc: tocEntries,
   defaultShowToc = false,
+  defaultShowSteps = false,
 }: DeckProps): JSX.Element {
   // Slides are positional children, so we need to index into them.
   // eslint-disable-next-line @eslint-react/no-children-to-array
@@ -167,6 +175,7 @@ export function Deck({
     return resolveToc(tocEntries ?? [], tocSlides, tocSlides.map(getSlideId));
   }, [tocEntries, children]);
   const [showToc, setShowToc] = useState(defaultShowToc);
+  const [showSteps, setShowSteps] = useState(defaultShowSteps);
   const [overviewShown, setOverviewShown] = useState(false);
   const showOverview = overviewShown;
   const [overviewIndex, setOverviewIndex] = useState(0);
@@ -231,6 +240,31 @@ export function Deck({
   const resetTimer = useCallback(() => {
     setTimerResetAt(Date.now());
   }, []);
+  // Collapsing all sections hides the sidebar.
+  const sidebarSections: SidebarSection[] = [
+    ...(toc.length === 0
+      ? []
+      : [
+          {
+            key: 'toc',
+            title: 'Contents',
+            expanded: showToc,
+            onToggle: () => {
+              setShowToc(!showToc);
+            },
+            children: <TocList />,
+          },
+        ]),
+    {
+      key: 'steps',
+      title: 'Steps',
+      expanded: showSteps,
+      onToggle: () => {
+        setShowSteps(!showSteps);
+      },
+      children: <StepTree store={stepStore} />,
+    },
+  ];
   const stacked = presenting && presenterLayout === 'stacked';
   const view = useMemo<SlideView>(
     () => ({
@@ -269,6 +303,8 @@ export function Deck({
       toc,
       showToc,
       setShowToc,
+      showSteps,
+      setShowSteps,
       showOverview,
       setShowOverview,
       overviewIndex,
@@ -294,6 +330,8 @@ export function Deck({
       overviewIndex,
       setMouseNavigation,
       setShowToc,
+      showSteps,
+      setShowSteps,
       setOverviewIndex,
     ],
   );
@@ -380,15 +418,11 @@ export function Deck({
         <SlideStateContext value={slideState}>
           <StepStoreContext value={stepStore}>
             <Box sx={{ position: 'fixed', inset: 0, display: 'flex' }}>
-              {showToc && toc.length > 0 && (
+              {sidebarSections.some(({ expanded }) => expanded) && (
                 // Outside of the slides, so that clicks don't navigate. Dark
                 // like the rest of the presenter view.
                 <ThemeProvider theme={presenting ? darkUiTheme : uiTheme}>
-                  <TocSidebar
-                    onClose={() => {
-                      setShowToc(false);
-                    }}
-                  />
+                  <Sidebar sections={sidebarSections} />
                 </ThemeProvider>
               )}
               {/*

@@ -1,3 +1,4 @@
+import AutoAwesomeMotionIcon from '@mui/icons-material/AutoAwesomeMotion';
 import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
 import CheckIcon from '@mui/icons-material/Check';
 import CoPresentIcon from '@mui/icons-material/CoPresent';
@@ -146,6 +147,8 @@ export function DeckMenu({
     toc,
     showToc,
     setShowToc,
+    showSteps,
+    setShowSteps,
   } = deck;
   // Touch screens have no keyboard shortcuts, and a menu at the finger would
   // be partly hidden by it.
@@ -267,6 +270,15 @@ export function DeckMenu({
         },
         disabled: toc.length === 0,
         checked: showToc,
+      },
+      {
+        label: 'Steps',
+        icon: AutoAwesomeMotionIcon,
+        shortcut: 'Shift+T',
+        action: () => {
+          setShowSteps(!showSteps);
+        },
+        checked: showSteps,
       },
     ],
     ...(presenterSettings === undefined

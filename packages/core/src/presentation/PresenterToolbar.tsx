@@ -1,3 +1,4 @@
+import AutoAwesomeMotionIcon from '@mui/icons-material/AutoAwesomeMotion';
 import FlareIcon from '@mui/icons-material/Flare';
 import GridViewIcon from '@mui/icons-material/GridView';
 import HighlightAltIcon from '@mui/icons-material/HighlightAlt';
@@ -70,7 +71,7 @@ export function formatElapsed(milliseconds: number): string {
  * ones, only the buttons for navigating and the settings of the
  * presenter view are shown, since the menu has the others.
  */
-const MIN_FULL_TOOLBAR_WIDTH = 800;
+const MIN_FULL_TOOLBAR_WIDTH = 840;
 
 /**
  * Narrowest toolbar that shows buttons other than the menu, in pixels. In
@@ -201,6 +202,8 @@ export function PresenterToolbar({
     toc,
     showToc,
     setShowToc,
+    showSteps,
+    setShowSteps,
     mouseNavigation,
     setMouseNavigation,
   } = deck;
@@ -293,6 +296,15 @@ export function PresenterToolbar({
                 disabled={toc.length === 0}
                 onClick={() => {
                   setShowToc(!showToc);
+                }}
+              />
+              <ToolButton
+                label="Steps"
+                shortcut="Shift+T"
+                icon={AutoAwesomeMotionIcon}
+                pressed={showSteps}
+                onClick={() => {
+                  setShowSteps(!showSteps);
                 }}
               />
             </>

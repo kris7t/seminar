@@ -75,7 +75,7 @@ describe('resolveToc', () => {
   });
 });
 
-describe('TocSidebar', () => {
+describe('TocList', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
   });
@@ -99,11 +99,11 @@ describe('TocSidebar', () => {
       within(nav)
         .getAllByRole('button')
         .map((button) => button.textContent),
-    ).toEqual(['', 'Introduction', 'Motivation', 'Custom', 'Slide 4']);
-    await user.click(
-      within(nav).getByRole('button', { name: 'Close table of contents' }),
-    );
+    ).toEqual(['Introduction', 'Motivation', 'Custom', 'Slide 4']);
+    // Collapsing the only expanded section hides the sidebar.
+    await user.click(screen.getByRole('button', { name: 'Contents' }));
     expect(screen.queryByRole('navigation')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Steps' })).toBeNull();
   });
 
   it('goes to slides and highlights the current one', async () => {
