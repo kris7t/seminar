@@ -543,8 +543,9 @@ export function Deck({
             <Box sx={{ position: 'fixed', inset: 0, display: 'flex' }}>
               {sidebarSections.some(({ expanded }) => expanded) && (
                 // Outside of the slides, so that clicks don't navigate. Dark
-                // like the rest of the presenter view.
-                <UiThemeProvider dark={presenting}>
+                // like the letterbox around the slides, the overview, and the
+                // presenter view.
+                <UiThemeProvider dark>
                   <Sidebar sections={sidebarSections} />
                 </UiThemeProvider>
               )}

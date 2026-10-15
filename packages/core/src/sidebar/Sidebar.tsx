@@ -60,7 +60,12 @@ function Section({
         expanded ? { flex: '1 1 0' } : { flex: 'none' },
       ]}
     >
-      <Typography variant="subtitle2" component="h2">
+      {/* Like the headings of the presenter view. */}
+      <Typography
+        variant="overline"
+        component="h2"
+        sx={{ color: 'text.secondary', lineHeight: 2 }}
+      >
         <ButtonBase
           aria-expanded={expanded}
           aria-controls={id}
@@ -71,15 +76,21 @@ function Section({
             justifyContent: 'flex-start',
             gap: 0.5,
             width: '100%',
-            px: 1,
-            py: 1,
+            // Room around the line of the heading, like the padding of the
+            // panel of the presenter view, but less below it while the
+            // section is expanded, since its entries have room of their own,
+            // and the chevron in line with the entries.
+            pt: 1,
+            pb: expanded ? 0.5 : 1,
+            px: 2,
             font: 'inherit',
+            letterSpacing: 'inherit',
+            textTransform: 'inherit',
           }}
         >
           <ExpandMoreIcon
-            fontSize="small"
             sx={[
-              { transition: 'transform 150ms' },
+              { fontSize: 18, transition: 'transform 150ms' },
               !expanded && { transform: 'rotate(-90deg)' },
             ]}
           />
