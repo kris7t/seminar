@@ -144,12 +144,7 @@ describe('::include', () => {
         children: [
           {
             slide: 1,
-            title: 'Basics',
-            children: [
-              { slide: 2, title: 'Intro' },
-              { slide: 3, title: 'Details' },
-              { slide: 4, title: 'Intro' },
-            ],
+            children: [{ slide: 2 }, { slide: 3 }, { slide: 4 }],
           },
         ],
       },
@@ -173,9 +168,7 @@ describe('::include', () => {
     expect(await tocOf(source)).toEqual([
       {
         slide: 0,
-        children: [
-          { title: 'Backup', children: [{ slide: 1, title: 'Extra' }] },
-        ],
+        children: [{ title: 'Backup', children: [{ slide: 1 }] }],
       },
     ]);
     expect(
@@ -196,12 +189,7 @@ describe('::include', () => {
           { slide: 1, children: [{ slide: 2 }] },
           {
             slide: 3,
-            title: 'Basics',
-            children: [
-              { slide: 4, title: 'Intro' },
-              { slide: 5, title: 'Details' },
-              { slide: 6, title: 'Intro' },
-            ],
+            children: [{ slide: 4 }, { slide: 5 }, { slide: 6 }],
           },
         ],
       },
@@ -218,16 +206,11 @@ describe('::include', () => {
       {
         slide: 0,
         children: [
-          { slide: 1, title: 'Details' },
+          { slide: 1 },
           // The section stays a section, although the deck has no sections.
           {
             slide: 2,
-            title: 'Basics',
-            children: [
-              { slide: 3, title: 'Intro' },
-              { slide: 4, title: 'Details' },
-              { slide: 5, title: 'Intro' },
-            ],
+            children: [{ slide: 3 }, { slide: 4 }, { slide: 5 }],
           },
         ],
       },
@@ -242,9 +225,7 @@ describe('::include', () => {
         children: [
           {
             slide: 1,
-            children: [
-              { slide: 2, children: [{ slide: 3, title: 'Details' }] },
-            ],
+            children: [{ slide: 2, children: [{ slide: 3 }] }],
           },
         ],
       },
@@ -338,7 +319,8 @@ describe('::include', () => {
         ),
       ).toEqual([
         ['details', 'Details'],
-        ['wrapper', 'Wrapper'],
+        // Titles keep their markup.
+        ['wrapper', '<em>Wrapper</em>'],
         [undefined, 'recap of details'],
       ]);
     });

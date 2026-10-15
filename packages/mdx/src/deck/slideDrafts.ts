@@ -74,10 +74,7 @@ export interface SlideDraft {
   recapTarget?: SlideDraft;
   /** Whether to only show the last step, e.g., for included recaps. */
   fromLast?: boolean;
-  /**
-   * The title of an included slide as text, for the table of contents, since
-   * the slide is rendered by the deck it's included from.
-   */
+  /** The title of an included slide as text, e.g., to derive an id from. */
   tocText?: string | undefined;
   /**
    * Ids of divisions without slides that refer to this slide, set by
@@ -140,20 +137,9 @@ export function createToc(
   const levels = structureLevels(slides, depth);
   const toc: TocEntry[] = [];
   const stack: { level: number; entry: TocEntry }[] = [];
-  // Included slides, and recaps of them, are titled by their text, since the
-  // `Deck` can't take their titles from their props.
-  const texts = new Map<string, string>();
-  for (const { id, tocText } of slides) {
-    if (id !== undefined && tocText !== undefined) {
-      texts.set(id, tocText);
-    }
-  }
   let index = 0;
   for (const [position, slide] of slides.entries()) {
-    const title =
-      slide.tocTitle ??
-      slide.tocText ??
-      (slide.recap === undefined ? undefined : texts.get(slide.recap));
+    const title = slide.tocTitle;
     // Headings deeper than the depth, e.g., with `:slide`, start content
     // slides, too.
     const level = levels[position] ?? 0;

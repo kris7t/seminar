@@ -20,6 +20,14 @@ export function slideExportName(index: number): string {
   return `${SLIDE_EXPORT_PREFIX}${String(index)}`;
 }
 
+/**
+ * Returns the name of the component of the title of the slide at `index` of
+ * a deck, which slides with titles have.
+ */
+export function titleExportName(index: number): string {
+  return `__sliderTitle${String(index)}`;
+}
+
 function identifier(name: string): Expression {
   return { type: 'Identifier', name };
 }
@@ -78,7 +86,8 @@ function findDeck(
 }
 
 /**
- * Exports a component for each slide of the deck, e.g., `__sliderSlide0`, so
+ * Exports a component for each slide of the deck, e.g., `__sliderSlide0`, and
+ * for the title of each slide with one, e.g., `__sliderTitle0`, so
  * that other decks can include them (see `::include`), and bundlers only keep
  * the slides, and the modules they import, that are used.
  *
@@ -139,6 +148,39 @@ export function recmaSlideExports(): (tree: Program) => void {
         specifiers: [],
         attributes: [],
       });
+      // The title, for decks that include the slide, e.g., to show it in their
+      // tables of contents.
+      const title = props.properties.find(
+        (property) =>
+          property.type === 'Property' &&
+          !property.computed &&
+          property.key.type === 'Identifier' &&
+          property.key.name === 'title',
+      );
+      if (title?.type === 'Property') {
+        exports.push({
+          type: 'ExportNamedDeclaration',
+          declaration: {
+            type: 'FunctionDeclaration',
+            id: { type: 'Identifier', name: titleExportName(index) },
+            params: [{ type: 'Identifier', name: 'props' }],
+            body: {
+              type: 'BlockStatement',
+              body: [
+                ...structuredClone(deck.preamble),
+                {
+                  type: 'ReturnStatement',
+                  argument: structuredClone(title.value as Expression),
+                },
+              ],
+            },
+            generator: false,
+            async: false,
+          },
+          specifiers: [],
+          attributes: [],
+        });
+      }
       // The deck reads the props of its slides, except their content.
       const reference: CallExpression = {
         type: 'CallExpression',

@@ -59,6 +59,13 @@ export function text(node: ReactNode): string {
     if (typeof node.type === 'string') {
       return `<${node.type}>${text(node.props.children)}</${node.type}>`;
     }
+    // Titles of slides included from other decks are rendered by them.
+    if (
+      typeof node.type === 'function' &&
+      node.type.name.startsWith('__sliderTitle')
+    ) {
+      return text((node.type as (props: object) => ReactNode)(node.props));
+    }
     // Show components with their props, e.g., `<Step with="previous">`.
     const { children, ...props } = node.props;
     const name = typeof node.type === 'function' ? node.type.name : 'component';

@@ -11,7 +11,7 @@ import type { VFile } from 'vfile';
 import { getAttributes } from '../directives/directives.ts';
 import { createEsm } from '../utils/estree.ts';
 import { getDeckFrontmatter, parseDeck } from './frontmatter.ts';
-import { slideExportName } from './recmaSlideExports.ts';
+import { slideExportName, titleExportName } from './recmaSlideExports.ts';
 import {
   buildSlides,
   createSlide,
@@ -343,6 +343,21 @@ export function includeSlides(
     }
     return name;
   };
+  /** Imports the component of the title of `slide`, if it has one. */
+  const importTitle = (slide: SlideDraft): string | undefined => {
+    const index = exports.get(slide);
+    if (index === undefined || slide.title === undefined) {
+      return undefined;
+    }
+    const name = `_SliderIncludeTitle${String(context.imports.count)}`;
+    context.imports.count += 1;
+    context.esm.push(
+      createEsm(
+        `import { ${titleExportName(index)} as ${name} } from ${JSON.stringify(specifier)};`,
+      ),
+    );
+    return name;
+  };
   // Divisions keep their levels, e.g., sections stay sections, whatever the
   // depth of this deck, while other slides are content slides of this deck.
   const levelOf = (slide: SlideDraft) =>
@@ -374,6 +389,19 @@ export function includeSlides(
       draft.include = name;
     }
     draft.origin = origin;
+    // The title of the slide, rendered by the other deck, e.g., for the table
+    // of contents.
+    const title = importTitle(rendered);
+    if (title !== undefined) {
+      draft.title = [
+        {
+          type: 'mdxJsxTextElement',
+          name: title,
+          attributes: [],
+          children: [],
+        },
+      ];
+    }
     draft.tocText = titleText(slide.recap === undefined ? slide : rendered);
     draft.place = place;
     if (!isCopy && origin !== undefined) {
