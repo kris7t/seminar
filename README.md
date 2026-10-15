@@ -98,6 +98,17 @@ Presenter notes, shown only to the presenter.
   Recaps take `#id`, `title`, the range of steps, and `spare`, and get an id
   like `intro-recap` otherwise. They share the state of the slide, but not its
   steps.
+- **Includes:** `::include[./other.deck.mdx#id]` includes the slide `id` of
+  another deck, or a package's deck like `::include[pkg/talk.deck.mdx#id]`,
+  with `#id`, `title`, `spare`, and a range of steps that override its own. A
+  recap is included as a slide, with the steps it would show as a recap. If
+  `id` is a division, e.g., a section, the division is included with its
+  slides, their ranges of steps, recaps, and `spare`. `::include[./other.deck.mdx]`
+  includes the whole deck, or the slides `{from=id}` or `{after=id}` to
+  `{to=id}` or `{before=id}`. Included divisions are nested in the division
+  of the directive, so the deck needs the `depth:` to hold them. The slides
+  are imported from the other deck, which resolves its own imports, and
+  bundlers only keep the included slides and what they import.
 - **Step styles:** `:step{variant=…}` or a shorthand like `:step{only}`, or
   `{steps=…}` on a slide, sets how steps look before, during, and after their
   turn: `reveal` (the default), `dim` (past steps are dimmed), `preview`

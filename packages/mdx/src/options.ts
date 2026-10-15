@@ -8,6 +8,7 @@ import {
   type MathConfig,
   type RehypeMathOptions,
 } from './math/rehypeMath.ts';
+import { recmaSlideExports } from './deck/recmaSlideExports.ts';
 import { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
 import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts';
 import { remarkNotes } from './notes/remarkNotes.ts';
@@ -55,7 +56,7 @@ export function sliderMdxOptions({
       remarkDirective,
       remarkNotes,
       remarkSteps,
-      [remarkSlides, options],
+      [remarkSlides, { ...options, onDependency }],
     ],
     rehypePlugins: [
       rehypeListSteps,
@@ -68,6 +69,6 @@ export function sliderMdxOptions({
             ],
           ]),
     ],
-    recmaPlugins: [recmaSlideTitles],
+    recmaPlugins: [recmaSlideTitles, recmaSlideExports],
   };
 }

@@ -138,6 +138,18 @@ export function readDeckFrontmatter(
   source: string,
   path?: string,
 ): Record<string, unknown> {
+  const { tree, file } = parseDeck(source, path);
+  return getDeckFrontmatter(tree, file);
+}
+
+/**
+ * Parses the MDX source of a deck without compiling it, e.g., to read its
+ * frontmatter or the structure of its slides.
+ */
+export function parseDeck(
+  source: string,
+  path?: string,
+): { tree: Root; file: VFile } {
   const file = new VFile(path === undefined ? source : { value: source, path });
   const tree = unified()
     .use(remarkParse)
@@ -148,5 +160,5 @@ export function readDeckFrontmatter(
     .use(remarkMath)
     .use(remarkDirective)
     .parse(file);
-  return getDeckFrontmatter(tree, file);
+  return { tree, file };
 }

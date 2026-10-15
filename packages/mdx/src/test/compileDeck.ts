@@ -2,6 +2,7 @@ import { evaluate } from '@mdx-js/mdx';
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import * as runtime from 'react/jsx-runtime';
 
+import { SLIDE_EXPORT_PREFIX } from '../deck/recmaSlideExports.ts';
 import { sliderMdxOptions } from '../options.ts';
 
 export type SlideSummary = Record<string, unknown>;
@@ -69,10 +70,28 @@ export function text(node: ReactNode): string {
   return typeof node === 'string' ? node : '';
 }
 
+/**
+ * Renders the component that the deck exports for a slide (see
+ * `recmaSlideExports`), which renders the slide.
+ */
+export function renderSlideExport(node: ReactNode): ReactNode {
+  let current = node;
+  // Included slides are rendered by the components of their decks, too.
+  while (
+    isValidElement<Record<string, unknown>>(current) &&
+    typeof current.type === 'function' &&
+    current.type.name.startsWith(SLIDE_EXPORT_PREFIX)
+  ) {
+    current = (current.type as (props: object) => ReactNode)(current.props);
+  }
+  return current;
+}
+
 /** Summarizes the slides of the deck, with titles and children as text. */
 export async function slides(source: string): Promise<SlideSummary[]> {
   const deck = renderDeck(await compileDeck(source));
-  return [deck.props.children].flat().map((slide) => {
+  return [deck.props.children].flat().map((child) => {
+    const slide = renderSlideExport(child);
     if (!isComponent<Record<string, unknown>>(slide, 'Slide')) {
       throw new Error('Expected a Slide');
     }

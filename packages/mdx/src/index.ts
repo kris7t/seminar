@@ -18,6 +18,10 @@ export {
   type ModuleImporter,
 } from './math/themeConfig.ts';
 export { sliderMdxOptions, type SliderMdxOptions } from './options.ts';
+export {
+  recmaSlideExports,
+  slideExportName,
+} from './deck/recmaSlideExports.ts';
 export { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
 export { rehypeListSteps } from './steps/rehypeListSteps.ts';
 export {

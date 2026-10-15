@@ -8,6 +8,7 @@ import type { Handler, State } from 'mdast-util-to-hast';
 
 /** Directives that the plugins of slider handle where they're allowed. */
 const KNOWN_DIRECTIVES: ReadonlySet<string> = new Set([
+  'include',
   'notes',
   'recap',
   'slide',
