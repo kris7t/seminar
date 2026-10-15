@@ -5,11 +5,11 @@ import {
   useMemo,
   useRef,
   type JSX,
-  type MouseEventHandler,
   type ReactNode,
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import type { ContextMenuHandlers } from '../interaction/useContextMenu.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import {
@@ -144,7 +144,8 @@ function Thumbnail({
 export interface SlideOverviewProps {
   slides: readonly ReactNode[];
   onClose: () => void;
-  onContextMenu?: MouseEventHandler | undefined;
+  /** Handlers that open the context menu of the deck. */
+  menuHandlers?: ContextMenuHandlers | undefined;
 }
 
 /**
@@ -164,7 +165,7 @@ export interface SlideOverviewProps {
 export function SlideOverview({
   slides,
   onClose,
-  onContextMenu,
+  menuHandlers,
 }: SlideOverviewProps): JSX.Element {
   const { overviewIndex, goTo, toc } = useDeck();
   const groups = useMemo(
@@ -181,13 +182,14 @@ export function SlideOverview({
       // Not a dialog, so that the navigation keys still work in it.
       role="region"
       aria-label="Slide overview"
-      onContextMenu={onContextMenu}
+      {...menuHandlers}
       sx={{
         position: 'fixed',
         inset: 0,
         overflowY: 'auto',
         p: 2,
         bgcolor: 'grey.900',
+        WebkitTouchCallout: 'none',
       }}
     >
       {groups.map(({ title, level, slides: groupSlides }) => (

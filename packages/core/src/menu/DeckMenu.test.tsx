@@ -1,8 +1,16 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
+import { LONG_PRESS_DELAY } from '../interaction/useContextMenu.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
 
@@ -35,12 +43,94 @@ describe('DeckMenu', () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('opens on right-click', async () => {
     const user = userEvent.setup();
     renderDeck();
     expect(await openMenu(user)).toBeDefined();
+  });
+
+  it('opens from the menu button', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    const button = screen.getByRole('button', { name: 'Menu' });
+    await user.click(button);
+    expect(await screen.findByRole('menu')).toBeDefined();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    await user.click(screen.getByRole('menuitem', { name: /Next slide/ }));
+    expect(window.location.hash).toBe('#slide=2');
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+    // The button doesn't take the focus, so Space goes to the next slide.
+    expect(document.activeElement).not.toBe(button);
+    await user.keyboard(' ');
+    expect(window.location.hash).toBe('#slide=3');
+  });
+
+  it('opens on a long press without navigating', () => {
+    vi.useFakeTimers();
+    renderDeck();
+    const target = screen.getByText('First');
+    const touch = { pointerId: 1, pointerType: 'touch', isPrimary: true };
+    fireEvent.pointerDown(target, { ...touch, clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_DELAY);
+    });
+    // Some browsers fire this at the element under the finger, which is now
+    // the backdrop of the menu.
+    const backdrop = document.querySelector('.MuiBackdrop-root');
+    expect(backdrop).not.toBeNull();
+    expect(
+      backdrop === null ? true : fireEvent.contextMenu(backdrop, touch),
+    ).toBe(false);
+    fireEvent.pointerUp(target, touch);
+    fireEvent.click(target);
+    expect(screen.getByRole('menu')).toBeDefined();
+    expect(window.location.hash).toBe('#slide=1');
+  });
+
+  it('advances on a tap, or a long press that moves', () => {
+    vi.useFakeTimers();
+    renderDeck();
+    const target = screen.getByText('First');
+    const touch = { pointerId: 1, pointerType: 'touch', isPrimary: true };
+    fireEvent.pointerDown(target, { ...touch, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(target, touch);
+    fireEvent.click(target);
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    fireEvent.pointerDown(target, { ...touch, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(target, { ...touch, clientX: 50, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_DELAY);
+    });
+    fireEvent.pointerUp(target, touch);
+    fireEvent.click(target);
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(window.location.hash).toBe('#slide=1&step=2');
+  });
+
+  it('shows the menu as a dialog on touch screens', async () => {
+    const matchMedia = window.matchMedia.bind(window);
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
+      const list = matchMedia(query);
+      Object.defineProperty(list, 'matches', {
+        value: query === '(pointer: coarse)',
+      });
+      return list;
+    });
+    const user = userEvent.setup();
+    renderDeck();
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Menu' });
+    expect(dialog.querySelector('[role="menu"]')).not.toBeNull();
+    // No keyboard shortcuts.
+    expect(screen.queryByText('PgDn')).toBeNull();
+    await user.click(screen.getByRole('menuitem', { name: 'Next slide' }));
+    expect(window.location.hash).toBe('#slide=2');
   });
 
   it('keeps the browser menu on Shift+right-click and in text fields', async () => {

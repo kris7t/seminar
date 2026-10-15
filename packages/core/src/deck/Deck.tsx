@@ -21,6 +21,7 @@ import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
 import { useClickNavigation } from '../interaction/useClickNavigation.ts';
 import { useContextMenu } from '../interaction/useContextMenu.ts';
 import { DeckMenu } from '../menu/DeckMenu.tsx';
+import { MenuButton } from '../menu/MenuButton.tsx';
 import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { useDeckNavigation } from './useDeckNavigation.ts';
@@ -143,7 +144,7 @@ export function Deck({
   const [mouseNavigation, setMouseNavigation] = useState(
     defaultMouseNavigation,
   );
-  const [menuPosition, onContextMenu, closeMenu] = useContextMenu();
+  const [menuPosition, menuHandlers, openMenu, closeMenu] = useContextMenu();
 
   const deck = useMemo<DeckState>(
     () => ({
@@ -217,7 +218,7 @@ export function Deck({
               <Box
                 ref={containerRef}
                 onClick={mouseNavigation ? onClick : undefined}
-                onContextMenu={onContextMenu}
+                {...menuHandlers}
                 sx={[
                   {
                     position: 'relative',
@@ -228,6 +229,8 @@ export function Deck({
                     justifyContent: 'center',
                     overflow: 'hidden',
                     bgcolor: 'common.black',
+                    // Long presses open our context menu instead.
+                    WebkitTouchCallout: 'none',
                   },
                   mouseNavigation && {
                     userSelect: 'none',
@@ -272,11 +275,12 @@ export function Deck({
                 onClose={() => {
                   setShowOverview(false);
                 }}
-                onContextMenu={onContextMenu}
+                menuHandlers={menuHandlers}
               />
             )}
             {/* Outside of the slides, so that events don't bubble to them. */}
             <ThemeProvider theme={uiTheme}>
+              <MenuButton open={menuPosition !== undefined} onOpen={openMenu} />
               <DeckMenu
                 anchorPosition={menuPosition}
                 onClose={closeMenu}

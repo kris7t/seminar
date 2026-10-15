@@ -10,12 +10,15 @@ import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import TagIcon from '@mui/icons-material/Tag';
 import {
+  Dialog,
   Divider,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
+  MenuList,
   Typography,
+  useMediaQuery,
   type SvgIconProps,
 } from '@mui/material';
 import type { ComponentType, JSX, ReactNode } from 'react';
@@ -45,6 +48,17 @@ interface Action {
  */
 const ICON_WIDTH = 28;
 
+/** Matches if the primary pointer is a finger, like on mobile devices. */
+const COARSE_POINTER_QUERY = '(pointer: coarse)';
+
+const LIST_STYLES = {
+  minWidth: 220,
+  '& .MuiMenuItem-root': { pl: 1.5 },
+  // MenuItem sets the width of the icon with a selector of the same form, so
+  // we need to be at least as specific.
+  '& .MuiMenuItem-root .MuiListItemIcon-root': { minWidth: ICON_WIDTH },
+} as const;
+
 /**
  * The keyboard shortcut of a menu item. It's hidden from assistive technology,
  * since it would become part of the name of the item.
@@ -69,6 +83,9 @@ function ItemIcon({ children }: { children?: ReactNode }): JSX.Element {
 /**
  * Context menu of the deck with navigation actions and settings.
  *
+ * On touch screens, it is shown as a dialog in the middle of the screen
+ * instead, without keyboard shortcuts.
+ *
  * Should be rendered with the {@link uiTheme}.
  */
 export function DeckMenu({
@@ -86,6 +103,10 @@ export function DeckMenu({
     showToc,
     setShowToc,
   } = deck;
+  // Touch screens have no keyboard shortcuts, and a menu at the finger would
+  // be partly hidden by it.
+  const asDialog = useMediaQuery(COARSE_POINTER_QUERY);
+  const showShortcuts = !asDialog;
   const isFirstSlide = slideIndex === 0;
   const isLastSlide = slideIndex === slideCount - 1;
 
@@ -164,75 +185,93 @@ export function DeckMenu({
     ],
   ];
 
-  return (
-    <Menu
-      open={anchorPosition !== undefined}
-      onClose={onClose}
-      anchorReference="anchorPosition"
-      {...(anchorPosition === undefined ? {} : { anchorPosition })}
-      slotProps={{
-        list: {
-          dense: true,
-          sx: {
-            minWidth: 220,
-            '& .MuiMenuItem-root': { pl: 1.5 },
-            // MenuItem sets the width of the icon with a selector of the
-            // same form, so we need to be at least as specific.
-            '& .MuiMenuItem-root .MuiListItemIcon-root': {
-              minWidth: ICON_WIDTH,
-            },
-          },
-        },
+  const items = [
+    ...groups.flatMap((group, i) => [
+      ...(i > 0 ? [<Divider key={`divider-${String(i)}`} />] : []),
+      ...group.map(
+        ({ label, icon: Icon, shortcut, action, disabled = false }) => (
+          <MenuItem
+            key={label}
+            disabled={disabled}
+            onClick={() => {
+              onClose();
+              action();
+            }}
+          >
+            <ItemIcon>
+              <Icon fontSize="small" />
+            </ItemIcon>
+            <ListItemText>{label}</ListItemText>
+            {showShortcuts && shortcut !== undefined && (
+              <Shortcut>{shortcut}</Shortcut>
+            )}
+          </MenuItem>
+        ),
+      ),
+    ]),
+    <Divider key="divider-settings" />,
+    <MenuItem
+      key="toc"
+      role="menuitemcheckbox"
+      aria-checked={showToc}
+      disabled={toc.length === 0}
+      onClick={() => {
+        onClose();
+        setShowToc(!showToc);
       }}
     >
-      {groups.flatMap((group, i) => [
-        ...(i > 0 ? [<Divider key={`divider-${String(i)}`} />] : []),
-        ...group.map(
-          ({ label, icon: Icon, shortcut, action, disabled = false }) => (
-            <MenuItem
-              key={label}
-              disabled={disabled}
-              onClick={() => {
-                onClose();
-                action();
-              }}
-            >
-              <ItemIcon>
-                <Icon fontSize="small" />
-              </ItemIcon>
-              <ListItemText>{label}</ListItemText>
-              {shortcut !== undefined && <Shortcut>{shortcut}</Shortcut>}
-            </MenuItem>
-          ),
-        ),
-      ])}
-      <Divider />
-      <MenuItem
-        role="menuitemcheckbox"
-        aria-checked={showToc}
-        disabled={toc.length === 0}
-        onClick={() => {
-          onClose();
-          setShowToc(!showToc);
-        }}
+      <ItemIcon>{showToc && <CheckIcon fontSize="small" />}</ItemIcon>
+      <ListItemText>Table of contents</ListItemText>
+      {showShortcuts && <Shortcut>T</Shortcut>}
+    </MenuItem>,
+    <MenuItem
+      key="text-selection"
+      role="menuitemcheckbox"
+      aria-checked={!mouseNavigation}
+      onClick={() => {
+        onClose();
+        setMouseNavigation(!mouseNavigation);
+      }}
+    >
+      <ItemIcon>{!mouseNavigation && <CheckIcon fontSize="small" />}</ItemIcon>
+      <ListItemText>Text selection</ListItemText>
+    </MenuItem>,
+  ];
+
+  const open = anchorPosition !== undefined;
+  if (asDialog) {
+    return (
+      <Dialog
+        open={open}
+        onClose={onClose}
+        slotProps={{ paper: { 'aria-label': 'Menu' } }}
       >
-        <ItemIcon>{showToc && <CheckIcon fontSize="small" />}</ItemIcon>
-        <ListItemText>Table of contents</ListItemText>
-        <Shortcut>T</Shortcut>
-      </MenuItem>
-      <MenuItem
-        role="menuitemcheckbox"
-        aria-checked={!mouseNavigation}
-        onClick={() => {
-          onClose();
-          setMouseNavigation(!mouseNavigation);
-        }}
-      >
-        <ItemIcon>
-          {!mouseNavigation && <CheckIcon fontSize="small" />}
-        </ItemIcon>
-        <ListItemText>Text selection</ListItemText>
-      </MenuItem>
+        <MenuList autoFocusItem={open} sx={LIST_STYLES}>
+          {items}
+        </MenuList>
+      </Dialog>
+    );
+  }
+  return (
+    <Menu
+      open={open}
+      onClose={onClose}
+      anchorReference="anchorPosition"
+      {...(anchorPosition === undefined
+        ? {}
+        : {
+            anchorPosition: {
+              top: anchorPosition.top,
+              left: anchorPosition.left,
+            },
+            transformOrigin: {
+              vertical: 'top',
+              horizontal: anchorPosition.align ?? 'left',
+            },
+          })}
+      slotProps={{ list: { dense: true, sx: LIST_STYLES } }}
+    >
+      {items}
     </Menu>
   );
 }
