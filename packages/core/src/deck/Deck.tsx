@@ -151,6 +151,8 @@ export function Deck({
   const {
     slideIndex,
     stepStore,
+    atFirstStep,
+    atLastStep,
     goTo,
     next,
     previous,
@@ -243,6 +245,8 @@ export function Deck({
     () => ({
       slideIndex,
       slideCount,
+      atFirstStep,
+      atLastStep,
       goTo,
       next,
       previous,
@@ -263,6 +267,8 @@ export function Deck({
     [
       slideIndex,
       slideCount,
+      atFirstStep,
+      atLastStep,
       goTo,
       next,
       previous,

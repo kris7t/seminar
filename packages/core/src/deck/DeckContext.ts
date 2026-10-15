@@ -7,6 +7,10 @@ export interface DeckState {
   /** Zero-based index of the currently shown slide. */
   slideIndex: number;
   slideCount: number;
+  /** Whether no steps of the current slide are shown. */
+  atFirstStep: boolean;
+  /** Whether all steps of the current slide are shown. */
+  atLastStep: boolean;
   /**
    * Goes to a slide. `steps` sets which of its steps are shown:
    *

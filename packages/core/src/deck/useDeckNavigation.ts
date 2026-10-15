@@ -22,6 +22,10 @@ export interface DeckNavigation {
    * navigation goes through.
    */
   stepStore: StepStore;
+  /** Whether no steps of the current slide are shown. */
+  atFirstStep: boolean;
+  /** Whether all steps of the current slide are shown. */
+  atLastStep: boolean;
   /**
    * Goes to a slide. `steps` sets which of its steps are shown:
    *
@@ -97,6 +101,11 @@ export function useDeckNavigation(
     [slideState, slideIndex],
   );
   const step = useSyncExternalStore(stepStore.subscribe, stepStore.getPath);
+  // Steps may appear without the path changing, so this is followed on its own.
+  const atLastStep = useSyncExternalStore(
+    stepStore.subscribe,
+    () => !stepStore.hasNext(),
+  );
 
   const goTo = useCallback(
     (index: number, steps: GoToSteps = 'start') => {
@@ -179,6 +188,8 @@ export function useDeckNavigation(
   return {
     slideIndex,
     stepStore,
+    atFirstStep: step.length === 0,
+    atLastStep,
     goTo,
     next,
     previous,

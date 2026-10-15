@@ -163,15 +163,41 @@ describe('DeckMenu', () => {
     expect(window.location.hash).toBe('#slide=3');
   });
 
-  it('disables unavailable slide actions', async () => {
+  it('disables unavailable navigation actions', async () => {
     const user = userEvent.setup();
     renderDeck();
-    await openMenu(user);
-    expect(
-      screen
-        .getByRole('menuitem', { name: /Previous slide/ })
-        .getAttribute('aria-disabled'),
-    ).toBe('true');
+    const disabled = async () => {
+      await user.click(screen.getByRole('button', { name: 'Menu' }));
+      const menu = await screen.findByRole('menu');
+      const labels = [...menu.querySelectorAll('[aria-disabled="true"]')]
+        .map((item) => item.querySelector('.MuiListItemText-root')?.textContent)
+        // The deck has no table of contents.
+        .filter((label) => label !== 'Table of contents');
+      await user.keyboard('{Escape}');
+      await waitFor(() => {
+        expect(screen.queryByRole('menu')).toBeNull();
+      });
+      return labels;
+    };
+    expect(await disabled()).toEqual([
+      'Previous step',
+      'First step',
+      'Previous slide',
+      'First slide',
+    ]);
+    await user.keyboard(' ');
+    expect(await disabled()).toEqual(['Previous slide']);
+    await user.keyboard('{Shift>}{End}{/Shift}');
+    expect(await disabled()).toEqual(['Last step', 'Previous slide']);
+    // The last slide has no steps.
+    await user.keyboard('{End}');
+    expect(await disabled()).toEqual([
+      'Next step',
+      'First step',
+      'Last step',
+      'Next slide',
+      'Last slide',
+    ]);
   });
 
   it('closes on Escape without navigating', async () => {

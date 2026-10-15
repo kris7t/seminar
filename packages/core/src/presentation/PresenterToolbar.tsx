@@ -185,6 +185,8 @@ export function PresenterToolbar({
   const {
     slideIndex,
     slideCount,
+    atFirstStep,
+    atLastStep,
     toc,
     showToc,
     setShowToc,
@@ -244,6 +246,7 @@ export function PresenterToolbar({
             shortcut="Left"
             icon={NavigateBeforeIcon}
             onClick={deck.previous}
+            disabled={slideIndex === 0 && atFirstStep}
           />
           {slideNumber}
           <ToolButton
@@ -251,6 +254,7 @@ export function PresenterToolbar({
             shortcut="Right"
             icon={NavigateNextIcon}
             onClick={deck.next}
+            disabled={slideIndex === slideCount - 1 && atLastStep}
           />
           <ToolButton
             label="Next slide"

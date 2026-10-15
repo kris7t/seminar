@@ -136,6 +136,8 @@ export function DeckMenu({
   const {
     slideIndex,
     slideCount,
+    atFirstStep,
+    atLastStep,
     mouseNavigation,
     setMouseNavigation,
     toc,
@@ -148,6 +150,8 @@ export function DeckMenu({
   const showShortcuts = !asDialog;
   const isFirstSlide = slideIndex === 0;
   const isLastSlide = slideIndex === slideCount - 1;
+  const atStart = isFirstSlide && atFirstStep;
+  const atEnd = isLastSlide && atLastStep;
 
   const groups: Item[][] = [
     [
@@ -178,24 +182,28 @@ export function DeckMenu({
         icon: NavigateNextIcon,
         shortcut: 'Right',
         action: deck.next,
+        disabled: atEnd,
       },
       {
         label: 'Previous step',
         icon: NavigateBeforeIcon,
         shortcut: 'Left',
         action: deck.previous,
+        disabled: atStart,
       },
       {
         label: 'First step',
         icon: SkipPreviousIcon,
         shortcut: 'Shift+Home',
         action: deck.firstStep,
+        disabled: atFirstStep,
       },
       {
         label: 'Last step',
         icon: SkipNextIcon,
         shortcut: 'Shift+End',
         action: deck.lastStep,
+        disabled: atLastStep,
       },
     ],
     [
@@ -220,6 +228,7 @@ export function DeckMenu({
         action: () => {
           deck.goTo(0);
         },
+        disabled: atStart,
       },
       {
         label: 'Last slide',
@@ -228,6 +237,7 @@ export function DeckMenu({
         action: () => {
           deck.goTo(slideCount - 1, 'end');
         },
+        disabled: atEnd,
       },
       {
         label: 'Go to slide…',
