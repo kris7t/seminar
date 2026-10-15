@@ -220,7 +220,7 @@ export function DeckMenu({
         disabled: atLastStep,
       },
       {
-        label: 'Reset slide state',
+        label: 'Reset slide',
         icon: SettingsBackupRestoreIcon,
         action: () => {
           deck.resetSlide(slideIndex);

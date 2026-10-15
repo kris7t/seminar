@@ -168,11 +168,11 @@ describe('TocList', () => {
     );
     const nav = screen.getByRole('navigation', { name: 'Table of contents' });
     await user.click(
-      within(nav).getByRole('button', { name: 'Go to the first recap' }),
+      within(nav).getByRole('button', { name: 'Go to first recap' }),
     );
     expect(window.location.hash).toBe('#a-recap');
     const toOriginal = within(nav).getAllByRole('button', {
-      name: 'Go to the recapped slide',
+      name: 'Go to recapped slide',
     });
     expect(toOriginal).toHaveLength(2);
     const [, fromSecondRecap] = toOriginal;
@@ -197,13 +197,13 @@ describe('TocList', () => {
     const nav = screen.getByRole('navigation', { name: 'Table of contents' });
     // Found when the deck is idle, without showing the slides.
     const [ofSecond, ofRecap] = await within(nav).findAllByRole('button', {
-      name: 'Show the steps',
+      name: 'Show steps',
     });
     if (ofSecond === undefined || ofRecap === undefined) {
       throw new Error('No buttons to show the steps');
     }
     expect(
-      within(nav).getByRole('button', { name: 'Go to the recapped slide' }),
+      within(nav).getByRole('button', { name: 'Go to recapped slide' }),
     ).toBeDefined();
     expect(screen.queryByRole('navigation', { name: 'Steps' })).toBeNull();
     await user.click(ofSecond);
@@ -247,10 +247,10 @@ describe('TocList', () => {
     const nav = screen.getByRole('navigation', { name: 'Table of contents' });
     // Only marked while there is nothing to reset.
     expect(
-      await within(nav).findAllByRole('img', { name: 'Slide with state' }),
+      await within(nav).findAllByRole('img', { name: 'Keeps your changes' }),
     ).toHaveLength(2);
     expect(
-      within(nav).queryByRole('button', { name: 'Reset the state' }),
+      within(nav).queryByRole('button', { name: 'Reset slide' }),
     ).toBeNull();
     const [counter] = within(nav).getAllByRole('button', { name: 'Counter' });
     if (counter === undefined) {
@@ -262,7 +262,7 @@ describe('TocList', () => {
     expect(window.location.hash).toBe('#counter&step=1');
     // The recap shares the state of the slide.
     const resets = within(nav).getAllByRole('button', {
-      name: 'Reset the state',
+      name: 'Reset slide',
     });
     expect(resets).toHaveLength(2);
     const [, ofRecap] = resets;
@@ -274,11 +274,11 @@ describe('TocList', () => {
     expect(window.location.hash).toBe('#counter-recap&step=1');
     expect(screen.getByRole('button', { name: 'Count 0' })).toBeDefined();
     expect(
-      within(nav).queryByRole('button', { name: 'Reset the state' }),
+      within(nav).queryByRole('button', { name: 'Reset slide' }),
     ).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Count 0' }));
     const [again] = within(nav).getAllByRole('button', {
-      name: 'Reset the state',
+      name: 'Reset slide',
     });
     if (again === undefined) {
       throw new Error('No button to reset the state');

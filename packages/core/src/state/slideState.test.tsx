@@ -150,7 +150,7 @@ describe('useSlideState', () => {
         target: screen.getByRole('heading'),
       });
       return within(await screen.findByRole('menu')).getByRole('menuitem', {
-        name: 'Reset slide state',
+        name: 'Reset slide',
       });
     };
     // Nothing to reset yet.

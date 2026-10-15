@@ -24,7 +24,7 @@ export function StateIcon({
   const icon = (
     <Icon
       fontSize="small"
-      titleAccess={changed ? 'Changed state' : 'Slide with state'}
+      titleAccess={changed ? 'Changed' : 'Keeps your changes'}
       {...props}
     />
   );

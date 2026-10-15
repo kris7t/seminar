@@ -173,8 +173,7 @@ describe('DeckMenu', () => {
         .map((item) => item.querySelector('.MuiListItemText-root')?.textContent)
         // The deck has no table of contents, and its slides have no state.
         .filter(
-          (label) =>
-            label !== 'Table of contents' && label !== 'Reset slide state',
+          (label) => label !== 'Table of contents' && label !== 'Reset slide',
         );
       await user.keyboard('{Escape}');
       await waitFor(() => {

@@ -224,8 +224,7 @@ function Thumbnail({
             {spare && ' (spare)'}
             {recap && ' (recap)'}
             {recapped && ' (recapped later)'}
-            {state &&
-              (stateChanged ? ' (with changed state)' : ' (with state)')}
+            {state && (stateChanged ? ' (changed)' : ' (keeps changes)')}
             {steps && ' (with steps)'}
           </Box>
         </ButtonBase>

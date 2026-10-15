@@ -72,13 +72,13 @@ function renderEntries({
       original !== undefined
         ? {
             target: original,
-            label: 'Go to the recapped slide',
+            label: 'Go to recapped slide',
             Icon: RecapIcon,
           }
         : firstRecap >= 0
           ? {
               target: firstRecap,
-              label: 'Go to the first recap',
+              label: 'Go to first recap',
               Icon: RecappedIcon,
             }
           : undefined;
@@ -121,12 +121,12 @@ function renderEntries({
                   <IconButton
                     edge={steps ? false : 'end'}
                     size="small"
-                    aria-label="Reset the state"
+                    aria-label="Reset slide"
                     onClick={() => {
                       resetSlide(entry.slideIndex);
                     }}
                   >
-                    <StateIcon changed titleAccess="Reset the state" />
+                    <StateIcon changed titleAccess="Reset slide" />
                   </IconButton>
                 ) : (
                   // Only a mark, in the place of the button, which shows its
@@ -150,12 +150,12 @@ function renderEntries({
                 <IconButton
                   edge="end"
                   size="small"
-                  aria-label="Show the steps"
+                  aria-label="Show steps"
                   onClick={() => {
                     showSteps(entry.slideIndex);
                   }}
                 >
-                  <StepsIcon titleAccess="Show the steps" />
+                  <StepsIcon titleAccess="Show steps" />
                 </IconButton>
               )}
             </Box>
