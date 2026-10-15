@@ -42,39 +42,146 @@ function contentSize({ width, height }: Size): Size {
   };
 }
 
-/**
- * Returns the size of a preview of a slide in a panel whose contents, i.e.,
- * without its padding, have `content` size, or zero if it doesn't fit.
- */
-export function previewSize(layout: PresenterLayout, content: Size): Size {
-  const size =
-    layout === 'side'
-      ? { width: content.width, height: Number.NaN }
-      : { width: Number.NaN, height: content.height - HEADING_HEIGHT };
-  if (Number.isNaN(size.height)) {
-    size.height = (size.width * SLIDE_HEIGHT) / SLIDE_WIDTH;
-  } else {
-    size.width = (size.height * SLIDE_WIDTH) / SLIDE_HEIGHT;
-  }
+/** Largest width of a preview below the slide, in pixels. */
+export const MAX_STACKED_PREVIEW_WIDTH = 480;
+
+function fromWidth(width: number): Size {
+  return { width, height: (width * SLIDE_HEIGHT) / SLIDE_WIDTH };
+}
+
+/** Returns the size of a preview whose slide has `height`, but at most as
+ * wide as {@link MAX_STACKED_PREVIEW_WIDTH}. */
+function stackedFromHeight(height: number): Size {
+  return fromWidth(
+    Math.min((height * SLIDE_WIDTH) / SLIDE_HEIGHT, MAX_STACKED_PREVIEW_WIDTH),
+  );
+}
+
+function orZero(size: Size): Size {
   return size.width > 0 && size.height > 0 ? size : { width: 0, height: 0 };
 }
 
 /**
- * Whether a panel whose contents have `content` size fits two previews, e.g.,
- * of the next step and of the next slide, while leaving enough space for the
- * notes.
+ * Returns the size of a preview of a slide in a panel whose contents, i.e.,
+ * without its padding, have `content` size, or zero if it doesn't fit.
+ *
+ * Below the slide, previews fill the height of the panel, but they are at most
+ * {@link MAX_STACKED_PREVIEW_WIDTH} wide, to leave space for the notes.
  */
-export function fitsTwoPreviews(
+export function previewSize(layout: PresenterLayout, content: Size): Size {
+  return orZero(
+    layout === 'side'
+      ? fromWidth(content.width)
+      : stackedFromHeight(content.height - HEADING_HEIGHT),
+  );
+}
+
+/** Smallest width of a preview worth showing, in pixels. */
+export const MIN_PREVIEW_WIDTH = 160;
+
+/** How the panel shows the previews. */
+export interface PreviewArrangement {
+  /** The size of each preview. */
+  size: Size;
+  /** How many previews fit, at most as many as wanted. */
+  count: number;
+  /** Whether the previews are on top of each other or side by side. */
+  direction: 'column' | 'row';
+  /** Whether the notes are below the previews or next to them. */
+  notes: 'below' | 'beside';
+}
+
+/**
+ * Arranges previews below the slide next to the notes, shrinking a single
+ * preview to leave enough width for the notes.
+ */
+function arrangeBeside(content: Size, wanted: number): PreviewArrangement {
+  const size = previewSize('stacked', content);
+  if (wanted >= 2) {
+    const column = orZero(
+      stackedFromHeight((content.height - PANEL_GAP) / 2 - HEADING_HEIGHT),
+    );
+    if (
+      column.width > 0 &&
+      column.width >= size.width &&
+      content.width - column.width - PANEL_GAP >= MIN_NOTES_WIDTH
+    ) {
+      return { size: column, count: 2, direction: 'column', notes: 'beside' };
+    }
+    if (content.width - 2 * (size.width + PANEL_GAP) >= MIN_NOTES_WIDTH) {
+      return { size, count: 2, direction: 'row', notes: 'beside' };
+    }
+  }
+  return {
+    size: orZero(
+      fromWidth(
+        Math.min(size.width, content.width - PANEL_GAP - MIN_NOTES_WIDTH),
+      ),
+    ),
+    count: Math.min(wanted, 1),
+    direction: 'column',
+    notes: 'beside',
+  };
+}
+
+/**
+ * Arranges previews below the slide above the notes, e.g., in narrow windows,
+ * leaving enough height for the notes.
+ */
+function arrangeAbove(content: Size, wanted: number): PreviewArrangement {
+  const height =
+    content.height - 2 * HEADING_HEIGHT - PANEL_GAP - MIN_NOTES_HEIGHT;
+  const size = orZero(
+    fromWidth(
+      Math.min(
+        (height * SLIDE_WIDTH) / SLIDE_HEIGHT,
+        content.width,
+        MAX_STACKED_PREVIEW_WIDTH,
+      ),
+    ),
+  );
+  return wanted >= 2 && 2 * size.width + PANEL_GAP <= content.width
+    ? { size, count: 2, direction: 'row', notes: 'below' }
+    : { size, count: Math.min(wanted, 1), direction: 'column', notes: 'below' };
+}
+
+/**
+ * Arranges `wanted` previews, e.g., of the next step and of the next slide, in
+ * a panel whose contents have `content` size, while leaving enough space for
+ * the notes. If two previews don't fit, only the first one is shown, and if
+ * even that would be smaller than {@link MIN_PREVIEW_WIDTH}, none.
+ *
+ * Below the slide, the previews are next to the notes, unless the panel is so
+ * narrow that they would be larger above the notes. Two previews next to the
+ * notes are on top of each other if the panel is tall enough for them to be as
+ * large as a single preview, and side by side otherwise.
+ */
+export function arrangePreviews(
   layout: PresenterLayout,
   content: Size,
-): boolean {
-  const preview = previewSize(layout, content);
+  wanted: number,
+): PreviewArrangement {
+  let arrangement: PreviewArrangement;
   if (layout === 'side') {
-    const previews = 2 * (HEADING_HEIGHT + preview.height + PANEL_GAP);
-    return content.height - previews - HEADING_HEIGHT >= MIN_NOTES_HEIGHT;
+    const size = previewSize(layout, content);
+    const previews = 2 * (HEADING_HEIGHT + size.height + PANEL_GAP);
+    const two =
+      wanted >= 2 &&
+      content.height - previews - HEADING_HEIGHT >= MIN_NOTES_HEIGHT;
+    arrangement = {
+      size,
+      count: two ? 2 : Math.min(wanted, 1),
+      direction: 'column',
+      notes: 'below',
+    };
+  } else {
+    const beside = arrangeBeside(content, wanted);
+    const above = arrangeAbove(content, wanted);
+    arrangement = above.size.width > beside.size.width ? above : beside;
   }
-  const previews = 2 * (preview.width + PANEL_GAP);
-  return content.width - previews >= MIN_NOTES_WIDTH;
+  return arrangement.size.width < MIN_PREVIEW_WIDTH
+    ? { ...arrangement, count: 0 }
+    : arrangement;
 }
 
 /**
@@ -83,20 +190,25 @@ export function fitsTwoPreviews(
  * Stacking makes the current slide as large as it can be, which matters for
  * slides with interactive widgets, but it only leaves the height below the
  * slide for the panel. So the slide is stacked above the panel only if the
- * preview of the next slide is at least as large as next to the slide.
+ * preview of the next slide is at least as large as next to the slide, or
+ * as large as previews below the slide can be.
  */
 export function choosePresenterLayout({
   width,
   height,
 }: Size): PresenterLayout {
   const slideHeight = (width * SLIDE_HEIGHT) / SLIDE_WIDTH;
-  const stacked = previewSize(
+  const stacked = arrangePreviews(
     'stacked',
     contentSize({ width, height: height - slideHeight }),
-  );
+    1,
+  ).size;
   const side = previewSize(
     'side',
     contentSize({ width: sidePanelWidth(width), height }),
   );
-  return stacked.width > 0 && stacked.width >= side.width ? 'stacked' : 'side';
+  return stacked.width > 0 &&
+    stacked.width >= Math.min(side.width, MAX_STACKED_PREVIEW_WIDTH)
+    ? 'stacked'
+    : 'side';
 }

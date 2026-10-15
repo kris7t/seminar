@@ -486,6 +486,63 @@ describe('the presenter toolbar', () => {
     ).toBeDefined();
     remove();
   });
+
+  it('has the menu with the settings of the presenter view', async () => {
+    const { remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First" />
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    const toolbar = screen.getByRole('toolbar', { name: 'Presenter controls' });
+    const menuButton = screen.getByRole('button', { name: 'Menu' });
+    expect(toolbar.contains(menuButton)).toBe(true);
+    await user.click(menuButton);
+    const laser = screen.getByRole('menuitemcheckbox', {
+      name: 'Laser pointer',
+    });
+    expect(laser.getAttribute('aria-checked')).toBe('false');
+    expect(
+      screen
+        .getByRole('menuitemcheckbox', { name: 'Show pointer to the audience' })
+        .getAttribute('aria-checked'),
+    ).toBe('true');
+    await user.click(laser);
+    expect(
+      screen
+        .getByRole('button', { name: 'Laser pointer' })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+    remove();
+  });
+
+  it('only has the slide number, the time, and the menu if narrow', async () => {
+    const matchMedia = window.matchMedia.bind(window);
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
+      const list = matchMedia(query);
+      Object.defineProperty(list, 'matches', {
+        value: query.startsWith('(max-width'),
+      });
+      return list;
+    });
+    const { remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First" />
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    const toolbar = screen.getByRole('toolbar', { name: 'Presenter controls' });
+    expect(
+      [...toolbar.querySelectorAll('button')].map(
+        (button) => button.getAttribute('aria-label') ?? button.textContent,
+      ),
+    ).toEqual(['Go to slide (G)', 'Reset time elapsed', 'Menu']);
+    remove();
+  });
 });
 
 describe('formatElapsed', () => {

@@ -2,6 +2,7 @@ import FlareIcon from '@mui/icons-material/Flare';
 import GridViewIcon from '@mui/icons-material/GridView';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import MouseIcon from '@mui/icons-material/Mouse';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -13,6 +14,7 @@ import {
   IconButton,
   Tooltip,
   Typography,
+  useMediaQuery,
   type SvgIconProps,
 } from '@mui/material';
 import {
@@ -24,6 +26,7 @@ import {
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import type { MenuPosition } from '../interaction/useContextMenu.ts';
 import type { PointerMode } from './pointer.tsx';
 
 /** Height of the toolbar, in pixels. */
@@ -60,6 +63,14 @@ export function formatElapsed(milliseconds: number): string {
     ? `${String(hours)}:${pad(minutes)}:${pad(seconds)}`
     : `${String(minutes)}:${pad(seconds)}`;
 }
+
+/**
+ * Narrowest viewport that shows all buttons of the toolbar, in pixels. In
+ * narrower ones, the actions are only in the menu.
+ */
+const MIN_FULL_TOOLBAR_WIDTH = 720;
+
+const COMPACT_QUERY = `(max-width: ${String(MIN_FULL_TOOLBAR_WIDTH - 0.05)}px)`;
 
 const CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
@@ -127,6 +138,10 @@ export interface PresenterToolbarProps {
   onMirrorPointer: () => void;
   /** Turns the pointer into a laser pointer, or back. */
   onLaserPointer: () => void;
+  /** Whether the menu is open. */
+  menuOpen: boolean;
+  /** Opens the menu of the deck at a position. */
+  onOpenMenu: (position: MenuPosition) => void;
 }
 
 /**
@@ -135,6 +150,9 @@ export interface PresenterToolbarProps {
  *
  * The time elapsed counts from when the toolbar is shown, i.e., when the
  * presenter view opens, and can be reset.
+ *
+ * In narrow windows, only the slide number, the time, and the menu button are
+ * shown, since the menu has all the other actions.
  *
  * Clicking the buttons doesn't move the focus to them, so that keys like
  * Space keep navigating the slides.
@@ -148,11 +166,25 @@ export function PresenterToolbar({
   pointerMode,
   onMirrorPointer,
   onLaserPointer,
+  menuOpen,
+  onOpenMenu,
 }: PresenterToolbarProps): JSX.Element {
   const deck = useDeck();
   const { slideIndex, slideCount } = deck;
   const [start, setStart] = useState(Date.now);
   const now = useNow(start);
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const slideNumber = (
+    <Tooltip title="Go to slide (G)">
+      <Button
+        color="inherit"
+        onClick={onGoToSlide}
+        sx={{ minWidth: 72, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {slideIndex + 1} / {slideCount}
+      </Button>
+    </Tooltip>
+  );
   return (
     <Box
       role="toolbar"
@@ -175,74 +207,70 @@ export function PresenterToolbar({
         borderColor: 'divider',
       }}
     >
-      <Group>
-        <ToolButton
-          label="Previous slide"
-          shortcut="PgUp"
-          icon={KeyboardDoubleArrowLeftIcon}
-          onClick={deck.previousSlide}
-          disabled={slideIndex === 0}
-        />
-        <ToolButton
-          label="Previous step"
-          shortcut="Left"
-          icon={NavigateBeforeIcon}
-          onClick={deck.previous}
-        />
-        <Tooltip title="Go to slide (G)">
-          <Button
-            color="inherit"
-            onClick={onGoToSlide}
-            sx={{ minWidth: 72, fontVariantNumeric: 'tabular-nums' }}
-          >
-            {slideIndex + 1} / {slideCount}
-          </Button>
-        </Tooltip>
-        <ToolButton
-          label="Next step"
-          shortcut="Right"
-          icon={NavigateNextIcon}
-          onClick={deck.next}
-        />
-        <ToolButton
-          label="Next slide"
-          shortcut="PgDn"
-          icon={KeyboardDoubleArrowRightIcon}
-          onClick={deck.nextSlide}
-          disabled={slideIndex === slideCount - 1}
-        />
-        <ToolButton
-          label="Slide overview"
-          shortcut="O"
-          icon={GridViewIcon}
-          onClick={() => {
-            deck.setShowOverview(true);
-          }}
-        />
-        <ToolButton
-          label="Focus on notes"
-          shortcut="N"
-          icon={SpeakerNotesIcon}
-          pressed={notesOnly}
-          onClick={() => {
-            setNotesOnly(!notesOnly);
-          }}
-        />
-        <ToolButton
-          label="Show pointer to the audience"
-          shortcut="M"
-          icon={MouseIcon}
-          pressed={pointerMode === 'mirror'}
-          onClick={onMirrorPointer}
-        />
-        <ToolButton
-          label="Laser pointer"
-          shortcut="L"
-          icon={FlareIcon}
-          pressed={pointerMode === 'laser'}
-          onClick={onLaserPointer}
-        />
-      </Group>
+      {compact ? (
+        <Group>{slideNumber}</Group>
+      ) : (
+        <Group>
+          <ToolButton
+            label="Previous slide"
+            shortcut="PgUp"
+            icon={KeyboardDoubleArrowLeftIcon}
+            onClick={deck.previousSlide}
+            disabled={slideIndex === 0}
+          />
+          <ToolButton
+            label="Previous step"
+            shortcut="Left"
+            icon={NavigateBeforeIcon}
+            onClick={deck.previous}
+          />
+          {slideNumber}
+          <ToolButton
+            label="Next step"
+            shortcut="Right"
+            icon={NavigateNextIcon}
+            onClick={deck.next}
+          />
+          <ToolButton
+            label="Next slide"
+            shortcut="PgDn"
+            icon={KeyboardDoubleArrowRightIcon}
+            onClick={deck.nextSlide}
+            disabled={slideIndex === slideCount - 1}
+          />
+          <ToolButton
+            label="Slide overview"
+            shortcut="O"
+            icon={GridViewIcon}
+            onClick={() => {
+              deck.setShowOverview(true);
+            }}
+          />
+          <ToolButton
+            label="Focus on notes"
+            shortcut="N"
+            icon={SpeakerNotesIcon}
+            pressed={notesOnly}
+            onClick={() => {
+              setNotesOnly(!notesOnly);
+            }}
+          />
+          <ToolButton
+            label="Show pointer to the audience"
+            shortcut="M"
+            icon={MouseIcon}
+            pressed={pointerMode === 'mirror'}
+            onClick={onMirrorPointer}
+          />
+          <ToolButton
+            label="Laser pointer"
+            shortcut="L"
+            icon={FlareIcon}
+            pressed={pointerMode === 'laser'}
+            onClick={onLaserPointer}
+          />
+        </Group>
+      )}
       <Group>
         <Typography
           aria-label="Time elapsed"
@@ -261,13 +289,32 @@ export function PresenterToolbar({
           aria-label="Current time"
           sx={{
             ml: 2,
-            mr: 1,
             color: 'text.secondary',
             fontVariantNumeric: 'tabular-nums',
           }}
         >
           {CLOCK_FORMAT.format(now)}
         </Typography>
+        <Tooltip title="Menu">
+          <IconButton
+            aria-label="Menu"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            color="inherit"
+            onClick={(event) => {
+              const { top, right } =
+                event.currentTarget.getBoundingClientRect();
+              onOpenMenu({
+                top,
+                left: right,
+                align: 'right',
+                verticalAlign: 'bottom',
+              });
+            }}
+          >
+            <MoreVertIcon />
+          </IconButton>
+        </Tooltip>
       </Group>
     </Box>
   );

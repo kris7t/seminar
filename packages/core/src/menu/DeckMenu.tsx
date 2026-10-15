@@ -29,6 +29,17 @@ import type { ComponentType, JSX, ReactNode } from 'react';
 import { useDeck } from '../deck/DeckContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
 import { useFullscreen } from '../notes/useFullscreen.ts';
+import type { PointerMode } from '../presentation/pointer.tsx';
+
+/** Settings of the presenter view, shown in the menu while it's open. */
+export interface PresenterSettings {
+  /** Whether the presenter view shows only the notes. */
+  notesOnly: boolean;
+  onFocusNotes: () => void;
+  pointerMode: PointerMode;
+  onMirrorPointer: () => void;
+  onLaserPointer: () => void;
+}
 
 export interface DeckMenuProps {
   /** Position of the menu, or `undefined` if the menu is closed. */
@@ -42,6 +53,17 @@ export interface DeckMenuProps {
   presenterView: boolean;
   /** Opens or closes the presenter view. */
   onPresenterView: () => void;
+  /** Settings of the presenter view, if it's open. */
+  presenterSettings?: PresenterSettings | undefined;
+}
+
+interface Setting {
+  key: string;
+  label: string;
+  checked: boolean;
+  shortcut?: string;
+  toggle: () => void;
+  disabled?: boolean;
 }
 
 interface Action {
@@ -105,6 +127,7 @@ export function DeckMenu({
   onPresent,
   presenterView,
   onPresenterView,
+  presenterSettings,
 }: DeckMenuProps): JSX.Element {
   const fullscreen = useFullscreen();
   const presenting = fullscreen || presenterView;
@@ -245,34 +268,81 @@ export function DeckMenu({
         ),
       ),
     ]),
-    <Divider key="divider-settings" />,
-    <MenuItem
-      key="toc"
-      role="menuitemcheckbox"
-      aria-checked={showToc}
-      disabled={toc.length === 0}
-      onClick={() => {
-        onClose();
-        setShowToc(!showToc);
-      }}
-    >
-      <ItemIcon>{showToc && <CheckIcon fontSize="small" />}</ItemIcon>
-      <ListItemText>Table of contents</ListItemText>
-      {showShortcuts && <Shortcut>T</Shortcut>}
-    </MenuItem>,
-    <MenuItem
-      key="text-selection"
-      role="menuitemcheckbox"
-      aria-checked={!mouseNavigation}
-      onClick={() => {
-        onClose();
-        setMouseNavigation(!mouseNavigation);
-      }}
-    >
-      <ItemIcon>{!mouseNavigation && <CheckIcon fontSize="small" />}</ItemIcon>
-      <ListItemText>Text selection</ListItemText>
-    </MenuItem>,
   ];
+
+  const settings: Setting[][] = [
+    ...(presenterSettings === undefined
+      ? []
+      : [
+          [
+            {
+              key: 'notes-only',
+              label: 'Focus on notes',
+              checked: presenterSettings.notesOnly,
+              shortcut: 'N',
+              toggle: presenterSettings.onFocusNotes,
+            },
+            {
+              key: 'mirror-pointer',
+              label: 'Show pointer to the audience',
+              checked: presenterSettings.pointerMode === 'mirror',
+              shortcut: 'M',
+              toggle: presenterSettings.onMirrorPointer,
+            },
+            {
+              key: 'laser-pointer',
+              label: 'Laser pointer',
+              checked: presenterSettings.pointerMode === 'laser',
+              shortcut: 'L',
+              toggle: presenterSettings.onLaserPointer,
+            },
+          ],
+        ]),
+    [
+      {
+        key: 'toc',
+        label: 'Table of contents',
+        checked: showToc,
+        shortcut: 'T',
+        toggle: () => {
+          setShowToc(!showToc);
+        },
+        disabled: toc.length === 0,
+      },
+      {
+        key: 'text-selection',
+        label: 'Text selection',
+        checked: !mouseNavigation,
+        toggle: () => {
+          setMouseNavigation(!mouseNavigation);
+        },
+      },
+    ],
+  ];
+
+  items.push(
+    ...settings.flatMap((group, i) => [
+      <Divider key={`divider-settings-${String(i)}`} />,
+      ...group.map(({ key, label, checked, shortcut, toggle, disabled }) => (
+        <MenuItem
+          key={key}
+          role="menuitemcheckbox"
+          aria-checked={checked}
+          disabled={disabled ?? false}
+          onClick={() => {
+            onClose();
+            toggle();
+          }}
+        >
+          <ItemIcon>{checked && <CheckIcon fontSize="small" />}</ItemIcon>
+          <ListItemText>{label}</ListItemText>
+          {showShortcuts && shortcut !== undefined && (
+            <Shortcut>{shortcut}</Shortcut>
+          )}
+        </MenuItem>
+      )),
+    ]),
+  );
 
   const open = anchorPosition !== undefined;
   if (asDialog) {
@@ -301,7 +371,7 @@ export function DeckMenu({
               left: anchorPosition.left,
             },
             transformOrigin: {
-              vertical: 'top',
+              vertical: anchorPosition.verticalAlign ?? 'top',
               horizontal: anchorPosition.align ?? 'left',
             },
           })}

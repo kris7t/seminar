@@ -8,11 +8,10 @@ import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import {
-  fitsTwoPreviews,
+  arrangePreviews,
   HEADING_HEIGHT,
   PANEL_GAP,
   PANEL_PADDING,
-  previewSize,
   type PresenterLayout,
 } from './presenterLayout.ts';
 import { UpcomingSlide } from './UpcomingSlide.tsx';
@@ -150,22 +149,25 @@ export function PresenterPanel({
   const nextStep = useHasNextStep();
   // The size of the contents of the panel, without its padding.
   const [ref, , panelSize] = useFitScale(SLIDE_WIDTH, SLIDE_WIDTH);
-  const stacked = layout === 'stacked';
-  const size = previewSize(layout, panelSize);
   const nextSlide: Upcoming | undefined =
     slideIndex + 1 < slideCount
       ? { heading: 'Next slide', index: slideIndex + 1, nextStep: false }
       : undefined;
-  const upcoming: (Upcoming | undefined)[] = notesOnly
+  const wanted: (Upcoming | undefined)[] = notesOnly
     ? []
     : nextStep
       ? [
           { heading: 'Next step', index: slideIndex, nextStep: true },
-          ...(nextSlide !== undefined && fitsTwoPreviews(layout, panelSize)
-            ? [nextSlide]
-            : []),
+          ...(nextSlide === undefined ? [] : [nextSlide]),
         ]
       : [nextSlide];
+  const {
+    size,
+    count,
+    direction,
+    notes: notesPlacement,
+  } = arrangePreviews(layout, panelSize, wanted.length);
+  const upcoming = wanted.slice(0, count);
   return (
     <Box
       ref={ref}
@@ -174,8 +176,7 @@ export function PresenterPanel({
       sx={{
         flex: 1,
         display: 'flex',
-        // Below the slide, the previews and the notes are side by side.
-        flexDirection: stacked ? 'row' : 'column',
+        flexDirection: notesPlacement === 'beside' ? 'row' : 'column',
         minWidth: 0,
         minHeight: 0,
         p: `${String(PANEL_PADDING)}px`,
@@ -184,15 +185,26 @@ export function PresenterPanel({
         color: 'text.primary',
       }}
     >
-      {upcoming.map((item) => (
-        <Preview
-          key={item?.heading ?? 'end'}
-          upcoming={item}
-          slides={slides}
-          size={size}
-          slideTheme={slideTheme}
-        />
-      ))}
+      {upcoming.length > 0 && (
+        <Box
+          sx={{
+            flex: 'none',
+            display: 'flex',
+            flexDirection: direction,
+            gap: `${String(PANEL_GAP)}px`,
+          }}
+        >
+          {upcoming.map((item) => (
+            <Preview
+              key={item?.heading ?? 'end'}
+              upcoming={item}
+              slides={slides}
+              size={size}
+              slideTheme={slideTheme}
+            />
+          ))}
+        </Box>
+      )}
       <Box
         sx={{
           flex: 1,

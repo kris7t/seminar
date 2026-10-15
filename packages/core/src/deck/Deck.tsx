@@ -548,6 +548,8 @@ export function Deck({
                       pointerMode={pointerMode}
                       onMirrorPointer={toggleMirrorPointer}
                       onLaserPointer={toggleLaserPointer}
+                      menuOpen={menuPosition !== undefined}
+                      onOpenMenu={openMenu}
                     />
                   </ThemeProvider>
                 )}
@@ -564,7 +566,13 @@ export function Deck({
             )}
             {/* Outside of the slides, so that events don't bubble to them. */}
             <ThemeProvider theme={uiTheme}>
-              <MenuButton open={menuPosition !== undefined} onOpen={openMenu} />
+              {/* The presenter view has a menu button in its toolbar. */}
+              {!presenting && (
+                <MenuButton
+                  open={menuPosition !== undefined}
+                  onOpen={openMenu}
+                />
+              )}
               <DeckMenu
                 anchorPosition={menuPosition}
                 onClose={closeMenu}
@@ -572,6 +580,17 @@ export function Deck({
                 onPresent={presentation.toggle}
                 presenterView={presenting}
                 onPresenterView={presenterView.toggle}
+                presenterSettings={
+                  presenting
+                    ? {
+                        notesOnly,
+                        onFocusNotes,
+                        pointerMode,
+                        onMirrorPointer: toggleMirrorPointer,
+                        onLaserPointer: toggleLaserPointer,
+                      }
+                    : undefined
+                }
               />
               <GoToSlideDialog open={goToSlideOpen} onClose={closeGoToSlide} />
               <SwipeHint open={swipe.showHint} />

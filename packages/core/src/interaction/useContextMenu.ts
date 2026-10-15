@@ -21,6 +21,11 @@ export interface MenuPosition {
    * context menus.
    */
   align?: 'left' | 'right';
+  /**
+   * Which side of the menu is at the position. Defaults to `'top'`, like
+   * context menus.
+   */
+  verticalAlign?: 'top' | 'bottom';
 }
 
 /** Event handlers that open the context menu, for the element that has it. */
