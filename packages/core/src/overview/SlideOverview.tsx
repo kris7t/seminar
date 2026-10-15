@@ -4,6 +4,8 @@ import {
   ThemeProvider,
   Tooltip,
   Typography,
+  useTheme,
+  type Theme,
 } from '@mui/material';
 import {
   use,
@@ -21,7 +23,7 @@ import { SpareIcon } from '../slide/SpareIcon.tsx';
 import { StateIcon } from '../slide/StateIcon.tsx';
 import { StepsIcon } from '../slide/StepsIcon.tsx';
 import type { ContextMenuHandlers } from '../interaction/useContextMenu.ts';
-import { uiTheme } from '../menu/uiTheme.ts';
+import { darkUiTheme } from '../menu/uiTheme.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import {
   SLIDE_VIEW_ATTRIBUTE,
@@ -58,6 +60,8 @@ const VISUALLY_HIDDEN = {
 
 interface ThumbnailProps {
   index: number;
+  /** The theme of the slides, rather than of the overview. */
+  slideTheme: Theme;
   slide: ReactNode;
   /** The title of the slide in the table of contents, if any. */
   title: ReactNode;
@@ -79,6 +83,7 @@ interface ThumbnailProps {
 
 function Thumbnail({
   index,
+  slideTheme,
   slide,
   title,
   current,
@@ -119,47 +124,60 @@ function Thumbnail({
         p: 1,
       }}
     >
-      <Box
-        {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
-        sx={[
-          {
-            position: 'relative',
-            width: THUMBNAIL_WIDTH,
-            height: THUMBNAIL_HEIGHT,
-            overflow: 'hidden',
-            bgcolor: 'background.default',
-            color: 'text.primary',
-          },
-          current && { outline: '3px solid', outlineColor: 'primary.main' },
-          // Spare slides are skipped when going through the deck.
-          spare && !current && { opacity: 0.5 },
-        ]}
-      >
-        {/* The contents of the slide can't be focused or clicked. */}
+      {/* The slide in its own theme, in the user interface around it. */}
+      <ThemeProvider theme={slideTheme}>
         <Box
-          inert
-          sx={{
-            width: SLIDE_WIDTH,
-            height: SLIDE_HEIGHT,
-            transform: `scale(${String(THUMBNAIL_SCALE)})`,
-            transformOrigin: 'top left',
-            pointerEvents: 'none',
-          }}
+          {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+          sx={[
+            {
+              position: 'relative',
+              width: THUMBNAIL_WIDTH,
+              height: THUMBNAIL_HEIGHT,
+              overflow: 'hidden',
+              bgcolor: 'background.default',
+              color: 'text.primary',
+            },
+            // The outline is part of the overview, rather than of the slide.
+            current && {
+              outline: '3px solid',
+              outlineColor: darkUiTheme.palette.primary.main,
+            },
+            // Spare slides are skipped when going through the deck.
+            spare && !current && { opacity: 0.5 },
+          ]}
         >
-          <StepStoreContext value={stepStore}>
-            <SlideViewProvider view={view}>{slide}</SlideViewProvider>
-          </StepStoreContext>
+          {/* The contents of the slide can't be focused or clicked. */}
+          <Box
+            inert
+            sx={{
+              width: SLIDE_WIDTH,
+              height: SLIDE_HEIGHT,
+              transform: `scale(${String(THUMBNAIL_SCALE)})`,
+              transformOrigin: 'top left',
+              pointerEvents: 'none',
+            }}
+          >
+            <StepStoreContext value={stepStore}>
+              <SlideViewProvider view={view}>{slide}</SlideViewProvider>
+            </StepStoreContext>
+          </Box>
         </Box>
-      </Box>
+      </ThemeProvider>
       <Typography
         variant="caption"
         sx={{
           display: 'flex',
-          alignItems: 'center',
           justifyContent: 'center',
           gap: 0.5,
-          color: current ? 'common.white' : 'grey.500',
+          color: current ? 'text.primary' : 'text.secondary',
           fontSize: 14,
+          // Icons at half their size, so that their strokes fall on whole
+          // pixels, and centered on the digits rather than on the line, which
+          // includes the space below them.
+          lineHeight: '20px',
+          alignItems: 'flex-start',
+          '& > svg, & > .MuiBadge-root': { mt: '4px' },
+          '& > svg, & > .MuiBadge-root > svg': { fontSize: 12 },
         }}
       >
         {index + 1}
@@ -174,46 +192,44 @@ function Thumbnail({
        * Covers the thumbnail instead of containing it, since the contents of
        * a button would inherit its styles, like centered text.
        */}
-      <ThemeProvider theme={uiTheme}>
-        <Tooltip
-          // Shows the title of slides that don't show it, e.g., with their
-          // master, or recaps with a title of their own.
-          title={title ?? ''}
-          // The button has a name of its own.
-          describeChild
-          enterDelay={500}
-          enterNextDelay={500}
+      <Tooltip
+        // Shows the title of slides that don't show it, e.g., with their
+        // master, or recaps with a title of their own.
+        title={title ?? ''}
+        // The button has a name of its own.
+        describeChild
+        enterDelay={500}
+        enterNextDelay={500}
+      >
+        <ButtonBase
+          ref={ref}
+          aria-current={current ? 'page' : undefined}
+          onClick={() => {
+            onSelect(index);
+          }}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 1,
+            '&:hover, &.Mui-focusVisible': {
+              outline: '2px solid',
+              outlineColor: 'grey.500',
+            },
+          }}
         >
-          <ButtonBase
-            ref={ref}
-            aria-current={current ? 'page' : undefined}
-            onClick={() => {
-              onSelect(index);
-            }}
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: 1,
-              '&:hover, &.Mui-focusVisible': {
-                outline: '2px solid',
-                outlineColor: 'grey.500',
-              },
-            }}
-          >
-            {/* Titles may have markup, so they can't go in an aria-label. */}
-            <Box component="span" sx={VISUALLY_HIDDEN}>
-              {`Slide ${String(index + 1)}`}
-              {title !== undefined && <>: {title}</>}
-              {spare && ' (spare)'}
-              {recap && ' (recap)'}
-              {recapped && ' (recapped later)'}
-              {state &&
-                (stateChanged ? ' (with changed state)' : ' (with state)')}
-              {steps && ' (with steps)'}
-            </Box>
-          </ButtonBase>
-        </Tooltip>
-      </ThemeProvider>
+          {/* Titles may have markup, so they can't go in an aria-label. */}
+          <Box component="span" sx={VISUALLY_HIDDEN}>
+            {`Slide ${String(index + 1)}`}
+            {title !== undefined && <>: {title}</>}
+            {spare && ' (spare)'}
+            {recap && ' (recap)'}
+            {recapped && ' (recapped later)'}
+            {state &&
+              (stateChanged ? ' (with changed state)' : ' (with state)')}
+            {steps && ' (with steps)'}
+          </Box>
+        </ButtonBase>
+      </Tooltip>
     </Box>
   );
 }
@@ -254,6 +270,7 @@ export function SlideOverview({
     hasState,
     stateChanged,
   } = useDeck();
+  const slideTheme = useTheme();
   const groups = useMemo(
     () => groupSlides(toc, slides.length),
     [toc, slides.length],
@@ -265,36 +282,39 @@ export function SlideOverview({
     onClose();
   };
   return (
-    <Box
-      // Not a dialog, so that the navigation keys still work in it.
-      role="region"
-      aria-label="Slide overview"
-      {...menuHandlers}
-      sx={{
-        position: 'fixed',
-        inset: 0,
-        overflowY: 'auto',
-        p: 2,
-        bgcolor: 'grey.900',
-        // Dark scrollbars on the dark background.
-        colorScheme: 'dark',
-        WebkitTouchCallout: 'none',
-      }}
-    >
-      {groups.map(({ title, level, start, slides: groupSlides }) => {
-        // Divisions of only spare slides are dimmed like their thumbnails.
-        const spare =
-          groupSlides.length > 0 &&
-          groupSlides.every((index) => spares[index] === true);
-        return (
-          <Box
-            component="section"
-            key={`${String(start)}-${String(level)}`}
-            sx={{ '& + &': { mt: 3 } }}
-          >
-            {title !== undefined && (
-              // The headings are part of the user interface, not the slides.
-              <ThemeProvider theme={uiTheme}>
+    // The overview is part of the user interface, on a dark background, while
+    // the thumbnails keep the theme of the slides.
+    <ThemeProvider theme={darkUiTheme}>
+      <Box
+        // Not a dialog, so that the navigation keys still work in it.
+        role="region"
+        aria-label="Slide overview"
+        {...menuHandlers}
+        sx={{
+          position: 'fixed',
+          inset: 0,
+          overflowY: 'auto',
+          p: 2,
+          bgcolor: 'background.default',
+          color: 'text.primary',
+          // Dark, thin scrollbars on the dark background.
+          colorScheme: 'dark',
+          scrollbarWidth: 'thin',
+          WebkitTouchCallout: 'none',
+        }}
+      >
+        {groups.map(({ title, level, start, slides: groupSlides }) => {
+          // Divisions of only spare slides are dimmed like their thumbnails.
+          const spare =
+            groupSlides.length > 0 &&
+            groupSlides.every((index) => spares[index] === true);
+          return (
+            <Box
+              component="section"
+              key={`${String(start)}-${String(level)}`}
+              sx={{ '& + &': { mt: 3 } }}
+            >
+              {title !== undefined && (
                 <Typography
                   variant={HEADING_VARIANTS[level] ?? 'h6'}
                   component={HEADING_ELEMENTS[level] ?? 'h4'}
@@ -303,7 +323,7 @@ export function SlideOverview({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1,
-                      color: 'common.white',
+                      color: 'text.primary',
                       mx: 1,
                       mb: 1,
                     },
@@ -313,35 +333,36 @@ export function SlideOverview({
                   {title}
                   {spare && <SpareIcon sx={{ fontSize: '0.8em' }} />}
                 </Typography>
-              </ThemeProvider>
-            )}
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(auto-fill, ${String(THUMBNAIL_WIDTH + 16)}px)`,
-                gap: 1,
-              }}
-            >
-              {groupSlides.map((index) => (
-                <Thumbnail
-                  key={index}
-                  index={index}
-                  slide={slides[index]}
-                  title={titles[index]}
-                  current={index === overviewIndex}
-                  steps={hasSteps[index] === true}
-                  state={hasState[index] === true}
-                  stateChanged={stateChanged[index] === true}
-                  spare={spares[index] === true}
-                  recap={recapOf[index] !== undefined}
-                  recapped={recapOf.includes(index)}
-                  onSelect={onSelect}
-                />
-              ))}
+              )}
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(auto-fill, ${String(THUMBNAIL_WIDTH + 16)}px)`,
+                  gap: 1,
+                }}
+              >
+                {groupSlides.map((index) => (
+                  <Thumbnail
+                    key={index}
+                    index={index}
+                    slideTheme={slideTheme}
+                    slide={slides[index]}
+                    title={titles[index]}
+                    current={index === overviewIndex}
+                    steps={hasSteps[index] === true}
+                    state={hasState[index] === true}
+                    stateChanged={stateChanged[index] === true}
+                    spare={spares[index] === true}
+                    recap={recapOf[index] !== undefined}
+                    recapped={recapOf.includes(index)}
+                    onSelect={onSelect}
+                  />
+                ))}
+              </Box>
             </Box>
-          </Box>
-        );
-      })}
-    </Box>
+          );
+        })}
+      </Box>
+    </ThemeProvider>
   );
 }
