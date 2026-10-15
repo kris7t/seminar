@@ -1,6 +1,7 @@
 import type { Declaration, Program } from 'estree';
 import GithubSlugger from 'github-slugger';
 import type { PhrasingContent, Root, RootContent } from 'mdast';
+import type { Position } from 'unist';
 import type {} from 'mdast-util-directive';
 import type { MdxJsxFlowElement } from 'mdast-util-mdx';
 import { toString } from 'mdast-util-to-string';
@@ -43,10 +44,12 @@ interface MasterReference {
   name: string;
   /**
    * Whether `name` refers to a component in the document if there's one with
-   * that name. This is the case for `master=Name`, but not for `.name` or the
-   * default masters.
+   * that name. This is the case for `master=Name`, but not for bare words or
+   * the default masters.
    */
   mayBeComponent: boolean;
+  /** Whether `name` is a bare word in the attributes of the slide. */
+  bareWord?: boolean;
 }
 
 interface SlideDraft {
@@ -55,6 +58,8 @@ interface SlideDraft {
   attributes: Map<string, string>;
   title: PhrasingContent[] | undefined;
   children: RootContent[];
+  /** Where the slide starts in the document, if known. */
+  place?: Position | undefined;
   /** Title of the slide in the table of contents, if set explicitly. */
   tocTitle?: string | undefined;
   /** Level of the heading of the slide, if any. */
@@ -137,18 +142,27 @@ function createSlide(
 /**
  * Applies the attributes of a `:slide` directive to a slide.
  *
- * `master=Name` sets the master, which refers to a component imported or
- * declared in the document if there is one, and to a master in the theme
- * otherwise. Classes are passed to the master as its `className`.
+ * A bare word, like `section`, sets the master to a master of the theme, like
+ * the shorthands of step variants. `master=Name` sets the master to a
+ * component imported or declared in the document if there is one, and to a
+ * master of the theme otherwise. `master=` takes precedence over bare words,
+ * and of several bare words, the last one is used. Classes are passed to the
+ * master as its `className`.
  */
 function applyAttributes(
   slide: SlideDraft,
   { id, classes, attributes }: Attributes,
 ) {
   slide.id = id ?? slide.id;
+  const bareWords = [...attributes]
+    .filter(([, value]) => value === '')
+    .map(([key]) => key);
   const master = attributes.get('master');
-  if (master !== undefined) {
+  const bareWord = bareWords.at(-1);
+  if (master !== undefined && master !== '') {
     slide.master = { name: master, mayBeComponent: true };
+  } else if (bareWord !== undefined) {
+    slide.master = { name: bareWord, mayBeComponent: false, bareWord: true };
   }
   if (classes.length > 0) {
     slide.attributes.set('className', classes.join(' '));
@@ -156,7 +170,7 @@ function applyAttributes(
   for (const [key, value] of attributes) {
     if (key === 'title') {
       slide.tocTitle = value;
-    } else if (key !== 'master') {
+    } else if (key !== 'master' && value !== '') {
       slide.attributes.set(key, value);
     }
   }
@@ -207,9 +221,18 @@ function collectBindings(nodes: RootContent[]): Set<string> {
 }
 
 function createSlideElement(
-  { master, id, attributes, title, children }: SlideDraft,
+  { master, id, attributes, title, children, place }: SlideDraft,
   bindings: Set<string>,
+  file: VFile,
 ): MdxJsxFlowElement {
+  // Bare words only refer to masters of the theme, so this is likely a
+  // mistake, e.g., `## Total {count}` instead of `## Total {String(count)}`.
+  if (master.bareWord === true && bindings.has(master.name)) {
+    file.message(
+      `The bare word \`${master.name}\` sets the master of the slide to the master \`${master.name}\` of the theme, not to \`${master.name}\` in the document. Write \`master=${master.name}\` to use that as the master, or \`{String(${master.name})}\` to show its value in a heading.`,
+      { place },
+    );
+  }
   const props = new Map(attributes);
   if (id !== undefined && !attributes.has('id')) {
     props.set('id', id);
@@ -325,14 +348,14 @@ function createDeckAttributes(
  * - Content before the first slide break forms an untitled content slide.
  *
  * Slides with titles get the slug of the title as their id. A `:slide`
- * directive in a heading, e.g., `## Title :slide{#id .wide master=section}`,
- * which {@link remarkHeadingAttributes} also lets write as
- * `## Title {#id .wide master=section}`, or the attributes of a `::slide`
+ * directive in a heading, e.g., `## Title :slide{#id .wide section}`, which
+ * {@link remarkHeadingAttributes} also lets write as
+ * `## Title {#id .wide section}`, or the attributes of a `::slide`
  * directive set the id and other props of the slide:
  *
- * - `master=Name` sets the master of the slide: a component imported or
- *   declared in the document if there is one, and a master in the theme
- *   otherwise.
+ * - A bare word, like `section`, sets the master of the slide to a master of
+ *   the theme. `master=Name` sets it to a component imported or declared in
+ *   the document if there is one, and to a master of the theme otherwise.
  * - Classes, like `.wide`, are passed to the master as its `className`.
  * - `title="…"` sets the title of the slide in the table of contents, e.g., for
  *   slides without a title, instead of the title shown on the slide.
@@ -380,6 +403,7 @@ export function remarkSlides({
           node.children,
         );
         current.level = node.depth;
+        current.place = node.position;
         slides.push(current);
       } else if (node.type === 'thematicBreak') {
         current = createSlide('content', undefined, undefined);
@@ -393,6 +417,7 @@ export function remarkSlides({
           getAttributes(node),
           title,
         );
+        current.place = node.position;
         slides.push(current);
       } else {
         if (current === undefined) {
@@ -415,7 +440,9 @@ export function remarkSlides({
         createToc(slides, depth),
         file,
       ),
-      children: slides.map((slide) => createSlideElement(slide, bindings)),
+      children: slides.map((slide) =>
+        createSlideElement(slide, bindings, file),
+      ),
     };
     tree.children = [
       createEsm(

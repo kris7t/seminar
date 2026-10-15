@@ -432,6 +432,42 @@ import { TwoColumn } from '${STUB_URL}';
       ).toEqual(['<TwoColumn>', 'Other']);
     });
 
+    it('takes masters of the theme from bare words', async () => {
+      expect(
+        (
+          await slides(`
+import { TwoColumn } from '${STUB_URL}';
+
+## A {section}
+
+## B {TwoColumn .wide}
+
+## C :slide{subsection master=closing}
+
+::slide{section}
+`)
+        ).map(({ master, className }) => [master, className]),
+      ).toEqual([
+        ['section', undefined],
+        // Imported masters need \`master=\`.
+        ['TwoColumn', 'wide'],
+        ['closing', undefined],
+        ['section', undefined],
+      ]);
+    });
+
+    it('warns about bare words that refer to the document', async () => {
+      const file = await compile(
+        'export const count = 3\n\n## Total {count}\n\n## Sum {String(count)}',
+        { ...sliderMdxOptions() },
+      );
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining(
+          'Write `master=count` to use that as the master, or `{String(count)}`',
+        ),
+      ]);
+    });
+
     it('uses components declared in the document', async () => {
       expect(
         (

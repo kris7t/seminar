@@ -13,9 +13,15 @@ describe('rewriteHeadingAttributes', () => {
     );
   });
 
+  it('reads bare words as attributes', () => {
+    expect(
+      rewriteHeadingAttributes('## Intro {section}\n## Two {TwoColumn .x}\n'),
+    ).toBe('## Intro :slide{section}\n## Two :slide{TwoColumn .x}\n');
+  });
+
   it('leaves expressions and other text alone', () => {
     const source =
-      '## Total {count}\n## Sum {a + b}\nText {#id}\n    ## Code {#id}\n';
+      '## Total {String(count)}\n## Sum {a + b}\nText {#id}\n    ## Code {#id}\n';
     expect(rewriteHeadingAttributes(source)).toBe(source);
   });
 

@@ -60,11 +60,11 @@ Presenter notes, shown only to the presenter.
   `---` a slide without a title, and `::slide[Title]` a slide with a title but
   no heading. `depth:` in the frontmatter shifts these levels.
 - **Slide props:** attributes at the end of a heading, or of `::slide`, set
-  the id, the master (from the theme or imported), classes, or the title in
-  the table of contents, e.g.,
-  `## Intro {#intro .wide master=section title=Introduction}`. Ids appear in
-  the address,
-  e.g., `#intro`. `:slide{…}` in a heading does the same, and also makes
+  the id, the master (a bare word for a master of the theme, or `master=` for
+  an imported one), classes, or the title in the table of contents, e.g.,
+  `## Intro {#intro .wide section title=Introduction}`. Ids appear in the
+  address, e.g., `#intro`. To show a variable at the end of a heading, write
+  an expression like `{String(count)}`, since `{count}` sets the master. `:slide{…}` in a heading does the same, and also makes
   headings deeper than `depth:` slides.
 - **Steps:** list items with `:step` at their start or end appear in new
   steps, and so do paragraphs with `:step`. `:step{with=previous}` and

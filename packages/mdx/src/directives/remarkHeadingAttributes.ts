@@ -1,8 +1,9 @@
 import type { Processor } from 'unified';
 
-/** A single attribute: `#id`, `.class`, or `key=value`. */
+/** A single attribute: `#id`, `.class`, `key=value`, or a bare `word`. */
 const ATTRIBUTE =
-  /(?:[#.][^\s"'=#.{}]+|[A-Za-z_][\w-]*=(?:"[^"]*"|'[^']*'|[^\s"'{}]+))/.source;
+  /(?:[#.][^\s"'=#.{}]+|[A-Za-z_][\w-]*(?:=(?:"[^"]*"|'[^']*'|[^\s"'{}]+))?)/
+    .source;
 
 /** Matches an ATX heading that ends with an attribute block. */
 const HEADING_PATTERN = new RegExp(
@@ -15,9 +16,11 @@ const FENCE_PATTERN = /^ {0,3}(`{3,}|~{3,})/;
 /**
  * Rewrites attribute blocks at the end of headings, e.g., `## Title {#id}`,
  * to `:slide` directives, e.g., `## Title :slide{#id}`, outside of fenced
- * code and the frontmatter. Blocks with anything but ids, classes, and
- * `key=value` attributes are left alone, since they may be MDX expressions,
- * e.g., `## Total {count}`.
+ * code and the frontmatter. Blocks with anything but ids, classes, `key=value`
+ * attributes, and bare words are left alone, since they are MDX expressions,
+ * e.g., `## Total {String(count)}`. Thus, a block with a single variable,
+ * e.g., `## Total {count}`, is an attribute block, where `count` is the
+ * master of the slide.
  */
 export function rewriteHeadingAttributes(source: string): string {
   const lines = source.split(/(?<=\n)/);
