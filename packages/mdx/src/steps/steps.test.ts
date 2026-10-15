@@ -144,4 +144,33 @@ describe('steps', () => {
       expect.stringContaining("Ignoring `:step`, which isn't allowed here"),
     ]);
   });
+
+  it('nests steps in groups with in', async () => {
+    const file = await compile(
+      `
+- :step{group=a} A
+
+:step{in=a} Callout
+
+:step{in=typo} Lost
+`,
+      { ...sliderMdxOptions() },
+    );
+    expect(file.messages.map(String)).toEqual([
+      expect.stringContaining('There is no step group `typo`'),
+    ]);
+    expect(
+      await content('- :step{group=a} A\n\n:step{in=a .note} Callout'),
+    ).toEqual([
+      '<ul>\n<Step component="li" group="a">A</Step>\n</ul>' +
+        '<Step component="p" className="note" in="a">Callout</Step>',
+    ]);
+  });
+
+  it('passes shorthands of variants to the step', async () => {
+    expect(await content('- :step{only} A\n\n:step{dim} B')).toEqual([
+      '<ul>\n<Step component="li" only="">A</Step>\n</ul>' +
+        '<Step component="p" dim="">B</Step>',
+    ]);
+  });
 });

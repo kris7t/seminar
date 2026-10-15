@@ -65,15 +65,27 @@ Notes that don't fit below the slide can be expanded.
 
 - :step `{steps=dim}` on the slide dims past steps
 - :step so that the audience follows the current one
-- :step{variant=preview} `variant=preview` shows a step ghosted in advance
+- :step{preview} `:step{preview}` shows a step ghosted in advance
   - :step But it can still have nested steps
-- :step{variant=focus} `variant=focus` dims it both before and after
+- :step{focus} `:step{focus}` dims it both before and after
 
-:step{variant=only} `variant=only` shows a callout only during its step
+:step{only} `:step{only}` shows a callout only during its step
 
 :step And then it's gone
 
 :step Poof
+
+### Callouts
+
+- :step{group=parse} Parsing turns Markdown into a syntax tree
+- :step{group=render} Rendering turns the tree into React elements
+
+:step{in=parse only} `:step{in=parse}` nests a callout in the step of
+the `parse` group, wherever it is on the slide
+
+:step{in=parse only} so callouts come and go with their item
+
+:step{in=render focus} and look at least as hidden as it
 
 ## Typesetting
 

@@ -77,7 +77,15 @@ interface GroupUse {
 }
 
 /** Uses of each step group on a slide, to check them for mistakes. */
-type GroupUses = Map<string, GroupUse[]>;
+interface GroupUses {
+  uses: Map<string, GroupUse[]>;
+  /** Places where steps are nested in each group with `in`. */
+  nested: Map<string, Position[]>;
+}
+
+function createGroupUses(): GroupUses {
+  return { uses: new Map(), nested: new Map() };
+}
 
 /** Names of the JSX elements counted as enclosing steps. */
 const STEP_ELEMENTS: ReadonlySet<string> = new Set([STEP, 'Step', 'Steps']);
@@ -116,7 +124,17 @@ function isStep(node: RootContent | ElementContent): boolean {
  * element of a group (the first one if there are several) places the group,
  * so `with` is ignored on the other elements.
  */
-function checkGroups(groups: GroupUses, file: VFile) {
+function checkGroups({ uses: groups, nested }: GroupUses, file: VFile) {
+  for (const [group, places] of nested) {
+    if (!groups.has(group)) {
+      for (const place of places) {
+        file.message(
+          `There is no step group \`${group}\` on the slide to nest a step in`,
+          { place },
+        );
+      }
+    }
+  }
   for (const [group, uses] of groups) {
     const [anchor, ...others] = uses.toSorted(
       (a, b) =>
@@ -126,7 +144,8 @@ function checkGroups(groups: GroupUses, file: VFile) {
     if (anchor === undefined) {
       continue;
     }
-    if (others.length === 0) {
+    // Groups that other steps are nested in may have a single element.
+    if (others.length === 0 && !nested.has(group)) {
       file.message(
         `The step group \`${group}\` is only used once on the slide`,
         { place: anchor.place },
@@ -152,9 +171,7 @@ function convertChildren(
   parent.children = parent.children.map((child) => {
     const isSlide = child.type === 'mdxJsxFlowElement' && child.name === SLIDE;
     if ('children' in child) {
-      const slideGroups: GroupUses = isSlide
-        ? new Map<string, GroupUse[]>()
-        : groups;
+      const slideGroups: GroupUses = isSlide ? createGroupUses() : groups;
       convertChildren(
         child,
         file,
@@ -169,10 +186,17 @@ function convertChildren(
       child.type === 'element' && child.tagName === 'li'
         ? convertListItem(child)
         : child;
+    const parentGroup = getAttribute(converted, 'in');
+    if (parentGroup !== undefined && child.position !== undefined) {
+      groups.nested.set(parentGroup, [
+        ...(groups.nested.get(parentGroup) ?? []),
+        child.position,
+      ]);
+    }
     const group = getAttribute(converted, 'group');
     if (group !== undefined && child.position !== undefined) {
-      groups.set(group, [
-        ...(groups.get(group) ?? []),
+      groups.uses.set(group, [
+        ...(groups.uses.get(group) ?? []),
         {
           place: child.position,
           depth,
@@ -200,12 +224,14 @@ function convertChildren(
  *   the group starts a new step, unless it has a `with` attribute, which
  *   applies to the whole group, e.g., `:step{group=name with=initial}` shows
  *   the group up front. `with` is ignored on the other items of the group.
+ * - `in=name` nests the step in the step of the group `name` on the slide, as
+ *   if it was inside it, e.g., for callouts of a list item elsewhere.
  * - Ids, classes, and other attributes are passed to the step.
  *
  * Must run after {@link remarkSlides}, which imports the `Step` component.
  */
 export function rehypeListSteps(): (tree: Root, file: VFile) => void {
   return (tree, file) => {
-    convertChildren(tree, file, new Map(), 0);
+    convertChildren(tree, file, createGroupUses(), 0);
   };
 }

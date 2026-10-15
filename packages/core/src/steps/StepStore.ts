@@ -1,4 +1,10 @@
 import { createStepPosition, type StepPosition } from './StepPosition.ts';
+import {
+  moreHidden,
+  SHOWN,
+  type RankedAppearance,
+  type RankedAppearances,
+} from './stepAppearance.ts';
 
 /**
  * Position of a slide in its steps.
@@ -26,14 +32,28 @@ export type StepPath = readonly number[];
  */
 export type StepPhase = 'future' | 'current' | 'parent' | 'past';
 
-/** State of a stepper as stored in a {@link StepStore}. */
-export interface StepStatus {
+/** Where a stepper is in the steps of its level. */
+interface StepPlace {
   /**
    * Zero-based index of the current step of the stepper, `-1` if the stepper
    * is not yet active, or `Infinity` if it is past.
    */
   stepIndex: number;
   phase: StepPhase;
+}
+
+/** State of a stepper as stored in a {@link StepStore}. */
+export interface StepStatus extends StepPlace {
+  /**
+   * Whether the level of the stepper is open, i.e., the stepper it is nested
+   * in is current or a parent, or it isn't nested in any.
+   */
+  isOpen: boolean;
+  /**
+   * How the stepper it is nested in looks, including the steppers that one is
+   * nested in, which the stepper should look at least as hidden as.
+   */
+  inherited: RankedAppearance;
 }
 
 /**
@@ -50,6 +70,13 @@ export interface StepOptions {
   /** Number of consecutive steps taken by the stepper. */
   count: number;
   placement: StepPlacement;
+  /**
+   * Group of the stepper to nest the stepper in, instead of the stepper
+   * enclosing its elements.
+   */
+  parent?: string | undefined;
+  /** How the stepper looks in each phase. Shown in all phases by default. */
+  appearances?: RankedAppearances | undefined;
 }
 
 /** A stepper registered in a {@link StepStore}. */
@@ -80,6 +107,9 @@ interface Anchor {
 }
 
 interface Layout {
+  anchors: Map<StepNode, Anchor>;
+  /** The stepper each stepper is nested in, if any. */
+  parents: Map<StepNode, StepNode | undefined>;
   placements: Map<StepNode, Placement>;
   /**
    * Number of the last step on each level, keyed by {@link levelKey}.
@@ -88,9 +118,9 @@ interface Layout {
   levelSizes: Map<string, number>;
 }
 
-const FUTURE: StepStatus = { stepIndex: -1, phase: 'future' };
+const FUTURE: StepPlace = { stepIndex: -1, phase: 'future' };
 
-const PAST: StepStatus = {
+const PAST: StepPlace = {
   stepIndex: Number.POSITIVE_INFINITY,
   phase: 'past',
 };
@@ -236,7 +266,9 @@ export class StepStore {
     const cached = this.#statuses.get(node);
     if (
       cached?.stepIndex === status.stepIndex &&
-      cached.phase === status.phase
+      cached.phase === status.phase &&
+      cached.isOpen === status.isOpen &&
+      cached.inherited === status.inherited
     ) {
       return cached;
     }
@@ -339,8 +371,17 @@ export class StepStore {
       }
     }
     const parents = new Map<StepNode, StepNode | undefined>();
-    for (const [node, { element }] of anchors) {
-      parents.set(node, this.#findParent(node, element, anchors));
+    for (const [node, { element, options }] of anchors) {
+      const explicit =
+        options.parent === undefined
+          ? undefined
+          : this.#groups.get(options.parent);
+      parents.set(
+        node,
+        explicit !== undefined && explicit !== node && anchors.has(explicit)
+          ? explicit
+          : this.#findParent(node, element, anchors),
+      );
     }
     const depths = new Map<StepNode, number>();
     const getDepth = (node: StepNode, visited: Set<StepNode>): number => {
@@ -391,7 +432,7 @@ export class StepStore {
       levelSizes.set(key, Math.max(size, last));
       previousSteps.set(key, last);
     }
-    return { placements, levelSizes };
+    return { anchors, parents, placements, levelSizes };
   }
 
   /**
@@ -478,6 +519,39 @@ export class StepStore {
   }
 
   #computeStatus(node: StepNode): StepStatus {
+    const place = this.#computePlace(node);
+    const parent = this.#getLayout().parents.get(node);
+    if (parent === undefined) {
+      return { ...place, isOpen: true, inherited: SHOWN };
+    }
+    const parentPhase = this.#computePlace(parent).phase;
+    return {
+      ...place,
+      isOpen: parentPhase === 'current' || parentPhase === 'parent',
+      inherited: this.#computeAppearance(parent, new Set([node])),
+    };
+  }
+
+  /**
+   * Returns how `node` looks, at least as hidden as the steppers it is nested
+   * in, whether in the DOM or explicitly.
+   */
+  #computeAppearance(node: StepNode, visited: Set<StepNode>): RankedAppearance {
+    if (visited.has(node)) {
+      // Groups may nest in each other in a cycle.
+      return SHOWN;
+    }
+    visited.add(node);
+    const { anchors, parents } = this.#getLayout();
+    const { phase } = this.#computePlace(node);
+    const own = anchors.get(node)?.options.appearances?.[phase] ?? SHOWN;
+    const parent = parents.get(node);
+    return parent === undefined
+      ? own
+      : moreHidden(own, this.#computeAppearance(parent, visited));
+  }
+
+  #computePlace(node: StepNode): StepPlace {
     const placement = this.#getLayout().placements.get(node);
     if (placement === undefined) {
       return FUTURE;

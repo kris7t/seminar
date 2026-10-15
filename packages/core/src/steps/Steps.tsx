@@ -5,10 +5,22 @@ import {
   type SxProps,
   type Theme,
 } from '@mui/material/styles';
-import type { ElementType, HTMLAttributes, JSX, ReactNode } from 'react';
+import {
+  use,
+  type ElementType,
+  type HTMLAttributes,
+  type JSX,
+  type ReactNode,
+} from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../utils/classNames.ts';
+import {
+  ALWAYS_SHOWN,
+  appearanceClass,
+  moreHidden,
+  StepAppearanceContext,
+} from './stepAppearance.ts';
 import type { StepPhase } from './StepStore.ts';
 import { TogetherContext } from './TogetherContext.ts';
 import { useSteps, type StepState, type StepWith } from './useSteps.ts';
@@ -26,6 +38,8 @@ export interface StepsProps extends Omit<
   with?: StepWith | undefined;
   /** See the `group` option of {@link useSteps}. */
   group?: string | undefined;
+  /** See the `in` option of {@link useSteps}. */
+  in?: string | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   /** Content to render depending on the current step. */
@@ -33,7 +47,7 @@ export interface StepsProps extends Omit<
   sx?: SxProps<Theme>;
 }
 
-export type StepsClassKey = 'root' | StepPhase;
+export type StepsClassKey = 'root' | StepPhase | 'open' | 'hidden' | 'dimmed';
 
 export const stepsClasses: Record<StepsClassKey, string> =
   generateUtilityClasses('SliderSteps', [
@@ -42,6 +56,9 @@ export const stepsClasses: Record<StepsClassKey, string> =
     'current',
     'parent',
     'past',
+    'open',
+    'hidden',
+    'dimmed',
   ]);
 
 declare module '@mui/material/styles' {
@@ -66,7 +83,13 @@ interface StepsOwnerState extends StepsProps {
 const StepsRoot = styled('div', {
   name: 'SliderSteps',
   slot: 'Root',
-})<{ ownerState: StepsOwnerState }>({});
+})<{ ownerState: StepsOwnerState }>({
+  // Like `Step`, for content nested in hidden or dimmed steps with `in`.
+  [`&.${stepsClasses.hidden}`]: { visibility: 'hidden' },
+  [`&.${stepsClasses.dimmed}`]: {
+    opacity: 'var(--SliderStep-dim-opacity, 0.35)',
+  },
+});
 
 /**
  * Content that changes over `count` consecutive steps of the presentation,
@@ -84,23 +107,40 @@ export function Steps(inProps: StepsProps): JSX.Element {
     component = 'div',
     with: withStep,
     group,
+    in: parent,
     className,
     children,
     ...other
   } = props;
-  const step = useSteps(count ?? 1, { with: withStep, group });
-  const { ref, stepIndex, phase } = step;
+  const enclosing = use(StepAppearanceContext);
+  const step = useSteps(count ?? 1, {
+    with: withStep,
+    group,
+    in: parent,
+    appearances: ALWAYS_SHOWN,
+  });
+  const { ref, stepIndex, phase, isOpen, inherited } = step;
+  // The content is always shown, unless the step it is nested in isn't.
+  const appearance = moreHidden(inherited, enclosing);
   return (
     <StepsRoot
       as={component}
       ref={ref}
-      className={classNames(stepsClasses.root, stepsClasses[phase], className)}
+      className={classNames(
+        stepsClasses.root,
+        stepsClasses[phase],
+        isOpen ? stepsClasses.open : undefined,
+        appearanceClass('SliderSteps', appearance, enclosing),
+        className,
+      )}
       ownerState={{ ...props, stepIndex, phase }}
       {...other}
     >
-      <TogetherContext value={undefined}>
-        {typeof children === 'function' ? children(step) : children}
-      </TogetherContext>
+      <StepAppearanceContext value={appearance}>
+        <TogetherContext value={undefined}>
+          {typeof children === 'function' ? children(step) : children}
+        </TogetherContext>
+      </StepAppearanceContext>
     </StepsRoot>
   );
 }

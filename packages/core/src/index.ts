@@ -67,6 +67,7 @@ export {
   type StepProps,
   type StepVariant,
   type StepVariantOverrides,
+  type StepVariantShorthands,
 } from './steps/Step.tsx';
 export { Together, type TogetherProps } from './steps/Together.tsx';
 export {
@@ -76,6 +77,14 @@ export {
   type StepsProps,
 } from './steps/Steps.tsx';
 export type { StepPath, StepPhase } from './steps/StepStore.ts';
+export {
+  BUILT_IN_APPEARANCE_RANKS,
+  BUILT_IN_STEP_VARIANTS,
+  type BuiltInStepVariant,
+  type StepAppearance,
+  type StepAppearanceOverrides,
+  type StepAppearances,
+} from './steps/stepAppearance.ts';
 export {
   useStep,
   useSteps,

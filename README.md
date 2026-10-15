@@ -71,11 +71,15 @@ Presenter notes, shown only to the presenter.
   `:step{with=initial}` attach them to other steps, and `:step{group=name}`
   reveals items together. `<Step>`, `<Steps>`, and `<Together>` from
   `@slider/core` do the same in JSX.
-- **Step styles:** `:step{variant=…}`, or `{steps=…}` on a slide, sets how
-  steps look before, during, and after their turn: `reveal` (the default),
-  `dim` (past steps are dimmed), `preview` (future steps are dimmed), `focus`
-  (both), or `only` (hidden outside their turn). Themes can restyle them or
-  add their own as `SliderStep`.
+- **Step styles:** `:step{variant=…}` or a shorthand like `:step{only}`, or
+  `{steps=…}` on a slide, sets how steps look before, during, and after their
+  turn: `reveal` (the default), `dim` (past steps are dimmed), `preview`
+  (future steps are dimmed), `focus` (both), or `only` (hidden outside their
+  turn). `:step{in=name}` nests a
+  step in the step of the group `name`, e.g., for callouts elsewhere on the
+  slide. Nested steps look at least as hidden as their parent. Themes can
+  restyle steps as `SliderStep`, and add variants with `stepVariants` and
+  looks between shown, dimmed, and hidden with `stepAppearances`.
 - **Colons:** a colon followed by a word starts a directive like `:step`.
   Unknown ones, like in `10:30`, stay text, but write `\:step` for a literal
   `:step`.

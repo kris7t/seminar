@@ -7,6 +7,11 @@ import {
   type RefCallback,
 } from 'react';
 
+import {
+  SHOWN,
+  type RankedAppearance,
+  type RankedAppearances,
+} from './stepAppearance.ts';
 import { StepNode, type StepPhase, type StepStatus } from './StepStore.ts';
 import { StepStoreContext } from './StepStoreContext.ts';
 
@@ -29,6 +34,16 @@ export interface StepState {
    * or nested inside it.
    */
   isCurrent: boolean;
+  /**
+   * Whether the level of the stepper is open, i.e., the step it is nested in
+   * (in the DOM or with `in`) is current or a parent, or it isn't nested.
+   */
+  isOpen: boolean;
+  /**
+   * How the step that the stepper is nested in looks, which the stepper
+   * should look at least as hidden as.
+   */
+  inherited: RankedAppearance;
 }
 
 export interface StepHandle extends StepState {
@@ -78,9 +93,26 @@ export interface UseStepsOptions {
    * a handle.
    */
   group?: string | undefined;
+  /**
+   * Name of the group whose stepper this stepper is nested in, as if its
+   * elements were inside the elements of the group. This allows nesting steps,
+   * e.g., callouts, outside of the step they belong to. Ignored if `with` is a
+   * handle.
+   */
+  in?: string | undefined;
+  /**
+   * How the stepper looks in each phase, which the steppers nested in it
+   * inherit. Shown in all phases by default.
+   */
+  appearances?: RankedAppearances | undefined;
 }
 
-const UNLINKED: StepStatus = { stepIndex: -1, phase: 'future' };
+const UNLINKED: StepStatus = {
+  stepIndex: -1,
+  phase: 'future',
+  isOpen: true,
+  inherited: SHOWN,
+};
 
 function subscribeUnlinked(): () => void {
   return () => undefined;
@@ -101,7 +133,7 @@ function getUnlinkedStatus(): StepStatus {
  */
 export function useSteps(
   count: number,
-  { with: withStep, group }: UseStepsOptions = {},
+  { with: withStep, group, in: parent, appearances }: UseStepsOptions = {},
 ): StepHandle {
   const store = use(StepStoreContext);
   const [ownNode] = useState(() => new StepNode());
@@ -114,10 +146,15 @@ export function useSteps(
     (element) =>
       element === null
         ? undefined
-        : store.attach(node, element, { count, placement }),
-    [store, node, count, placement],
+        : store.attach(node, element, {
+            count,
+            placement,
+            parent,
+            appearances,
+          }),
+    [store, node, count, placement, parent, appearances],
   );
-  const { stepIndex, phase } = useSyncExternalStore(
+  const { stepIndex, phase, isOpen, inherited } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,
     linked ? getUnlinkedStatus : () => store.getStatus(node),
   );
@@ -130,8 +167,10 @@ export function useSteps(
       phase,
       isActive: phase !== 'future',
       isCurrent: phase === 'current' || phase === 'parent',
+      isOpen,
+      inherited,
     }),
-    [ref, count, clampedIndex, phase],
+    [ref, count, clampedIndex, phase, isOpen, inherited],
   );
   return linked ? withStep : ownStep;
 }
