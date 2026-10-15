@@ -145,14 +145,15 @@ export function PresenterPanel({
   layout,
   notesOnly = false,
 }: PresenterPanelProps): JSX.Element {
-  const { slideIndex, slideCount } = useDeck();
+  const { slideIndex, nextSlideIndex } = useDeck();
   const nextStep = useHasNextStep();
   // The size of the contents of the panel, without its padding.
   const [ref, , panelSize] = useFitScale(SLIDE_WIDTH, SLIDE_WIDTH);
+  // Skips spare slides like going to the next slide does.
   const nextSlide: Upcoming | undefined =
-    slideIndex + 1 < slideCount
-      ? { heading: 'Next slide', index: slideIndex + 1, nextStep: false }
-      : undefined;
+    nextSlideIndex === undefined
+      ? undefined
+      : { heading: 'Next slide', index: nextSlideIndex, nextStep: false };
   const wanted: (Upcoming | undefined)[] = notesOnly
     ? []
     : nextStep

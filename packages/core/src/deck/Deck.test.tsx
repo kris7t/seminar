@@ -70,6 +70,37 @@ describe('Deck', () => {
     expect(currentTitle()).toBe('Second');
   });
 
+  it('skips spare slides, unless going from one', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First" />
+        <Slide title="Detour" spare />
+        <Slide title="Second" />
+        <Slide title="Backup" spare />
+        <Slide title="More backup" spare />
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=3');
+    // There are only spare slides after the last one.
+    await user.keyboard('{ArrowRight}{PageDown}');
+    expect(window.location.hash).toBe('#slide=3');
+    await user.keyboard('{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=1');
+    await user.keyboard('{End}');
+    expect(window.location.hash).toBe('#slide=3');
+    // Going to a spare slide goes through the slides after it.
+    navigateTo('#slide=4');
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=5');
+    await user.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=3');
+    navigateTo('#slide=2');
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=3');
+  });
+
   it('starts at the slide in the location hash', () => {
     window.history.replaceState(null, '', '#slide=3');
     renderDeck();

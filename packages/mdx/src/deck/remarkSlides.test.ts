@@ -394,6 +394,74 @@ More
     });
   });
 
+  describe('spare slides', () => {
+    it('marks slides as spare, along with the slides in spare divisions', async () => {
+      expect(
+        (
+          await slides(`---
+depth: 3
+---
+
+# Talk
+
+## Main
+
+### Point
+
+## Backup {spare}
+
+### Detail
+
+---
+
+More
+
+### Kept {spare=false}
+
+## Appendix :slide{spare=true}
+
+::slide{spare}
+`)
+        ).map(({ title, spare }) => [title ?? '(untitled)', spare === true]),
+      ).toEqual([
+        ['Talk', false],
+        ['Main', false],
+        ['Point', false],
+        ['Backup', true],
+        ['Detail', true],
+        ['(untitled)', true],
+        ['Kept', false],
+        ['Appendix', true],
+        ['(untitled)', true],
+      ]);
+    });
+
+    it('applies spare=false to the slides in the division', async () => {
+      expect(
+        (
+          await slides(
+            '# Backup {spare}\n\n## Main {spare=false}\n\n### Point\n\n## Other',
+          )
+        ).map(({ spare }) => spare === true),
+      ).toEqual([true, false, false, true]);
+    });
+
+    it('is not a master', async () => {
+      expect(
+        (await slides('## A {section spare}')).map(({ master }) => master),
+      ).toEqual(['section']);
+    });
+
+    it('reports invalid values', async () => {
+      const file = await compile('## A {spare=maybe}', {
+        ...sliderMdxOptions(),
+      });
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining('Expected `spare` to be `true` or `false`'),
+      ]);
+    });
+  });
+
   describe('masters', () => {
     it('uses masters in the theme by name', async () => {
       expect(

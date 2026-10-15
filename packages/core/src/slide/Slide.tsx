@@ -23,6 +23,13 @@ export interface SlideProps {
   className?: string | undefined;
   /** Variant of the steps on the slide that don't set their own. */
   steps?: StepVariant | undefined;
+  /**
+   * Whether the slide is spare, e.g., a backup slide for questions. Going
+   * through the {@link Deck} skips spare slides, but they can be chosen,
+   * e.g., in the table of contents or the overview, and going forward or
+   * back from a spare slide shows the adjacent slides.
+   */
+  spare?: boolean | undefined;
   children?: ReactNode;
 }
 

@@ -139,9 +139,12 @@ export function DeckMenu({
   const deck = useDeck();
   const {
     slideIndex,
-    slideCount,
     atFirstStep,
     atLastStep,
+    nextSlideIndex,
+    previousSlideIndex,
+    firstSlideIndex,
+    lastSlideIndex,
     mouseNavigation,
     setMouseNavigation,
     toc,
@@ -154,8 +157,8 @@ export function DeckMenu({
   // be partly hidden by it.
   const asDialog = useMediaQuery(COARSE_POINTER_QUERY);
   const showShortcuts = !asDialog;
-  const isFirstSlide = slideIndex === 0;
-  const isLastSlide = slideIndex === slideCount - 1;
+  const isFirstSlide = previousSlideIndex === undefined;
+  const isLastSlide = nextSlideIndex === undefined;
   const atStart = isFirstSlide && atFirstStep;
   const atEnd = isLastSlide && atLastStep;
 
@@ -232,18 +235,18 @@ export function DeckMenu({
         icon: FirstPageIcon,
         shortcut: 'Home',
         action: () => {
-          deck.goTo(0);
+          deck.goTo(firstSlideIndex);
         },
-        disabled: atStart,
+        disabled: slideIndex === firstSlideIndex && atFirstStep,
       },
       {
         label: 'Last slide',
         icon: LastPageIcon,
         shortcut: 'End',
         action: () => {
-          deck.goTo(slideCount - 1, 'end');
+          deck.goTo(lastSlideIndex, 'end');
         },
-        disabled: atEnd,
+        disabled: slideIndex === lastSlideIndex && atLastStep,
       },
     ],
     [

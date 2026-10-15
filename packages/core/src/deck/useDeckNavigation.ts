@@ -14,6 +14,12 @@ import {
   parseLocation,
   type DeckLocation,
 } from './location.ts';
+import {
+  findFirstSlide,
+  findLastSlide,
+  findNextSlide,
+  findPreviousSlide,
+} from './spareSlides.ts';
 
 /** Which steps of a slide to show when going to it. See `goTo`. */
 export type GoToSteps = 'start' | 'end' | 'restore';
@@ -30,6 +36,20 @@ export interface DeckNavigation {
   atFirstStep: boolean;
   /** Whether all steps of the current slide are shown. */
   atLastStep: boolean;
+  /**
+   * The slide that going forward shows, or `undefined` at the end. Skips spare
+   * slides, unless the current slide is spare.
+   */
+  nextSlideIndex: number | undefined;
+  /**
+   * The slide that going back shows, or `undefined` at the beginning. Skips
+   * spare slides, unless the current slide is spare.
+   */
+  previousSlideIndex: number | undefined;
+  /** The first slide that isn't spare. */
+  firstSlideIndex: number;
+  /** The last slide that isn't spare. */
+  lastSlideIndex: number;
   /**
    * Goes to a slide. `steps` sets which of its steps are shown:
    *
@@ -92,10 +112,15 @@ function readLocation(slideIds: readonly (string | undefined)[]) {
  * The position in the steps of each slide is kept in `slideState`, so that
  * other views of the slide show the same step.
  *
+ * Going forward and back skips spare slides, unless the current slide is
+ * spare (see {@link findNextSlide}).
+ *
  * @param slideIds The ids of the slides, or `undefined` for slides without one.
+ * @param spares Whether each slide is spare.
  */
 export function useDeckNavigation(
   slideIds: readonly (string | undefined)[],
+  spares: readonly boolean[],
   slideState: SlideStateStore,
 ): DeckNavigation {
   const slideCount = slideIds.length;
@@ -142,22 +167,28 @@ export function useDeckNavigation(
     },
     [clamp, slideState],
   );
+  const nextSlideIndex = findNextSlide(spares, slideIndex);
+  const previousSlideIndex = findPreviousSlide(spares, slideIndex);
   const next = useCallback(() => {
-    if (!stepStore.next() && slideIndex < slideCount - 1) {
-      goTo(slideIndex + 1);
+    if (!stepStore.next() && nextSlideIndex !== undefined) {
+      goTo(nextSlideIndex);
     }
-  }, [stepStore, slideIndex, slideCount, goTo]);
+  }, [stepStore, nextSlideIndex, goTo]);
   const previous = useCallback(() => {
-    if (!stepStore.previous() && slideIndex > 0) {
-      goTo(slideIndex - 1, 'end');
+    if (!stepStore.previous() && previousSlideIndex !== undefined) {
+      goTo(previousSlideIndex, 'end');
     }
-  }, [stepStore, slideIndex, goTo]);
+  }, [stepStore, previousSlideIndex, goTo]);
   const nextSlide = useCallback(() => {
-    goTo(slideIndex + 1, 'restore');
-  }, [goTo, slideIndex]);
+    if (nextSlideIndex !== undefined) {
+      goTo(nextSlideIndex, 'restore');
+    }
+  }, [goTo, nextSlideIndex]);
   const previousSlide = useCallback(() => {
-    goTo(slideIndex - 1, 'restore');
-  }, [goTo, slideIndex]);
+    if (previousSlideIndex !== undefined) {
+      goTo(previousSlideIndex, 'restore');
+    }
+  }, [goTo, previousSlideIndex]);
   const firstStep = useCallback(() => {
     stepStore.reset();
   }, [stepStore]);
@@ -215,6 +246,10 @@ export function useDeckNavigation(
     stepStore,
     atFirstStep: step.length === 0,
     atLastStep,
+    nextSlideIndex,
+    previousSlideIndex,
+    firstSlideIndex: findFirstSlide(spares),
+    lastSlideIndex: findLastSlide(spares),
     goTo,
     next,
     previous,

@@ -12,6 +12,22 @@ export interface DeckState {
   /** Whether all steps of the current slide are shown. */
   atLastStep: boolean;
   /**
+   * The slide that going forward shows, or `undefined` at the end. Skips spare
+   * slides, unless the current slide is spare.
+   */
+  nextSlideIndex: number | undefined;
+  /**
+   * The slide that going back shows, or `undefined` at the beginning. Skips
+   * spare slides, unless the current slide is spare.
+   */
+  previousSlideIndex: number | undefined;
+  /** The first slide that isn't spare, which Home goes to. */
+  firstSlideIndex: number;
+  /** The last slide that isn't spare, which End goes to. */
+  lastSlideIndex: number;
+  /** Whether each slide is spare, i.e., skipped unless chosen explicitly. */
+  spares: readonly boolean[];
+  /**
    * Goes to a slide. `steps` sets which of its steps are shown:
    *
    * - `'start'` (the default): none.

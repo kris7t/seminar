@@ -3,12 +3,14 @@ import type { JSX } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import { scrollIntoView } from '../sidebar/Sidebar.tsx';
+import { SpareIcon } from '../slide/SpareIcon.tsx';
 import { findCurrentEntry, type ResolvedTocEntry } from './tableOfContents.ts';
 
 interface RenderEntriesOptions {
   entries: readonly ResolvedTocEntry[];
   level: number;
   current: number | undefined;
+  spares: readonly boolean[];
   goTo: (slideIndex: number) => void;
 }
 
@@ -16,6 +18,7 @@ function renderEntries({
   entries,
   level,
   current,
+  spares,
   goTo,
 }: RenderEntriesOptions): JSX.Element[] {
   return entries.flatMap((entry) => [
@@ -33,17 +36,25 @@ function renderEntries({
         slotProps={{
           primary: {
             variant: 'body2',
-            sx: { fontWeight: level === 0 ? 500 : undefined },
+            sx: [
+              level === 0 && { fontWeight: 500 },
+              spares[entry.slideIndex] === true && { color: 'text.secondary' },
+            ],
           },
         }}
       >
         {entry.title}
       </ListItemText>
+      {/* Spare slides are skipped when going through the deck. */}
+      {spares[entry.slideIndex] === true && (
+        <SpareIcon sx={{ ml: 1, color: 'text.secondary' }} />
+      )}
     </ListItemButton>,
     ...renderEntries({
       entries: entry.children,
       level: level + 1,
       current,
+      spares,
       goTo,
     }),
   ]);
@@ -56,7 +67,7 @@ function renderEntries({
  * Should be rendered with the {@link uiTheme}.
  */
 export function TocList(): JSX.Element {
-  const { toc, slideIndex, goTo } = useDeck();
+  const { toc, slideIndex, spares, goTo } = useDeck();
   const current = findCurrentEntry(toc, slideIndex);
   return (
     <List
@@ -69,7 +80,7 @@ export function TocList(): JSX.Element {
       }}
       sx={{ pt: 0 }}
     >
-      {renderEntries({ entries: toc, level: 0, current, goTo })}
+      {renderEntries({ entries: toc, level: 0, current, spares, goTo })}
     </List>
   );
 }

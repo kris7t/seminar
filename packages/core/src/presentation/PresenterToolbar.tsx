@@ -199,6 +199,8 @@ export function PresenterToolbar({
     slideCount,
     atFirstStep,
     atLastStep,
+    nextSlideIndex,
+    previousSlideIndex,
     toc,
     showToc,
     setShowToc,
@@ -254,14 +256,14 @@ export function PresenterToolbar({
             shortcut="PgUp"
             icon={KeyboardDoubleArrowLeftIcon}
             onClick={deck.previousSlide}
-            disabled={slideIndex === 0}
+            disabled={previousSlideIndex === undefined}
           />
           <ToolButton
             label="Previous step"
             shortcut="Left"
             icon={NavigateBeforeIcon}
             onClick={deck.previous}
-            disabled={slideIndex === 0 && atFirstStep}
+            disabled={previousSlideIndex === undefined && atFirstStep}
           />
           {slideNumber}
           <ToolButton
@@ -269,14 +271,14 @@ export function PresenterToolbar({
             shortcut="Right"
             icon={NavigateNextIcon}
             onClick={deck.next}
-            disabled={slideIndex === slideCount - 1 && atLastStep}
+            disabled={nextSlideIndex === undefined && atLastStep}
           />
           <ToolButton
             label="Next slide"
             shortcut="PgDn"
             icon={KeyboardDoubleArrowRightIcon}
             onClick={deck.nextSlide}
-            disabled={slideIndex === slideCount - 1}
+            disabled={nextSlideIndex === undefined}
           />
           {!reduced && (
             <>

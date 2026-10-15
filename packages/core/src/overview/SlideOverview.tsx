@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { SpareIcon } from '../slide/SpareIcon.tsx';
 import type { ContextMenuHandlers } from '../interaction/useContextMenu.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
@@ -38,6 +39,8 @@ interface ThumbnailProps {
   index: number;
   slide: ReactNode;
   current: boolean;
+  /** Whether the slide is spare, which is shown by its number. */
+  spare: boolean;
   onSelect: (index: number) => void;
 }
 
@@ -45,6 +48,7 @@ function Thumbnail({
   index,
   slide,
   current,
+  spare,
   onSelect,
 }: ThumbnailProps): JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
@@ -88,6 +92,8 @@ function Thumbnail({
             color: 'text.primary',
           },
           current && { outline: '3px solid', outlineColor: 'primary.main' },
+          // Spare slides are skipped when going through the deck.
+          spare && !current && { opacity: 0.5 },
         ]}
       >
         {/* The contents of the slide can't be focused or clicked. */}
@@ -109,12 +115,16 @@ function Thumbnail({
       <Typography
         variant="caption"
         sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 0.5,
           color: current ? 'common.white' : 'grey.500',
           fontSize: 14,
-          textAlign: 'center',
         }}
       >
         {index + 1}
+        {spare && <SpareIcon fontSize="inherit" />}
       </Typography>
       {/*
        * Covers the thumbnail instead of containing it, since the contents of
@@ -122,7 +132,7 @@ function Thumbnail({
        */}
       <ButtonBase
         ref={ref}
-        aria-label={`Slide ${String(index + 1)}`}
+        aria-label={`Slide ${String(index + 1)}${spare ? ' (spare)' : ''}`}
         aria-current={current ? 'page' : undefined}
         onClick={() => {
           onSelect(index);
@@ -167,7 +177,7 @@ export function SlideOverview({
   onClose,
   menuHandlers,
 }: SlideOverviewProps): JSX.Element {
-  const { overviewIndex, goTo, toc } = useDeck();
+  const { overviewIndex, goTo, toc, spares } = useDeck();
   const groups = useMemo(
     () => groupSlides(toc, slides.length),
     [toc, slides.length],
@@ -194,43 +204,59 @@ export function SlideOverview({
         WebkitTouchCallout: 'none',
       }}
     >
-      {groups.map(({ title, level, slides: groupSlides }) => (
-        <Box
-          component="section"
-          key={groupSlides[0]}
-          sx={{ '& + &': { mt: 3 } }}
-        >
-          {title !== undefined && (
-            // The headings are part of the user interface, not the slides.
-            <ThemeProvider theme={uiTheme}>
-              <Typography
-                variant={HEADING_VARIANTS[level] ?? 'h6'}
-                component={HEADING_ELEMENTS[level] ?? 'h4'}
-                sx={{ color: 'common.white', mx: 1, mb: 1 }}
-              >
-                {title}
-              </Typography>
-            </ThemeProvider>
-          )}
+      {groups.map(({ title, level, slides: groupSlides }) => {
+        // Divisions of only spare slides are dimmed like their thumbnails.
+        const spare = groupSlides.every((index) => spares[index] === true);
+        return (
           <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(auto-fill, ${String(THUMBNAIL_WIDTH + 16)}px)`,
-              gap: 1,
-            }}
+            component="section"
+            key={groupSlides[0]}
+            sx={{ '& + &': { mt: 3 } }}
           >
-            {groupSlides.map((index) => (
-              <Thumbnail
-                key={index}
-                index={index}
-                slide={slides[index]}
-                current={index === overviewIndex}
-                onSelect={onSelect}
-              />
-            ))}
+            {title !== undefined && (
+              // The headings are part of the user interface, not the slides.
+              <ThemeProvider theme={uiTheme}>
+                <Typography
+                  variant={HEADING_VARIANTS[level] ?? 'h6'}
+                  component={HEADING_ELEMENTS[level] ?? 'h4'}
+                  sx={[
+                    {
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      color: 'common.white',
+                      mx: 1,
+                      mb: 1,
+                    },
+                    spare && { opacity: 0.5 },
+                  ]}
+                >
+                  {title}
+                  {spare && <SpareIcon sx={{ fontSize: '0.8em' }} />}
+                </Typography>
+              </ThemeProvider>
+            )}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(auto-fill, ${String(THUMBNAIL_WIDTH + 16)}px)`,
+                gap: 1,
+              }}
+            >
+              {groupSlides.map((index) => (
+                <Thumbnail
+                  key={index}
+                  index={index}
+                  slide={slides[index]}
+                  current={index === overviewIndex}
+                  spare={spares[index] === true}
+                  onSelect={onSelect}
+                />
+              ))}
+            </Box>
           </Box>
-        </Box>
-      ))}
+        );
+      })}
     </Box>
   );
 }

@@ -52,7 +52,7 @@ export interface KeyboardNavigationOptions {
  * - Page Up and Page Down go to the previous or next slide, showing the steps
  *   last shown on it.
  * - Home goes to the beginning of the first slide, and End to the last step
- *   of the last slide.
+ *   of the last slide, skipping spare slides.
  * - Shift+Home and Shift+End go to the first or last step of the slide.
  * - `g` (or `:`, as in Vim) asks for a slide number to go to.
  * - `t` shows or hides the table of contents, and Shift+`t` the steps of the
@@ -84,6 +84,8 @@ export function useKeyboardNavigation(
     previousSlide,
     firstStep,
     lastStep,
+    firstSlideIndex,
+    lastSlideIndex,
     showOverview,
     setShowOverview,
     overviewIndex,
@@ -240,14 +242,14 @@ export function useKeyboardNavigation(
           if (event.shiftKey) {
             firstStep();
           } else {
-            goTo(0);
+            goTo(firstSlideIndex);
           }
           break;
         case 'End':
           if (event.shiftKey) {
             lastStep();
           } else {
-            goTo(slideCount - 1, 'end');
+            goTo(lastSlideIndex, 'end');
           }
           break;
         case 'g':
@@ -323,6 +325,8 @@ export function useKeyboardNavigation(
     previousSlide,
     firstStep,
     lastStep,
+    firstSlideIndex,
+    lastSlideIndex,
     showOverview,
     setShowOverview,
     overviewIndex,

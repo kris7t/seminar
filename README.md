@@ -64,7 +64,12 @@ Presenter notes, shown only to the presenter.
   an imported one), classes, or the title in the table of contents, e.g.,
   `## Intro {#intro .wide section title=Introduction}`. Ids appear in the
   address, e.g., `#intro`. To show a variable at the end of a heading, write
-  an expression like `{String(count)}`, since `{count}` sets the master. `:slide{…}` in a heading does the same, and also makes
+  an expression like `{String(count)}`, since `{count}` sets the master.
+  `{spare}` marks a slide as spare, e.g., a backup slide for questions, which
+  going through the deck skips, but which can be chosen from the table of
+  contents, the overview, or by number, and the arrow keys go on from it.
+  Spare title, section, and subsection slides make the slides in them spare,
+  unless they have `{spare=false}`. `:slide{…}` in a heading does the same, and also makes
   headings deeper than `depth:` slides.
 - **Steps:** list items with `:step` at their start or end appear in new
   steps, and so do paragraphs with `:step`. `:step{with=previous}` and

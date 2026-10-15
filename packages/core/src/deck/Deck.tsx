@@ -140,8 +140,32 @@ function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
   return undefined;
 }
 
+function isSpare(slide: ReturnType<typeof Children.toArray>[number]) {
+  return (
+    isValidElement<{ spare?: unknown }>(slide) && slide.props.spare === true
+  );
+}
+
+/**
+ * Returns `spares`, or the previous value if it has the same elements, so
+ * that it's stable while the spare slides don't change.
+ */
+function useSpares(spares: readonly boolean[]): readonly boolean[] {
+  const [stable, setStable] = useState(spares);
+  const changed =
+    stable.length !== spares.length ||
+    stable.some((spare, index) => spare !== spares[index]);
+  if (changed) {
+    setStable(spares);
+  }
+  return changed ? spares : stable;
+}
+
 /**
  * Shows one of its child slides at a time, scaled to fit the viewport.
+ *
+ * Going through the deck skips spare slides (see the `spare` prop of
+ * {@link Slide}).
  */
 export function Deck({
   children,
@@ -156,12 +180,17 @@ export function Deck({
   const slides = Children.toArray(children);
   const slideCount = slides.length;
   const slideIds = slides.map(getSlideId);
+  const spares = useSpares(slides.map(isSpare));
   const [slideState] = useState(() => new SlideStateStore());
   const {
     slideIndex,
     stepStore,
     atFirstStep,
     atLastStep,
+    nextSlideIndex,
+    previousSlideIndex,
+    firstSlideIndex,
+    lastSlideIndex,
     goTo,
     next,
     previous,
@@ -169,7 +198,7 @@ export function Deck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slideIds, slideState);
+  } = useDeckNavigation(slideIds, spares, slideState);
   const toc = useMemo(() => {
     // eslint-disable-next-line @eslint-react/no-children-to-array
     const tocSlides = Children.toArray(children);
@@ -292,6 +321,11 @@ export function Deck({
       slideCount,
       atFirstStep,
       atLastStep,
+      nextSlideIndex,
+      previousSlideIndex,
+      firstSlideIndex,
+      lastSlideIndex,
+      spares,
       goTo,
       next,
       previous,
@@ -316,6 +350,11 @@ export function Deck({
       slideCount,
       atFirstStep,
       atLastStep,
+      nextSlideIndex,
+      previousSlideIndex,
+      firstSlideIndex,
+      lastSlideIndex,
+      spares,
       goTo,
       next,
       previous,
@@ -392,8 +431,8 @@ export function Deck({
   const onWheel = useWheelNavigation(next, previous);
   const swipe = useSwipeNavigation({
     hasMoreSteps: () => stepStore.hasNext(),
-    canGoNext: slideIndex < slideCount - 1,
-    canGoPrevious: slideIndex > 0,
+    canGoNext: nextSlideIndex !== undefined,
+    canGoPrevious: previousSlideIndex !== undefined,
     nextSlide,
     previousSlide,
     width: containerSize.width,
@@ -514,9 +553,16 @@ export function Deck({
                     >
                       {swipe.moving &&
                         !showOverview &&
-                        [slideIndex - 1, slideIndex + 1]
-                          .filter((index) => index >= 0 && index < slideCount)
-                          .map((index) => (
+                        (
+                          [
+                            [previousSlideIndex, -1],
+                            [nextSlideIndex, 1],
+                          ] as const
+                        )
+                          .flatMap(([index, side]) =>
+                            index === undefined ? [] : [[index, side] as const],
+                          )
+                          .map(([index, side]) => (
                             // Placed a whole area away, which needs no measuring.
                             <Box
                               key={index}
@@ -528,7 +574,7 @@ export function Deck({
                                 width: '100%',
                               }}
                               style={{
-                                left: `${String((index - slideIndex) * 100)}%`,
+                                left: `${String(side * 100)}%`,
                               }}
                             >
                               <Box

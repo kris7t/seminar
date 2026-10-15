@@ -58,6 +58,13 @@ interface SlideDraft {
   attributes: Map<string, string>;
   title: PhrasingContent[] | undefined;
   children: RootContent[];
+  /**
+   * The value of the `spare` attribute, which is the empty string for the bare
+   * word, if any.
+   */
+  spareAttribute?: string | undefined;
+  /** Whether the slide is spare, set by {@link resolveSpares}. */
+  spare?: boolean;
   /** Where the slide starts in the document, if known. */
   place?: Position | undefined;
   /** Title of the slide in the table of contents, if set explicitly. */
@@ -154,9 +161,11 @@ function applyAttributes(
   { id, classes, attributes }: Attributes,
 ) {
   slide.id = id ?? slide.id;
+  // `spare` is a flag rather than a master.
   const bareWords = [...attributes]
-    .filter(([, value]) => value === '')
+    .filter(([key, value]) => value === '' && key !== 'spare')
     .map(([key]) => key);
+  slide.spareAttribute = attributes.get('spare');
   const master = attributes.get('master');
   const bareWord = bareWords.at(-1);
   if (master !== undefined && master !== '') {
@@ -170,8 +179,42 @@ function applyAttributes(
   for (const [key, value] of attributes) {
     if (key === 'title') {
       slide.tocTitle = value;
-    } else if (key !== 'master' && value !== '') {
+    } else if (key !== 'master' && key !== 'spare' && value !== '') {
       slide.attributes.set(key, value);
+    }
+  }
+}
+
+/**
+ * Decides which slides are spare: those with `spare` or `spare=true`, and the
+ * slides in a division, like a section, whose slide is spare, unless they have
+ * `spare=false`, which in turn applies to the slides in their division.
+ */
+function resolveSpares(slides: SlideDraft[], depth: number, file: VFile) {
+  // The enclosing divisions of the current slide, outermost first.
+  const divisions: { level: number; spare: boolean }[] = [];
+  for (const slide of slides) {
+    const { level, spareAttribute, place } = slide;
+    if (level !== undefined) {
+      while ((divisions.at(-1)?.level ?? 0) >= level) {
+        divisions.pop();
+      }
+    }
+    let spare = divisions.at(-1)?.spare ?? false;
+    if (spareAttribute === '' || spareAttribute === 'true') {
+      spare = true;
+    } else if (spareAttribute === 'false') {
+      spare = false;
+    } else if (spareAttribute !== undefined) {
+      file.message(
+        `Expected \`spare\` to be \`true\` or \`false\`, not \`${spareAttribute}\``,
+        { place },
+      );
+    }
+    slide.spare = spare;
+    // Headings above the deepest level start divisions.
+    if (level !== undefined && level < depth) {
+      divisions.push({ level, spare });
     }
   }
 }
@@ -221,7 +264,7 @@ function collectBindings(nodes: RootContent[]): Set<string> {
 }
 
 function createSlideElement(
-  { master, id, attributes, title, children, place }: SlideDraft,
+  { master, id, attributes, title, children, place, spare }: SlideDraft,
   bindings: Set<string>,
   file: VFile,
 ): MdxJsxFlowElement {
@@ -260,6 +303,7 @@ function createSlideElement(
     data: EXPLICIT_JSX,
     attributes: [
       masterAttribute,
+      ...(spare === true ? [createExpressionAttribute('spare', 'true')] : []),
       ...[...props].map(([name, value]) => createStringAttribute(name, value)),
     ],
     children: [...titleElement, ...(children as MdxJsxFlowElement['children'])],
@@ -428,6 +472,7 @@ export function remarkSlides({
       }
     }
 
+    resolveSpares(slides, depth, file);
     const bindings = collectBindings(esm);
     const themeSource = getThemeSource(frontmatter, file);
     const deck: MdxJsxFlowElement = {
