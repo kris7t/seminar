@@ -2,7 +2,7 @@ import type { Declaration, Program } from 'estree';
 import GithubSlugger from 'github-slugger';
 import type { PhrasingContent, Root, RootContent } from 'mdast';
 import type { Position } from 'unist';
-import type {} from 'mdast-util-directive';
+import type { LeafDirective } from 'mdast-util-directive';
 import type { MdxJsxFlowElement } from 'mdast-util-mdx';
 import { toString } from 'mdast-util-to-string';
 import type { VFile } from 'vfile';
@@ -74,6 +74,8 @@ interface SlideDraft {
   noSlide?: boolean;
   /** The text of the heading, the title of divisions without slides. */
   headingText?: string;
+  /** Id of the slide that this slide recaps, if it's a recap. */
+  recap?: string;
   /**
    * Ids of divisions without slides that refer to this slide, set by
    * {@link resolveDivisionIds}.
@@ -168,6 +170,58 @@ function createSlide(
   };
   if (attributes !== undefined) {
     applyAttributes(slide, attributes);
+  }
+  return slide;
+}
+
+/** Attributes that recaps take, while the rest come from the recapped slide. */
+const RECAP_ATTRIBUTES: ReadonlySet<string> = new Set([
+  'title',
+  'spare',
+  'from',
+  'after',
+  'to',
+  'before',
+]);
+
+/**
+ * Creates a recap of a slide from a `::recap[#id]{…}` directive, or reports
+ * the directive if it doesn't refer to a slide by id.
+ *
+ * Recaps take their id, title in the table of contents, range of steps, and
+ * `spare`, but other attributes, like the master and classes, come from the
+ * recapped slide, and are reported. The `Deck` resolves the recapped slide.
+ */
+function createRecap(node: LeafDirective, file: VFile): SlideDraft | undefined {
+  const label = toString(node).trim();
+  if (!label.startsWith('#') || label.length === 1) {
+    file.message(
+      'Expected `::recap` to refer to a slide by its id, e.g., `::recap[#intro]`',
+      { place: node.position },
+    );
+    return undefined;
+  }
+  const { id, classes, attributes } = getAttributes(node);
+  const ignored = [
+    ...classes.map((name) => `.${name}`),
+    ...[...attributes.keys()].filter((key) => !RECAP_ATTRIBUTES.has(key)),
+  ];
+  for (const attribute of ignored) {
+    file.message(
+      `Ignoring \`${attribute}\` on a recap, which takes it from the recapped slide`,
+      { place: node.position },
+    );
+  }
+  const slide = createSlide('content', id, undefined);
+  slide.recap = label.slice(1);
+  slide.place = node.position;
+  slide.tocTitle = attributes.get('title');
+  slide.spareAttribute = attributes.get('spare');
+  for (const bound of STEP_BOUNDS) {
+    const value = attributes.get(bound);
+    if (value !== undefined) {
+      slide.attributes.set(bound, value);
+    }
   }
   return slide;
 }
@@ -337,6 +391,7 @@ function createSlideElement(
     place,
     spare,
     aliases,
+    recap,
   }: SlideDraft,
   bindings: Set<string>,
   file: VFile,
@@ -384,7 +439,10 @@ function createSlideElement(
     name: SLIDE,
     data: EXPLICIT_JSX,
     attributes: [
-      masterAttribute,
+      // Recaps take the master from the recapped slide.
+      recap === undefined
+        ? masterAttribute
+        : createStringAttribute('recap', recap),
       ...(spare === true ? [createExpressionAttribute('spare', 'true')] : []),
       ...(aliases === undefined
         ? []
@@ -557,6 +615,12 @@ export function remarkSlides({
       } else if (node.type === 'thematicBreak') {
         current = createSlide('content', undefined, undefined);
         slides.push(current);
+      } else if (node.type === 'leafDirective' && node.name === 'recap') {
+        const recap = createRecap(node, file);
+        if (recap !== undefined) {
+          current = recap;
+          slides.push(current);
+        }
       } else if (node.type === 'leafDirective' && node.name === 'slide') {
         const title = node.children.length > 0 ? node.children : undefined;
         const slug = title === undefined ? '' : slugger.slug(toString(node));

@@ -22,6 +22,7 @@ import {
   SLIDE_HEIGHT,
   SLIDE_WIDTH,
 } from '../theme/createSlideTheme.ts';
+import { resolveRecaps } from './recaps.ts';
 import { useFitScale } from './useFitScale.ts';
 import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
@@ -195,11 +196,20 @@ export function Deck({
   defaultShowToc = false,
   defaultShowSteps = false,
 }: DeckProps): JSX.Element {
-  // Slides are positional children, so we need to index into them.
-  // eslint-disable-next-line @eslint-react/no-children-to-array
-  const slides = Children.toArray(children);
+  const { slides, slideIds, aliases, recapOf } = useMemo(() => {
+    // Slides are positional children, so we need to index into them.
+    // eslint-disable-next-line @eslint-react/no-children-to-array
+    const raw = Children.toArray(children);
+    const rawAliases = getAliases(raw);
+    const resolved = resolveRecaps(raw, raw.map(getSlideId), rawAliases);
+    return {
+      slides: resolved.slides,
+      slideIds: resolved.slides.map(getSlideId),
+      aliases: rawAliases,
+      recapOf: resolved.recapOf,
+    };
+  }, [children]);
   const slideCount = slides.length;
-  const slideIds = slides.map(getSlideId);
   const spares = useSpares(slides.map(isSpare));
   const [slideState] = useState(() => new SlideStateStore());
   const {
@@ -218,12 +228,11 @@ export function Deck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slideIds, getAliases(slides), spares, slideState);
-  const toc = useMemo(() => {
-    // eslint-disable-next-line @eslint-react/no-children-to-array
-    const tocSlides = Children.toArray(children);
-    return resolveToc(tocEntries ?? [], tocSlides, tocSlides.map(getSlideId));
-  }, [tocEntries, children]);
+  } = useDeckNavigation(slideIds, aliases, spares, slideState);
+  const toc = useMemo(
+    () => resolveToc(tocEntries ?? [], slides, slideIds),
+    [tocEntries, slides, slideIds],
+  );
   const [showToc, setShowToc] = useState(defaultShowToc);
   const [showSteps, setShowSteps] = useState(defaultShowSteps);
   const [overviewShown, setOverviewShown] = useState(false);
@@ -346,6 +355,7 @@ export function Deck({
       firstSlideIndex,
       lastSlideIndex,
       spares,
+      recapOf,
       goTo,
       next,
       previous,
@@ -375,6 +385,7 @@ export function Deck({
       firstSlideIndex,
       lastSlideIndex,
       spares,
+      recapOf,
       goTo,
       next,
       previous,

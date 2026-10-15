@@ -95,6 +95,11 @@ the `parse` group, wherever it is on the slide
 - :step and `{before=4}` ends it after this step
 - :step The step tree (Shift+T) can still show this one
 
+### Recaps {to=1}
+
+- :step `{to=1}` stops this slide after its first step
+- :step and `::recap[#recaps]` shows it again later, continuing from there
+
 ## Typesetting
 
 Formulas with MathJax
@@ -113,6 +118,8 @@ $$
 
 - :step Equations are numbered, and $\eqref{fourier}$ refers back to them
 - :step The math font comes from the theme
+
+::recap[#recaps]
 
 ## Interactive slides
 

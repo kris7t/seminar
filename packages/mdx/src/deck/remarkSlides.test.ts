@@ -582,6 +582,70 @@ depth: 3
     ]);
   });
 
+  describe('recaps', () => {
+    it('recap slides by id', async () => {
+      const source = `
+## Intro {to=1}
+
+::recap[#intro]{#again before=3 title=Again spare}
+
+::recap[#intro]
+`;
+      expect(await slides(source)).toEqual([
+        {
+          master: 'content',
+          id: 'intro',
+          to: '1',
+          title: 'Intro',
+          children: '',
+        },
+        { recap: 'intro', spare: true, id: 'again', before: '3', children: '' },
+        { recap: 'intro', children: '' },
+      ]);
+      expect(renderDeck(await compileDeck(source)).props).toMatchObject({
+        toc: [{ slide: 0 }, { slide: 1, title: 'Again' }, { slide: 2 }],
+      });
+    });
+
+    it('are spare by their own attributes and divisions', async () => {
+      expect(
+        (
+          await slides(`
+# Talk
+
+## Intro {spare}
+
+::recap[#intro]
+
+# Backup {noslide spare}
+
+::recap[#talk]
+`)
+        ).map(({ recap, spare }) => [recap ?? '', spare === true]),
+      ).toEqual([
+        ['', false],
+        ['', true],
+        ['intro', false],
+        ['talk', true],
+      ]);
+    });
+
+    it('reports attributes taken from the recapped slide', async () => {
+      const file = await compile(
+        '## Intro\n\n::recap[#intro]{.wide section steps=dim}\n\n::recap[intro]',
+        { ...sliderMdxOptions() },
+      );
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining('Ignoring `.wide` on a recap'),
+        expect.stringContaining('Ignoring `section` on a recap'),
+        expect.stringContaining('Ignoring `steps` on a recap'),
+        expect.stringContaining(
+          'Expected `::recap` to refer to a slide by its id',
+        ),
+      ]);
+    });
+  });
+
   describe('masters', () => {
     it('uses masters in the theme by name', async () => {
       expect(

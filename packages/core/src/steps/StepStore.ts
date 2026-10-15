@@ -264,6 +264,10 @@ export class StepStore {
   #layout: Layout | undefined;
   #range: StepRange | undefined;
   #bounds: StepBounds = {};
+  /** The paths of the steps of the slide in order, while the layout lasts. */
+  #positionsCache: StepPath[] | undefined;
+  /** The paths of the steps in the range, while the layout and range last. */
+  #rangeCache: StepPath[] | undefined;
   #tree: readonly StepTreeEntry[] | undefined;
   #path: StepPath = [];
   #pathValid = false;
@@ -384,12 +388,14 @@ export class StepStore {
       current?.from === range?.from &&
       current?.after === range?.after &&
       current?.to === range?.to &&
-      current?.before === range?.before
+      current?.before === range?.before &&
+      current?.fromLast === range?.fromLast
     ) {
       return;
     }
     this.#range = range;
     this.#bounds = range === undefined ? {} : parseStepRange(range);
+    this.#rangeCache = undefined;
     this.#invalidatePath();
   }
 
@@ -398,6 +404,16 @@ export class StepStore {
 
   /** Whether `path` is in the range of steps of the slide. */
   isInRange(path: StepPath): boolean {
+    if (this.#range === undefined) {
+      return true;
+    }
+    return this.#positionsInRange().some(
+      (position) => compareStepPaths(position, path) === 0,
+    );
+  }
+
+  /** Whether `path` is within the bounds of the range. */
+  #isWithinBounds(path: StepPath): boolean {
     return isInStepRange(path, this.#bounds, ({ group, path: relative }) => {
       if (group === undefined) {
         return relative;
@@ -409,20 +425,35 @@ export class StepStore {
 
   /** Returns the paths of the steps of the slide in order, starting with []. */
   #positions(): StepPath[] {
-    const positions: StepPath[] = [[]];
-    for (
-      let position = this.#findNext([]);
-      position !== undefined;
-      position = this.#findNext(position)
-    ) {
-      positions.push(position);
+    if (this.#positionsCache === undefined) {
+      const positions: StepPath[] = [[]];
+      for (
+        let position = this.#findNext([]);
+        position !== undefined;
+        position = this.#findNext(position)
+      ) {
+        positions.push(position);
+      }
+      this.#positionsCache = positions;
     }
-    return positions;
+    return this.#positionsCache;
   }
 
-  /** Returns the paths of the steps in the range of the slide in order. */
+  /**
+   * Returns the paths of the steps in the range of the slide in order, or the
+   * last step if none of them is.
+   */
   #positionsInRange(): StepPath[] {
-    return this.#positions().filter((position) => this.isInRange(position));
+    if (this.#rangeCache === undefined) {
+      const positions = this.#positions();
+      const last = positions.at(-1) ?? [];
+      const inRange =
+        this.#range?.fromLast === true
+          ? [last]
+          : positions.filter((position) => this.#isWithinBounds(position));
+      this.#rangeCache = inRange.length === 0 ? [last] : inRange;
+    }
+    return this.#rangeCache;
   }
 
   /**
@@ -595,6 +626,8 @@ export class StepStore {
 
   #invalidateLayout() {
     this.#layout = undefined;
+    this.#positionsCache = undefined;
+    this.#rangeCache = undefined;
     this.#tree = undefined;
     this.#invalidatePath();
   }

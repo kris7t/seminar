@@ -91,6 +91,13 @@ Presenter notes, shown only to the presenter.
   it ends with `.0`: `{to=1}` ends at 1.9, but `{to=1.0}` before 1.1. The
   step tree strikes through the skipped steps, which can still be chosen
   there.
+- **Recaps:** `::recap[#id]` shows the slide `id` again, e.g., to continue
+  its steps later. Without `from` or `after`, the recap continues where the
+  previous showing of the slide ended, e.g., `{to=1}` on the slide makes the
+  recap start after step 1, or only shows the last step if all were shown.
+  Recaps take `#id`, `title`, the range of steps, and `spare`, and get an id
+  like `intro-recap` otherwise. They share the state of the slide, but not its
+  steps.
 - **Step styles:** `:step{variant=…}` or a shorthand like `:step{only}`, or
   `{steps=…}` on a slide, sets how steps look before, during, and after their
   turn: `reveal` (the default), `dim` (past steps are dimmed), `preview`

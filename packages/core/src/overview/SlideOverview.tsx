@@ -9,6 +9,8 @@ import {
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { RecapIcon } from '../slide/RecapIcon.tsx';
+import { RecappedIcon } from '../slide/RecappedIcon.tsx';
 import { SpareIcon } from '../slide/SpareIcon.tsx';
 import type { ContextMenuHandlers } from '../interaction/useContextMenu.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
@@ -41,6 +43,10 @@ interface ThumbnailProps {
   current: boolean;
   /** Whether the slide is spare, which is shown by its number. */
   spare: boolean;
+  /** Whether the slide is a recap, which is shown by its number. */
+  recap: boolean;
+  /** Whether the slide is recapped later, which is shown by its number. */
+  recapped: boolean;
   onSelect: (index: number) => void;
 }
 
@@ -49,6 +55,8 @@ function Thumbnail({
   slide,
   current,
   spare,
+  recap,
+  recapped,
   onSelect,
 }: ThumbnailProps): JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
@@ -124,6 +132,8 @@ function Thumbnail({
         }}
       >
         {index + 1}
+        {recap && <RecapIcon fontSize="inherit" />}
+        {recapped && <RecappedIcon fontSize="inherit" />}
         {spare && <SpareIcon fontSize="inherit" />}
       </Typography>
       {/*
@@ -132,7 +142,12 @@ function Thumbnail({
        */}
       <ButtonBase
         ref={ref}
-        aria-label={`Slide ${String(index + 1)}${spare ? ' (spare)' : ''}`}
+        aria-label={[
+          `Slide ${String(index + 1)}`,
+          ...(recap ? ['(recap)'] : []),
+          ...(recapped ? ['(recapped later)'] : []),
+          ...(spare ? ['(spare)'] : []),
+        ].join(' ')}
         aria-current={current ? 'page' : undefined}
         onClick={() => {
           onSelect(index);
@@ -177,7 +192,7 @@ export function SlideOverview({
   onClose,
   menuHandlers,
 }: SlideOverviewProps): JSX.Element {
-  const { overviewIndex, goTo, toc, spares } = useDeck();
+  const { overviewIndex, goTo, toc, spares, recapOf } = useDeck();
   const groups = useMemo(
     () => groupSlides(toc, slides.length),
     [toc, slides.length],
@@ -252,6 +267,8 @@ export function SlideOverview({
                   slide={slides[index]}
                   current={index === overviewIndex}
                   spare={spares[index] === true}
+                  recap={recapOf[index] !== undefined}
+                  recapped={recapOf.includes(index)}
                   onSelect={onSelect}
                 />
               ))}

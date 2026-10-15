@@ -29,6 +29,11 @@ export interface SlideView {
    * render a lighter preview in them.
    */
   interactive: boolean;
+  /**
+   * Index of the slide whose state the slide shares, e.g., the slide that a
+   * recap recaps. Defaults to `index`.
+   */
+  stateIndex?: number | undefined;
 }
 
 const DEFAULT_VIEW: SlideView = {

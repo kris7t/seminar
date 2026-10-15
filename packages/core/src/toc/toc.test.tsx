@@ -152,6 +152,36 @@ describe('TocList', () => {
     expect(current()).toBe('Custom');
   });
 
+  it('links recaps and the slides they recap', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck
+        toc={[{ slide: 'a' }, { slide: 1 }, { slide: 2 }, { slide: 3 }]}
+        defaultShowToc
+      >
+        <Slide id="a" title="A" spare />
+        <Slide title="B" />
+        <Slide recap="a" />
+        <Slide recap="a" />
+      </Deck>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Table of contents' });
+    await user.click(
+      within(nav).getByRole('button', { name: 'Go to the first recap' }),
+    );
+    expect(window.location.hash).toBe('#a-recap');
+    const toOriginal = within(nav).getAllByRole('button', {
+      name: 'Go to the recapped slide',
+    });
+    expect(toOriginal).toHaveLength(2);
+    const [, fromSecondRecap] = toOriginal;
+    if (fromSecondRecap === undefined) {
+      throw new Error('No link from the second recap');
+    }
+    await user.click(fromSecondRecap);
+    expect(window.location.hash).toBe('#a');
+  });
+
   it('starts slides from the beginning', async () => {
     const user = userEvent.setup();
     render(

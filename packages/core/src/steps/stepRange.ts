@@ -10,6 +10,9 @@ import type { StepPath } from './StepStore.ts';
  * nested in it, while a trailing `.0` stands for the step alone, before the
  * steps nested in it, e.g., `after=1` starts at 2, but `after=1.0` at 1.1, and
  * `to=1` ends at 1.9, but `to=1.0` at 1.
+ *
+ * If no step is in the range, e.g., because it starts after the last step, the
+ * last step is shown instead.
  */
 export interface StepRange {
   /** The first step to show. */
@@ -20,6 +23,11 @@ export interface StepRange {
   to?: string | undefined;
   /** The step before which to stop showing steps. */
   before?: string | undefined;
+  /**
+   * Whether to only show the last step of the slide, e.g., for a recap of a
+   * slide whose steps have all been shown.
+   */
+  fromLast?: boolean | undefined;
 }
 
 /** A parsed bound of a {@link StepRange}. */

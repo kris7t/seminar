@@ -27,6 +27,8 @@ export interface DeckState {
   lastSlideIndex: number;
   /** Whether each slide is spare, i.e., skipped unless chosen explicitly. */
   spares: readonly boolean[];
+  /** The slide that each slide recaps, if it's a recap. */
+  recapOf: readonly (number | undefined)[];
   /**
    * Goes to a slide. `steps` sets which of its steps are shown:
    *

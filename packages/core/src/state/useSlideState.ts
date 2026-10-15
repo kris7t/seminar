@@ -43,7 +43,9 @@ export function useSlideState<T>(
   { key }: SlideStateOptions = {},
 ): [T, Dispatch<SetStateAction<T>>] {
   const store = use(SlideStateContext);
-  const { index } = useSlideView();
+  const { index: viewIndex, stateIndex } = useSlideView();
+  // Recaps share the state of the slide they recap.
+  const index = stateIndex ?? viewIndex;
   const scope = use(StateScopeContext) ?? DETACHED_SCOPE;
   const instanceId = useId();
   const stateKey =

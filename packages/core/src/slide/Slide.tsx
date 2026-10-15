@@ -11,6 +11,7 @@ import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
 import type { StepVariant } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepVariantContext } from '../steps/StepVariantContext.ts';
+import { SlideViewContext, useSlideView } from './SlideViewContext.ts';
 
 export interface SlideProps {
   /**
@@ -18,7 +19,7 @@ export interface SlideProps {
    *
    * Slides without an id are identified by `slide=<n>`.
    */
-  id?: string;
+  id?: string | undefined;
   /**
    * Further ids that refer to the slide in the location hash, e.g., of a
    * division of the deck without a slide of its own, whose first slide this
@@ -54,6 +55,24 @@ export interface SlideProps {
    * back from a spare slide shows the adjacent slides.
    */
   spare?: boolean | undefined;
+  /**
+   * Id of the slide to recap. A {@link Deck} shows the recapped slide instead,
+   * with its own step position, `id`, `spare`, and range of steps, but sharing
+   * the rest of the state of the slide. Without `from` or `after`, the recap
+   * continues where the previous showing of the slide ended, or only shows the
+   * last step if it showed all of them.
+   */
+  recap?: string | undefined;
+  /**
+   * Whether to only show the last step when going through the slide, e.g.,
+   * for a recap of a slide whose steps have all been shown.
+   */
+  fromLast?: boolean | undefined;
+  /**
+   * Index of the slide that this slide recaps, whose state it shares, set by
+   * the {@link Deck}.
+   */
+  recapOf?: number | undefined;
   children?: ReactNode;
 }
 
@@ -81,9 +100,12 @@ export function Slide({
   after,
   to,
   before,
+  fromLast,
+  recapOf,
   children,
 }: SlideProps): JSX.Element {
   const theme = useTheme();
+  const view = useSlideView();
   // Before painting, so that the slide doesn't show a step outside the range.
   const store = use(StepStoreContext);
   useLayoutEffect(() => {
@@ -91,17 +113,18 @@ export function Slide({
       from === undefined &&
         after === undefined &&
         to === undefined &&
-        before === undefined
+        before === undefined &&
+        fromLast !== true
         ? undefined
-        : { from, after, to, before },
+        : { from, after, to, before, fromLast },
     );
     return () => {
       store.setRange(undefined);
     };
-  }, [store, from, after, to, before]);
+  }, [store, from, after, to, before, fromLast]);
   // Masters are looked up rather than defined during render, so their state is
   // preserved. Use `createElement` to avoid tripping `static-components`.
-  return (
+  const content = (
     <StepVariantContext value={steps}>
       {createElement(
         resolveMaster(master, theme.master),
@@ -109,5 +132,13 @@ export function Slide({
         children,
       )}
     </StepVariantContext>
+  );
+  // Recaps share the state of the slide they recap.
+  return recapOf === undefined ? (
+    content
+  ) : (
+    <SlideViewContext value={{ ...view, stateIndex: recapOf }}>
+      {content}
+    </SlideViewContext>
   );
 }
