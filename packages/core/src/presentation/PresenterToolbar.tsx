@@ -16,7 +16,6 @@ import {
   IconButton,
   Tooltip,
   Typography,
-  useMediaQuery,
   type SvgIconProps,
 } from '@mui/material';
 import {
@@ -67,21 +66,17 @@ export function formatElapsed(milliseconds: number): string {
 }
 
 /**
- * Narrowest viewport that shows all buttons of the toolbar, in pixels. In
- * narrower ones, only the buttons for navigating and the settings of the
+ * Narrowest toolbar that shows all of its buttons, in pixels. In narrower
+ * ones, only the buttons for navigating and the settings of the
  * presenter view are shown, since the menu has the others.
  */
 const MIN_FULL_TOOLBAR_WIDTH = 800;
 
 /**
- * Narrowest viewport that shows buttons other than the menu in the toolbar, in
- * pixels. In narrower ones, the actions are only in the menu.
+ * Narrowest toolbar that shows buttons other than the menu, in pixels. In
+ * narrower ones, the actions are only in the menu.
  */
 const MIN_REDUCED_TOOLBAR_WIDTH = 640;
-
-function narrowerThan(width: number): string {
-  return `(max-width: ${String(width - 0.05)}px)`;
-}
 
 const CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
@@ -138,6 +133,12 @@ function Group({ children }: { children: ReactNode }): JSX.Element {
 }
 
 export interface PresenterToolbarProps {
+  /**
+   * Width of the toolbar, in pixels, which decides which buttons fit. It's the
+   * width of the presenter view, which other parts of the window, like the
+   * table of contents, may leave narrower than the window.
+   */
+  width: number;
   /** Opens the dialog for going to a slide by number. */
   onGoToSlide: () => void;
   /** Whether the panel shows only the notes. */
@@ -162,9 +163,9 @@ export interface PresenterToolbarProps {
  * The time elapsed counts from when the toolbar is shown, i.e., when the
  * presenter view opens, and can be reset.
  *
- * In narrower windows, the buttons for actions that aren't specific to the
- * presenter view are left out, and in narrow windows, only the slide number,
- * the time, and the menu button are shown, since the menu has all the actions.
+ * In a narrower presenter view, the buttons for actions that aren't specific to
+ * it are left out, and in a narrow one, only the slide number, the time, and
+ * the menu button are shown, since the menu has all the actions.
  *
  * Clicking the buttons doesn't move the focus to them, so that keys like
  * Space keep navigating the slides.
@@ -172,6 +173,7 @@ export interface PresenterToolbarProps {
  * Should be rendered with the {@link darkUiTheme}.
  */
 export function PresenterToolbar({
+  width,
   onGoToSlide,
   notesOnly,
   setNotesOnly,
@@ -195,8 +197,8 @@ export function PresenterToolbar({
   } = deck;
   const [start, setStart] = useState(Date.now);
   const now = useNow(start);
-  const reduced = useMediaQuery(narrowerThan(MIN_FULL_TOOLBAR_WIDTH));
-  const compact = useMediaQuery(narrowerThan(MIN_REDUCED_TOOLBAR_WIDTH));
+  const reduced = width < MIN_FULL_TOOLBAR_WIDTH;
+  const compact = width < MIN_REDUCED_TOOLBAR_WIDTH;
   const slideNumber = (
     <Tooltip title="Go to slide (G)">
       <Button

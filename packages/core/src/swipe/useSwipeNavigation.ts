@@ -12,7 +12,10 @@ import {
 
 import { getInteraction, TOUCH_SLOP } from '../interaction/interaction.ts';
 
-/** Fraction of the width a slow swipe has to cover to change the slide. */
+/**
+ * Fraction of the width of the slide a slow swipe has to cover to change the
+ * slide.
+ */
 const DISTANCE_THRESHOLD = 0.25;
 
 /** Speed of a fling that changes the slide, in pixels per millisecond. */
@@ -28,20 +31,21 @@ const FLING_DISTANCE = 30;
 const RESISTANCE = 0.25;
 
 /**
- * Fraction of the width the finger has to cover before the slide starts to
- * break through the resistance of its steps.
+ * Fraction of the width of the slide the finger has to cover before the slide
+ * starts to break through the resistance of its steps.
  */
 const BREAK_START = 0.15;
 
 /**
- * Fraction of the width the finger covers while the slide breaks through and
- * catches up with it. Breaking through ends at {@link DISTANCE_THRESHOLD}, so
+ * Fraction of the width of the slide the finger covers while the slide breaks
+ * through and catches up with it. Breaking through ends at {@link DISTANCE_THRESHOLD}, so
  * a slide that gave way goes to the next one when let go.
  */
 const BREAK_LENGTH = DISTANCE_THRESHOLD - BREAK_START;
 
 /**
- * Fraction of the width the slide moves at most at the first or last slide.
+ * Fraction of the width of the slide it moves at most at the first or last
+ * slide.
  */
 const EDGE_LIMIT = 0.08;
 
@@ -82,8 +86,17 @@ export interface SwipeNavigationOptions {
   canGoPrevious: boolean;
   nextSlide: () => void;
   previousSlide: () => void;
-  /** Width of the area of the slides, in pixels. */
+  /**
+   * Width of the area of the slides, in pixels, which is the distance between
+   * adjacent slides while swiping.
+   */
   width: number;
+  /**
+   * Width of the slide shown in the area, in pixels, which may be narrower
+   * than the area if the slide doesn't fill it. Swipes have to cover distances
+   * relative to it.
+   */
+  slideWidth: number;
   /**
    * Whether swiping is disabled, e.g., because a menu is open. Disabling it
    * stops the current swipe.
@@ -190,6 +203,7 @@ export function useSwipeNavigation({
   nextSlide,
   previousSlide,
   width,
+  slideWidth,
   disabled = false,
 }: SwipeNavigationOptions): SwipeNavigation {
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
@@ -249,14 +263,14 @@ export function useSwipeNavigation({
   const displayOffset = useCallback(
     (dx: number, swipe: Swipe) => {
       if ((dx < 0 && !canGoNext) || (dx > 0 && !canGoPrevious)) {
-        return rubberBand(dx, width * EDGE_LIMIT);
+        return rubberBand(dx, slideWidth * EDGE_LIMIT);
       }
       if (dx < 0 && swipe.resisted) {
-        return breakThrough(dx, width);
+        return breakThrough(dx, slideWidth);
       }
       return dx;
     },
-    [canGoNext, canGoPrevious, width],
+    [canGoNext, canGoPrevious, slideWidth],
   );
 
   const end = (event: PointerEvent<HTMLElement>, cancelled: boolean) => {
@@ -274,13 +288,13 @@ export function useSwipeNavigation({
     const dx = event.clientX - swipe.startX;
     const velocity = velocityOf(swipe.samples);
     const forward = dx < 0;
-    const far = Math.abs(dx) > width * DISTANCE_THRESHOLD;
+    const far = Math.abs(dx) > slideWidth * DISTANCE_THRESHOLD;
     const fast =
       Math.abs(dx) > FLING_DISTANCE &&
       Math.sign(velocity) === Math.sign(dx) &&
       Math.abs(velocity) > FLING_VELOCITY;
     const possible = forward ? canGoNext : canGoPrevious;
-    const resisting = forward && swipe.resisted && resists(dx, width);
+    const resisting = forward && swipe.resisted && resists(dx, slideWidth);
     if (cancelled || !possible || resisting || !(far || fast)) {
       settle();
       if (forward && swipe.resisted) {

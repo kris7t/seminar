@@ -600,31 +600,44 @@ describe('the presenter toolbar', () => {
     remove();
   });
 
-  /** Returns the buttons of the toolbar in a viewport of `width`. */
+  /** Returns the buttons of the toolbar in a presenter view of `width`. */
   async function toolbarButtons(width: number) {
-    const matchMedia = window.matchMedia.bind(window);
-    vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
-      const list = matchMedia(query);
-      const maxWidth = /^\(max-width: ([\d.]+)px\)$/.exec(query)?.[1];
-      Object.defineProperty(list, 'matches', {
-        value: maxWidth !== undefined && width <= Number(maxWidth),
-      });
-      return list;
-    });
+    // Stubbed in the setup, which vi.unstubAllGlobals would undo.
+    const original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      readonly #callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.#callback = callback;
+      }
+      observe() {
+        this.#callback(
+          [{ contentRect: { width, height: 800 } } as ResizeObserverEntry],
+          this as unknown as ResizeObserver,
+        );
+      }
+      disconnect() {
+        // Nothing to stop observing.
+      }
+    } as unknown as typeof ResizeObserver;
     const { remove } = fakeAudienceWindow();
-    const user = userEvent.setup();
-    render(
-      <Deck>
-        <Slide title="First" />
-      </Deck>,
-    );
-    await user.keyboard('{Shift>}P{/Shift}');
-    const toolbar = screen.getByRole('toolbar', { name: 'Presenter controls' });
-    const buttons = [...toolbar.querySelectorAll('button')].map(
-      (button) => button.getAttribute('aria-label') ?? button.textContent,
-    );
-    remove();
-    return buttons;
+    try {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide title="First" />
+        </Deck>,
+      );
+      await user.keyboard('{Shift>}P{/Shift}');
+      const toolbar = screen.getByRole('toolbar', {
+        name: 'Presenter controls',
+      });
+      return [...toolbar.querySelectorAll('button')].map(
+        (button) => button.getAttribute('aria-label') ?? button.textContent,
+      );
+    } finally {
+      remove();
+      globalThis.ResizeObserver = original;
+    }
   }
 
   it('leaves out buttons not specific to the presenter view if narrower', async () => {

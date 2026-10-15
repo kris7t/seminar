@@ -341,6 +341,7 @@ export function Deck({
     nextSlide,
     previousSlide,
     width: containerSize.width,
+    slideWidth: SLIDE_WIDTH * scale,
     disabled:
       menuPosition !== undefined ||
       showOverview ||
@@ -363,8 +364,9 @@ export function Deck({
           <StepStoreContext value={stepStore}>
             <Box sx={{ position: 'fixed', inset: 0, display: 'flex' }}>
               {showToc && toc.length > 0 && (
-                // Outside of the slides, so that clicks don't navigate.
-                <ThemeProvider theme={uiTheme}>
+                // Outside of the slides, so that clicks don't navigate. Dark
+                // like the rest of the presenter view.
+                <ThemeProvider theme={presenting ? darkUiTheme : uiTheme}>
                   <TocSidebar
                     onClose={() => {
                       setShowToc(false);
@@ -516,6 +518,10 @@ export function Deck({
                         )}
                       </SelectionFrame>
                     </Box>
+                    {/* Doesn't move with the slides. */}
+                    <ThemeProvider theme={uiTheme}>
+                      <SwipeHint open={swipe.showHint} />
+                    </ThemeProvider>
                     {/* The presenter view shows the notes in its panel instead. */}
                     {notes !== undefined && !showOverview && !presenting && (
                       <NotesDisplay
@@ -558,6 +564,7 @@ export function Deck({
                 {presenting && (
                   <ThemeProvider theme={darkUiTheme}>
                     <PresenterToolbar
+                      width={presenterAreaSize.width}
                       onGoToSlide={openGoToSlide}
                       notesOnly={notesOnly}
                       setNotesOnly={setNotesOnly}
@@ -609,7 +616,6 @@ export function Deck({
                 }
               />
               <GoToSlideDialog open={goToSlideOpen} onClose={closeGoToSlide} />
-              <SwipeHint open={swipe.showHint} />
               {presenterView.audience !== undefined && (
                 <AudienceWindow
                   audience={presenterView.audience}

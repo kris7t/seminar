@@ -30,6 +30,7 @@ function setup(options: Partial<SwipeNavigationOptions> = {}) {
       nextSlide,
       previousSlide,
       width: WIDTH,
+      slideWidth: WIDTH,
       ...options,
     }),
   );
@@ -102,6 +103,15 @@ describe('useSwipeNavigation', () => {
       result.current.onTransitionEnd();
     });
     expect(result.current.moving).toBe(false);
+  });
+
+  it('measures swipes by the slide if it is narrower than the area', () => {
+    const { result, nextSlide, swipe, release } = setup({ slideWidth: 200 });
+    swipe(400);
+    release(400);
+    expect(nextSlide).toHaveBeenCalledOnce();
+    // The next slide is still a whole area away.
+    expect(result.current.enterFrom).toBe(930);
   });
 
   it('stops moving even if the browser does not report the end', () => {
@@ -224,6 +234,27 @@ describe('swiping a deck', () => {
     fireEvent.pointerUp(target, { ...touch, clientX: 100, clientY: 10 });
     fireEvent.click(target);
     expect(window.location.hash).toBe('#slide=2');
+  });
+
+  it('shows the hint about more steps over the slide', () => {
+    render(
+      <Deck>
+        <Slide title="First">
+          <Step>a</Step>
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    const target = screen.getByText('First');
+    const touch = { pointerId: 1, pointerType: 'touch', isPrimary: true };
+    fireEvent.pointerDown(target, { ...touch, clientX: 300, clientY: 10 });
+    fireEvent.pointerMove(target, { ...touch, clientX: 250, clientY: 10 });
+    fireEvent.pointerMove(target, { ...touch, clientX: 200, clientY: 10 });
+    const hint = screen.getByRole('status');
+    expect(hint.textContent).toContain('This slide has more steps.');
+    // In the area of the slides, but it doesn't move with them.
+    expect(hint.parentElement?.contains(target)).toBe(true);
+    expect(hint.closest('[style*="translate"]')).toBeNull();
   });
 });
 
