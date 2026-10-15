@@ -2,6 +2,8 @@ import { useTheme } from '@mui/material';
 import { createElement, type JSX, type ReactNode } from 'react';
 
 import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
+import type { StepVariant } from '../steps/Step.tsx';
+import { StepVariantContext } from '../steps/StepVariantContext.ts';
 
 export interface SlideProps {
   /**
@@ -17,6 +19,8 @@ export interface SlideProps {
   master?: string | SlideMaster;
   /** Title of the slide passed to the master. */
   title?: ReactNode;
+  /** Variant of the steps on the slide that don't set their own. */
+  steps?: StepVariant | undefined;
   children?: ReactNode;
 }
 
@@ -38,14 +42,15 @@ function resolveMaster(
 export function Slide({
   master = 'content',
   title,
+  steps,
   children,
 }: SlideProps): JSX.Element {
   const theme = useTheme();
   // Masters are looked up rather than defined during render, so their state is
   // preserved. Use `createElement` to avoid tripping `static-components`.
-  return createElement(
-    resolveMaster(master, theme.master),
-    { title },
-    children,
+  return (
+    <StepVariantContext value={steps}>
+      {createElement(resolveMaster(master, theme.master), { title }, children)}
+    </StepVariantContext>
   );
 }

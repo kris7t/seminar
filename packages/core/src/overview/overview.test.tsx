@@ -64,9 +64,9 @@ describe('SlideOverview', () => {
     const user = userEvent.setup();
     renderDeck();
     const isShown = () =>
-      within(overview())
+      !within(overview())
         .getByText('Later')
-        .classList.contains(stepClasses.active);
+        .classList.contains(stepClasses.future);
     await user.keyboard('o');
     expect(isShown()).toBe(false);
     await user.keyboard('{Escape}{ArrowRight}{PageDown}o');

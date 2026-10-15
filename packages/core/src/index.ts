@@ -65,6 +65,8 @@ export {
   stepClasses,
   type StepClassKey,
   type StepProps,
+  type StepVariant,
+  type StepVariantOverrides,
 } from './steps/Step.tsx';
 export { Together, type TogetherProps } from './steps/Together.tsx';
 export {
@@ -73,7 +75,7 @@ export {
   type StepsClassKey,
   type StepsProps,
 } from './steps/Steps.tsx';
-export type { StepPath } from './steps/StepStore.ts';
+export type { StepPath, StepPhase } from './steps/StepStore.ts';
 export {
   useStep,
   useSteps,

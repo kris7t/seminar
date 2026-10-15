@@ -19,10 +19,16 @@ function navigateTo(hash: string) {
 
 /** Returns the visible items, marking the current one with `*`. */
 function shownItems(): string[] {
-  return [...document.querySelectorAll(`.${stepClasses.active}`)].map(
+  return [
+    ...document.querySelectorAll(
+      `.${stepClasses.root}:not(.${stepClasses.future})`,
+    ),
+  ].map(
     (element) =>
-      (element.classList.contains(stepClasses.current) ? '*' : '') +
-      (element.getAttribute('data-name') ?? ''),
+      (element.classList.contains(stepClasses.current) ||
+      element.classList.contains(stepClasses.parent)
+        ? '*'
+        : '') + (element.getAttribute('data-name') ?? ''),
   );
 }
 
@@ -291,14 +297,14 @@ describe('steps', () => {
     expect(screen.queryByText('lazy.1')).toBeNull();
   });
 
-  it('shows all steps outside of a deck', () => {
+  it('shows the last step outside of a deck', () => {
     render(
       <ul>
         <Item name="a" />
         <Item name="b" />
       </ul>,
     );
-    expect(shownItems()).toEqual(['a', 'b']);
+    expect(shownItems()).toEqual(['a', '*b']);
   });
 
   it('links steps passed as with', async () => {

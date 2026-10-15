@@ -9,6 +9,7 @@ import type { ElementType, HTMLAttributes, JSX, ReactNode } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../utils/classNames.ts';
+import type { StepPhase } from './StepStore.ts';
 import { TogetherContext } from './TogetherContext.ts';
 import { useSteps, type StepState, type StepWith } from './useSteps.ts';
 
@@ -32,14 +33,15 @@ export interface StepsProps extends Omit<
   sx?: SxProps<Theme>;
 }
 
-export type StepsClassKey = 'root' | 'active' | 'inactive' | 'current';
+export type StepsClassKey = 'root' | StepPhase;
 
 export const stepsClasses: Record<StepsClassKey, string> =
   generateUtilityClasses('SliderSteps', [
     'root',
-    'active',
-    'inactive',
+    'future',
     'current',
+    'parent',
+    'past',
   ]);
 
 declare module '@mui/material/styles' {
@@ -58,8 +60,7 @@ declare module '@mui/material/styles' {
 
 interface StepsOwnerState extends StepsProps {
   stepIndex: number;
-  isActive: boolean;
-  isCurrent: boolean;
+  phase: StepPhase;
 }
 
 const StepsRoot = styled('div', {
@@ -88,18 +89,13 @@ export function Steps(inProps: StepsProps): JSX.Element {
     ...other
   } = props;
   const step = useSteps(count ?? 1, { with: withStep, group });
-  const { ref, stepIndex, isActive, isCurrent } = step;
+  const { ref, stepIndex, phase } = step;
   return (
     <StepsRoot
       as={component}
       ref={ref}
-      className={classNames(
-        stepsClasses.root,
-        isActive ? stepsClasses.active : stepsClasses.inactive,
-        isCurrent ? stepsClasses.current : undefined,
-        className,
-      )}
-      ownerState={{ ...props, stepIndex, isActive, isCurrent }}
+      className={classNames(stepsClasses.root, stepsClasses[phase], className)}
+      ownerState={{ ...props, stepIndex, phase }}
       {...other}
     >
       <TogetherContext value={undefined}>

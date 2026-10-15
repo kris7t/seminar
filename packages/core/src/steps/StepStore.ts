@@ -13,15 +13,27 @@ import { createStepPosition, type StepPosition } from './StepPosition.ts';
  */
 export type StepPath = readonly number[];
 
+/**
+ * Where the presentation is relative to a stepper:
+ *
+ * - `'future'`: the stepper isn't shown yet.
+ * - `'current'`: the current step of the slide is one of the steps of the
+ *   stepper.
+ * - `'parent'`: like `'current'`, but a step nested inside the stepper has
+ *   been shown since, which is the current step of the slide or encloses it.
+ * - `'past'`: a later step on the same level, or on an enclosing level, has
+ *   been shown.
+ */
+export type StepPhase = 'future' | 'current' | 'parent' | 'past';
+
 /** State of a stepper as stored in a {@link StepStore}. */
 export interface StepStatus {
   /**
    * Zero-based index of the current step of the stepper, `-1` if the stepper
-   * is not yet active, or `Infinity` if all steps should be shown.
+   * is not yet active, or `Infinity` if it is past.
    */
   stepIndex: number;
-  /** Whether the current step of the slide is one of the steps of the stepper. */
-  isCurrent: boolean;
+  phase: StepPhase;
 }
 
 /**
@@ -76,11 +88,11 @@ interface Layout {
   levelSizes: Map<string, number>;
 }
 
-const INACTIVE: StepStatus = { stepIndex: -1, isCurrent: false };
+const FUTURE: StepStatus = { stepIndex: -1, phase: 'future' };
 
-const SHOW_ALL: StepStatus = {
+const PAST: StepStatus = {
   stepIndex: Number.POSITIVE_INFINITY,
-  isCurrent: false,
+  phase: 'past',
 };
 
 function levelKey(level: StepPath): string {
@@ -118,7 +130,6 @@ function pathsEqual(a: StepPath, b: StepPath): boolean {
  * that step.
  */
 export class StepStore {
-  readonly #showAll: boolean;
   readonly #nodes = new Set<StepNode>();
   readonly #owners = new Map<Element, StepNode>();
   readonly #listeners = new Set<() => void>();
@@ -135,21 +146,20 @@ export class StepStore {
    *   be shared with the stores of other views. Defaults to a position of
    *   this store, which starts at `options.target`.
    * @param options.target Initial path to show.
-   * @param options.showAll Whether to show all steps without navigation, e.g.,
-   *   when rendering a slide outside of a deck.
+   * @param options.toEnd Whether to also show all steps nested in
+   *   `options.target` initially, e.g., all steps of a slide rendered outside
+   *   of a deck.
    */
   constructor({
     position,
     target = [],
-    showAll = false,
+    toEnd = false,
   }: {
     position?: StepPosition;
     target?: StepPath;
-    showAll?: boolean;
+    toEnd?: boolean;
   } = {}) {
-    this.#position =
-      position ?? createStepPosition({ path: target, toEnd: false });
-    this.#showAll = showAll;
+    this.#position = position ?? createStepPosition({ path: target, toEnd });
   }
 
   /**
@@ -158,9 +168,6 @@ export class StepStore {
    * @returns A function that unregisters the element.
    */
   attach(node: StepNode, element: Element, options: StepOptions): () => void {
-    if (this.#showAll) {
-      return () => undefined;
-    }
     node.elements.set(element, options);
     this.#owners.set(element, node);
     this.#nodes.add(node);
@@ -225,14 +232,11 @@ export class StepStore {
    * doesn't change.
    */
   getStatus(node: StepNode): StepStatus {
-    if (this.#showAll) {
-      return SHOW_ALL;
-    }
     const status = this.#computeStatus(node);
     const cached = this.#statuses.get(node);
     if (
       cached?.stepIndex === status.stepIndex &&
-      cached.isCurrent === status.isCurrent
+      cached.phase === status.phase
     ) {
       return cached;
     }
@@ -476,7 +480,7 @@ export class StepStore {
   #computeStatus(node: StepNode): StepStatus {
     const placement = this.#getLayout().placements.get(node);
     if (placement === undefined) {
-      return INACTIVE;
+      return FUTURE;
     }
     const { level, first, last } = placement;
     const path = this.getPath();
@@ -484,16 +488,21 @@ export class StepStore {
       const position = path[depth] ?? 0;
       if (position !== step) {
         // The enclosing step is either already done or not yet shown.
-        return position > step ? SHOW_ALL : INACTIVE;
+        return position > step ? PAST : FUTURE;
       }
     }
     const position = path[level.length] ?? 0;
     if (position < first) {
-      return INACTIVE;
+      return FUTURE;
     }
     if (position > last) {
-      return SHOW_ALL;
+      return PAST;
     }
-    return { stepIndex: position - first, isCurrent: true };
+    // Step 0 of the nested level is shown along with the stepper.
+    const nested = path[level.length + 1] ?? 0;
+    return {
+      stepIndex: position - first,
+      phase: nested > 0 ? 'parent' : 'current',
+    };
   }
 }

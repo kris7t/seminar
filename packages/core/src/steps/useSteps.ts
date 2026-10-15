@@ -7,7 +7,7 @@ import {
   type RefCallback,
 } from 'react';
 
-import { StepNode, type StepStatus } from './StepStore.ts';
+import { StepNode, type StepPhase, type StepStatus } from './StepStore.ts';
 import { StepStoreContext } from './StepStoreContext.ts';
 
 /** State of a stepper. */
@@ -20,9 +20,14 @@ export interface StepState {
    * this stays at the last step.
    */
   stepIndex: number;
+  /** Where the presentation is relative to the stepper. */
+  phase: StepPhase;
   /** Whether at least the first step of the stepper is shown. */
   isActive: boolean;
-  /** Whether the current step of the slide is one of the steps of the stepper. */
+  /**
+   * Whether the current step of the slide is one of the steps of the stepper,
+   * or nested inside it.
+   */
   isCurrent: boolean;
 }
 
@@ -75,7 +80,7 @@ export interface UseStepsOptions {
   group?: string | undefined;
 }
 
-const UNLINKED: StepStatus = { stepIndex: -1, isCurrent: false };
+const UNLINKED: StepStatus = { stepIndex: -1, phase: 'future' };
 
 function subscribeUnlinked(): () => void {
   return () => undefined;
@@ -112,7 +117,7 @@ export function useSteps(
         : store.attach(node, element, { count, placement }),
     [store, node, count, placement],
   );
-  const { stepIndex, isCurrent } = useSyncExternalStore(
+  const { stepIndex, phase } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,
     linked ? getUnlinkedStatus : () => store.getStatus(node),
   );
@@ -122,10 +127,11 @@ export function useSteps(
       ref,
       stepCount: count,
       stepIndex: clampedIndex,
-      isActive: clampedIndex >= 0,
-      isCurrent,
+      phase,
+      isActive: phase !== 'future',
+      isCurrent: phase === 'current' || phase === 'parent',
     }),
-    [ref, count, clampedIndex, isCurrent],
+    [ref, count, clampedIndex, phase],
   );
   return linked ? withStep : ownStep;
 }
