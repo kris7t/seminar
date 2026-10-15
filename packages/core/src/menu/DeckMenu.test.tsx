@@ -171,8 +171,11 @@ describe('DeckMenu', () => {
       const menu = await screen.findByRole('menu');
       const labels = [...menu.querySelectorAll('[aria-disabled="true"]')]
         .map((item) => item.querySelector('.MuiListItemText-root')?.textContent)
-        // The deck has no table of contents.
-        .filter((label) => label !== 'Table of contents');
+        // The deck has no table of contents, and its slides have no state.
+        .filter(
+          (label) =>
+            label !== 'Table of contents' && label !== 'Reset slide state',
+        );
       await user.keyboard('{Escape}');
       await waitFor(() => {
         expect(screen.queryByRole('menu')).toBeNull();

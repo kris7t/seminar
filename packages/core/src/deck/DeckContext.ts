@@ -35,6 +35,18 @@ export interface DeckState {
    */
   hasSteps: readonly boolean[];
   /**
+   * Whether each slide has state that it keeps when it is left, e.g., from
+   * `useSlideState`, which is found like `hasSteps`.
+   */
+  hasState: readonly boolean[];
+  /** Whether the state of each slide was changed since it was reset. */
+  stateChanged: readonly boolean[];
+  /**
+   * Resets the state of a slide, which recaps share, and goes to its first
+   * step.
+   */
+  resetSlide: (slideIndex: number) => void;
+  /**
    * Goes to a slide. `steps` sets which of its steps are shown:
    *
    * - `'start'` (the default): none.

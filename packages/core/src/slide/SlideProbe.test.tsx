@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { useDeck } from '../deck/DeckContext.ts';
-import { Slide } from '../slide/Slide.tsx';
-import { useSlideView, type SlideView } from '../slide/SlideViewContext.ts';
+import { Slide } from './Slide.tsx';
+import { useSlideView, type SlideView } from './SlideViewContext.ts';
 import { useSlideState } from '../state/useSlideState.ts';
-import { Step } from './Step.tsx';
+import { Step } from '../steps/Step.tsx';
 
 function HasSteps(): JSX.Element {
   const { hasSteps } = useDeck();
@@ -16,7 +16,7 @@ function HasSteps(): JSX.Element {
 
 const idle = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
-describe('useStepProbe', () => {
+describe('useSlideProbe', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
   });
@@ -44,6 +44,32 @@ describe('useStepProbe', () => {
     expect(screen.getByTestId('has-steps').textContent).toBe(
       'false true false',
     );
+  });
+
+  it('finds the state of slides that were not shown', async () => {
+    function State(): JSX.Element {
+      const { hasState } = useDeck();
+      return (
+        <span data-testid="has-state">{hasState.map(String).join(' ')}</span>
+      );
+    }
+    function Stateful(): JSX.Element {
+      useSlideState(0);
+      return <span />;
+    }
+    render(
+      <Deck>
+        <Slide title="First">
+          <State />
+        </Slide>
+        <Slide id="second" title="Second">
+          <Stateful />
+        </Slide>
+        <Slide recap="second" />
+      </Deck>,
+    );
+    await idle();
+    expect(screen.getByTestId('has-state').textContent).toBe('false true true');
   });
 
   it('renders slides in probe views that load nothing', async () => {

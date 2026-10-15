@@ -45,6 +45,7 @@ export {
   type SlideStateScopeProps,
 } from './state/SlideStateScope.tsx';
 export {
+  useResetSlideState,
   useSlideState,
   type SlideStateOptions,
 } from './state/useSlideState.ts';

@@ -130,7 +130,8 @@ Presenter notes, shown only to the presenter.
 - **Notes:** `:::notes` blocks or `<Notes>` elements hold presenter notes.
 - **Components:** imported React components can be used as slide content or as
   slide masters. `useSlideState` keeps their state in the slide, so that every
-  view of the slide shows the same state.
+  view of the slide shows the same state, and `useResetSlideState` resets it,
+  like Reset slide state in the menu.
 
 Decks can also be written in JSX with `Deck` and `Slide` from `@slider/core`;
 see [`ExampleDeck.tsx`](packages/example/src/ExampleDeck.tsx).

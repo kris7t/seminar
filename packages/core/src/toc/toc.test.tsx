@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
+import { useSlideState } from '../state/useSlideState.ts';
 import { Step } from '../steps/Step.tsx';
 import {
   findCurrentEntry,
@@ -216,6 +217,75 @@ describe('TocList', () => {
     await user.click(ofRecap);
     // Recaps continue from the steps shown on the slide.
     expect(window.location.hash).toBe('#second-recap&step=1');
+  });
+
+  it('resets the state of slides', async () => {
+    const user = userEvent.setup();
+    function Counter() {
+      const [count, setCount] = useSlideState(0);
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            setCount(count + 1);
+          }}
+        >
+          {`Count ${String(count)}`}
+        </button>
+      );
+    }
+    render(
+      <Deck toc={[{ slide: 0 }, { slide: 1 }, { slide: 2 }]} defaultShowToc>
+        <Slide title="First" />
+        <Slide id="counter" title="Counter">
+          <Counter />
+          <Step>Later</Step>
+        </Slide>
+        <Slide recap="counter" />
+      </Deck>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Table of contents' });
+    // Only marked while there is nothing to reset.
+    expect(
+      await within(nav).findAllByRole('img', { name: 'Slide with state' }),
+    ).toHaveLength(2);
+    expect(
+      within(nav).queryByRole('button', { name: 'Reset the state' }),
+    ).toBeNull();
+    const [counter] = within(nav).getAllByRole('button', { name: 'Counter' });
+    if (counter === undefined) {
+      throw new Error('No entry of the slide');
+    }
+    await user.click(counter);
+    await user.click(screen.getByRole('button', { name: 'Count 0' }));
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#counter&step=1');
+    // The recap shares the state of the slide.
+    const resets = within(nav).getAllByRole('button', {
+      name: 'Reset the state',
+    });
+    expect(resets).toHaveLength(2);
+    const [, ofRecap] = resets;
+    if (ofRecap === undefined) {
+      throw new Error('No buttons to reset the state');
+    }
+    await user.click(ofRecap);
+    // The first step in the range of the recap, which continues the slide.
+    expect(window.location.hash).toBe('#counter-recap&step=1');
+    expect(screen.getByRole('button', { name: 'Count 0' })).toBeDefined();
+    expect(
+      within(nav).queryByRole('button', { name: 'Reset the state' }),
+    ).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Count 0' }));
+    const [again] = within(nav).getAllByRole('button', {
+      name: 'Reset the state',
+    });
+    if (again === undefined) {
+      throw new Error('No button to reset the state');
+    }
+    await user.click(again);
+    expect(window.location.hash).toBe('#counter');
+    expect(screen.getByRole('button', { name: 'Count 0' })).toBeDefined();
   });
 
   it('starts slides from the beginning', async () => {

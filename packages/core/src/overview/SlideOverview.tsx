@@ -18,6 +18,7 @@ import { useDeck } from '../deck/DeckContext.ts';
 import { RecapIcon } from '../slide/RecapIcon.tsx';
 import { RecappedIcon } from '../slide/RecappedIcon.tsx';
 import { SpareIcon } from '../slide/SpareIcon.tsx';
+import { StateIcon } from '../slide/StateIcon.tsx';
 import { StepsIcon } from '../slide/StepsIcon.tsx';
 import type { ContextMenuHandlers } from '../interaction/useContextMenu.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
@@ -63,6 +64,10 @@ interface ThumbnailProps {
   current: boolean;
   /** Whether the slide has steps, which is shown by its number. */
   steps: boolean;
+  /** Whether the slide has state, which is shown by its number. */
+  state: boolean;
+  /** Whether the state of the slide was changed. */
+  stateChanged: boolean;
   /** Whether the slide is spare, which is shown by its number. */
   spare: boolean;
   /** Whether the slide is a recap, which is shown by its number. */
@@ -78,6 +83,8 @@ function Thumbnail({
   title,
   current,
   steps,
+  state,
+  stateChanged,
   spare,
   recap,
   recapped,
@@ -160,6 +167,7 @@ function Thumbnail({
         {spare && <SpareIcon fontSize="inherit" />}
         {recap && <RecapIcon fontSize="inherit" />}
         {recapped && <RecappedIcon fontSize="inherit" />}
+        {state && <StateIcon changed={stateChanged} fontSize="inherit" />}
         {steps && <StepsIcon fontSize="inherit" />}
       </Typography>
       {/*
@@ -199,6 +207,8 @@ function Thumbnail({
               {spare && ' (spare)'}
               {recap && ' (recap)'}
               {recapped && ' (recapped later)'}
+              {state &&
+                (stateChanged ? ' (with changed state)' : ' (with state)')}
               {steps && ' (with steps)'}
             </Box>
           </ButtonBase>
@@ -234,7 +244,16 @@ export function SlideOverview({
   onClose,
   menuHandlers,
 }: SlideOverviewProps): JSX.Element {
-  const { overviewIndex, goTo, toc, spares, recapOf, hasSteps } = useDeck();
+  const {
+    overviewIndex,
+    goTo,
+    toc,
+    spares,
+    recapOf,
+    hasSteps,
+    hasState,
+    stateChanged,
+  } = useDeck();
   const groups = useMemo(
     () => groupSlides(toc, slides.length),
     [toc, slides.length],
@@ -311,6 +330,8 @@ export function SlideOverview({
                   title={titles[index]}
                   current={index === overviewIndex}
                   steps={hasSteps[index] === true}
+                  state={hasState[index] === true}
+                  stateChanged={stateChanged[index] === true}
                   spare={spares[index] === true}
                   recap={recapOf[index] !== undefined}
                   recapped={recapOf.includes(index)}

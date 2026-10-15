@@ -72,7 +72,7 @@ import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { resolveToc, type TocEntry } from '../toc/tableOfContents.ts';
 import { Sidebar, type SidebarSection } from '../sidebar/Sidebar.tsx';
 import { StepTree } from '../steps/StepTree.tsx';
-import { useStepProbe } from '../steps/StepProbe.tsx';
+import { useSlideProbe } from '../slide/SlideProbe.tsx';
 import { TocList } from '../toc/TocList.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
 import { getSlideNotes } from '../notes/Notes.tsx';
@@ -231,7 +231,7 @@ export function Deck({
     firstStep,
     lastStep,
   } = useDeckNavigation(slideIds, aliases, spares, slideState);
-  const { hasSteps: probedSteps, probe } = useStepProbe(slides);
+  const { probed, probe } = useSlideProbe(slides);
   // The current slide knows its steps even before it is probed, or after its
   // components gain steps, but not while it isn't shown, e.g., in the
   // overview.
@@ -243,10 +243,35 @@ export function Deck({
     () =>
       slides.map(
         (_, index) =>
-          probedSteps[index] === true ||
+          probed[index]?.steps === true ||
           (index === slideIndex && currentHasSteps),
       ),
-    [slides, slideIndex, currentHasSteps, probedSteps],
+    [slides, slideIndex, currentHasSteps, probed],
+  );
+  // Recaps share the state of the slide they recap, even in the probe.
+  const changedStates = useSyncExternalStore(
+    slideState.subscribeChanged,
+    slideState.getChanged,
+  );
+  const stateChanged = useMemo(
+    () => slides.map((_, index) => changedStates.has(recapOf[index] ?? index)),
+    [slides, recapOf, changedStates],
+  );
+  const hasState = useMemo(
+    () =>
+      slides.map(
+        (_, index) =>
+          probed[recapOf[index] ?? index]?.state === true ||
+          stateChanged[index] === true,
+      ),
+    [slides, recapOf, probed, stateChanged],
+  );
+  const resetSlide = useCallback(
+    (index: number) => {
+      slideState.reset(recapOf[index] ?? index);
+      goTo(index);
+    },
+    [slideState, recapOf, goTo],
   );
   const toc = useMemo(
     () => resolveToc(tocEntries ?? [], slides, slideIds),
@@ -376,6 +401,9 @@ export function Deck({
       spares,
       recapOf,
       hasSteps,
+      hasState,
+      stateChanged,
+      resetSlide,
       goTo,
       next,
       previous,
@@ -407,6 +435,9 @@ export function Deck({
       spares,
       recapOf,
       hasSteps,
+      hasState,
+      stateChanged,
+      resetSlide,
       goTo,
       next,
       previous,

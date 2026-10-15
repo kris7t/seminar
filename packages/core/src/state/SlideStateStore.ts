@@ -20,6 +20,8 @@ export class SlideStateStore {
   readonly #values = new Map<string, unknown>();
   readonly #listeners = new Map<string, Set<() => void>>();
   readonly #stepPositions = new Map<number, StepPosition>();
+  readonly #changeListeners = new Set<() => void>();
+  #changed: ReadonlySet<number> = new Set();
 
   #id(slideIndex: number, key: string): string {
     return `${String(slideIndex)}\u0000${key}`;
@@ -52,9 +54,73 @@ export class SlideStateStore {
       return;
     }
     this.#values.set(id, value);
+    if (key !== STEP_KEY && !this.#changed.has(slideIndex)) {
+      this.#setChanged(new Set([...this.#changed, slideIndex]));
+    }
+    this.#notify(id);
+  }
+
+  #notify(id: string): void {
     for (const listener of this.#listeners.get(id) ?? []) {
       listener();
     }
+  }
+
+  #setChanged(changed: ReadonlySet<number>): void {
+    this.#changed = changed;
+    for (const listener of this.#changeListeners) {
+      listener();
+    }
+  }
+
+  /**
+   * Whether the slide has state other than its position in its steps, e.g.,
+   * from `useSlideState`.
+   */
+  hasState(slideIndex: number): boolean {
+    return this.#keysOf(slideIndex).length > 0;
+  }
+
+  /**
+   * The slides whose state other than their position in their steps was set
+   * since they were reset, rather than only initialized. The result is the
+   * same object until it changes.
+   */
+  getChanged = (): ReadonlySet<number> => this.#changed;
+
+  /** Listens to changes of {@link getChanged}. */
+  subscribeChanged = (listener: () => void): (() => void) => {
+    this.#changeListeners.add(listener);
+    return () => {
+      this.#changeListeners.delete(listener);
+    };
+  };
+
+  /**
+   * Removes the state of the slide other than its position in its steps, so
+   * that its views initialize it again.
+   */
+  reset(slideIndex: number): void {
+    const ids = this.#keysOf(slideIndex);
+    for (const id of ids) {
+      this.#values.delete(id);
+    }
+    if (this.#changed.has(slideIndex)) {
+      this.#setChanged(
+        new Set([...this.#changed].filter((index) => index !== slideIndex)),
+      );
+    }
+    for (const id of ids) {
+      this.#notify(id);
+    }
+  }
+
+  #keysOf(slideIndex: number): string[] {
+    const prefix = this.#id(slideIndex, '');
+    const steps = this.#id(slideIndex, STEP_KEY);
+    return [...this.#values.keys()].filter(
+      (id) => id.startsWith(prefix) && id !== steps,
+    );
   }
 
   subscribe(slideIndex: number, key: string, listener: () => void): () => void {

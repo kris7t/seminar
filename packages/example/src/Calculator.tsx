@@ -1,5 +1,5 @@
 import { Box, Button, TextField, Typography } from '@mui/material';
-import { useSlideState } from '@slider/core';
+import { useResetSlideState, useSlideState } from '@slider/core';
 import type { JSX } from 'react';
 
 function parse(value: string): number | undefined {
@@ -9,12 +9,14 @@ function parse(value: string): number | undefined {
 
 /**
  * Adds two numbers, to try interactive widgets in the presenter view. The
- * values are slide state, so the audience sees them, too.
+ * values are slide state, so the audience sees them, too, and Reset resets
+ * the state of the slide.
  */
 export function Calculator(): JSX.Element {
   const [a, setA] = useSlideState('');
   const [b, setB] = useSlideState('');
   const [c, setC] = useSlideState<number | undefined>(undefined);
+  const reset = useResetSlideState();
   const valid = parse(a) !== undefined && parse(b) !== undefined;
   return (
     <Box
@@ -55,15 +57,7 @@ export function Calculator(): JSX.Element {
       <Button type="submit" variant="contained" disabled={!valid}>
         Compute
       </Button>
-      <Button
-        onClick={() => {
-          setA('');
-          setB('');
-          setC(undefined);
-        }}
-      >
-        Reset
-      </Button>
+      <Button onClick={reset}>Reset</Button>
     </Box>
   );
 }

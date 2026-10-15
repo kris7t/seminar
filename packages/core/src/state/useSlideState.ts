@@ -76,3 +76,19 @@ export function useSlideState<T>(
   );
   return [value, setValue];
 }
+
+/**
+ * Returns a function that resets the state of the enclosing slide, e.g., for
+ * a reset button, so that every {@link useSlideState} of the slide starts
+ * over from its initial value, and the slide is no longer marked as changed.
+ * The steps of the slide are kept.
+ */
+export function useResetSlideState(): () => void {
+  const store = use(SlideStateContext);
+  const { index: viewIndex, stateIndex } = useSlideView();
+  // Recaps share the state of the slide they recap.
+  const index = stateIndex ?? viewIndex;
+  return useCallback(() => {
+    store.reset(index);
+  }, [store, index]);
+}

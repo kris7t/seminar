@@ -1,6 +1,7 @@
 import AutoAwesomeMotionIcon from '@mui/icons-material/AutoAwesomeMotion';
 import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
 import CheckIcon from '@mui/icons-material/Check';
+import SettingsBackupRestoreIcon from '@mui/icons-material/SettingsBackupRestore';
 import CoPresentIcon from '@mui/icons-material/CoPresent';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import FlareIcon from '@mui/icons-material/Flare';
@@ -152,6 +153,7 @@ export function DeckMenu({
     setShowToc,
     showSteps,
     setShowSteps,
+    stateChanged,
   } = deck;
   // Touch screens have no keyboard shortcuts, and a menu at the finger would
   // be partly hidden by it.
@@ -200,6 +202,9 @@ export function DeckMenu({
         action: deck.previous,
         disabled: atStart,
       },
+    ],
+    // The current slide.
+    [
       {
         label: 'First step',
         icon: SkipPreviousIcon,
@@ -213,6 +218,14 @@ export function DeckMenu({
         shortcut: 'Shift+End',
         action: deck.lastStep,
         disabled: atLastStep,
+      },
+      {
+        label: 'Reset slide state',
+        icon: SettingsBackupRestoreIcon,
+        action: () => {
+          deck.resetSlide(slideIndex);
+        },
+        disabled: stateChanged[slideIndex] !== true,
       },
     ],
     [

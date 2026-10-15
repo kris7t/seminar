@@ -13,6 +13,7 @@ import { scrollIntoView } from '../sidebar/Sidebar.tsx';
 import { RecapIcon } from '../slide/RecapIcon.tsx';
 import { RecappedIcon } from '../slide/RecappedIcon.tsx';
 import { SpareIcon } from '../slide/SpareIcon.tsx';
+import { StateIcon } from '../slide/StateIcon.tsx';
 import { StepsIcon } from '../slide/StepsIcon.tsx';
 import { findCurrentEntry, type ResolvedTocEntry } from './tableOfContents.ts';
 
@@ -23,9 +24,12 @@ interface RenderEntriesOptions {
   spares: readonly boolean[];
   recapOf: readonly (number | undefined)[];
   hasSteps: readonly boolean[];
+  hasState: readonly boolean[];
+  stateChanged: readonly boolean[];
   goTo: (slideIndex: number) => void;
   /** Goes to a slide, if it isn't the current one, and shows its steps. */
   showSteps: (slideIndex: number) => void;
+  resetSlide: (slideIndex: number) => void;
 }
 
 /**
@@ -48,8 +52,11 @@ function renderEntries({
   spares,
   recapOf,
   hasSteps,
+  hasState,
+  stateChanged,
   goTo,
   showSteps,
+  resetSlide,
 }: RenderEntriesOptions): JSX.Element[] {
   return entries.flatMap((entry) => {
     const isCurrent = entry.hasSlide && entry.slideIndex === current;
@@ -76,7 +83,10 @@ function renderEntries({
             }
           : undefined;
     const steps = entry.hasSlide && hasSteps[entry.slideIndex] === true;
-    const buttons = (link === undefined ? 0 : 1) + (steps ? 1 : 0);
+    const state = entry.hasSlide && hasState[entry.slideIndex] === true;
+    const changed = state && stateChanged[entry.slideIndex] === true;
+    const buttons =
+      (link === undefined ? 0 : 1) + (state ? 1 : 0) + (steps ? 1 : 0);
     return [
       <ListItem
         key={`entry-${String(entry.slideIndex)}-${String(entry.hasSlide)}`}
@@ -86,7 +96,9 @@ function renderEntries({
           // centered on the entry.
           { '& .MuiListItemSecondaryAction-root': { display: 'flex' } },
           // Room for the buttons next to the entry.
-          buttons > 1 && { '& > .MuiListItemButton-root': { pr: 9 } },
+          buttons > 1 && {
+            '& > .MuiListItemButton-root': { pr: 1 + buttons * 4 },
+          },
         ]}
         secondaryAction={
           buttons === 0 ? undefined : (
@@ -94,7 +106,7 @@ function renderEntries({
               {/* Steps on the edge, so that their buttons line up. */}
               {link !== undefined && (
                 <IconButton
-                  edge={steps ? false : 'end'}
+                  edge={steps || state ? false : 'end'}
                   size="small"
                   aria-label={link.label}
                   onClick={() => {
@@ -104,6 +116,36 @@ function renderEntries({
                   <link.Icon titleAccess={link.label} />
                 </IconButton>
               )}
+              {state &&
+                (changed ? (
+                  <IconButton
+                    edge={steps ? false : 'end'}
+                    size="small"
+                    aria-label="Reset the state"
+                    onClick={() => {
+                      resetSlide(entry.slideIndex);
+                    }}
+                  >
+                    <StateIcon changed titleAccess="Reset the state" />
+                  </IconButton>
+                ) : (
+                  // Only a mark, in the place of the button, which shows its
+                  // label as a tooltip, and goes to the slide like the entry.
+                  <Box
+                    onClick={() => {
+                      goTo(entry.slideIndex);
+                    }}
+                    sx={{
+                      display: 'flex',
+                      p: '5px',
+                      mr: steps ? 0 : '-3px',
+                      color: 'action.active',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <StateIcon changed={false} />
+                  </Box>
+                ))}
               {steps && (
                 <IconButton
                   edge="end"
@@ -153,8 +195,11 @@ function renderEntries({
         spares,
         recapOf,
         hasSteps,
+        hasState,
+        stateChanged,
         goTo,
         showSteps,
+        resetSlide,
       }),
     ];
   });
@@ -167,8 +212,18 @@ function renderEntries({
  * Should be rendered with the {@link uiTheme}.
  */
 export function TocList(): JSX.Element {
-  const { toc, slideIndex, spares, recapOf, hasSteps, goTo, setShowSteps } =
-    useDeck();
+  const {
+    toc,
+    slideIndex,
+    spares,
+    recapOf,
+    hasSteps,
+    hasState,
+    stateChanged,
+    goTo,
+    setShowSteps,
+    resetSlide,
+  } = useDeck();
   const showSteps = (index: number) => {
     if (index !== slideIndex) {
       goTo(index);
@@ -194,8 +249,11 @@ export function TocList(): JSX.Element {
         spares,
         recapOf,
         hasSteps,
+        hasState,
+        stateChanged,
         goTo,
         showSteps,
+        resetSlide,
       })}
     </List>
   );

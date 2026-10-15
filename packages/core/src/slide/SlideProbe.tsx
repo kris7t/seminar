@@ -10,13 +10,24 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import { SlideViewProvider } from '../slide/SlideViewProvider.tsx';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
-import { StepStore } from './StepStore.ts';
-import { StepStoreContext } from './StepStoreContext.ts';
+import { StepStore } from '../steps/StepStore.ts';
+import { StepStoreContext } from '../steps/StepStoreContext.ts';
+import { SlideViewProvider } from './SlideViewProvider.tsx';
 
-const NO_SLIDES: readonly boolean[] = [];
+/** What probing a slide found. */
+export interface ProbedSlide {
+  /** Whether the slide has steps. */
+  steps: boolean;
+  /**
+   * Whether the slide has state that it keeps when it is left, e.g., from
+   * `useSlideState`.
+   */
+  state: boolean;
+}
+
+const NO_SLIDES: readonly ProbedSlide[] = [];
 
 /** Leaves out a slide that fails to render in the probe. */
 class ProbeBoundary extends Component<
@@ -34,16 +45,16 @@ class ProbeBoundary extends Component<
   }
 }
 
-interface StepProbeProps {
+interface SlideProbeProps {
   slides: readonly ReactNode[];
-  onProbe: (hasSteps: boolean[]) => void;
+  onProbe: (probed: ProbedSlide[]) => void;
 }
 
 /**
  * Renders `slides` in probe views (see `SlideViewKind`) in a document without
- * a window, and reports which of them have steps once they are rendered.
+ * a window, and reports what they have once they are rendered.
  */
-function StepProbe({ slides, onProbe }: StepProbeProps): JSX.Element {
+function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
   // Elements of a document without a window don't load anything.
   const [container] = useState(
     () => document.implementation.createHTMLDocument('').body,
@@ -56,8 +67,13 @@ function StepProbe({ slides, onProbe }: StepProbeProps): JSX.Element {
   );
   // Steps attach as they are committed, before the effects of their parents.
   useLayoutEffect(() => {
-    onProbe(probes.map(({ store }) => store.getTree().length > 0));
-  }, [probes, onProbe]);
+    onProbe(
+      probes.map(({ store }, index) => ({
+        steps: store.getTree().length > 0,
+        state: slideState.hasState(index),
+      })),
+    );
+  }, [probes, slideState, onProbe]);
   return createPortal(
     <SlideStateContext value={slideState}>
       {probes.map(({ slide, store }, index) => (
@@ -94,24 +110,24 @@ function whenIdle(callback: () => void): () => void {
   };
 }
 
-export interface StepProbeResult {
+export interface SlideProbeResult {
   /**
-   * Whether each slide has steps, by index. Empty until the slides are probed,
-   * and the previous result while changed slides are probed.
+   * What each slide has, by index. Empty until the slides are probed, and the
+   * previous result while changed slides are probed.
    */
-  hasSteps: readonly boolean[];
+  probed: readonly ProbedSlide[];
   /** Renders the probe while it runs. */
   probe: ReactNode;
 }
 
 /**
- * Finds which of `slides` have steps without showing them, by rendering them
- * once, when the browser is idle, in probe views (see `SlideViewKind`).
+ * Finds what `slides` have, like steps, without showing them, by rendering
+ * them once, when the browser is idle, in probe views (see `SlideViewKind`).
  */
-export function useStepProbe(slides: readonly ReactNode[]): StepProbeResult {
+export function useSlideProbe(slides: readonly ReactNode[]): SlideProbeResult {
   const [result, setResult] = useState<{
     slides: readonly ReactNode[];
-    hasSteps: readonly boolean[];
+    probed: readonly ProbedSlide[];
   }>();
   const [due, setDue] = useState<readonly ReactNode[]>();
   const probed = result?.slides === slides;
@@ -124,16 +140,16 @@ export function useStepProbe(slides: readonly ReactNode[]): StepProbeResult {
     });
   }, [slides, probed]);
   const onProbe = useMemo(
-    () => (hasSteps: boolean[]) => {
-      setResult({ slides, hasSteps });
+    () => (probed: ProbedSlide[]) => {
+      setResult({ slides, probed });
     },
     [slides],
   );
   return {
-    hasSteps: result?.hasSteps ?? NO_SLIDES,
+    probed: result?.probed ?? NO_SLIDES,
     probe:
       due === slides && !probed ? (
-        <StepProbe slides={slides} onProbe={onProbe} />
+        <SlideProbe slides={slides} onProbe={onProbe} />
       ) : null,
   };
 }
