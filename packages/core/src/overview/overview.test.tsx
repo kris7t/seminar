@@ -32,7 +32,7 @@ const current = () =>
   within(overview())
     .getAllByRole('button')
     .find((button) => button.getAttribute('aria-current') === 'page')
-    ?.getAttribute('aria-label');
+    ?.textContent;
 
 describe('SlideOverview', () => {
   beforeEach(() => {
@@ -50,9 +50,9 @@ describe('SlideOverview', () => {
     expect(
       within(overview())
         .getAllByRole('button')
-        .map((button) => button.getAttribute('aria-label')),
-    ).toEqual(['Slide 1', 'Slide 2', 'Slide 3']);
-    expect(current()).toBe('Slide 1');
+        .map((button) => button.textContent),
+    ).toEqual(['Slide 1: First', 'Slide 2: Second', 'Slide 3: Third']);
+    expect(current()).toBe('Slide 1: First');
     // Slides are not in the buttons, which would change their styles.
     expect(within(overview()).getByText('Later').closest('button')).toBeNull();
     // Each thumbnail knows its slide.
@@ -75,7 +75,7 @@ describe('SlideOverview', () => {
     await user.keyboard('{ArrowLeft}{ArrowRight}{ArrowLeft}{Home}{End}');
     expect(isShown()).toBe(true);
     await user.click(
-      within(overview()).getByRole('button', { name: 'Slide 1' }),
+      within(overview()).getByRole('button', { name: 'Slide 1: First' }),
     );
     expect(window.location.hash).toBe('#slide=1&step=1');
   });
@@ -128,13 +128,43 @@ describe('SlideOverview', () => {
         .map(({ textContent }) => textContent),
     ).toEqual(['Part one', 'Part two']);
     await user.keyboard('{ArrowRight}{ArrowRight}');
-    expect(current()).toBe('Slide 3');
+    expect(current()).toBe('Slide 3: A');
     await user.keyboard('{ArrowDown}');
-    expect(current()).toBe('Slide 5');
+    expect(current()).toBe('Slide 5: Part two');
     await user.keyboard('{ArrowUp}{ArrowUp}');
-    expect(current()).toBe('Slide 1');
+    expect(current()).toBe('Slide 1: Talk');
     await user.keyboard('{ArrowUp}');
-    expect(current()).toBe('Slide 1');
+    expect(current()).toBe('Slide 1: Talk');
+  });
+
+  it('names the slides by their titles in the table of contents', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck
+        toc={[
+          { slide: 0, title: <em>Intro</em> },
+          { slide: 2, title: 'Again' },
+        ]}
+      >
+        <Slide id="first" title="First" />
+        <Slide />
+        <Slide recap="first" />
+      </Deck>,
+    );
+    await user.keyboard('o');
+    const buttons = within(overview()).getAllByRole('button');
+    expect(buttons.map(({ textContent }) => textContent)).toEqual([
+      'Slide 1: Intro (recapped later)',
+      'Slide 2',
+      'Slide 3: Again (recap)',
+    ]);
+    expect(buttons[0]?.querySelector('em')?.textContent).toBe('Intro');
+    await user.hover(
+      within(overview()).getByRole('button', {
+        name: 'Slide 3: Again (recap)',
+      }),
+    );
+    expect((await screen.findByRole('tooltip')).textContent).toBe('Again');
   });
 
   it('goes to a clicked slide', async () => {
@@ -142,7 +172,7 @@ describe('SlideOverview', () => {
     renderDeck();
     await user.keyboard('o');
     await user.click(
-      within(overview()).getByRole('button', { name: 'Slide 2' }),
+      within(overview()).getByRole('button', { name: 'Slide 2: Second' }),
     );
     expect(screen.queryByRole('region')).toBeNull();
     expect(window.location.hash).toBe('#slide=2');
@@ -153,7 +183,7 @@ describe('SlideOverview', () => {
     const user = userEvent.setup();
     renderDeck();
     await user.keyboard('o{ArrowRight}{ArrowRight}');
-    expect(current()).toBe('Slide 3');
+    expect(current()).toBe('Slide 3: Third');
     await user.keyboard('{ArrowLeft}{Enter}');
     expect(screen.queryByRole('region')).toBeNull();
     expect(window.location.hash).toBe('#slide=2');

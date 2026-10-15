@@ -1,4 +1,10 @@
-import { Box, ButtonBase, ThemeProvider, Typography } from '@mui/material';
+import {
+  Box,
+  ButtonBase,
+  ThemeProvider,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import {
   use,
   useEffect,
@@ -23,6 +29,7 @@ import { SlideViewProvider } from '../slide/SlideViewProvider.tsx';
 import { StepStore } from '../steps/StepStore.ts';
 import { groupSlides } from './groupSlides.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
+import { slideTitles } from '../toc/tableOfContents.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 
 /** Typography of the headings of divisions by their level. */
@@ -37,9 +44,21 @@ const THUMBNAIL_WIDTH = SLIDE_WIDTH * THUMBNAIL_SCALE;
 
 const THUMBNAIL_HEIGHT = SLIDE_HEIGHT * THUMBNAIL_SCALE;
 
+/** Hides text from sight, but not from screen readers. */
+const VISUALLY_HIDDEN = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+} as const;
+
 interface ThumbnailProps {
   index: number;
   slide: ReactNode;
+  /** The title of the slide in the table of contents, if any. */
+  title: ReactNode;
   current: boolean;
   /** Whether the slide is spare, which is shown by its number. */
   spare: boolean;
@@ -53,6 +72,7 @@ interface ThumbnailProps {
 function Thumbnail({
   index,
   slide,
+  title,
   current,
   spare,
   recap,
@@ -140,28 +160,43 @@ function Thumbnail({
        * Covers the thumbnail instead of containing it, since the contents of
        * a button would inherit its styles, like centered text.
        */}
-      <ButtonBase
-        ref={ref}
-        aria-label={[
-          `Slide ${String(index + 1)}`,
-          ...(recap ? ['(recap)'] : []),
-          ...(recapped ? ['(recapped later)'] : []),
-          ...(spare ? ['(spare)'] : []),
-        ].join(' ')}
-        aria-current={current ? 'page' : undefined}
-        onClick={() => {
-          onSelect(index);
-        }}
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: 1,
-          '&:hover, &.Mui-focusVisible': {
-            outline: '2px solid',
-            outlineColor: 'grey.500',
-          },
-        }}
-      />
+      <ThemeProvider theme={uiTheme}>
+        <Tooltip
+          // Shows the title of slides that don't show it, e.g., with their
+          // master, or recaps with a title of their own.
+          title={title ?? ''}
+          // The button has a name of its own.
+          describeChild
+          enterDelay={500}
+          enterNextDelay={500}
+        >
+          <ButtonBase
+            ref={ref}
+            aria-current={current ? 'page' : undefined}
+            onClick={() => {
+              onSelect(index);
+            }}
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 1,
+              '&:hover, &.Mui-focusVisible': {
+                outline: '2px solid',
+                outlineColor: 'grey.500',
+              },
+            }}
+          >
+            {/* Titles may have markup, so they can't go in an aria-label. */}
+            <Box component="span" sx={VISUALLY_HIDDEN}>
+              {`Slide ${String(index + 1)}`}
+              {title !== undefined && <>: {title}</>}
+              {recap && ' (recap)'}
+              {recapped && ' (recapped later)'}
+              {spare && ' (spare)'}
+            </Box>
+          </ButtonBase>
+        </Tooltip>
+      </ThemeProvider>
     </Box>
   );
 }
@@ -197,6 +232,7 @@ export function SlideOverview({
     () => groupSlides(toc, slides.length),
     [toc, slides.length],
   );
+  const titles = useMemo(() => slideTitles(toc, slides), [toc, slides]);
   const onSelect = (index: number) => {
     // Keep the steps shown in the thumbnail.
     goTo(index, 'restore');
@@ -265,6 +301,7 @@ export function SlideOverview({
                   key={index}
                   index={index}
                   slide={slides[index]}
+                  title={titles[index]}
                   current={index === overviewIndex}
                   spare={spares[index] === true}
                   recap={recapOf[index] !== undefined}

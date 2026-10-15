@@ -114,3 +114,31 @@ export function findCurrentEntry(
   visit(entries);
   return current;
 }
+
+/**
+ * Returns the title of each slide: the title of its entry in the table of
+ * contents, or its `title` prop if it has no entry, by index, or `undefined`
+ * for slides without a title.
+ */
+export function slideTitles(
+  entries: readonly ResolvedTocEntry[],
+  slides: readonly ReactNode[],
+): ReactNode[] {
+  const titles: ReactNode[] = slides.map(getSlideTitle);
+  const found = new Set<number>();
+  const visit = (nested: readonly ResolvedTocEntry[]) => {
+    for (const { slideIndex, hasSlide, title, children } of nested) {
+      // The first entry of a slide wins, as in a hand-written table of
+      // contents with several entries for a slide.
+      if (hasSlide && !found.has(slideIndex)) {
+        found.add(slideIndex);
+        // Not the stand-in title of slides without one.
+        titles[slideIndex] =
+          title === `Slide ${String(slideIndex + 1)}` ? undefined : title;
+      }
+      visit(children);
+    }
+  };
+  visit(entries);
+  return titles;
+}
