@@ -160,3 +160,9 @@ export function usesKey(
       return ACTIVATABLE_KEYS.has(key);
   }
 }
+
+/**
+ * How far a touch may move and still count as holding still, in pixels. A
+ * touch that moves less than this is a tap or a long press, not a swipe.
+ */
+export const TOUCH_SLOP = 24;

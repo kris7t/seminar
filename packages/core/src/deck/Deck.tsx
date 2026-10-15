@@ -1,4 +1,10 @@
-import { Box, CssBaseline, ThemeProvider, type Theme } from '@mui/material';
+import {
+  Box,
+  CssBaseline,
+  keyframes,
+  ThemeProvider,
+  type Theme,
+} from '@mui/material';
 import {
   Children,
   isValidElement,
@@ -20,6 +26,15 @@ import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
 import { useClickNavigation } from '../interaction/useClickNavigation.ts';
 import { useContextMenu } from '../interaction/useContextMenu.ts';
+import { composeHandlers } from '../interaction/composeHandlers.ts';
+import { usePinchIn } from '../interaction/usePinchIn.ts';
+import { SlidePreview } from '../swipe/SlidePreview.tsx';
+import { SwipeHint } from '../swipe/SwipeHint.tsx';
+import {
+  ENTER_DURATION,
+  SETTLE_DURATION,
+  useSwipeNavigation,
+} from '../swipe/useSwipeNavigation.ts';
 import { DeckMenu } from '../menu/DeckMenu.tsx';
 import { MenuButton } from '../menu/MenuButton.tsx';
 import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
@@ -76,6 +91,25 @@ const SELECTABLE_SELECTOR = [
 ]
   .map((selector) => `& ${selector}`)
   .join(', ');
+
+/** Slides the slide in from `--slider-enter-from` after a swipe. */
+const enter = keyframes`
+  from {
+    translate: var(--slider-enter-from) 0;
+  }
+`;
+
+/** Styles of a scaled slide in the middle of the area of the slides. */
+const FRAME_STYLES = {
+  position: 'absolute',
+  left: `calc(50% - ${String(SLIDE_WIDTH / 2)}px)`,
+  top: `calc(50% - ${String(SLIDE_HEIGHT / 2)}px)`,
+  width: SLIDE_WIDTH,
+  height: SLIDE_HEIGHT,
+  overflow: 'hidden',
+  bgcolor: 'background.default',
+  color: 'text.primary',
+} as const;
 
 function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
   if (isValidElement<{ id?: unknown }>(slide)) {
@@ -197,6 +231,22 @@ export function Deck({
   }, []);
   useKeyboardNavigation(deck, { onGoToSlide: openGoToSlide });
   const onClick = useClickNavigation(next, previous);
+  const swipe = useSwipeNavigation({
+    hasMoreSteps: () => stepStore.hasNext(),
+    canGoNext: slideIndex < slideCount - 1,
+    canGoPrevious: slideIndex > 0,
+    nextSlide,
+    previousSlide,
+    width: containerSize.width,
+    disabled: menuPosition !== undefined || showOverview || goToSlideOpen,
+  });
+  // Zooming out of the slide shows all slides.
+  const pinchHandlers = usePinchIn(
+    () => {
+      setShowOverview(true);
+    },
+    menuPosition !== undefined || showOverview || goToSlideOpen,
+  );
 
   return (
     <ThemeProvider theme={theme}>
@@ -218,19 +268,21 @@ export function Deck({
               <Box
                 ref={containerRef}
                 onClick={mouseNavigation ? onClick : undefined}
-                {...menuHandlers}
+                {...composeHandlers(
+                  composeHandlers(menuHandlers, swipe.handlers),
+                  pinchHandlers,
+                )}
                 sx={[
                   {
                     position: 'relative',
                     flex: 1,
                     minWidth: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     overflow: 'hidden',
                     bgcolor: 'common.black',
                     // Long presses open our context menu instead.
                     WebkitTouchCallout: 'none',
+                    // Horizontal swipes change the slide.
+                    touchAction: 'pan-y pinch-zoom',
                   },
                   mouseNavigation && {
                     userSelect: 'none',
@@ -238,30 +290,83 @@ export function Deck({
                   },
                 ]}
               >
+                {/* Moves the slides together while swiping. */}
                 <Box
-                  sx={{
-                    flex: 'none',
-                    position: 'relative',
-                    width: SLIDE_WIDTH,
-                    height: SLIDE_HEIGHT,
-                    overflow: 'hidden',
-                    bgcolor: 'background.default',
-                    color: 'text.primary',
+                  // Restarts the animation of sliding in on another slide.
+                  key={`slides-${String(slideIndex)}`}
+                  onTransitionEnd={(event) => {
+                    if (event.target === event.currentTarget) {
+                      swipe.onTransitionEnd();
+                    }
                   }}
-                  style={{ transform: `scale(${String(scale)})` }}
-                  {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+                  onAnimationEnd={(event) => {
+                    if (event.target === event.currentTarget) {
+                      swipe.onAnimationEnd();
+                    }
+                  }}
+                  sx={[
+                    { position: 'absolute', inset: 0 },
+                    swipe.transition === 'settle' && {
+                      transition: `translate ${String(SETTLE_DURATION)}ms ease-out`,
+                    },
+                    swipe.enterFrom !== undefined && {
+                      animation: `${enter} ${String(ENTER_DURATION)}ms ease-out`,
+                    },
+                  ]}
+                  style={{
+                    translate: `${String(swipe.offset)}px 0`,
+                    ...(swipe.enterFrom === undefined
+                      ? {}
+                      : {
+                          '--slider-enter-from': `${String(swipe.enterFrom)}px`,
+                        }),
+                  }}
                 >
-                  {/* The overview shows the slide instead. */}
-                  {!showOverview && (
-                    <SlideViewProvider key={slideIndex} view={view}>
-                      {slides[slideIndex]}
-                    </SlideViewProvider>
-                  )}
+                  {swipe.moving &&
+                    !showOverview &&
+                    [slideIndex - 1, slideIndex + 1]
+                      .filter((index) => index >= 0 && index < slideCount)
+                      .map((index) => (
+                        // Placed a whole area away, which needs no measuring.
+                        <Box
+                          key={index}
+                          inert
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            bottom: 0,
+                            width: '100%',
+                          }}
+                          style={{
+                            left: `${String((index - slideIndex) * 100)}%`,
+                          }}
+                        >
+                          <Box
+                            sx={FRAME_STYLES}
+                            style={{ transform: `scale(${String(scale)})` }}
+                            {...{ [SLIDE_VIEW_ATTRIBUTE]: 'preview' }}
+                          >
+                            <SlidePreview index={index} slide={slides[index]} />
+                          </Box>
+                        </Box>
+                      ))}
+                  <Box
+                    sx={FRAME_STYLES}
+                    style={{ transform: `scale(${String(scale)})` }}
+                    {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+                  >
+                    {/* The overview shows the slide instead. */}
+                    {!showOverview && (
+                      <SlideViewProvider key={slideIndex} view={view}>
+                        {slides[slideIndex]}
+                      </SlideViewProvider>
+                    )}
+                  </Box>
                 </Box>
                 {notes !== undefined && !showOverview && (
                   <NotesDisplay
                     // Collapse the notes on another slide.
-                    key={slideIndex}
+                    key={`notes-${String(slideIndex)}`}
                     notes={notes}
                     size={containerSize}
                     scale={scale}
@@ -287,6 +392,7 @@ export function Deck({
                 onGoToSlide={openGoToSlide}
               />
               <GoToSlideDialog open={goToSlideOpen} onClose={closeGoToSlide} />
+              <SwipeHint open={swipe.showHint} />
             </ThemeProvider>
           </StepStoreContext>
         </SlideStateContext>

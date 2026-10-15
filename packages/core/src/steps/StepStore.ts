@@ -261,6 +261,20 @@ export class StepStore {
    * @returns `false` if there are no more steps on the slide.
    */
   next(): boolean {
+    const target = this.#findNext();
+    if (target === undefined) {
+      return false;
+    }
+    this.reset(target);
+    return true;
+  }
+
+  /** Whether there are more steps on the slide, i.e., {@link next} would advance. */
+  hasNext(): boolean {
+    return this.#findNext() !== undefined;
+  }
+
+  #findNext(): StepPath | undefined {
     const { levelSizes } = this.#getLayout();
     // Levels nested in step 0 are shown along with their enclosing level, so
     // we have to look for the next step in them first.
@@ -272,11 +286,10 @@ export class StepStore {
       const level = path.slice(0, depth);
       const position = path[depth] ?? 0;
       if (position < (levelSizes.get(levelKey(level)) ?? 0)) {
-        this.reset([...level, position + 1]);
-        return true;
+        return [...level, position + 1];
       }
     }
-    return false;
+    return undefined;
   }
 
   /**

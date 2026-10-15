@@ -103,7 +103,7 @@ describe('DeckMenu', () => {
     fireEvent.click(target);
     expect(window.location.hash).toBe('#slide=1&step=1');
     fireEvent.pointerDown(target, { ...touch, clientX: 10, clientY: 10 });
-    fireEvent.pointerMove(target, { ...touch, clientX: 50, clientY: 10 });
+    fireEvent.pointerMove(target, { ...touch, clientX: 10, clientY: 50 });
     act(() => {
       vi.advanceTimersByTime(LONG_PRESS_DELAY);
     });

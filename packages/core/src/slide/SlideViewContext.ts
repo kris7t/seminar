@@ -9,9 +9,12 @@ import { createContext, use, type Context } from 'react';
  * - `'audience'`: the slide shown to the audience, i.e., the normal view of
  *   the deck.
  * - `'thumbnail'`: a small preview of the slide, e.g., in the overview of the
- *   slides, where it shows all of its steps.
+ *   slides, showing the steps last shown on it.
+ * - `'preview'`: the next or previous slide coming into view next to the
+ *   audience view while swiping between slides, showing the steps last shown
+ *   on it.
  */
-export type SlideViewKind = 'audience' | 'thumbnail';
+export type SlideViewKind = 'audience' | 'thumbnail' | 'preview';
 
 /** A rendering of a slide. See {@link useSlideView}. */
 export interface SlideView {

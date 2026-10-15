@@ -31,3 +31,8 @@ window.matchMedia = (query: string) =>
     removeListener: () => undefined,
     dispatchEvent: () => false,
   }) as MediaQueryList;
+
+// jsdom does not implement pointer capture.
+Element.prototype.setPointerCapture = () => undefined;
+Element.prototype.releasePointerCapture = () => undefined;
+Element.prototype.hasPointerCapture = () => false;

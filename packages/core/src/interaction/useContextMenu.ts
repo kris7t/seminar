@@ -10,7 +10,7 @@ import {
   type PointerEventHandler,
 } from 'react';
 
-import { getInteraction } from './interaction.ts';
+import { getInteraction, TOUCH_SLOP } from './interaction.ts';
 
 /** Position of a context menu in client coordinates. */
 export interface MenuPosition {
@@ -36,9 +36,6 @@ export interface ContextMenuHandlers {
 
 /** How long a touch has to be held to open the menu, in milliseconds. */
 export const LONG_PRESS_DELAY = 500;
-
-/** How far a touch may move and still count as a long press, in pixels. */
-const LONG_PRESS_TOLERANCE = 10;
 
 interface Press {
   pointerId: number;
@@ -161,7 +158,7 @@ export function useContextMenu(): [
         if (
           current?.pointerId === event.pointerId &&
           Math.hypot(event.clientX - current.x, event.clientY - current.y) >
-            LONG_PRESS_TOLERANCE
+            TOUCH_SLOP
         ) {
           cancelPress();
         }
