@@ -2,11 +2,11 @@ import type { Theme } from '@mui/material/styles';
 import { createContext, useId, type Context, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 
-/** How the slide fades from one step to another. */
-export interface StepTransition {
+/** How the slide fades, e.g., from one step to another. */
+export interface FadeTransition {
   /**
-   * Duration in milliseconds, or 0 to change steps at once, without view
-   * transitions. Defaults to 250, like view transitions of browsers.
+   * Duration in milliseconds, or 0 to change at once, without view
+   * transitions. Defaults to 150, short enough not to hold up the talk.
    */
   duration?: number | undefined;
   /** CSS easing function. Defaults to `ease`, like view transitions. */
@@ -16,28 +16,40 @@ export interface StepTransition {
 declare module '@mui/material/styles' {
   interface Theme {
     /** How the slide fades from one step to another. */
-    stepTransition?: StepTransition | undefined;
+    stepTransition?: FadeTransition | undefined;
+    /**
+     * How one slide fades into another, if the one shown fades out, and the
+     * one coming fades in, as their `transition`, or that of their master,
+     * says.
+     */
+    slideTransition?: FadeTransition | undefined;
   }
 
   interface ThemeOptions {
-    stepTransition?: StepTransition | undefined;
+    stepTransition?: FadeTransition | undefined;
+    slideTransition?: FadeTransition | undefined;
   }
 }
 
-/** Returns how the slide fades from one step to another in `theme`. */
-export function getStepTransition(theme: Theme): {
-  duration: number;
-  easing: string;
-} {
+/** What changes in a transition: the step of a slide, or the slide. */
+export type SlideTransitionKind = 'step' | 'slide';
+
+/** Returns how the slide fades in a transition of `kind` in `theme`. */
+export function getFadeTransition(
+  theme: Theme,
+  kind: SlideTransitionKind,
+): { duration: number; easing: string } {
+  const transition =
+    kind === 'step' ? theme.stepTransition : theme.slideTransition;
   return {
-    duration: theme.stepTransition?.duration ?? 250,
-    easing: theme.stepTransition?.easing ?? 'ease',
+    duration: transition?.duration ?? 150,
+    easing: transition?.easing ?? 'ease',
   };
 }
 
 /**
- * Attribute of the element whose view transition is running: the slide frame
- * itself, if the browser supports view transitions scoped to an element, or
+ * Attribute of the element whose view transition is running, with its
+ * {@link SlideTransitionKind}: the slide frame itself, if the browser supports view transitions scoped to an element, or
  * the root element of its document otherwise.
  */
 export const TRANSITION_ATTRIBUTE = 'data-slider-transition';
@@ -68,7 +80,7 @@ export const OWN_ANIMATION_CLASS = 'slider-own-animation';
 
 /**
  * Returns styles that keep an element out of the fade of the slide from one
- * step to another, e.g., a marker that moves with a CSS transition when the
+ * step to another, but not from one slide to another, e.g., a marker that moves with a CSS transition when the
  * step changes, which would otherwise move under the fading snapshot of the
  * old slide. The element shows how it is at once, and its own animations
  * play out in full.
@@ -98,10 +110,11 @@ interface ScopableElement extends HTMLElement {
 /** Starts a view transition of `frame`, or of its document. */
 function startTransition(
   frame: ScopableElement,
+  kind: SlideTransitionKind,
   update: () => Promise<void>,
 ): { transition: ViewTransition; scope: HTMLElement } | undefined {
   if (typeof frame.startViewTransition === 'function') {
-    frame.setAttribute(TRANSITION_ATTRIBUTE, '');
+    frame.setAttribute(TRANSITION_ATTRIBUTE, kind);
     return { transition: frame.startViewTransition(update), scope: frame };
   }
   const doc = frame.ownerDocument;
@@ -109,7 +122,7 @@ function startTransition(
     return undefined;
   }
   // Only the slide is animated, and the rest of the document stays live.
-  doc.documentElement.setAttribute(TRANSITION_ATTRIBUTE, '');
+  doc.documentElement.setAttribute(TRANSITION_ATTRIBUTE, kind);
   frame.setAttribute(TRANSITION_FRAME_ATTRIBUTE, '');
   return {
     transition: doc.startViewTransition(update),
@@ -194,7 +207,7 @@ export class SlideTransitions {
    * the registered frames from how they looked before to how they look after.
    * `update` may run later, but before any later update.
    */
-  run(update: () => void): void {
+  run(update: () => void, kind: SlideTransitionKind = 'step'): void {
     // Keep the order of the updates, if the previous one is still waiting.
     this.flush();
     const frames = [...this.#frames].filter(
@@ -235,7 +248,7 @@ export class SlideTransitions {
       return ready;
     };
     for (const frame of frames) {
-      const started = startTransition(frame, onCaptured);
+      const started = startTransition(frame, kind, onCaptured);
       if (started === undefined) {
         waiting -= 1;
         continue;

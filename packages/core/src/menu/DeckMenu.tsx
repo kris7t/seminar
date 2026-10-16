@@ -249,14 +249,18 @@ export function DeckMenu({
         label: t('nextSlide'),
         icon: KeyboardDoubleArrowRightIcon,
         shortcut: 'PgDn',
-        action: deck.nextSlide,
+        action: () => {
+          deck.nextSlide();
+        },
         disabled: isLastSlide,
       },
       {
         label: t('previousSlide'),
         icon: KeyboardDoubleArrowLeftIcon,
         shortcut: 'PgUp',
-        action: deck.previousSlide,
+        action: () => {
+          deck.previousSlide();
+        },
         disabled: isFirstSlide,
       },
       {

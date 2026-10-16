@@ -24,6 +24,7 @@ import {
   SLIDE_WIDTH,
 } from '../theme/createSlideTheme.ts';
 import { resolveRecaps } from './recaps.ts';
+import { fadesBetween, getSlideCuts } from './slideFades.ts';
 import { useFitScale } from './useFitScale.ts';
 import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
@@ -53,7 +54,7 @@ import { usePresenterView } from '../presentation/usePresenterView.ts';
 import { correctRipples } from '../slide/rippleScale.ts';
 import { SlideMirror } from '../slide/SlideMirror.tsx';
 import {
-  getStepTransition,
+  getFadeTransition,
   SlideTransitions,
   SlideTransitionsContext,
 } from '../slide/SlideTransitions.ts';
@@ -257,6 +258,17 @@ export function Deck({
   const spares = useSpares(slides.map(isSpare));
   const [slideState] = useState(() => new SlideStateStore());
   const [transitions] = useState(() => new SlideTransitions());
+  const fadeSteps = getFadeTransition(theme, 'step').duration > 0;
+  const fadeSlides = useCallback(
+    (from: number, to: number) =>
+      getFadeTransition(theme, 'slide').duration > 0 &&
+      fadesBetween(
+        getSlideCuts(slides[from], theme.master),
+        getSlideCuts(slides[to], theme.master),
+        to > from,
+      ),
+    [theme, slides],
+  );
   const {
     slideIndex,
     stepStore,
@@ -273,7 +285,11 @@ export function Deck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slideIds, aliases, spares, slideState, transitions);
+  } = useDeckNavigation(slideIds, aliases, spares, slideState, {
+    transitions,
+    fadeSteps,
+    fadeSlides,
+  });
   const { probed, probe } = useSlideProbe(slides);
   // The current slide knows its steps even before it is probed, or after its
   // components gain steps, but not while it isn't shown, e.g., in the
@@ -430,14 +446,23 @@ export function Deck({
     SLIDE_WIDTH,
     SLIDE_HEIGHT,
   );
-  // Fade the slide from step to step, unless the overview shows it instead.
-  const fades = getStepTransition(theme).duration > 0;
+  // Fade the slide when it changes, unless the overview shows it instead.
+  // The area of the slide stays when the slide changes, unlike the frame of
+  // the slide, which is part of the slides that move together while swiping.
+  const [slideArea, setSlideArea] = useState<HTMLElement | null>(null);
+  const slideAreaRef = useCallback(
+    (element: HTMLElement | null) => {
+      setSlideArea(element);
+      return containerRef(element);
+    },
+    [containerRef],
+  );
   useEffect(
     () =>
-      presenterFrame === null || showOverview || !fades
+      slideArea === null || showOverview
         ? undefined
-        : transitions.register(presenterFrame),
-    [presenterFrame, showOverview, fades, transitions],
+        : transitions.register(slideArea),
+    [slideArea, showOverview, transitions],
   );
   const notes = getSlideNotes(slides[slideIndex]);
   // The notes are in the language of their slide.
@@ -579,8 +604,13 @@ export function Deck({
     hasMoreSteps: () => stepStore.hasNext(),
     canGoNext: nextSlideIndex !== undefined,
     canGoPrevious: previousSlideIndex !== undefined,
-    nextSlide,
-    previousSlide,
+    // Swiping moves the slides instead of fading them.
+    nextSlide: () => {
+      nextSlide({ transition: false });
+    },
+    previousSlide: () => {
+      previousSlide({ transition: false });
+    },
     width: containerSize.width,
     slideWidth: SLIDE_WIDTH * scale,
     disabled:
@@ -638,7 +668,7 @@ export function Deck({
                       }}
                     >
                       <Box
-                        ref={containerRef}
+                        ref={slideAreaRef}
                         onClick={mouseNavigation ? onClick : undefined}
                         onWheel={mouseNavigation ? onWheel : undefined}
                         {...composeHandlers(

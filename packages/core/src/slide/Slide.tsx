@@ -8,7 +8,11 @@ import {
 } from 'react';
 
 import { DeckContext } from '../deck/DeckContext.ts';
-import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
+import type {
+  SlideMaster,
+  SlideMasters,
+  SlideTransitionProp,
+} from '../masters/SlideMaster.ts';
 import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepBehaviorContext } from '../steps/StepBehaviorContext.ts';
@@ -33,6 +37,12 @@ export interface SlideProps {
    * `theme.master` or a master component. Defaults to `'content'`.
    */
   master?: string | SlideMaster;
+  /**
+   * Which fades of the slide from and to its neighbors to cut (see
+   * {@link SlideTransition}), e.g., `'cut'` for a slide with a background
+   * of its own. Defaults to the `transition` of the master, or `'fade'`.
+   */
+  transition?: SlideTransitionProp | undefined;
   /** Title of the slide passed to the master. */
   title?: ReactNode;
   /** Classes of the slide passed to the master. */

@@ -6,12 +6,14 @@ export type {
 } from './config/SliderConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
-export type { GoToSteps } from './deck/useDeckNavigation.ts';
+export type { GoToOptions, GoToSteps } from './deck/useDeckNavigation.ts';
 export { INTERACTIVE_ATTRIBUTE } from './interaction/interaction.ts';
 export type {
   SlideMaster,
   SlideMasterProps,
   SlideMasters,
+  SlideTransition,
+  SlideTransitionProp,
 } from './masters/SlideMaster.ts';
 export {
   ContentMaster,
@@ -82,9 +84,10 @@ export {
   type SlideViewState,
 } from './slide/SlideViewContext.ts';
 export {
-  getStepTransition,
+  getFadeTransition,
   useOwnAnimation,
-  type StepTransition,
+  type FadeTransition,
+  type SlideTransitionKind,
 } from './slide/SlideTransitions.ts';
 export {
   SlideNumber,

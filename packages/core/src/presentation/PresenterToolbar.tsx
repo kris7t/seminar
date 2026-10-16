@@ -270,7 +270,9 @@ export function PresenterToolbar({
             label={t('previousSlide')}
             shortcut="PgUp"
             icon={KeyboardDoubleArrowLeftIcon}
-            onClick={deck.previousSlide}
+            onClick={() => {
+              deck.previousSlide();
+            }}
             disabled={previousSlideIndex === undefined}
           />
           <ToolButton
@@ -292,7 +294,9 @@ export function PresenterToolbar({
             label={t('nextSlide')}
             shortcut="PgDn"
             icon={KeyboardDoubleArrowRightIcon}
-            onClick={deck.nextSlide}
+            onClick={() => {
+              deck.nextSlide();
+            }}
             disabled={nextSlideIndex === undefined}
           />
           {!reduced && (

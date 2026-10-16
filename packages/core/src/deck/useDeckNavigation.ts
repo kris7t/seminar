@@ -2,7 +2,9 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -25,6 +27,24 @@ import {
 
 /** Which steps of a slide to show when going to it. See `goTo`. */
 export type GoToSteps = 'start' | 'end' | 'restore';
+
+/** How to go to a slide. */
+export interface GoToOptions {
+  /**
+   * Whether the slide may fade into the next, e.g., `false` for swiping,
+   * which moves the slides instead. Defaults to `true`.
+   */
+  transition?: boolean | undefined;
+}
+
+/** How the slides fade when they change, see `SlideTransitions`. */
+export interface DeckTransitions {
+  transitions: SlideTransitions;
+  /** Whether the slide fades from one step to another. */
+  fadeSteps: boolean;
+  /** Whether the slide at index `from` fades into the one at `to`. */
+  fadeSlides: (from: number, to: number) => boolean;
+}
 
 export interface DeckNavigation {
   /** Zero-based index of the current slide. */
@@ -60,7 +80,7 @@ export interface DeckNavigation {
    * - `'restore'`: those last shown on the slide, or none if it hasn't been
    *   shown yet.
    */
-  goTo: (slideIndex: number, steps?: GoToSteps) => void;
+  goTo: (slideIndex: number, steps?: GoToSteps, options?: GoToOptions) => void;
   /** Goes to the next step, or to the next slide after the last step. */
   next: () => void;
   /**
@@ -72,12 +92,12 @@ export interface DeckNavigation {
    * Goes to the next slide, skipping any steps, and shows the steps last shown
    * on it (or none if it hasn't been shown yet).
    */
-  nextSlide: () => void;
+  nextSlide: (options?: GoToOptions) => void;
   /**
    * Goes to the previous slide, skipping any steps, and shows the steps last
    * shown on it.
    */
-  previousSlide: () => void;
+  previousSlide: (options?: GoToOptions) => void;
   /** Goes to the first step of the current slide. */
   firstStep: () => void;
   /**
@@ -146,8 +166,9 @@ export function useDeckNavigation(
   aliases: ReadonlyMap<string, number>,
   spares: readonly boolean[],
   slideState: SlideStateStore,
-  transitions?: SlideTransitions,
+  fades?: DeckTransitions,
 ): DeckNavigation {
+  const transitions = fades?.transitions;
   const slideCount = slideIds.length;
   const clamp = useCallback(
     (index: number) => Math.max(0, Math.min(index, slideCount - 1)),
@@ -180,31 +201,66 @@ export function useDeckNavigation(
     () => !stepStore.hasNext(),
   );
 
-  const goTo = useCallback(
-    (index: number, steps: GoToSteps = 'start') => {
-      const newIndex = clamp(index);
-      setRequestedIndex(newIndex);
-      // The position of each slide is kept, so restoring needs nothing else.
-      if (steps !== 'restore') {
-        slideState
-          .stepPosition(newIndex)
-          .set({ path: [], toEnd: steps === 'end', inRange: true });
+  // The slide shown now, even after a change that hasn't rendered yet when
+  // a callback reads it.
+  const shownIndexRef = useRef(slideIndex);
+  useLayoutEffect(() => {
+    shownIndexRef.current = slideIndex;
+  }, [slideIndex]);
+  /** Shows the slide at `index`, fading into it if it's a different one. */
+  const changeSlide = useCallback(
+    (index: number, update: () => void, transition = true) => {
+      transitions?.flush();
+      const from = shownIndexRef.current;
+      if (
+        transition &&
+        transitions !== undefined &&
+        index !== from &&
+        fades?.fadeSlides(from, index) === true
+      ) {
+        transitions.run(update, 'slide');
+      } else {
+        update();
       }
     },
-    [clamp, slideState],
+    [transitions, fades],
+  );
+  const goTo = useCallback(
+    (
+      index: number,
+      steps: GoToSteps = 'start',
+      { transition }: GoToOptions = {},
+    ) => {
+      const newIndex = clamp(index);
+      changeSlide(
+        newIndex,
+        () => {
+          setRequestedIndex(newIndex);
+          // The position of each slide is kept, so restoring needs nothing
+          // else.
+          if (steps !== 'restore') {
+            slideState
+              .stepPosition(newIndex)
+              .set({ path: [], toEnd: steps === 'end', inRange: true });
+          }
+        },
+        transition,
+      );
+    },
+    [clamp, slideState, changeSlide],
   );
   const nextSlideIndex = findNextSlide(spares, slideIndex);
   const previousSlideIndex = findPreviousSlide(spares, slideIndex);
   /** Changes the steps of the slide, fading it if it's shown. */
   const changeSteps = useCallback(
     (update: () => void) => {
-      if (transitions === undefined) {
+      if (transitions === undefined || fades?.fadeSteps !== true) {
         update();
       } else {
-        transitions.run(update);
+        transitions.run(update, 'step');
       }
     },
-    [transitions],
+    [transitions, fades],
   );
   const next = useCallback(() => {
     // Read the steps after the previous change.
@@ -227,16 +283,22 @@ export function useDeckNavigation(
       goTo(previousSlideIndex, 'end');
     }
   }, [transitions, stepStore, changeSteps, previousSlideIndex, goTo]);
-  const nextSlide = useCallback(() => {
-    if (nextSlideIndex !== undefined) {
-      goTo(nextSlideIndex, 'restore');
-    }
-  }, [goTo, nextSlideIndex]);
-  const previousSlide = useCallback(() => {
-    if (previousSlideIndex !== undefined) {
-      goTo(previousSlideIndex, 'restore');
-    }
-  }, [goTo, previousSlideIndex]);
+  const nextSlide = useCallback(
+    (options?: GoToOptions) => {
+      if (nextSlideIndex !== undefined) {
+        goTo(nextSlideIndex, 'restore', options);
+      }
+    },
+    [goTo, nextSlideIndex],
+  );
+  const previousSlide = useCallback(
+    (options?: GoToOptions) => {
+      if (previousSlideIndex !== undefined) {
+        goTo(previousSlideIndex, 'restore', options);
+      }
+    },
+    [goTo, previousSlideIndex],
+  );
   const firstStep = useCallback(() => {
     changeSteps(() => {
       stepStore.first();
@@ -255,8 +317,10 @@ export function useDeckNavigation(
     const newIndex =
       location === undefined ? slideIndex : clamp(location.slideIndex);
     if (location !== undefined) {
-      setRequestedIndex(newIndex);
-      slideState.stepPosition(newIndex).set(targetOf(location));
+      changeSlide(newIndex, () => {
+        setRequestedIndex(newIndex);
+        slideState.stepPosition(newIndex).set(targetOf(location));
+      });
     }
     // If we stay on the same slide, the steps of the slide are already known,
     // so we can restore the canonical hash right away. Otherwise, the effect

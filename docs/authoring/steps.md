@@ -97,7 +97,7 @@ lists in parallel.
 
 The audience and presenter views fade the whole slide from one step to the
 next, as the `stepTransition` of the theme says (see
-[Themes](themes.md#step-transitions)). Where the browser doesn't support
+[Themes](themes.md#transitions)). Where the browser doesn't support
 view transitions, or the viewer prefers reduced motion, steps change at
 once.
 
@@ -134,8 +134,9 @@ changes, e.g., moving a marker along a path, should follow these guidelines:
 
 A component that animates itself still fades in with the rest of the slide,
 which blurs a movement into a cross-fade of where the element was and where
-it moves. `useOwnAnimation` keeps an element out of the fade: the element
-shows how it is right away, and its own transitions play out in full.
+it moves. `useOwnAnimation` keeps an element out of the fade between steps: the
+element shows how it is right away, and its own transitions play out in
+full. It still fades with the slide when the slide changes.
 
 ```tsx
 import { useOwnAnimation, useStep } from '@slider/core';

@@ -78,6 +78,8 @@ Attributes in braces at the end of a heading set the props of its slide:
 - `title=…` is the title of the slide in the table of contents, e.g., a
   shorter one.
 - `lang=…` sets the language of the slide, e.g., for a quote.
+- `transition=…` cuts some of the fades from and to the slide, see
+  [Fades between slides](#fades-between-slides).
 - `steps=…` sets the default behavior of the steps on the slide, see
   [Steps](steps.md#behaviors).
 - `from`, `after`, `to`, and `before` limit the steps shown when going
@@ -90,6 +92,29 @@ A brace block at the end of a heading is read as attributes, rather than an
 MDX expression, as long as it only has ids, classes, `key=value` pairs, and
 bare words. So `## Total {count}` uses the master `count`, while
 `## Total {String(count)}` shows the value of `count`.
+
+## Fades between slides
+
+The slides fade into each other, unless the theme says otherwise.
+`transition` on a slide cuts some of its fades, whichever way the deck
+goes:
+
+| Value        | Cuts the fade                                                   |
+| ------------ | --------------------------------------------------------------- |
+| `fade`       | none, i.e., no preference, which is the default                 |
+| `cut`        | all, e.g., for a slide with a background of its own             |
+| `cut-before` | with the slide before it, e.g., which doesn't fade well into it |
+| `cut-after`  | with the slide after it                                         |
+| `cut-in`     | into it, from either side                                       |
+| `cut-out`    | out of it, to either side                                       |
+
+Values may be combined with spaces, e.g., `{transition="cut-in cut-after"}`.
+Two slides fade into each other unless either of them cuts that fade. When
+the deck jumps between slides, e.g., from the table of contents, the slide
+it leaves counts as before or after the one it enters.
+
+The master of a slide, e.g., of section slides, may cut fades, too, unless
+the slide sets its own `transition`.
 
 ## Spare slides and divisions
 

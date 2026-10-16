@@ -1,7 +1,7 @@
 import { createContext, use, type Context } from 'react';
 
 import type { ResolvedTocEntry } from '../toc/tableOfContents.ts';
-import type { GoToSteps } from './useDeckNavigation.ts';
+import type { GoToOptions, GoToSteps } from './useDeckNavigation.ts';
 
 export interface DeckState {
   /** The language of the slides, if the deck sets it. */
@@ -61,7 +61,7 @@ export interface DeckState {
    * - `'restore'`: those last shown on the slide, or none if it hasn't been
    *   shown yet.
    */
-  goTo: (slideIndex: number, steps?: GoToSteps) => void;
+  goTo: (slideIndex: number, steps?: GoToSteps, options?: GoToOptions) => void;
   /** Goes to the next step, or to the next slide after the last step. */
   next: () => void;
   /**
@@ -73,12 +73,12 @@ export interface DeckState {
    * Goes to the next slide, skipping any steps, and shows the steps last shown
    * on it (or none if it hasn't been shown yet).
    */
-  nextSlide: () => void;
+  nextSlide: (options?: GoToOptions) => void;
   /**
    * Goes to the previous slide, skipping any steps, and shows the steps last
    * shown on it.
    */
-  previousSlide: () => void;
+  previousSlide: (options?: GoToOptions) => void;
   /** Goes to the first step of the current slide. */
   firstStep: () => void;
   /**

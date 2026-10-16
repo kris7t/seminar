@@ -3,6 +3,10 @@ import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
+import type {
+  SlideMaster,
+  SlideTransitionProp,
+} from '../masters/SlideMaster.ts';
 import { Step } from '../steps/Step.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Slide } from './Slide.tsx';
@@ -213,6 +217,81 @@ describe('SlideTransitions', () => {
 
     it('fades the slide between steps', async () => {
       expect(await stepWith()).toHaveLength(1);
+    });
+
+    function renderSlides(
+      second: { transition?: SlideTransitionProp; master?: SlideMaster } = {},
+      theme?: ReturnType<typeof createSlideTheme>,
+    ) {
+      const started = fakeTransitions(document);
+      render(
+        <Deck {...(theme === undefined ? {} : { theme })}>
+          <Slide title="First">A</Slide>
+          <Slide title="Second" {...second}>
+            B
+          </Slide>
+        </Deck>,
+      );
+      return started;
+    }
+
+    it('fades from one slide to another', async () => {
+      const started = renderSlides();
+      const user = userEvent.setup();
+      await user.keyboard('{PageDown}');
+      expect(started).toHaveLength(1);
+      expect(document.documentElement.getAttribute(TRANSITION_ATTRIBUTE)).toBe(
+        'slide',
+      );
+    });
+
+    it('lets either slide turn off the fade', async () => {
+      const started = renderSlides({ transition: 'cut' });
+      const user = userEvent.setup();
+      // Into the slide, and out of it.
+      await user.keyboard('{PageDown}');
+      await user.keyboard('{PageUp}');
+      expect(started).toHaveLength(0);
+    });
+
+    it('cuts fades into a slide', async () => {
+      const started = renderSlides({ transition: 'cut-in' });
+      const user = userEvent.setup();
+      await user.keyboard('{PageDown}');
+      expect(started).toHaveLength(0);
+      // Going back leaves it.
+      await user.keyboard('{PageUp}');
+      expect(started).toHaveLength(1);
+    });
+
+    it('cuts fades with the slide before it, both ways', async () => {
+      const started = renderSlides({ transition: 'cut-before' });
+      const user = userEvent.setup();
+      await user.keyboard('{PageDown}');
+      await user.keyboard('{PageUp}');
+      expect(started).toHaveLength(0);
+    });
+
+    it('keeps fades with the slide before it when cutting after it', async () => {
+      const started = renderSlides({ transition: 'cut-after cut-out' });
+      const user = userEvent.setup();
+      await user.keyboard('{PageDown}');
+      expect(started).toHaveLength(1);
+    });
+
+    it('lets the master of the slide turn off the fade', async () => {
+      const Cut: SlideMaster = ({ children }) => <div>{children}</div>;
+      Cut.transition = 'cut';
+      const started = renderSlides({ master: Cut });
+      await userEvent.setup().keyboard('{PageDown}');
+      expect(started).toHaveLength(0);
+    });
+
+    it('changes slides at once without a duration', async () => {
+      const theme = createSlideTheme({ slideTransition: { duration: 0 } });
+      const started = renderSlides({}, theme);
+      await userEvent.setup().keyboard('{PageDown}');
+      expect(started).toHaveLength(0);
     });
 
     it('changes steps at once without a duration', async () => {

@@ -188,7 +188,7 @@ blurred step nested in a dimmed or hidden step stays dimmed or hidden.
 
 Appearances apply at once, without CSS transitions: the audience and
 presenter views fade the whole slide from one step to the next instead, see
-[Step transitions](#step-transitions). Transitions on appearance classes
+[Transitions](#transitions). Transitions on appearance classes
 would fade a step and the steps nested in it at the same time, which shows
 the nested steps through while they should stay hidden.
 
@@ -198,19 +198,35 @@ steps nested in it don't inherit it, and it ignores whether a step around it
 already hides or dims it more. The dimming of `dimmed` can be adjusted with
 the `--SliderStep-dim-opacity` custom property.
 
-## Step transitions
+## Transitions
 
 The audience and presenter views fade the whole slide from one step to the
-next with a view transition, where the browser supports it, and unless the
-viewer prefers reduced motion. `stepTransition` in the theme options sets
-how:
+next, and from one slide to the next, with view transitions, where the
+browser supports them, and unless the viewer prefers reduced motion. Swiping
+moves the slides instead. `stepTransition` and `slideTransition` in the
+theme options set how:
 
 ```ts
 createSlideTheme({
   stepTransition: { duration: 200, easing: 'ease-out' },
+  slideTransition: { duration: 0 },
 });
 ```
 
-The duration defaults to 250 milliseconds and the easing to `ease`, like
-view transitions of browsers. A duration of 0 changes steps at once, without
-view transitions.
+Both default to 150 milliseconds with the `ease` easing. A duration of 0 changes steps or slides at once,
+without view transitions, e.g., to cut between slides, as in many talks.
+
+Masters can cut the fades from and to their slides with a `transition`,
+unless a slide sets its own, e.g., `'cut'` for title slides with a
+background of their own:
+
+```ts
+// `as const` keeps the type of the property from widening to `string`.
+SectionMaster.transition = 'cut' as const;
+
+createSlideTheme({ master: { section: SectionMaster } });
+```
+
+The values are those of the `transition` of slides (see
+[Decks and slides](../core/decks.md#slide-attributes)), and may be combined
+in an array, e.g., `['cut-in', 'cut-after']`.
