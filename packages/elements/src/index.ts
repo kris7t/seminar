@@ -22,6 +22,19 @@ export {
   type CalloutTitleProps,
 } from './callout/CalloutTitle.tsx';
 export {
+  Column,
+  columnClasses,
+  type ColumnClassKey,
+  type ColumnProps,
+} from './columns/Column.tsx';
+export {
+  Columns,
+  columnsClasses,
+  type ColumnsAlign,
+  type ColumnsClassKey,
+  type ColumnsProps,
+} from './columns/Columns.tsx';
+export {
   clampElevation,
   parseBoxShadow,
   ShadowFilter,

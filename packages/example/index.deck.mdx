@@ -114,7 +114,23 @@ Another paragraph.
 
 ## Typesetting
 
-Formulas with MathJax
+Layout and formulas
+
+### Columns
+
+:::column[Side by side]
+Consecutive `:::column` containers are laid out next to each other
+:::
+
+:::column[In steps]{step grow=2}
+`{step}` reveals a column, and `{grow=2}` or `{width=300}` sizes it
+
+- :step And also allows for sub-items
+- :step Like this
+  :::
+
+:step `::::columns{gap=… align=…}` around them spaces them, with more colons
+than the fences inside it
 
 ### Math
 

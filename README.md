@@ -211,6 +211,13 @@ slider({ plugins: ['@slider/elements'] });
   and themes can set defaults and add variants with `SliderCallout` and
   `SliderCalloutTitle`.
 
+- **Columns:** consecutive `:::column` containers are laid out side by side,
+  sharing the width, e.g., with `{grow=2}` or `{width=400}`, and
+  `:::column[Title]` shows a centered title. `::::columns{gap=… align=…}`
+  around them spaces them, with more colons than the fences inside it. Like
+  paragraphs, columns are shown with the step before them, unless they are
+  steps of their own, e.g., `:::column{step}`.
+
 ## License
 
 [Apache License 2.0](LICENSE)

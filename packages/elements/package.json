@@ -12,6 +12,16 @@
         "exportName": "CalloutDirective",
         "formProp": "directive",
         "labelProp": "label"
+      },
+      "columns": {
+        "source": "@slider/elements",
+        "exportName": "Columns"
+      },
+      "column": {
+        "source": "@slider/elements",
+        "exportName": "Column",
+        "labelProp": "heading",
+        "wrapIn": "columns"
       }
     }
   },
