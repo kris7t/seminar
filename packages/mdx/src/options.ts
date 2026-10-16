@@ -11,6 +11,7 @@ import {
 import { recmaSlideExports } from './deck/recmaSlideExports.ts';
 import { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
 import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts';
+import { remarkImages } from './images/remarkImages.ts';
 import { remarkNotes } from './notes/remarkNotes.ts';
 import { directiveHandlers } from './directives/directiveHandlers.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
@@ -70,6 +71,7 @@ export function sliderMdxOptions({
       ...(math === false ? [] : [remarkMath]),
       remarkDirective,
       remarkNotes,
+      remarkImages,
       remarkSteps,
       [remarkSlides, { ...options, onDependency }],
       [

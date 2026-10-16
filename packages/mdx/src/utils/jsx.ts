@@ -11,6 +11,7 @@ export const SLIDE = '_SliderSlide';
 export const STEP = '_SliderStep';
 export const LIST_ITEM = '_SliderListItem';
 export const PARAGRAPH = '_SliderParagraph';
+export const IMAGE = '_SliderImage';
 export const SLIDE_ELEMENT = '_SliderSlideElement';
 export const FORMULA = '_SliderFormula';
 export const NOTES = '_SliderNotes';

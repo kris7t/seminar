@@ -96,6 +96,11 @@ Presenter notes, shown only to the presenter.
 - **Includes:** `::include[./other.deck.mdx#id]` includes a slide or a section
   of another deck, and `::include[./other.deck.mdx]` the whole deck. Only the
   included slides are bundled.
+- **Images:** images next to the deck, e.g., `![Architecture](./arch.svg)`,
+  are bundled, and an image on a line of its own is a block. Attributes after
+  an image set its id, classes, size, and steps, e.g.,
+  `![Architecture](./arch.svg){#arch width=600 step}`. Like paragraphs, images
+  are shown with the step before them, unless they are steps of their own.
 - **Math:** `$…$` and `$$…$$` are typeset with MathJax at build time.
 - **Notes:** `:::notes` blocks hold presenter notes.
 - **Components:** imported React components can be used as slide content or as
