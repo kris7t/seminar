@@ -99,7 +99,9 @@ Presenter notes, shown only to the presenter.
 - **Images:** images next to the deck, e.g., `![Architecture](./arch.svg)`,
   are bundled, and an image on a line of its own is a block. Attributes after
   an image set its id, classes, size, and steps, e.g.,
-  `![Architecture](./arch.svg){#arch width=600 step}`. Like paragraphs, images
+  `![Architecture](./arch.svg){#arch width=600 step}`. The title of a block
+  image is its caption, e.g., `![A parse tree](./tree.svg "Parsing")`, where
+  the alt text says what the image shows. Like paragraphs, images
   are shown with the step before them, unless they are steps of their own.
 - **Math:** `$…$` and `$$…$$` are typeset with MathJax at build time.
 - **Notes:** `:::notes` blocks hold presenter notes.

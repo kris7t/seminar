@@ -110,10 +110,19 @@ function convertImage(
   const { id, classes, attributes: others } = getAttributes(attributes ?? {});
   const jsxAttributes: MdxJsxAttribute[] = [
     sourceAttribute(source.url, images),
-    createStringAttribute('alt', node.alt ?? ''),
+    // Images decide what to do without alt text, e.g., with a caption.
+    ...(options.inNotes || (node.alt ?? '') !== ''
+      ? [createStringAttribute('alt', node.alt ?? '')]
+      : []),
+    // The titles of block images are their captions.
     ...(source.title === null || source.title === undefined
       ? []
-      : [createStringAttribute('title', source.title)]),
+      : [
+          createStringAttribute(
+            options.block && !options.inNotes ? 'caption' : 'title',
+            source.title,
+          ),
+        ]),
     ...(options.block && !options.inNotes
       ? [{ type: 'mdxJsxAttribute', name: 'block', value: null } as const]
       : []),
@@ -229,7 +238,8 @@ function collectDefinitions(node: Nodes, images: Images): void {
  * rewrites to directives:
  *
  * - An image on a line of its own, i.e., a paragraph with only the image, and
- *   maybe a `:step`, is a block, which takes the props of the `:step`.
+ *   maybe a `:step`, is a block, which takes the props of the `:step`, and
+ *   whose title is its caption.
  * - Other images are in the text.
  *
  * Images next to the deck, e.g., `./arch.svg`, are imported, so that bundlers

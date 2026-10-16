@@ -42,4 +42,38 @@ describe('Image', () => {
     expect(window.location.hash).toBe('#slide=1&step=2');
     expect(rootOf(block)?.classList).toContain(stepClasses.current);
   });
+
+  it('shows the caption of block images in a figure', () => {
+    render(
+      <Deck>
+        <Slide>
+          <Image src="a.svg" block caption="Captioned" data-testid="figure" />
+          <Image
+            src="b.svg"
+            alt="Tree"
+            block
+            caption="Both"
+            data-testid="both"
+          />
+          <Image src="c.svg" caption="Ignored" data-testid="inline" />
+          <Image src="d.svg" block data-testid="decorative" />
+        </Slide>
+      </Deck>,
+    );
+    const img = (testId: string) => {
+      const element = screen.getByTestId(testId).querySelector('img');
+      if (element === null) throw new Error(`Missing image ${testId}`);
+      return element;
+    };
+    const figure = screen.getByTestId('figure');
+    expect(figure.tagName).toBe('FIGURE');
+    expect(figure.querySelector('figcaption')?.textContent).toBe('Captioned');
+    // The caption stands in for the alt text.
+    expect(img('figure').hasAttribute('alt')).toBe(false);
+    expect(img('both').getAttribute('alt')).toBe('Tree');
+    expect(screen.getByTestId('inline').tagName).toBe('SPAN');
+    expect(screen.queryByText('Ignored')).toBeNull();
+    expect(img('decorative').getAttribute('alt')).toBe('');
+    expect(screen.getByTestId('decorative').tagName).toBe('DIV');
+  });
 });
