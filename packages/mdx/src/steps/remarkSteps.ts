@@ -16,7 +16,11 @@ import { EXPLICIT_JSX, STEP } from '../utils/jsx.ts';
  */
 export const STEP_PROPERTY = 'dataSliderStep';
 
-const WITH_VALUES: ReadonlySet<string> = new Set(['previous', 'initial']);
+const WITH_VALUES: ReadonlySet<string> = new Set([
+  'self',
+  'previous',
+  'initial',
+]);
 
 /**
  * Returns the `with` prop of a step from the attributes of its directive.
@@ -30,7 +34,7 @@ export function getWith(
   const withValue = attributes.get('with');
   if (withValue !== undefined && !WITH_VALUES.has(withValue)) {
     file.message(
-      `Expected \`with=previous\` or \`with=initial\` on \`:step\`, got \`with=${withValue}\``,
+      `Expected \`with=self\`, \`with=previous\`, or \`with=initial\` on \`:step\`, got \`with=${withValue}\``,
     );
     return 'previous';
   }

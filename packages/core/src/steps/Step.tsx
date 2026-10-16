@@ -157,6 +157,15 @@ export interface StepProps
   /** See the `after` option of `useSteps`. */
   after?: string | undefined;
   /**
+   * Group or element to nest the step in when it isn't placed with `in`,
+   * `with`, or `after`, and doesn't join a group with other steps. Wrapper
+   * components can use this to attach themselves to another step by default,
+   * e.g., callouts to the step of the element they point at. Steps creating
+   * a group, e.g., with an `id`, are still nested in it. `with="self"`
+   * places the step where it is instead.
+   */
+  defaultIn?: string | Element | undefined;
+  /**
    * Title of the step in the tree of steps, instead of its text. Unlike the
    * HTML attribute, it isn't shown as a tooltip.
    */
@@ -267,6 +276,7 @@ export function Step(inProps: StepProps): JSX.Element {
     group = id,
     in: parent,
     after,
+    defaultIn,
     title,
     behavior: themeBehavior,
     defaultBehavior,
@@ -285,10 +295,18 @@ export function Step(inProps: StepProps): JSX.Element {
     'reveal';
   const appearances = rankAppearances(theme, appearancesOf(theme, behavior));
   const together = use(TogetherContext);
+  // Steps placed explicitly aren't placed by `defaultIn`. Joining a group
+  // with other steps is left to the store, which knows the group.
+  const placed =
+    together !== undefined ||
+    withStep !== undefined ||
+    parent !== undefined ||
+    after !== undefined;
   const step = useStep({
     with: together ?? withStep,
     group,
     in: parent,
+    defaultIn: placed ? undefined : defaultIn,
     after,
     title,
     appearances,

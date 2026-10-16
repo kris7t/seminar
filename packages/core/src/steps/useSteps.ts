@@ -55,6 +55,9 @@ export interface StepHandle extends StepState {
 /**
  * How a stepper is linked to other steps:
  *
+ * - `'self'` starts with a step of its own after the previous one, which is
+ *   the default. Setting it explicitly also places a `Step` where it is,
+ *   rather than in its `defaultIn`.
  * - `'previous'` shows its first step together with the previous stepper on
  *   the same level. If there is no previous stepper on the level, it works
  *   like `'initial'`.
@@ -69,7 +72,7 @@ export interface StepHandle extends StepState {
  *
  * By default, a stepper starts with a new step after the previous one.
  */
-export type StepWith = 'previous' | 'initial' | StepHandle;
+export type StepWith = 'self' | 'previous' | 'initial' | StepHandle;
 
 export interface UseStepsOptions {
   /** See {@link StepWith}. */
@@ -96,6 +99,11 @@ export interface UseStepsOptions {
    * for callouts pointing at the element. Ignored if `with` is a handle.
    */
   in?: string | Element | undefined;
+  /**
+   * Like `in`, but only if the stepper doesn't join a group with other
+   * elements. Ignored if `with` is a handle.
+   */
+  defaultIn?: string | Element | undefined;
   /**
    * Name of the group to place this stepper right after, nested in the same
    * stepper as the group, before the steppers that follow the group in
@@ -144,6 +152,7 @@ export function useSteps(
     with: withStep,
     group,
     in: parent,
+    defaultIn,
     after,
     title,
     appearances,
@@ -155,7 +164,8 @@ export function useSteps(
   // Hooks can't be called conditionally, so we still create a node if we're
   // linked to another stepper, but never attach it or subscribe to it.
   const linked = typeof withStep === 'object';
-  const placement = linked ? 'next' : (withStep ?? 'next');
+  const placement =
+    linked || withStep === 'self' ? 'next' : (withStep ?? 'next');
   const ref = useCallback<RefCallback<Element>>(
     (element) =>
       element === null
@@ -164,11 +174,22 @@ export function useSteps(
             count,
             placement,
             parent,
+            defaultParent: defaultIn,
             after,
             title,
             appearances,
           }),
-    [store, node, count, placement, parent, after, title, appearances],
+    [
+      store,
+      node,
+      count,
+      placement,
+      parent,
+      defaultIn,
+      after,
+      title,
+      appearances,
+    ],
   );
   const { stepIndex, phase, inherited } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,

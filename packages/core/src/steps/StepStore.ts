@@ -85,6 +85,11 @@ export interface StepOptions {
    */
   parent?: string | Element | undefined;
   /**
+   * Like `parent`, but only if the stepper has no other elements, i.e., it
+   * doesn't join an existing group.
+   */
+  defaultParent?: string | Element | undefined;
+  /**
    * Group of the stepper to place the stepper right after, on the level of
    * that stepper, i.e., nested in the same stepper. Takes precedence over
    * `parent` and the steppers enclosing the elements of the stepper.
@@ -694,11 +699,14 @@ export class StepStore {
         return undefined;
       }
       const predecessor = predecessors.get(node);
+      const parentOption =
+        anchor.options.parent ??
+        (node.elements.size === 1 ? anchor.options.defaultParent : undefined);
       const parent =
         predecessor === undefined
-          ? typeof anchor.options.parent === 'object'
-            ? this.#findParent(node, anchor.options.parent, anchors, true)
-            : (this.#findGroup(anchor.options.parent, node, anchors) ??
+          ? typeof parentOption === 'object'
+            ? this.#findParent(node, parentOption, anchors, true)
+            : (this.#findGroup(parentOption, node, anchors) ??
               this.#findParent(node, anchor.element, anchors))
           : findParent(predecessor);
       // A stepper placed after one nested in it ends up in itself.

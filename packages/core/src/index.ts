@@ -46,6 +46,18 @@ export {
 export { Notes, type NotesProps } from './notes/Notes.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
 export {
+  parseSlidePoint,
+  resolveSlidePoint,
+  SLIDE_BOX,
+  useSlideBox,
+  useSlidePoint,
+  type SlideBox,
+  type SlideCoordinate,
+  type SlidePoint,
+  type SlidePointOptions,
+  type SlidePointPosition,
+} from './slide/slideBoxes.ts';
+export {
   SlideElement,
   useSlideElement,
   useSlideElementId,

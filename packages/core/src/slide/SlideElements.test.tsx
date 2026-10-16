@@ -142,4 +142,65 @@ describe('SlideElement', () => {
     expect(window.location.hash).toBe('#slide=1&step=1.1');
     expect(isCurrent('pointer')).toBe(true);
   });
+
+  it('nests steps in their default only if they are not placed', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Step data-testid="default" defaultIn="figure">
+            Default
+          </Step>
+          <Step id="named" data-testid="named" defaultIn="figure">
+            Named
+          </Step>
+          <Step data-testid="self" with="self" defaultIn="figure">
+            Next
+          </Step>
+          <Step group="figure">Figure</Step>
+          <Step data-testid="joined" group="figure" defaultIn="other">
+            Joined
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    const isCurrent = (testId: string) =>
+      screen.getByTestId(testId).classList.contains(stepClasses.current);
+    await user.keyboard('{ArrowRight}');
+    // The step with `with="self"` comes first, where it is.
+    expect(isCurrent('self')).toBe(true);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=figure');
+    // Joining a group places the step in the group.
+    expect(isCurrent('joined')).toBe(true);
+    await user.keyboard('{ArrowRight}');
+    // Steps with only an id are still nested in their default.
+    expect(window.location.hash).toBe('#slide=1&step=figure.1');
+    expect(isCurrent('default')).toBe(true);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=named');
+    expect(isCurrent('named')).toBe(true);
+  });
+
+  it('nests steps creating a group in their default', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Step data-testid="fresh" group="fresh" defaultIn="figure">
+            Fresh
+          </Step>
+          <Step group="figure">Figure</Step>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=fresh');
+    expect(
+      screen.getByTestId('fresh').classList.contains(stepClasses.current),
+    ).toBe(true);
+    // The group is nested in the figure.
+    await user.keyboard('{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=1&step=figure');
+  });
 });

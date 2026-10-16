@@ -140,7 +140,9 @@ describe('steps', () => {
       ...sliderMdxOptions(),
     });
     expect(file.messages.map(String)).toEqual([
-      expect.stringContaining('Expected `with=previous` or `with=initial`'),
+      expect.stringContaining(
+        'Expected `with=self`, `with=previous`, or `with=initial`',
+      ),
       expect.stringContaining("Ignoring `:step`, which isn't allowed here"),
     ]);
   });

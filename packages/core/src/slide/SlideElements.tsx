@@ -121,20 +121,26 @@ const NO_ELEMENT = (): undefined => undefined;
 const NO_SUBSCRIPTION = (): (() => void) => () => undefined;
 
 /**
- * Returns the element called `name` on the enclosing slide, in the same
- * rendering of the slide, once it's rendered.
+ * Returns the element `target`: the element called `target` on the enclosing
+ * slide, in the same rendering of the slide, once it's rendered, or `target`
+ * itself if it's an element. This lets components take either an element or
+ * its name.
  */
-export function useSlideElement(name: string | undefined): Element | undefined {
+export function useSlideElement(
+  target: Element | string | undefined,
+): Element | undefined {
   const store = use(SlideElementContext);
+  const name = typeof target === 'string' ? target : undefined;
   const getSnapshot = useCallback(
     () => (name === undefined ? undefined : store?.get(name)),
     [store, name],
   );
-  return useSyncExternalStore(
+  const named = useSyncExternalStore(
     store?.subscribe ?? NO_SUBSCRIPTION,
     store === undefined ? NO_ELEMENT : getSnapshot,
     NO_ELEMENT,
   );
+  return typeof target === 'object' ? target : named;
 }
 
 export type SlideElementProps<T extends ElementType> = {
