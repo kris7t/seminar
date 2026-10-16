@@ -1,4 +1,5 @@
 import { generateUtilityClasses } from '@mui/material';
+import { useForkRef } from '@mui/material/utils';
 import {
   styled,
   useTheme,
@@ -14,6 +15,10 @@ import {
   type ReactNode,
 } from 'react';
 
+import {
+  useSlideElementId,
+  useSlideElementRef,
+} from '../slide/SlideElements.tsx';
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../utils/classNames.ts';
 import {
@@ -135,7 +140,13 @@ export interface StepProps
    * determines the step instead.
    */
   with?: StepWith | undefined;
-  /** See the `group` option of `useSteps`. */
+  /**
+   * Name of the element of the step on the slide, which gets an id unique in
+   * the document (see `useSlideElementId`). The step joins the group of the
+   * same name, unless `group` is set.
+   */
+  id?: string | undefined;
+  /** See the `group` option of `useSteps`. Defaults to `id`. */
   group?: string | undefined;
   /**
    * Name of the group to nest the step in, as if it was inside the elements of
@@ -251,7 +262,8 @@ export function Step(inProps: StepProps): JSX.Element {
   const {
     component = 'div',
     with: withStep,
-    group,
+    id,
+    group = id,
     in: parent,
     after,
     title,
@@ -280,7 +292,10 @@ export function Step(inProps: StepProps): JSX.Element {
     title,
     appearances,
   });
-  const { ref, phase, inherited } = step;
+  const { phase, inherited } = step;
+  const elementId = useSlideElementId(id ?? '');
+  const elementRef = useSlideElementRef(id ?? '');
+  const ref = useForkRef(step.ref, id === undefined ? null : elementRef);
   // Elements inside a step already look like it, e.g., hidden or dimmed.
   const appearance = moreHidden(
     moreHidden(appearances[phase], inherited),
@@ -290,6 +305,7 @@ export function Step(inProps: StepProps): JSX.Element {
     <StepRoot
       as={component}
       ref={ref}
+      id={id === undefined ? undefined : elementId}
       className={classNames(
         stepClasses.root,
         stepClasses[phase],

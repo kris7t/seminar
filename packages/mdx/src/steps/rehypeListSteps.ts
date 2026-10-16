@@ -64,6 +64,7 @@ function convertListItem(item: Element): MdxJsxFlowElementHast {
     attributes,
     children: item.children,
     data: EXPLICIT_JSX_HAST,
+    ...(item.position === undefined ? {} : { position: item.position }),
   };
 }
 
@@ -74,6 +75,8 @@ interface GroupUse {
   depth: number;
   /** The explicit `with` attribute of the element, if any. */
   with: string | undefined;
+  /** Whether the group is named after the id of the step. */
+  implicit: boolean;
 }
 
 /** Uses of each step group on a slide, to check them for mistakes. */
@@ -110,6 +113,14 @@ function getAttribute(
     }
   }
   return undefined;
+}
+
+/** Whether `node` is a `Step`, which joins the group named after its id. */
+function isStepElement(node: RootContent | ElementContent): boolean {
+  return (
+    (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') &&
+    (node.name === STEP || node.name === 'Step')
+  );
 }
 
 function isStep(node: RootContent | ElementContent): boolean {
@@ -155,8 +166,13 @@ function checkGroups(
       continue;
     }
     // Groups that other steps are nested in or placed after may have a single
-    // element.
-    if (others.length === 0 && !nested.has(group) && !followed.has(group)) {
+    // element, and so may groups named after the ids of their steps.
+    if (
+      others.length === 0 &&
+      !anchor.implicit &&
+      !nested.has(group) &&
+      !followed.has(group)
+    ) {
       file.message(
         `The step group \`${group}\` is only used once on the slide`,
         { place: anchor.place },
@@ -209,7 +225,11 @@ function convertChildren(
         ]);
       }
     }
-    const group = getAttribute(converted, 'group');
+    // Steps with an id are in the group of the same name by default.
+    const explicitGroup = getAttribute(converted, 'group');
+    const group =
+      explicitGroup ??
+      (isStepElement(converted) ? getAttribute(converted, 'id') : undefined);
     if (group !== undefined && child.position !== undefined) {
       groups.uses.set(group, [
         ...(groups.uses.get(group) ?? []),
@@ -217,6 +237,7 @@ function convertChildren(
           place: child.position,
           depth,
           with: getAttribute(converted, 'with'),
+          implicit: explicitGroup === undefined,
         },
       ]);
     }
@@ -245,7 +266,8 @@ function convertChildren(
  * - `after=name` places the step right after the group `name` on the slide,
  *   nested in the same step as the group.
  * - `title` sets the title of the step in the tree of steps.
- * - Ids, classes, and other attributes are passed to the step.
+ * - Ids, classes, and other attributes are passed to the step. A step with
+ *   an id is in the group of the same name, unless it has a `group`.
  *
  * Must run after {@link remarkSlides}, which imports the `Step` component.
  */

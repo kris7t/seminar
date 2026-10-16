@@ -46,6 +46,13 @@ export {
 export { Notes, type NotesProps } from './notes/Notes.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
 export {
+  SlideElement,
+  useSlideElement,
+  useSlideElementId,
+  useSlideElementRef,
+  type SlideElementProps,
+} from './slide/SlideElements.tsx';
+export {
   SlideStateScope,
   type SlideStateScopeProps,
 } from './state/SlideStateScope.tsx';

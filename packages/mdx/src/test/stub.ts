@@ -15,6 +15,10 @@ export function Step(): null {
   return null;
 }
 
+export function SlideElement(): null {
+  return null;
+}
+
 export function Formula(): null {
   return null;
 }

@@ -12,6 +12,7 @@ import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
 import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepBehaviorContext } from '../steps/StepBehaviorContext.ts';
+import { SlideElementScope } from './SlideElements.tsx';
 import { SlideViewContext, useSlideView } from './SlideViewContext.ts';
 
 export interface SlideProps {
@@ -140,17 +141,20 @@ export function Slide({
     { title, className },
     children,
   );
+  // Every rendering of the slide names its elements on its own.
   const content = (
-    <StepBehaviorContext value={steps}>
-      {slideLang === undefined ? (
-        master
-      ) : (
-        // Without a box of its own, so that the master is laid out as before.
-        <div lang={slideLang} style={{ display: 'contents' }}>
-          {master}
-        </div>
-      )}
-    </StepBehaviorContext>
+    <SlideElementScope>
+      <StepBehaviorContext value={steps}>
+        {slideLang === undefined ? (
+          master
+        ) : (
+          // Without a box of its own, so that the master is laid out as before.
+          <div lang={slideLang} style={{ display: 'contents' }}>
+            {master}
+          </div>
+        )}
+      </StepBehaviorContext>
+    </SlideElementScope>
   );
   // Recaps share the state of the slide they recap.
   return recapOf === undefined ? (

@@ -63,6 +63,10 @@ Presenter notes, shown only to the presenter.
   classes, or the title in the table of contents, e.g.,
   `## Intro {#intro .wide section title=Introduction}`. Ids appear in the
   address, e.g., `#intro`.
+- **Element names:** ids inside a slide, like `<img id="arch">` or
+  `:step{#parse}`, name elements on that slide only, so that slides can be
+  shown several times at once, recapped, and included. `useSlideElement` finds
+  them in components.
 - **Spare slides:** `{spare}` marks a slide, or the slides of a section, as
   spare, e.g., for questions. Going through the deck skips them, but they can
   be chosen from the table of contents or the overview. `{noslide}` on a
@@ -75,7 +79,8 @@ Presenter notes, shown only to the presenter.
   like those in [`packages/core/src/i18n/locales`](packages/core/src/i18n/locales).
 - **Steps:** `:step` at the start of a list item or paragraph shows it in a new
   step. `:step{group=name}` reveals items together, and the address refers to
-  it by name, e.g., `#intro&step=name`. `:step{title=…}` names a step in the
+  it by name, e.g., `#intro&step=name`. A step with an id, like
+  `:step{#name}`, is in the group `name`, unless it has a `group`. `:step{title=…}` names a step in the
   step tree (Shift+T). `<Step>`, `<Steps>`, and `<Together>` do the same in
   JSX.
 - **Step behaviors:** `:step{only}` or `{steps=only}` on a slide sets how steps
