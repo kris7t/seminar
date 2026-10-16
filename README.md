@@ -56,124 +56,47 @@ Presenter notes, shown only to the presenter.
 :::
 ```
 
-- **Slides:** `#` starts the title slide, `##` a section, `###` a content slide,
-  `---` a slide without a title, and `::slide[Title]` a slide with a title but
-  no heading. `depth:` in the frontmatter shifts these levels.
-- **Slide props:** attributes at the end of a heading, or of `::slide`, set
-  the id, the master (a bare word for a master of the theme, or `master=` for
-  an imported one), classes, or the title in the table of contents, e.g.,
+- **Slides:** `#` starts the title slide, `##` a section, `###` a content
+  slide, `---` a slide without a title, and `::slide[Title]` one without a
+  heading. `depth:` in the frontmatter shifts these levels.
+- **Slide props:** attributes at the end of a heading set the id, the master,
+  classes, or the title in the table of contents, e.g.,
   `## Intro {#intro .wide section title=Introduction}`. Ids appear in the
-  address, e.g., `#intro`. To show a variable at the end of a heading, write
-  an expression like `{String(count)}`, since `{count}` sets the master.
-  `{spare}` marks a slide as spare, e.g., a backup slide for questions, which
-  going through the deck skips, but which can be chosen from the table of
-  contents, the overview, or by number, and the arrow keys go on from it.
-  Spare title, section, and subsection slides make the slides in them spare,
-  unless they have `{spare=false}`. `{noslide}` on a title, section, or
-  subsection heading only groups the slides under it in the table of contents
-  and the overview, without a slide of its own. Its id goes to its first
-  slide that isn't spare. Without a slide in the address, the deck starts at
-  its first slide that isn't spare. `:slide{…}` in a heading does the same, and also makes
-  headings deeper than `depth:` slides.
+  address, e.g., `#intro`.
+- **Spare slides:** `{spare}` marks a slide, or the slides of a section, as
+  spare, e.g., for questions. Going through the deck skips them, but they can
+  be chosen from the table of contents or the overview. `{noslide}` on a
+  heading groups slides without a slide of its own.
 - **Languages:** `lang:` in the frontmatter sets the language of the deck,
-  e.g., `lang: hu`, which defaults to English, and `{lang=…}` that of a
-  slide, so that screen readers read them out correctly. Included slides keep
-  the language of their deck, unless the include has `{lang=…}`. The menus and
-  buttons are shown in the language of the deck, if slider has it (English,
-  Hungarian, German, or French), or in English, which viewers can also choose
-  in the menu, and which their browsers may prefer. `uiLanguages: [de, fr]`
-  offers other languages instead of English, e.g., for students
-  from abroad, and `uiLanguages: [{ pt: ./pt.json }]` adds a language from a
-  file with its messages in the JSON format of i18next, like those in
-  [`packages/core/src/i18n/locales`](packages/core/src/i18n/locales). Only
-  the offered languages are bundled.
-- **Steps:** list items with `:step` at their start or end appear in new
-  steps, and so do paragraphs with `:step`. `:step{with=previous}` and
-  `:step{with=initial}` attach them to other steps, and `:step{group=name}`
-  reveals items together. The address refers to steps of groups by name,
-  e.g., `#intro&step=name`, or `#intro&step=name.2` for the second step nested
-  in it, so that links survive steps added before them. `:step{after=name}` places a step right after the
-  group `name`, at its level, and `:step{title=…}` names a step in the step
-  tree (Shift+T), which otherwise shows its text. `<Step>`, `<Steps>`, and
-  `<Together>` from `@slider/core` do the same in JSX.
-- **Step ranges:** `{from=…}` or `{after=…}`, and `{to=…}` or `{before=…}`
-  on a slide restrict the steps that going through it shows, e.g.,
-  `{after=1 to=parse}`, inclusive with `from` and `to`, and exclusive with
-  `after` and `before`. A step stands for the steps nested in it, too, unless
-  it ends with `.0`: `{to=1}` ends at 1.9, but `{to=1.0}` before 1.1. The
-  step tree strikes through the skipped steps, which can still be chosen
-  there.
-- **Recaps:** `::recap[#id]` shows the slide `id` again, e.g., to continue
-  its steps later. Without `from` or `after`, the recap continues where the
-  previous showing of the slide ended, e.g., `{to=1}` on the slide makes the
-  recap start after step 1, or only shows the last step if all were shown.
-  Recaps take `#id`, `title`, the range of steps, and `spare`, and get an id
-  like `intro-recap` otherwise. They share the state of the slide, but not its
-  steps.
-- **Includes:** `::include[./other.deck.mdx#id]` includes the slide `id` of
-  another deck, or a package's deck like `::include[pkg/talk.deck.mdx#id]`,
-  with `#id`, `title`, `spare`, and a range of steps that override its own. A
-  recap is included as a slide, with the steps it would show as a recap. If
-  `id` is a division, e.g., a section, the division is included with its
-  slides, their ranges of steps, recaps, and `spare`. `::include[./other.deck.mdx]`
-  includes the whole deck, or the slides `{from=id}` or `{after=id}` to
-  `{to=id}` or `{before=id}`. Included sections stay sections, and included content slides stay content slides. Slides
-  included again, e.g., in overlapping ranges, or through other decks, recap
-  the first inclusion, continuing its steps, unless the include has `{copy}`. `::include[#id]` and
-  `::include[.]{from=…}` include slides of the deck itself: as recaps that
-  repeat their own steps, unlike `::recap`, which continues them, or as copies
-  with their own state with `{copy}`. The slides
-  are imported from the other deck, which resolves its own imports, and
-  bundlers only keep the included slides and what they import.
-- **Step behaviors:** `:step{behavior=…}` or a shorthand like `:step{only}`, or
-  `{steps=…}` on a slide, sets how steps look before, during, and after their
-  turn: `reveal` (the default), `dim` (past steps are dimmed), `preview`
-  (future steps are dimmed), `focus` (both), `only` (hidden outside their
-  turn), or `scoped` (like `reveal`, but hidden once the step it's nested in
-  is past). `:step{in=name}` nests a
-  step in the step of the group `name`, e.g., for callouts elsewhere on the
-  slide. Nested steps look at least as hidden as their parent. Themes can
-  restyle steps as `SliderStep`, and add behaviors with `stepBehaviors` and
-  looks between shown, dimmed, and hidden with `stepAppearances`. Behaviors
-  set the look in each phase: `future`, `current`, `open` (current, with a
-  nested step shown), `past`, and for nested steps, `distantFuture` and
-  `distantPast`, while their parent is still to come or already past, e.g.,
-  `{ distantPast: 'hidden' }` hides callouts with their dimmed parent.
-  `current` falls back to `open`, `distantFuture` to `future`, `distantPast`
-  to `past`, and the rest to shown.
-- **Callouts:** add `@slider/elements` to the Slider plugins to use inline
-  directives such as `:callout[Remember this]{only}`. The callout overlays the
-  slide with an SVG speech bubble pointing to the directive's position. Its
-  `width`, corner `radius`, stem width `stemSize`, stem length `offset`, edge
-  attachment `stemOffset`, `angle`, and MUI palette `color` can be changed
-  directly or with `SliderCallout.defaultProps` in the theme. The angle's
-  dominant direction selects the attachment edge (`0` right, `90` bottom),
-  while `stemOffset` runs from 0 to 1 along it. Omitted geometry is chosen to
-  fit the slide with an off-center stem; explicit geometry is exact and may be
-  clipped by the slide. The tip targets the corresponding edge of the
-  directive's character box; `shift=x,y` moves it, while `at=x,y` sets an
-  absolute logical slide point. `variant=filled` (the default) fills the
-  bubble with its MUI palette `color`; `variant=outlined` uses that color for
-  its text and outline. Themes can override or add variants with
-  `SliderCallout.variants` and `CalloutVariantOverrides`. As in MUI components,
-  all slots receive the `variant` and `color` in their `ownerState`, so
-  `styleOverrides.background` can, for example, use the selected palette
-  color's `dark` shade for the SVG outline. Root variants can style slots with
-  `calloutClasses` or set the `--SliderCallout-background`,
-  `--SliderCallout-color`, `--SliderCallout-outline`, and
-  `--SliderCallout-outline-width` properties. It is a step whose default
-  behavior is `scoped`; it accepts the other step props, full behaviors, and
-  built-in or theme-defined behavior shorthands.
-- **Colons:** a colon followed by a word starts a directive like `:step`.
-  Unknown ones, like in `10:30`, stay text, but write `\:step` for a literal
-  `:step`.
-- **Math:** `$…$` and `$$…$$` are typeset with MathJax at build time, with
-  MathML for screen readers. Themes choose the math font.
-- **Notes:** `:::notes` blocks or `<Notes>` elements hold presenter notes.
+  defaulting to English, and `{lang=…}` that of a slide. The interface is in
+  the language of the deck, if available (English, Hungarian, German, or
+  French), and viewers can switch to English. `uiLanguages: [de, fr]` offers
+  other languages, and `uiLanguages: [{ pt: ./pt.json }]` adds one from a file
+  like those in [`packages/core/src/i18n/locales`](packages/core/src/i18n/locales).
+- **Steps:** `:step` at the start of a list item or paragraph shows it in a new
+  step. `:step{group=name}` reveals items together, and the address refers to
+  it by name, e.g., `#intro&step=name`. `:step{title=…}` names a step in the
+  step tree (Shift+T). `<Step>`, `<Steps>`, and `<Together>` do the same in
+  JSX.
+- **Step behaviors:** `:step{only}` or `{steps=only}` on a slide sets how steps
+  look before, during, and after their turn: `reveal` (the default), `dim`,
+  `preview`, `focus`, `only`, or `scoped` (hidden once its parent step is
+  past). `:step{in=name}` nests a step in the group `name`. Themes can add
+  behaviors with `stepBehaviors`.
+- **Step ranges:** `{from=…}`, `{after=…}`, `{to=…}`, and `{before=…}` on a
+  slide limit the steps shown when going through it, e.g., `{after=1 to=parse}`.
+- **Recaps:** `::recap[#id]` shows the slide `id` again, continuing its steps
+  where its previous showing ended.
+- **Includes:** `::include[./other.deck.mdx#id]` includes a slide or a section
+  of another deck, and `::include[./other.deck.mdx]` the whole deck. Only the
+  included slides are bundled.
+- **Math:** `$…$` and `$$…$$` are typeset with MathJax at build time.
+- **Notes:** `:::notes` blocks hold presenter notes.
 - **Components:** imported React components can be used as slide content or as
-  slide masters. `useSlideState` keeps their state in the slide, so that every
-  view of the slide shows the same state, and `useResetSlideState` resets it,
-  like Reset slide in the menu.
+  masters. `useSlideState` keeps their state in the slide, shared by every view
+  of it, and `useResetSlideState` resets it.
+
+Write `\:step` for a literal `:step`.
 
 Decks can also be written in JSX with `Deck` and `Slide` from `@slider/core`;
 see [`ExampleDeck.tsx`](packages/example/src/ExampleDeck.tsx).
@@ -251,9 +174,21 @@ export default defineConfig({
 
 Every `.deck.mdx` file then gets its own HTML page. Pass
 `slider({ selfContained: false })` to keep scripts and assets in separate
-files, e.g., for hosting with a Content Security Policy. Packages with Slider
-components and MDX directives can be enabled as plugins, for example
-`slider({ plugins: ['@slider/elements'] })`.
+files, e.g., for hosting with a Content Security Policy.
+
+## Elements
+
+[`@slider/elements`](packages/elements) adds presentation elements as MDX
+directives. Enable it as a plugin:
+
+```ts
+slider({ plugins: ['@slider/elements'] });
+```
+
+- **Callouts:** `:callout[Remember this]` shows a speech bubble
+  pointing at its position in the text. It's a step whose default behavior is
+  `scoped`. `color`, `variant=outlined`, `width`, and `angle` change its look,
+  and themes can set defaults and add variants with `SliderCallout`.
 
 ## License
 
