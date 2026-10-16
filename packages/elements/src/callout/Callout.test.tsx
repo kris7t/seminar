@@ -151,6 +151,32 @@ describe('Callout', () => {
     expect(style('Fixed', 'content').textAlign).toBe('right');
   });
 
+  it('takes text colors of the palette', () => {
+    render(
+      <Deck>
+        <Slide title="Callout">
+          <Callout color="text.primary">Primary</Callout>
+          <Callout color="text.secondary" variant="outlined">
+            Secondary
+          </Callout>
+        </Slide>
+      </Deck>,
+    );
+    const primary = getComputedStyle(calloutWithText('Primary'));
+    // Opaque over the white paper, so that the slide doesn't show through.
+    expect(primary.getPropertyValue('--SliderCallout-palette-main')).toBe(
+      'rgb(33,33,33)',
+    );
+    expect(
+      primary.getPropertyValue('--SliderCallout-palette-contrastText'),
+    ).toBe('#fff');
+    expect(
+      getComputedStyle(calloutWithText('Secondary')).getPropertyValue(
+        '--SliderCallout-palette-main',
+      ),
+    ).toBe('rgb(102,102,102)');
+  });
+
   it('centers its text by default', () => {
     render(
       <Deck>

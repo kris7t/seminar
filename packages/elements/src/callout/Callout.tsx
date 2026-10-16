@@ -1,10 +1,13 @@
 import { generateUtilityClasses } from '@mui/material';
 import {
+  decomposeColor,
+  recomposeColor,
   styled,
   useTheme,
   useThemeProps,
   type Palette,
   type PaletteColor,
+  type TypeText,
 } from '@mui/material/styles';
 import {
   SLIDE_VIEW_ATTRIBUTE,
@@ -41,10 +44,15 @@ export const DEFAULT_CALLOUT_MAX_WIDTH = 360;
 export const DEFAULT_CALLOUT_STEM_SIZE = 36;
 export const DEFAULT_CALLOUT_ELEVATION = 4;
 
-/** Keys of the MUI theme palette whose values are palette colors. */
-export type CalloutColor = {
-  [Key in keyof Palette]: Palette[Key] extends PaletteColor ? Key : never;
-}[keyof Palette];
+/**
+ * Keys of the MUI theme palette whose values are palette colors, like
+ * `primary`, or text colors of the palette, like `text.secondary`.
+ */
+export type CalloutColor =
+  | {
+      [Key in keyof Palette]: Palette[Key] extends PaletteColor ? Key : never;
+    }[keyof Palette]
+  | `text.${Extract<keyof TypeText, string>}`;
 
 /** Further visual variants of callouts, added by module augmentation. */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- Augmented by themes.
@@ -102,7 +110,10 @@ export interface CalloutProps extends Omit<
   shift?: CalloutPoint | undefined;
   /** Absolute attachment point, as `x,y` logical slide coordinates. */
   at?: CalloutPoint | undefined;
-  /** MUI palette color of the bubble. */
+  /**
+   * MUI palette color of the bubble, like `primary`, or a text color, like
+   * `text.secondary`.
+   */
   color?: CalloutColor | undefined;
   /** Visual treatment of the bubble. Defaults to `filled`. */
   variant?: CalloutVariant | undefined;
@@ -162,7 +173,7 @@ interface PaletteColorLike {
 
 function paletteColor(
   palette: Palette,
-  color: CalloutColor,
+  color: string,
 ): PaletteColorLike | undefined {
   const value = (palette as unknown as Record<PropertyKey, unknown>)[color];
   return typeof value === 'object' &&
@@ -171,6 +182,37 @@ function paletteColor(
     typeof value.main === 'string'
     ? (value as PaletteColorLike)
     : undefined;
+}
+
+/** Composes a translucent `color` over `background` into an opaque color. */
+function opaque(color: string, background: string): string {
+  const { values } = decomposeColor(color);
+  const alpha = values[3] ?? 1;
+  if (alpha >= 1) return color;
+  const under = decomposeColor(background).values;
+  return recomposeColor({
+    type: 'rgb',
+    values: [0, 1, 2].map((i) =>
+      Math.round((values[i] ?? 0) * alpha + (under[i] ?? 0) * (1 - alpha)),
+    ) as [number, number, number],
+  });
+}
+
+/**
+ * Palette colors for the text colors of the palette, opaque over the paper
+ * background, so that filled callouts don't let the slide show through.
+ */
+function textColors(palette: Palette): [CalloutColor, PaletteColorLike][] {
+  return Object.entries(palette.text).flatMap(([key, value]) => {
+    if (typeof value !== 'string') return [];
+    let main: string;
+    try {
+      main = opaque(value, palette.background.paper);
+    } catch {
+      return [];
+    }
+    return [[`text.${key}` as CalloutColor, { main }]];
+  });
 }
 
 const CalloutAnchor = styled('span', {
@@ -205,23 +247,27 @@ const CalloutRoot = styled(Step, {
   slot: 'Root',
   overridesResolver: (_props, styles) => styles['root'],
 })<{ ownerState: CalloutOwnerState }>(({ theme }) => {
-  const colorVariants = Object.keys(theme.palette).flatMap((color) => {
-    const selected = paletteColor(theme.palette, color as CalloutColor);
-    if (selected === undefined) return [];
-    return [
-      {
-        props: { color: color as CalloutColor },
-        style: {
-          '--SliderCallout-palette-main': selected.main,
-          '--SliderCallout-palette-light': selected.light ?? selected.main,
-          '--SliderCallout-palette-dark': selected.dark ?? selected.main,
-          '--SliderCallout-palette-contrastText':
-            selected.contrastText ??
-            theme.palette.getContrastText(selected.main),
-        },
+  const colors: [CalloutColor, PaletteColorLike][] = [
+    ...Object.keys(theme.palette).flatMap(
+      (color): [CalloutColor, PaletteColorLike][] => {
+        const selected = paletteColor(theme.palette, color);
+        return selected === undefined
+          ? []
+          : [[color as CalloutColor, selected]];
       },
-    ];
-  });
+    ),
+    ...textColors(theme.palette),
+  ];
+  const colorVariants = colors.map(([color, selected]) => ({
+    props: { color },
+    style: {
+      '--SliderCallout-palette-main': selected.main,
+      '--SliderCallout-palette-light': selected.light ?? selected.main,
+      '--SliderCallout-palette-dark': selected.dark ?? selected.main,
+      '--SliderCallout-palette-contrastText':
+        selected.contrastText ?? theme.palette.getContrastText(selected.main),
+    },
+  }));
   return {
     position: 'relative',
     display: 'block',
