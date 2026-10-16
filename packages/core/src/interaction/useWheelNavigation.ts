@@ -6,6 +6,7 @@ import {
   type WheelEventHandler,
 } from 'react';
 
+import type { SlideTransitions } from '../slide/SlideTransitions.ts';
 import { getInteraction } from './interaction.ts';
 
 /** How far to scroll to go to another step, in pixels. */
@@ -25,15 +26,25 @@ export const WHEEL_REST = 200;
 /** Pixels per line, for wheels that scroll by lines. */
 const LINE_HEIGHT = 16;
 
+/** A wheel event over an element with the handler, i.e., its `container`. */
+interface Wheel {
+  target: EventTarget | null;
+  container: HTMLElement;
+  deltaX: number;
+  deltaY: number;
+  deltaMode: number;
+  ctrlKey: boolean;
+}
+
 /** Returns the vertical distance of a wheel event in pixels. */
-function pixelsOf(event: WheelEvent<HTMLElement>): number {
-  switch (event.deltaMode) {
+function pixelsOf(wheel: Wheel): number {
+  switch (wheel.deltaMode) {
     case 1: // Lines.
-      return event.deltaY * LINE_HEIGHT;
+      return wheel.deltaY * LINE_HEIGHT;
     case 2: // Pages.
-      return event.deltaY * event.currentTarget.clientHeight;
+      return wheel.deltaY * wheel.container.clientHeight;
     default:
-      return event.deltaY;
+      return wheel.deltaY;
   }
 }
 
@@ -42,7 +53,7 @@ function pixelsOf(event: WheelEvent<HTMLElement>): number {
  * direction of `delta`, so that the wheel should scroll it instead.
  */
 function canScroll(
-  target: EventTarget,
+  target: EventTarget | null,
   container: HTMLElement,
   delta: number,
 ): boolean {
@@ -82,7 +93,10 @@ function canScroll(
 export function useWheelNavigation(
   next: () => void,
   previous: () => void,
+  transitions?: SlideTransitions,
 ): WheelEventHandler<HTMLElement> {
+  /** The element that last got the wheel. */
+  const containerRef = useRef<HTMLElement>(undefined);
   const distanceRef = useRef(0);
   /** Whether the scroll already went to another step. */
   const steppedRef = useRef(false);
@@ -95,12 +109,12 @@ export function useWheelNavigation(
     },
     [],
   );
-  return useCallback(
-    (event: WheelEvent<HTMLElement>) => {
+  const onWheel = useCallback(
+    (wheel: Wheel) => {
       if (
-        event.ctrlKey ||
-        Math.abs(event.deltaX) > Math.abs(event.deltaY) ||
-        getInteraction(event.target) !== undefined
+        wheel.ctrlKey ||
+        Math.abs(wheel.deltaX) > Math.abs(wheel.deltaY) ||
+        getInteraction(wheel.target) !== undefined
       ) {
         return;
       }
@@ -111,7 +125,7 @@ export function useWheelNavigation(
         steppedRef.current = false;
         distanceRef.current = 0;
       }, WHEEL_REST);
-      if (canScroll(event.target, event.currentTarget, event.deltaY)) {
+      if (canScroll(wheel.target, wheel.container, wheel.deltaY)) {
         // Don't go on to another step when the scrolling reaches the end.
         lockedRef.current = true;
         return;
@@ -119,7 +133,7 @@ export function useWheelNavigation(
       if (lockedRef.current) {
         return;
       }
-      const delta = pixelsOf(event);
+      const delta = pixelsOf(wheel);
       // Start over when the direction changes.
       distanceRef.current =
         Math.sign(delta) === Math.sign(distanceRef.current)
@@ -139,5 +153,57 @@ export function useWheelNavigation(
       }
     },
     [next, previous],
+  );
+  // While the slide fades, the browser sends the wheel to the transition
+  // rather than to the element under the pointer, so wheels over the box of
+  // the element that last got one go to it.
+  useEffect(() => {
+    if (transitions === undefined) {
+      return undefined;
+    }
+    const onWindowWheel = (event: globalThis.WheelEvent) => {
+      const container = containerRef.current;
+      if (
+        !transitions.running ||
+        container === undefined ||
+        (event.target instanceof Node && container.contains(event.target))
+      ) {
+        return;
+      }
+      const rect = container.getBoundingClientRect();
+      if (
+        event.clientX >= rect.left &&
+        event.clientX < rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY < rect.bottom
+      ) {
+        onWheel({
+          target: container,
+          container,
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          deltaMode: event.deltaMode,
+          ctrlKey: event.ctrlKey,
+        });
+      }
+    };
+    window.addEventListener('wheel', onWindowWheel, { passive: true });
+    return () => {
+      window.removeEventListener('wheel', onWindowWheel);
+    };
+  }, [transitions, onWheel]);
+  return useCallback(
+    (event: WheelEvent<HTMLElement>) => {
+      containerRef.current = event.currentTarget;
+      onWheel({
+        target: event.target,
+        container: event.currentTarget,
+        deltaX: event.deltaX,
+        deltaY: event.deltaY,
+        deltaMode: event.deltaMode,
+        ctrlKey: event.ctrlKey,
+      });
+    },
+    [onWheel],
   );
 }
