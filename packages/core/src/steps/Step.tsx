@@ -282,10 +282,10 @@ const StepRoot = styled('div', {
  * `SliderStep-dimmed` if it has to hide or dim itself, or the class of an
  * appearance added by the theme (see {@link StepAppearanceOverrides}). The
  * opacity of dimmed steps is the `--SliderStep-dim-opacity` custom property.
- * Add behaviors with `stepBehaviors` in the theme, and style them with
- * `variants` here, e.g.,
- * `{ props: { behavior: 'fancy' }, style: { '&.SliderStep-current': { color:
- * 'red' } } }`. Only hiding and dimming are inherited by nested steps.
+ * Add behaviors with `stepBehaviors` in the theme, which map phases to
+ * appearances, and style further appearances by their classes here, e.g.,
+ * `{ root: { '&.SliderStep-blurred': { filter: 'blur(4px)' } } }`, rather
+ * than styling behaviors or phases, which nested steps don't inherit.
  */
 export function Step(inProps: StepProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SliderStep' });

@@ -71,6 +71,7 @@ See the [documentation](docs/README.md) for the syntax:
 - [Steps](docs/core/steps.md)
 - [Recaps and includes](docs/core/reuse.md)
 - [Elements](docs/elements/README.md): callouts and columns
+- [Authoring components](docs/authoring/README.md), plugins, and themes
 
 Decks can also be written in JSX with `Deck` and `Slide` from `@slider/core`;
 see [`ExampleDeck.tsx`](packages/example/src/ExampleDeck.tsx).

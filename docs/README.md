@@ -1,8 +1,9 @@
-# Writing decks
+# slider documentation
 
 These pages describe how to write slider decks in MDX: Markdown with
-directives, attributes, and React components. They're meant to be read in
-order the first time, and looked things up in afterwards.
+directives, attributes, and React components, and how to write components,
+plugins, and themes for them. Read them in order the first time, and come
+back to look things up.
 
 > slider is a proof of concept, so the syntax may still change.
 
@@ -27,6 +28,20 @@ Presentation elements from the `@slider/elements` plugin:
 2. [Callouts](elements/callouts.md): speech bubbles pointing at text, images,
    or other elements.
 3. [Columns](elements/columns.md): content side by side.
+
+## Authoring
+
+Writing components, plugins, and themes for decks:
+
+1. [Authoring components](authoring/README.md): an overview and guidelines.
+2. [Components on slides](authoring/components.md): slide state, views,
+   input, and naming and measuring elements.
+3. [Steps in components](authoring/steps.md): `Step`, default placement, and
+   steppers.
+4. [Directives and plugins](authoring/directives.md): making components
+   available as directives.
+5. [Themes](authoring/themes.md): masters, theming components, and step
+   behaviors.
 
 ## Syntax at a glance
 
