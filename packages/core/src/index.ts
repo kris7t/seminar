@@ -12,8 +12,8 @@ export type {
   SlideMaster,
   SlideMasterProps,
   SlideMasters,
-  SlideTransition,
-  SlideTransitionProp,
+  SlideCut,
+  SlideCutProp,
 } from './masters/SlideMaster.ts';
 export {
   ContentMaster,

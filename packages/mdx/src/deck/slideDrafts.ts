@@ -274,6 +274,12 @@ export function isStepBound(value: string): boolean {
 export const FLAGS: ReadonlySet<string> = new Set(['spare', 'noslide']);
 
 /**
+ * Props of slides that may be bare words, e.g., `cut`, rather than masters,
+ * which are passed as empty strings.
+ */
+export const BARE_PROPS: ReadonlySet<string> = new Set(['cut']);
+
+/**
  * Applies the attributes of a `:slide` directive to a slide.
  *
  * A bare word, like `section`, sets the master to a master of the theme, like
@@ -290,7 +296,9 @@ export function applyAttributes(
   slide.id = id ?? slide.id;
   // Flags rather than masters.
   const bareWords = [...attributes]
-    .filter(([key, value]) => value === '' && !FLAGS.has(key))
+    .filter(
+      ([key, value]) => value === '' && !FLAGS.has(key) && !BARE_PROPS.has(key),
+    )
     .map(([key]) => key);
   slide.spareAttribute = attributes.get('spare');
   const noSlide = attributes.get('noslide');
@@ -308,7 +316,11 @@ export function applyAttributes(
   for (const [key, value] of attributes) {
     if (key === 'title') {
       slide.tocTitle = value;
-    } else if (key !== 'master' && !FLAGS.has(key) && value !== '') {
+    } else if (
+      key !== 'master' &&
+      !FLAGS.has(key) &&
+      (value !== '' || BARE_PROPS.has(key))
+    ) {
       slide.attributes.set(key, value);
     }
   }

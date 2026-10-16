@@ -12,38 +12,47 @@ export interface SlideMasterProps {
 export type SlideMaster = ComponentType<SlideMasterProps> & {
   /**
    * Which fades of the slides with this master to cut (see
-   * {@link SlideTransition}), unless they set their own `transition`.
-   * Defaults to `'fade'`.
+   * {@link SlideCutProp}), unless they set their own `cut`.
    */
-  transition?: SlideTransitionProp | undefined;
+  cut?: SlideCutProp | undefined;
+  /**
+   * Duration of the fades of the slides with this master, in milliseconds,
+   * unless they set their own `fade`, instead of the `stepTransition` and
+   * `slideTransition` of the theme (see the `fade` of `Slide`).
+   */
+  fade?: number | undefined;
+  /** Duration of the fades into the slides with this master. */
+  fadeIn?: number | undefined;
+  /** Duration of the fades out of the slides with this master. */
+  fadeOut?: number | undefined;
+  /** Duration of the fades with the slides before those with this master. */
+  fadeBefore?: number | undefined;
+  /** Duration of the fades with the slides after those with this master. */
+  fadeAfter?: number | undefined;
 };
 
 /**
- * Which fades of a slide from and to its neighbors to cut, as the
- * `slideTransition` of the theme says otherwise, whichever way the deck
- * goes:
+ * A fade of a slide from or to its neighbors, whichever way the deck goes:
  *
- * - `'fade'`: none, i.e., no preference, which is the default.
- * - `'cut'`: all of them, e.g., for a slide with a background of its own.
- * - `'cut-before'` and `'cut-after'`: the fade with the slide before or
- *   after it in the deck, e.g., whose content doesn't fade well into it.
- * - `'cut-in'` and `'cut-out'`: the fade into or out of it, from or to
- *   either side.
+ * - `'before'` and `'after'`: with the slide before or after it in the deck,
+ *   e.g., whose content doesn't fade well into it.
+ * - `'in'` and `'out'`: into or out of it, from or to either side.
  *
  * Going from one slide to another, e.g., a later one, leaves the first one
- * after it, and enters the other one before it. The slides fade unless either
- * of them cuts that fade.
+ * after it, and enters the other one before it. A cut of a side is a fade of
+ * no time on that side, e.g., `cut=in` is `fadeIn=0` (see the `fade` of
+ * `Slide`).
  */
-export type SlideTransition =
-  'fade' | 'cut' | 'cut-before' | 'cut-after' | 'cut-in' | 'cut-out';
+export type SlideCut = 'before' | 'after' | 'in' | 'out';
 
 /**
- * One or more {@link SlideTransition}s of a slide, e.g., `'cut-in'`, or
- * `['cut-in', 'cut-after']`, or separated by spaces, e.g., `'cut-in
- * cut-after'` in an attribute of MDX.
+ * Which fades of a slide to cut: all of them with `true`, or the empty
+ * string of a bare `cut` in MDX, e.g., for a slide with a background of its
+ * own, none with `false`, or some {@link SlideCut}s, e.g., `'in'`,
+ * `['in', 'after']`, or `'in after'` in an attribute of MDX.
  */
-export type SlideTransitionProp =
-  SlideTransition | readonly SlideTransition[] | `${SlideTransition} ${string}`;
+export type SlideCutProp =
+  boolean | '' | SlideCut | readonly SlideCut[] | `${SlideCut} ${string}`;
 
 /** Slide masters of a theme, selectable by name with `<Slide master="…">`. */
 export interface SlideMasters {

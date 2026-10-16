@@ -78,8 +78,8 @@ Attributes in braces at the end of a heading set the props of its slide:
 - `title=…` is the title of the slide in the table of contents, e.g., a
   shorter one.
 - `lang=…` sets the language of the slide, e.g., for a quote.
-- `transition=…` cuts some of the fades from and to the slide, see
-  [Fades between slides](#fades-between-slides).
+- `fade=…` and `cut` set how long the fades of the slide take, or cut
+  them, see [Fades between slides](#fades-between-slides).
 - `steps=…` sets the default behavior of the steps on the slide, see
   [Steps](steps.md#behaviors).
 - `from`, `after`, `to`, and `before` limit the steps shown when going
@@ -95,26 +95,36 @@ bare words. So `## Total {count}` uses the master `count`, while
 
 ## Fades between slides
 
-The slides fade into each other, unless the theme says otherwise.
-`transition` on a slide cuts some of its fades, whichever way the deck
-goes:
+The slides fade into each other, and from one step to the next, unless the
+theme says otherwise. Attributes of a slide set how long its fades take, in
+milliseconds:
 
-| Value        | Cuts the fade                                                   |
-| ------------ | --------------------------------------------------------------- |
-| `fade`       | none, i.e., no preference, which is the default                 |
-| `cut`        | all, e.g., for a slide with a background of its own             |
-| `cut-before` | with the slide before it, e.g., which doesn't fade well into it |
-| `cut-after`  | with the slide after it                                         |
-| `cut-in`     | into it, from either side                                       |
-| `cut-out`    | out of it, to either side                                       |
+| Attribute      | Sets the fade                                   |
+| -------------- | ----------------------------------------------- |
+| `fade=…`       | between its steps, and with other slides        |
+| `fadeIn=…`     | into it, from either side                       |
+| `fadeOut=…`    | out of it, to either side                       |
+| `fadeBefore=…` | with the slide before it, whichever way it goes |
+| `fadeAfter=…`  | with the slide after it                         |
 
-Values may be combined with spaces, e.g., `{transition="cut-in cut-after"}`.
-Two slides fade into each other unless either of them cuts that fade. When
-the deck jumps between slides, e.g., from the table of contents, the slide
-it leaves counts as before or after the one it enters.
+`cut` is a fade of no time with other slides, e.g., for a slide with a
+background of its own, and `cut=in`, `cut=out`, `cut=before`, and
+`cut=after` are fades of no time on one side, e.g., `cut=in` is `fadeIn=0`.
+Sides may be combined with spaces, e.g., `{cut="in after"}`.
 
-The master of a slide, e.g., of section slides, may cut fades, too, unless
-the slide sets its own `transition`.
+Going from one slide to another, e.g., to a later one, leaves the first one
+after it, and enters the other one before it. When the deck jumps between
+slides, e.g., from the table of contents, the slide it leaves counts as
+before or after the one it enters. Of the fades that the two slides set for
+these sides, the most explicit one wins, or the shortest of the most
+explicit ones:
+
+1. a fade or cut of one side of a slide, e.g., `fadeIn` or `cut=in`,
+2. a fade or cut of all of its sides, i.e., `fade` or `cut`,
+3. the same of its master, e.g., of section slides.
+
+A slide with its own `cut`, e.g., `cut=false`, replaces the cuts of its
+master.
 
 ## Spare slides and divisions
 

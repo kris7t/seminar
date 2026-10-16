@@ -55,6 +55,12 @@ export function getFadeTransition(
 export const TRANSITION_ATTRIBUTE = 'data-slider-transition';
 
 /**
+ * Custom property of the element whose view transition is running with its
+ * duration, if it differs from that of the theme, e.g., for a slide.
+ */
+export const DURATION_PROPERTY = '--slider-fade-duration';
+
+/**
  * Attribute of the slide frames that take part in a view transition of their
  * whole document, which are the only parts of the document that are animated.
  */
@@ -111,10 +117,19 @@ interface ScopableElement extends HTMLElement {
 function startTransition(
   frame: ScopableElement,
   kind: SlideTransitionKind,
+  duration: number | undefined,
   update: () => Promise<void>,
 ): { transition: ViewTransition; scope: HTMLElement } | undefined {
+  const setDuration = (scope: HTMLElement) => {
+    if (duration === undefined) {
+      scope.style.removeProperty(DURATION_PROPERTY);
+    } else {
+      scope.style.setProperty(DURATION_PROPERTY, `${String(duration)}ms`);
+    }
+  };
   if (typeof frame.startViewTransition === 'function') {
     frame.setAttribute(TRANSITION_ATTRIBUTE, kind);
+    setDuration(frame);
     return { transition: frame.startViewTransition(update), scope: frame };
   }
   const doc = frame.ownerDocument;
@@ -123,6 +138,7 @@ function startTransition(
   }
   // Only the slide is animated, and the rest of the document stays live.
   doc.documentElement.setAttribute(TRANSITION_ATTRIBUTE, kind);
+  setDuration(doc.documentElement);
   frame.setAttribute(TRANSITION_FRAME_ATTRIBUTE, '');
   return {
     transition: doc.startViewTransition(update),
@@ -207,7 +223,11 @@ export class SlideTransitions {
    * the registered frames from how they looked before to how they look after.
    * `update` may run later, but before any later update.
    */
-  run(update: () => void, kind: SlideTransitionKind = 'step'): void {
+  run(
+    update: () => void,
+    kind: SlideTransitionKind = 'step',
+    duration?: number,
+  ): void {
     // Keep the order of the updates, if the previous one is still waiting.
     this.flush();
     const frames = [...this.#frames].filter(
@@ -248,7 +268,7 @@ export class SlideTransitions {
       return ready;
     };
     for (const frame of frames) {
-      const started = startTransition(frame, kind, onCaptured);
+      const started = startTransition(frame, kind, duration, onCaptured);
       if (started === undefined) {
         waiting -= 1;
         continue;
@@ -260,6 +280,7 @@ export class SlideTransitions {
         // Unless a later transition took over.
         if (![...this.#transitions.values()].includes(scope)) {
           scope.removeAttribute(TRANSITION_ATTRIBUTE);
+          scope.style.removeProperty(DURATION_PROPERTY);
           frame.removeAttribute(TRANSITION_FRAME_ATTRIBUTE);
         }
         this.#notify();

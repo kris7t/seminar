@@ -3,15 +3,13 @@ import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
-import type {
-  SlideMaster,
-  SlideTransitionProp,
-} from '../masters/SlideMaster.ts';
+import type { SlideMaster, SlideCutProp } from '../masters/SlideMaster.ts';
 import { Step } from '../steps/Step.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Slide } from './Slide.tsx';
 
 import {
+  DURATION_PROPERTY,
   SlideTransitions,
   TRANSITION_ATTRIBUTE,
   TRANSITION_FRAME_ATTRIBUTE,
@@ -70,6 +68,7 @@ describe('SlideTransitions', () => {
   afterEach(() => {
     document.body.replaceChildren();
     document.documentElement.removeAttribute(TRANSITION_ATTRIBUTE);
+    document.documentElement.style.removeProperty(DURATION_PROPERTY);
     delete (document as Partial<Document>).startViewTransition;
     vi.useRealTimers();
   });
@@ -220,7 +219,7 @@ describe('SlideTransitions', () => {
     });
 
     function renderSlides(
-      second: { transition?: SlideTransitionProp; master?: SlideMaster } = {},
+      second: { cut?: SlideCutProp; fade?: number; master?: SlideMaster } = {},
       theme?: ReturnType<typeof createSlideTheme>,
     ) {
       const started = fakeTransitions(document);
@@ -246,7 +245,7 @@ describe('SlideTransitions', () => {
     });
 
     it('lets either slide turn off the fade', async () => {
-      const started = renderSlides({ transition: 'cut' });
+      const started = renderSlides({ cut: true });
       const user = userEvent.setup();
       // Into the slide, and out of it.
       await user.keyboard('{PageDown}');
@@ -255,7 +254,7 @@ describe('SlideTransitions', () => {
     });
 
     it('cuts fades into a slide', async () => {
-      const started = renderSlides({ transition: 'cut-in' });
+      const started = renderSlides({ cut: 'in' });
       const user = userEvent.setup();
       await user.keyboard('{PageDown}');
       expect(started).toHaveLength(0);
@@ -265,7 +264,7 @@ describe('SlideTransitions', () => {
     });
 
     it('cuts fades with the slide before it, both ways', async () => {
-      const started = renderSlides({ transition: 'cut-before' });
+      const started = renderSlides({ cut: 'before' });
       const user = userEvent.setup();
       await user.keyboard('{PageDown}');
       await user.keyboard('{PageUp}');
@@ -273,7 +272,7 @@ describe('SlideTransitions', () => {
     });
 
     it('keeps fades with the slide before it when cutting after it', async () => {
-      const started = renderSlides({ transition: 'cut-after cut-out' });
+      const started = renderSlides({ cut: 'after out' });
       const user = userEvent.setup();
       await user.keyboard('{PageDown}');
       expect(started).toHaveLength(1);
@@ -281,8 +280,32 @@ describe('SlideTransitions', () => {
 
     it('lets the master of the slide turn off the fade', async () => {
       const Cut: SlideMaster = ({ children }) => <div>{children}</div>;
-      Cut.transition = 'cut';
+      Cut.cut = true;
       const started = renderSlides({ master: Cut });
+      await userEvent.setup().keyboard('{PageDown}');
+      expect(started).toHaveLength(0);
+    });
+
+    it('fades between slides for as long as one of them says, both ways', async () => {
+      const started = renderSlides({ fade: 300 });
+      const user = userEvent.setup();
+      await user.keyboard('{PageDown}');
+      expect(
+        document.documentElement.style.getPropertyValue(DURATION_PROPERTY),
+      ).toBe('300ms');
+      await started[0]?.capture();
+      await started[0]?.end();
+      await user.keyboard('{PageUp}');
+      expect(started).toHaveLength(2);
+      expect(
+        document.documentElement.style.getPropertyValue(DURATION_PROPERTY),
+      ).toBe('300ms');
+    });
+
+    it('takes the duration of fades from the master', async () => {
+      const Instant: SlideMaster = ({ children }) => <div>{children}</div>;
+      Instant.fade = 0;
+      const started = renderSlides({ master: Instant });
       await userEvent.setup().keyboard('{PageDown}');
       expect(started).toHaveLength(0);
     });

@@ -2,6 +2,7 @@ import { GlobalStyles } from '@mui/material';
 import type { JSX } from 'react';
 
 import {
+  DURATION_PROPERTY,
   getFadeTransition,
   OWN_ANIMATION_CLASS,
   POINTER_TRANSITION_NAME,
@@ -36,7 +37,7 @@ export function SlideTransitionStyles(): JSX.Element {
             return [
               `${fade}::view-transition-group(*), ${fade}::view-transition-old(*), ${fade}::view-transition-new(*)`,
               {
-                animationDuration: `${String(duration)}ms`,
+                animationDuration: `var(${DURATION_PROPERTY}, ${String(duration)}ms)`,
                 animationTimingFunction: easing,
               },
             ];

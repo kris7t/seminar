@@ -40,10 +40,16 @@ export interface GoToOptions {
 /** How the slides fade when they change, see `SlideTransitions`. */
 export interface DeckTransitions {
   transitions: SlideTransitions;
-  /** Whether the slide fades from one step to another. */
-  fadeSteps: boolean;
-  /** Whether the slide at index `from` fades into the one at `to`. */
-  fadeSlides: (from: number, to: number) => boolean;
+  /**
+   * How long the slide at `index` fades from one step to another, in
+   * milliseconds, or 0 to change steps at once.
+   */
+  stepFade: (index: number) => number;
+  /**
+   * How long the slide at index `from` fades into the one at `to`, in
+   * milliseconds, or 0 to cut.
+   */
+  slideFade: (from: number, to: number) => number;
 }
 
 export interface DeckNavigation {
@@ -212,13 +218,10 @@ export function useDeckNavigation(
     (index: number, update: () => void, transition = true) => {
       transitions?.flush();
       const from = shownIndexRef.current;
-      if (
-        transition &&
-        transitions !== undefined &&
-        index !== from &&
-        fades?.fadeSlides(from, index) === true
-      ) {
-        transitions.run(update, 'slide');
+      const duration =
+        transition && index !== from ? (fades?.slideFade(from, index) ?? 0) : 0;
+      if (transitions !== undefined && duration > 0) {
+        transitions.run(update, 'slide', duration);
       } else {
         update();
       }
@@ -254,10 +257,11 @@ export function useDeckNavigation(
   /** Changes the steps of the slide, fading it if it's shown. */
   const changeSteps = useCallback(
     (update: () => void) => {
-      if (transitions === undefined || fades?.fadeSteps !== true) {
-        update();
+      const duration = fades?.stepFade(shownIndexRef.current) ?? 0;
+      if (transitions !== undefined && duration > 0) {
+        transitions.run(update, 'step', duration);
       } else {
-        transitions.run(update, 'step');
+        update();
       }
     },
     [transitions, fades],

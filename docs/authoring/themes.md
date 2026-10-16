@@ -216,17 +216,17 @@ createSlideTheme({
 Both default to 150 milliseconds with the `ease` easing. A duration of 0 changes steps or slides at once,
 without view transitions, e.g., to cut between slides, as in many talks.
 
-Masters can cut the fades from and to their slides with a `transition`,
-unless a slide sets its own, e.g., `'cut'` for title slides with a
-background of their own:
+Masters can set how long their slides fade with `fade`, `fadeIn`,
+`fadeOut`, `fadeBefore`, and `fadeAfter`, and cut them with `cut`, which the
+fades and cuts of slides override, e.g., for title slides with a background
+of their own:
 
 ```ts
-// `as const` keeps the type of the property from widening to `string`.
-SectionMaster.transition = 'cut' as const;
+SectionMaster.cut = true;
 
 createSlideTheme({ master: { section: SectionMaster } });
 ```
 
-The values are those of the `transition` of slides (see
-[Decks and slides](../core/decks.md#slide-attributes)), and may be combined
-in an array, e.g., `['cut-in', 'cut-after']`.
+`cut` takes the values of the `cut` of slides (see
+[Fades between slides](../core/decks.md#fades-between-slides)), e.g., `'in'`,
+or several in an array, e.g., `['in', 'after']`.

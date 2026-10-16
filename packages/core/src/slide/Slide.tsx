@@ -11,7 +11,7 @@ import { DeckContext } from '../deck/DeckContext.ts';
 import type {
   SlideMaster,
   SlideMasters,
-  SlideTransitionProp,
+  SlideCutProp,
 } from '../masters/SlideMaster.ts';
 import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
@@ -39,10 +39,32 @@ export interface SlideProps {
   master?: string | SlideMaster;
   /**
    * Which fades of the slide from and to its neighbors to cut (see
-   * {@link SlideTransition}), e.g., `'cut'` for a slide with a background
-   * of its own. Defaults to the `transition` of the master, or `'fade'`.
+   * {@link SlideCutProp}), e.g., `true` for a slide with a background of its
+   * own. Defaults to the `cut` of the master.
    */
-  transition?: SlideTransitionProp | undefined;
+  cut?: SlideCutProp | undefined;
+  /**
+   * Duration of the fades of the slide in milliseconds: between its steps,
+   * and with other slides, e.g., `300`, or `'300'` from MDX. Defaults to the
+   * `fade` of the master, or the `stepTransition` and `slideTransition` of
+   * the theme.
+   *
+   * `fadeIn`, `fadeOut`, `fadeBefore`, and `fadeAfter` set the duration of
+   * the fades with other slides on one side, like `cut`, which is a fade of
+   * no time. Going from one slide to another, the most explicit of the
+   * durations that the slides set for the sides crossed wins: one side of a
+   * slide, all of its sides, one side of its master, and all sides of its
+   * master, in this order, or the shortest one of those.
+   */
+  fade?: number | string | undefined;
+  /** Duration of the fades into the slide (see `fade`). */
+  fadeIn?: number | string | undefined;
+  /** Duration of the fades out of the slide (see `fade`). */
+  fadeOut?: number | string | undefined;
+  /** Duration of the fades with the slide before it (see `fade`). */
+  fadeBefore?: number | string | undefined;
+  /** Duration of the fades with the slide after it (see `fade`). */
+  fadeAfter?: number | string | undefined;
   /** Title of the slide passed to the master. */
   title?: ReactNode;
   /** Classes of the slide passed to the master. */

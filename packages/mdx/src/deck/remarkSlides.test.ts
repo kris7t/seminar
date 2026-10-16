@@ -462,6 +462,19 @@ More
     });
   });
 
+  describe('fades', () => {
+    it('passes cut as a prop rather than a master', async () => {
+      expect(
+        (await slides('## A {cut}\n\n## B {cut="in after" fade=300}')).map(
+          ({ cut, fade, master }) => ({ cut, fade, master }),
+        ),
+      ).toEqual([
+        { cut: '', fade: undefined, master: 'content' },
+        { cut: 'in after', fade: '300', master: 'content' },
+      ]);
+    });
+  });
+
   describe('spare slides', () => {
     it('marks slides as spare, along with the slides in spare divisions', async () => {
       expect(

@@ -24,7 +24,7 @@ import {
   SLIDE_WIDTH,
 } from '../theme/createSlideTheme.ts';
 import { resolveRecaps } from './recaps.ts';
-import { fadesBetween, getSlideCuts } from './slideFades.ts';
+import { getFadeBetween, getStepFade } from './slideFades.ts';
 import { useFitScale } from './useFitScale.ts';
 import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
@@ -258,15 +258,16 @@ export function Deck({
   const spares = useSpares(slides.map(isSpare));
   const [slideState] = useState(() => new SlideStateStore());
   const [transitions] = useState(() => new SlideTransitions());
-  const fadeSteps = getFadeTransition(theme, 'step').duration > 0;
-  const fadeSlides = useCallback(
+  const stepFade = useCallback(
+    (index: number) =>
+      getStepFade(slides[index], theme.master) ??
+      getFadeTransition(theme, 'step').duration,
+    [theme, slides],
+  );
+  const slideFade = useCallback(
     (from: number, to: number) =>
-      getFadeTransition(theme, 'slide').duration > 0 &&
-      fadesBetween(
-        getSlideCuts(slides[from], theme.master),
-        getSlideCuts(slides[to], theme.master),
-        to > from,
-      ),
+      getFadeBetween(slides[from], slides[to], to > from, theme.master) ??
+      getFadeTransition(theme, 'slide').duration,
     [theme, slides],
   );
   const {
@@ -287,8 +288,8 @@ export function Deck({
     lastStep,
   } = useDeckNavigation(slideIds, aliases, spares, slideState, {
     transitions,
-    fadeSteps,
-    fadeSlides,
+    stepFade,
+    slideFade,
   });
   const { probed, probe } = useSlideProbe(slides);
   // The current slide knows its steps even before it is probed, or after its
