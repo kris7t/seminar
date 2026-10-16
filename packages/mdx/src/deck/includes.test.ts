@@ -94,7 +94,7 @@ describe('::include', () => {
         spare: true,
         to: '1',
         title: 'Details',
-        children: '<p>Text</p>',
+        children: '<Paragraph>Text</Paragraph>',
       },
     ]);
     expect(
@@ -399,10 +399,10 @@ describe('::include', () => {
           children,
         ]),
       ).toEqual([
-        ['a', 'A', '<p>Text</p>'],
+        ['a', 'A', '<Paragraph>Text</Paragraph>'],
         [undefined, 'a', undefined],
         ['c', 'C', undefined],
-        ['a-1', 'A', '<p>Text</p>'],
+        ['a-1', 'A', '<Paragraph>Text</Paragraph>'],
         // Recaps the copy.
         [undefined, 'a-1', undefined],
       ]);

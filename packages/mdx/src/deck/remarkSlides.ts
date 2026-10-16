@@ -11,6 +11,8 @@ import {
   NOTES,
   SLIDE,
   STEP,
+  LIST_ITEM,
+  PARAGRAPH,
   SLIDE_ELEMENT,
   THEME,
 } from '../utils/jsx.ts';
@@ -397,6 +399,8 @@ export function remarkSlides({
           `Deck as ${DECK}`,
           `Slide as ${SLIDE}`,
           `Step as ${STEP}`,
+          `ListItem as ${LIST_ITEM}`,
+          `Paragraph as ${PARAGRAPH}`,
           `SlideElement as ${SLIDE_ELEMENT}`,
           `Formula as ${FORMULA}`,
           `Notes as ${NOTES}`,

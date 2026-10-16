@@ -15,6 +15,14 @@ export function Step(): null {
   return null;
 }
 
+export function Paragraph(): null {
+  return null;
+}
+
+export function ListItem(): null {
+  return null;
+}
+
 export function SlideElement(): null {
   return null;
 }

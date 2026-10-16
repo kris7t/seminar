@@ -89,11 +89,14 @@ export {
   Step,
   stepClasses,
   type StepClassKey,
+  type StepAttachment,
   type StepProps,
   type StepBehavior,
   type StepBehaviorOverrides,
   type StepBehaviorShorthands,
 } from './steps/Step.tsx';
+export { ListItem, type ListItemProps } from './steps/ListItem.tsx';
+export { Paragraph, type ParagraphProps } from './steps/Paragraph.tsx';
 export { Together, type TogetherProps } from './steps/Together.tsx';
 export {
   Steps,

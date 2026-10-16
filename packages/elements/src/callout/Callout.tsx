@@ -624,7 +624,9 @@ export function Callout(inProps: CalloutProps): JSX.Element {
           className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
           ownerState={ownerState}
           // Callouts are nested in the step of the element they point at.
-          defaultIn={targetElement}
+          defaultAttachment={
+            targetElement === undefined ? undefined : { in: targetElement }
+          }
           {...stepProps}
         >
           {stepChildren}

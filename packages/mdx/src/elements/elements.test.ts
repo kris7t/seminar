@@ -18,7 +18,7 @@ describe('slide elements', () => {
       ).map(({ children }) => children),
     ).toEqual([
       '<SlideElement as="img" name="arch" src="arch.svg"></SlideElement>' +
-        '<ul>\n<Step component="li" id="parse">Parse</Step>\n</ul>',
+        '<ul>\n<ListItem step=true id="parse">Parse</ListItem>\n</ul>',
     ]);
   });
 

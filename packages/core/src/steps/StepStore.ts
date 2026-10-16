@@ -79,6 +79,11 @@ export interface StepOptions {
   count: number;
   placement: StepPlacement;
   /**
+   * Placement instead of `placement` if the stepper has no other elements,
+   * i.e., it doesn't join an existing group.
+   */
+  defaultPlacement?: StepPlacement | undefined;
+  /**
    * Group of the stepper to nest the stepper in, instead of the stepper
    * enclosing its elements, or an element whose stepper, or the stepper
    * enclosing it, to nest the stepper in.
@@ -690,6 +695,16 @@ export class StepStore {
       }
     }
     const parents = new Map<StepNode, StepNode | undefined>();
+    // Steppers that are inert by default, e.g., paragraphs without steps of
+    // their own, don't nest the steppers inside them, which are nested in the
+    // parent of the inert stepper instead, as if it wasn't there.
+    const isTransparent = (node: StepNode): boolean => {
+      const options = anchors.get(node)?.options;
+      return (
+        node.elements.size === 1 && options?.defaultPlacement !== undefined
+      );
+    };
+    const visiting = new Set<StepNode>();
     const findParent = (node: StepNode): StepNode | undefined => {
       if (parents.has(node)) {
         return parents.get(node);
@@ -709,8 +724,21 @@ export class StepStore {
             : (this.#findGroup(parentOption, node, anchors) ??
               this.#findParent(node, anchor.element, anchors))
           : findParent(predecessor);
+      visiting.add(node);
+      let result = parent;
+      while (
+        result !== undefined &&
+        result !== node &&
+        !visiting.has(result) &&
+        isTransparent(result)
+      ) {
+        result = findParent(result);
+      }
+      visiting.delete(node);
       // A stepper placed after one nested in it ends up in itself.
-      const result = parent === node ? undefined : parent;
+      if (result === node || (result !== undefined && visiting.has(result))) {
+        result = undefined;
+      }
       parents.set(node, result);
       return result;
     };
@@ -746,7 +774,11 @@ export class StepStore {
     // Number of the last step of the previous stepper on each level.
     const previousSteps = new Map<string, number>();
     for (const [node, { options }] of placementOrder) {
-      const { count, placement } = options;
+      const { count } = options;
+      const placement =
+        node.elements.size === 1
+          ? (options.defaultPlacement ?? options.placement)
+          : options.placement;
       const parentNode = parents.get(node);
       const parent =
         parentNode === undefined ? undefined : placements.get(parentNode);

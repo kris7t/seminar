@@ -49,7 +49,7 @@ describe('remarkDirectiveComponents', () => {
       '<PluginCallout at="640,360" shift="12,-8">Short</PluginCallout>',
     );
     expect(text(rendered)).toContain(
-      '<PluginCallout side="left"><p>Long <em>content</em></p></PluginCallout>',
+      '<PluginCallout side="left"><Paragraph>Long <em>content</em></Paragraph></PluginCallout>',
     );
   });
 
@@ -77,11 +77,11 @@ describe('remarkDirectiveComponents', () => {
       '<PluginCallout directive="leaf">Leaf</PluginCallout>',
     );
     expect(rendered).toContain(
-      '<PluginCallout side="left" directive="container" title="Title"><p>Long <em>content</em></p></PluginCallout>',
+      '<PluginCallout side="left" directive="container" title="Title"><Paragraph>Long <em>content</em></Paragraph></PluginCallout>',
     );
     // Without `labelProp`, the label stays the first paragraph.
     expect(rendered).toContain(
-      '<Highlighter><p>Kept</p><p>Body</p></Highlighter>',
+      '<Highlighter><p>Kept</p><Paragraph>Body</Paragraph></Highlighter>',
     );
   });
 
@@ -138,7 +138,7 @@ describe('remarkDirectiveComponents', () => {
     const deck = renderDeck(module);
     const slide = renderSlideExport([deck.props.children].flat()[0]);
     expect(isComponent<Record<string, unknown>>(slide, 'Slide')).toBe(true);
-    expect(text(slide)).toContain('<ThemeCallout><p>From theme with ');
+    expect(text(slide)).toContain('<ThemeCallout><Paragraph>From theme with ');
     expect(importModule).toHaveBeenCalledOnce();
   });
 

@@ -11,9 +11,9 @@ describe('steps', () => {
 
   it('shows list items together with the previous step', async () => {
     expect(await content('- One\n- Two\n\n1. Three')).toEqual([
-      '<ul>\n<Step component="li" with="previous">One</Step>\n' +
-        '<Step component="li" with="previous">Two</Step>\n</ul>' +
-        '<ol>\n<Step component="li" with="previous">Three</Step>\n</ol>',
+      '<ul>\n<ListItem>One</ListItem>\n' +
+        '<ListItem>Two</ListItem>\n</ul>' +
+        '<ol>\n<ListItem>Three</ListItem>\n</ol>',
     ]);
   });
 
@@ -25,10 +25,10 @@ describe('steps', () => {
 - Three :step{with=previous}
 `),
     ).toEqual([
-      '<ul>\n<Step component="li" with="initial">One</Step>\n' +
-        '<Step component="li" className="wide" id="two" data-x="y">' +
-        '<em>Two</em></Step>\n' +
-        '<Step component="li" with="previous">Three</Step>\n</ul>',
+      '<ul>\n<ListItem step=true with="initial">One</ListItem>\n' +
+        '<ListItem step=true className="wide" id="two" data-x="y">' +
+        '<em>Two</em></ListItem>\n' +
+        '<ListItem step=true with="previous">Three</ListItem>\n</ul>',
     ]);
   });
 
@@ -43,9 +43,9 @@ describe('steps', () => {
   More :step
 `),
     ).toEqual([
-      '<ul>\n<Step component="li">\n<p>One</p>\n<ul>\n' +
-        '<Step component="li">Nested</Step>\n</ul>\n</Step>\n' +
-        '<Step component="li">\n<p>Loose</p>\n<Step component="p">More</Step>\n</Step>\n</ul>',
+      '<ul>\n<ListItem step=true>\n<p>One</p>\n<ul>\n' +
+        '<ListItem step=true>Nested</ListItem>\n</ul>\n</ListItem>\n' +
+        '<ListItem step=true>\n<p>Loose</p>\n<Paragraph step=true>More</Paragraph>\n</ListItem>\n</ul>',
     ]);
   });
 
@@ -55,8 +55,8 @@ describe('steps', () => {
         'Up front\n\n:step Later\n\nWith it :step{with=previous .a}',
       ),
     ).toEqual([
-      '<p>Up front</p><Step component="p">Later</Step>' +
-        '<Step component="p" with="previous" className="a">With it</Step>',
+      '<Paragraph>Up front</Paragraph><Paragraph step=true>Later</Paragraph>' +
+        '<Paragraph step=true with="previous" className="a">With it</Paragraph>',
     ]);
   });
 
@@ -68,9 +68,9 @@ describe('steps', () => {
 - :step{with=initial}
 `),
     ).toEqual([
-      '<ul>\n<Step component="li">One</Step>\n' +
-        '<Step component="li" className="a" data-x="y"><em>Two</em></Step>\n' +
-        '<Step component="li" with="initial"></Step>\n</ul>',
+      '<ul>\n<ListItem step=true>One</ListItem>\n' +
+        '<ListItem step=true className="a" data-x="y"><em>Two</em></ListItem>\n' +
+        '<ListItem step=true with="initial"></ListItem>\n</ul>',
     ]);
   });
 
@@ -83,10 +83,10 @@ describe('steps', () => {
 - :step{group=b with=previous} B2
 `),
     ).toEqual([
-      '<ul>\n<Step component="li" group="a">A1</Step>\n' +
-        '<Step component="li" group="b">B1</Step>\n' +
-        '<Step component="li" group="a">A2</Step>\n' +
-        '<Step component="li" with="previous" group="b">B2</Step>\n</ul>',
+      '<ul>\n<ListItem step=true group="a">A1</ListItem>\n' +
+        '<ListItem step=true group="b">B1</ListItem>\n' +
+        '<ListItem step=true group="a">A2</ListItem>\n' +
+        '<ListItem step=true with="previous" group="b">B2</ListItem>\n</ul>',
     ]);
   });
 
@@ -131,7 +131,7 @@ describe('steps', () => {
 
   it('keeps braces that are not attribute blocks', async () => {
     expect(await content('- Set \\{x}')).toEqual([
-      '<ul>\n<Step component="li" with="previous">Set {x}</Step>\n</ul>',
+      '<ul>\n<ListItem>Set {x}</ListItem>\n</ul>',
     ]);
   });
 
@@ -164,8 +164,8 @@ describe('steps', () => {
     expect(
       await content('- :step{group=a} A\n\n:step{in=a .note} Callout'),
     ).toEqual([
-      '<ul>\n<Step component="li" group="a">A</Step>\n</ul>' +
-        '<Step component="p" className="note" in="a">Callout</Step>',
+      '<ul>\n<ListItem step=true group="a">A</ListItem>\n</ul>' +
+        '<Paragraph step=true className="note" in="a">Callout</Paragraph>',
     ]);
   });
 
@@ -191,15 +191,15 @@ describe('steps', () => {
         '- :step{group=a title="First item"} A\n\n:step{after=a} B',
       ),
     ).toEqual([
-      '<ul>\n<Step component="li" group="a" title="First item">A</Step>\n</ul>' +
-        '<Step component="p" after="a">B</Step>',
+      '<ul>\n<ListItem step=true group="a" title="First item">A</ListItem>\n</ul>' +
+        '<Paragraph step=true after="a">B</Paragraph>',
     ]);
   });
 
   it('passes shorthands of behaviors to the step', async () => {
     expect(await content('- :step{only} A\n\n:step{dim} B')).toEqual([
-      '<ul>\n<Step component="li" only="">A</Step>\n</ul>' +
-        '<Step component="p" dim="">B</Step>',
+      '<ul>\n<ListItem step=true only="">A</ListItem>\n</ul>' +
+        '<Paragraph step=true dim="">B</Paragraph>',
     ]);
   });
 });

@@ -8,7 +8,13 @@ import { find, html } from 'property-information';
 import type { VFile } from 'vfile';
 
 import { createStringAttribute } from '../utils/estree.ts';
-import { EXPLICIT_JSX_HAST, SLIDE, STEP } from '../utils/jsx.ts';
+import {
+  EXPLICIT_JSX_HAST,
+  LIST_ITEM,
+  PARAGRAPH,
+  SLIDE,
+  STEP,
+} from '../utils/jsx.ts';
 import { STEP_PROPERTY } from './remarkSteps.ts';
 
 /** Converts the hast properties of an element to JSX attributes. */
@@ -31,17 +37,17 @@ function convertProperties(element: Element): MdxJsxAttribute[] {
 }
 
 /**
- * Converts a list item to a step, with the props from its `:step` directive
- * (see {@link remarkSteps}), if any. Without one, it's shown along with the
- * previous step.
+ * Converts a list item to a `ListItem`, with the props from its `:step`
+ * directive (see {@link remarkSteps}), if any, which makes it a step of its
+ * own. Without one, it's shown along with the previous step.
  */
 function convertListItem(item: Element): MdxJsxFlowElementHast {
   const { [STEP_PROPERTY]: stepProps, ...properties } = item.properties;
   const props =
     typeof stepProps === 'string'
       ? (JSON.parse(stepProps) as Record<string, string>)
-      : { with: 'previous' };
-  const { className, ...otherProps } = props;
+      : undefined;
+  const { className, ...otherProps } = props ?? {};
   if (className !== undefined) {
     properties.className = [
       ...(Array.isArray(properties.className) ? properties.className : []),
@@ -51,8 +57,10 @@ function convertListItem(item: Element): MdxJsxFlowElementHast {
   if (otherProps['id'] !== undefined) {
     properties.id = otherProps['id'];
   }
-  const attributes = [
-    createStringAttribute('component', 'li'),
+  const attributes: MdxJsxAttribute[] = [
+    ...(props === undefined
+      ? []
+      : [{ type: 'mdxJsxAttribute', name: 'step', value: null } as const]),
     ...convertProperties({ ...item, properties }),
     ...Object.entries(otherProps)
       .filter(([name]) => name !== 'id')
@@ -60,7 +68,7 @@ function convertListItem(item: Element): MdxJsxFlowElementHast {
   ];
   return {
     type: 'mdxJsxFlowElement',
-    name: STEP,
+    name: LIST_ITEM,
     attributes,
     children: item.children,
     data: EXPLICIT_JSX_HAST,
@@ -93,7 +101,15 @@ function createGroupUses(): GroupUses {
 }
 
 /** Names of the JSX elements counted as enclosing steps. */
-const STEP_ELEMENTS: ReadonlySet<string> = new Set([STEP, 'Step', 'Steps']);
+const STEP_ELEMENTS: ReadonlySet<string> = new Set([
+  STEP,
+  LIST_ITEM,
+  PARAGRAPH,
+  'Step',
+  'ListItem',
+  'Paragraph',
+  'Steps',
+]);
 
 /** Returns the value of a string attribute of a JSX element, if any. */
 function getAttribute(
@@ -119,7 +135,9 @@ function getAttribute(
 function isStepElement(node: RootContent | ElementContent): boolean {
   return (
     (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') &&
-    (node.name === STEP || node.name === 'Step')
+    node.name !== null &&
+    node.name !== 'Steps' &&
+    STEP_ELEMENTS.has(node.name)
   );
 }
 

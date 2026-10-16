@@ -108,7 +108,7 @@ describe('.deck.mdx', () => {
 
   it('renders math with SVG and MathML', () => {
     render(<Plain />);
-    const math = screen.getByRole('math');
+    const math = screen.getByRole('math', { hidden: true });
     expect(math.getAttribute('data-latex')).toBe('x^2');
     expect(math.namespaceURI).toBe('http://www.w3.org/1998/Math/MathML');
     const svg = math

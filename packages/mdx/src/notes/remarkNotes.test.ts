@@ -23,7 +23,8 @@ Say *this*
         master: 'content',
         id: 'slide',
         title: 'Slide',
-        children: '<p>Text</p><Notes><p>Say <em>this</em></p></Notes>',
+        children:
+          '<Paragraph>Text</Paragraph><Notes><p>Say <em>this</em></p></Notes>',
       },
     ]);
   });

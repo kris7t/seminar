@@ -148,17 +148,29 @@ describe('SlideElement', () => {
     render(
       <Deck>
         <Slide>
-          <Step data-testid="default" defaultIn="figure">
+          <Step data-testid="default" defaultAttachment={{ in: 'figure' }}>
             Default
           </Step>
-          <Step id="named" data-testid="named" defaultIn="figure">
+          <Step
+            id="named"
+            data-testid="named"
+            defaultAttachment={{ in: 'figure' }}
+          >
             Named
           </Step>
-          <Step data-testid="self" with="self" defaultIn="figure">
+          <Step
+            data-testid="self"
+            with="self"
+            defaultAttachment={{ in: 'figure' }}
+          >
             Next
           </Step>
           <Step group="figure">Figure</Step>
-          <Step data-testid="joined" group="figure" defaultIn="other">
+          <Step
+            data-testid="joined"
+            group="figure"
+            defaultAttachment={{ in: 'other' }}
+          >
             Joined
           </Step>
         </Slide>
@@ -187,7 +199,11 @@ describe('SlideElement', () => {
     render(
       <Deck>
         <Slide>
-          <Step data-testid="fresh" group="fresh" defaultIn="figure">
+          <Step
+            data-testid="fresh"
+            group="fresh"
+            defaultAttachment={{ in: 'figure' }}
+          >
             Fresh
           </Step>
           <Step group="figure">Figure</Step>

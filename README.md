@@ -78,7 +78,8 @@ Presenter notes, shown only to the presenter.
   other languages, and `uiLanguages: [{ pt: ./pt.json }]` adds one from a file
   like those in [`packages/core/src/i18n/locales`](packages/core/src/i18n/locales).
 - **Steps:** `:step` at the start of a list item or paragraph shows it in a new
-  step. `:step{group=name}` reveals items together, and the address refers to
+  step. Other items and paragraphs are shown with the step before them, and
+  `:step{with=initial}` shows them up front. `:step{group=name}` reveals items together, and the address refers to
   it by name, e.g., `#intro&step=name`. A step with an id, like
   `:step{#name}`, is in the group `name`, unless it has a `group`. `:step{title=…}` names a step in the
   step tree (Shift+T). `<Step>`, `<Steps>`, and `<Together>` do the same in

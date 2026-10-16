@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { Step, stepClasses } from './Step.tsx';
+import { ListItem } from './ListItem.tsx';
+import { Paragraph } from './Paragraph.tsx';
 import { Together } from './Together.tsx';
 import { Steps } from './Steps.tsx';
 import { useStep, useSteps, type StepWith } from './useSteps.ts';
@@ -220,6 +222,68 @@ describe('steps', () => {
     expect(shownItems()).toEqual(['*a', '*b']);
     await user.keyboard('{ArrowRight}');
     expect(shownItems()).toEqual(['a', 'b', '*c']);
+  });
+
+  it('shows list items with the previous step unless they are steps', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <ul>
+            <Step component="li" data-name="a">
+              a
+            </Step>
+            <ListItem data-name="b">b</ListItem>
+            <ListItem only data-name="c">
+              c
+            </ListItem>
+            <ListItem step data-name="d">
+              d
+            </ListItem>
+            <ListItem id="e" data-name="e">
+              e
+            </ListItem>
+          </ul>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(shownItems()).toEqual(['*a', '*b']);
+    // A behavior makes an item a step of its own.
+    await user.keyboard('{ArrowRight}');
+    expect(shownItems()).toEqual(['a', 'b', '*c']);
+    // So does `step`, and an id alone doesn't. The `only` item is past.
+    await user.keyboard('{ArrowRight}');
+    expect(shownItems()).toEqual(['a', 'b', 'c', '*d', '*e']);
+  });
+
+  it('nests steps in inert items in the parent of the item', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <ul>
+            <ListItem step data-name="a">
+              a
+            </ListItem>
+            <ListItem data-name="b">
+              <Paragraph data-name="b.p">b</Paragraph>
+              <Paragraph step data-name="b.more">
+                more
+              </Paragraph>
+            </ListItem>
+          </ul>
+          <Paragraph data-name="after">after</Paragraph>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(shownItems()).toEqual(['*a', '*b', '*b.p']);
+    // The step in the inert item is a step of the slide, as if the item
+    // wasn't a step, and the paragraph after it is shown with it.
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=2');
+    expect(shownItems()).toEqual(['a', 'b', 'b.p', '*b.more', '*after']);
   });
 
   it('shows the steps of a group together', async () => {

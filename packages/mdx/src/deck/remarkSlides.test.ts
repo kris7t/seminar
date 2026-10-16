@@ -32,21 +32,21 @@ More
         master: 'title',
         id: 'talk',
         title: 'Talk',
-        children: '<p>Speaker</p>',
+        children: '<Paragraph>Speaker</Paragraph>',
       },
       {
         master: 'content',
         id: 'introduction',
         title: 'Introduction',
-        children: '<p>Body</p>',
+        children: '<Paragraph>Body</Paragraph>',
       },
-      { master: 'content', children: '<p>More</p>' },
+      { master: 'content', children: '<Paragraph>More</Paragraph>' },
     ]);
   });
 
   it('keeps content before the first slide break', async () => {
     expect(await slides('Intro\n\n## Next')).toEqual([
-      { master: 'content', children: '<p>Intro</p>' },
+      { master: 'content', children: '<Paragraph>Intro</Paragraph>' },
       { master: 'content', id: 'next', title: 'Next', children: '' },
     ]);
   });
@@ -70,16 +70,16 @@ More
         master: 'content',
         id: 'slide',
         title: 'Slide',
-        children: '<h3>Section</h3><p>Text</p>',
+        children: '<h3>Section</h3><Paragraph>Text</Paragraph>',
       },
     ]);
   });
 
   it('treats all thematic breaks as slide breaks', async () => {
     expect(await slides('One\n\n---\n\nTwo\n\n___\n\nThree')).toEqual([
-      { master: 'content', children: '<p>One</p>' },
-      { master: 'content', children: '<p>Two</p>' },
-      { master: 'content', children: '<p>Three</p>' },
+      { master: 'content', children: '<Paragraph>One</Paragraph>' },
+      { master: 'content', children: '<Paragraph>Two</Paragraph>' },
+      { master: 'content', children: '<Paragraph>Three</Paragraph>' },
     ]);
   });
 
@@ -97,8 +97,8 @@ Done
 ::slide[Title with *markup*]
 `),
     ).toEqual([
-      { master: 'content', children: '<p>Intro</p>' },
-      { master: 'section', id: 'end', children: '<p>Done</p>' },
+      { master: 'content', children: '<Paragraph>Intro</Paragraph>' },
+      { master: 'section', id: 'end', children: '<Paragraph>Done</Paragraph>' },
       {
         master: 'closing',
         id: 'title-with-markup',
@@ -134,7 +134,7 @@ Done
         id: 'res',
         note: 'a b',
         title: 'Results',
-        children: '<p>Done</p>',
+        children: '<Paragraph>Done</Paragraph>',
       },
     ]);
   });
@@ -164,7 +164,7 @@ Done
         master: 'content',
         id: 'deeper',
         title: 'Deeper',
-        children: '<p>Text</p>',
+        children: '<Paragraph>Text</Paragraph>',
       },
     ]);
   });
@@ -332,18 +332,22 @@ author: Someone
         [
           'content',
           undefined,
-          '<h1>A</h1><h2>B</h2><h3>C</h3><h4>D</h4><p>Text</p>',
+          '<h1>A</h1><h2>B</h2><h3>C</h3><h4>D</h4><Paragraph>Text</Paragraph>',
         ],
       ]);
     });
 
     it('starts content slides at the deepest level', async () => {
       expect(await masters(1)).toEqual([
-        ['content', 'A', '<h2>B</h2><h3>C</h3><h4>D</h4><p>Text</p>'],
+        [
+          'content',
+          'A',
+          '<h2>B</h2><h3>C</h3><h4>D</h4><Paragraph>Text</Paragraph>',
+        ],
       ]);
       expect(await masters(2)).toEqual([
         ['title', 'A', ''],
-        ['content', 'B', '<h3>C</h3><h4>D</h4><p>Text</p>'],
+        ['content', 'B', '<h3>C</h3><h4>D</h4><Paragraph>Text</Paragraph>'],
       ]);
     });
 
@@ -351,13 +355,13 @@ author: Someone
       expect(await masters(3)).toEqual([
         ['title', 'A', ''],
         ['section', 'B', ''],
-        ['content', 'C', '<h4>D</h4><p>Text</p>'],
+        ['content', 'C', '<h4>D</h4><Paragraph>Text</Paragraph>'],
       ]);
       expect(await masters(4)).toEqual([
         ['title', 'A', ''],
         ['section', 'B', ''],
         ['subsection', 'C', ''],
-        ['content', 'D', '<p>Text</p>'],
+        ['content', 'D', '<Paragraph>Text</Paragraph>'],
       ]);
     });
 

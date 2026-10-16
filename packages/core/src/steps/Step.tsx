@@ -157,14 +157,24 @@ export interface StepProps
   /** See the `after` option of `useSteps`. */
   after?: string | undefined;
   /**
-   * Group or element to nest the step in when it isn't placed with `in`,
-   * `with`, or `after`, and doesn't join a group with other steps. Wrapper
-   * components can use this to attach themselves to another step by default,
-   * e.g., callouts to the step of the element they point at. Steps creating
-   * a group, e.g., with an `id`, are still nested in it. `with="self"`
-   * places the step where it is instead.
+   * Shows the step with a step of its own, like `with="self"`, e.g., `step`
+   * in a directive. Ignored if `with` is set.
    */
-  defaultIn?: string | Element | undefined;
+  step?: boolean | '' | undefined;
+  /**
+   * How the step is attached to the steps by default, unless it's placed
+   * with `with`, `step`, `in`, or `after`, or joins a group with other
+   * steps. Wrapper components can use this to choose their usual place:
+   *
+   * - `{ with: 'previous' }` or `{ with: 'initial' }` makes the step inert
+   *   by default, e.g., list items, which are shown with the previous step
+   *   unless they set a step behavior, e.g., `only`, as well.
+   * - `{ in: group }` nests the step in a group or in the step of an
+   *   element, e.g., callouts in the step of the element they point at.
+   *
+   * Steps creating a group, e.g., with an `id`, still use their default.
+   */
+  defaultAttachment?: StepAttachment | undefined;
   /**
    * Title of the step in the tree of steps, instead of its text. Unlike the
    * HTML attribute, it isn't shown as a tooltip.
@@ -189,6 +199,10 @@ export interface StepProps
   children?: ReactNode | ((state: StepState) => ReactNode);
   sx?: SxProps<Theme>;
 }
+
+/** How a step is attached to the steps by default, see `Step`. */
+export type StepAttachment =
+  { with: 'previous' | 'initial' } | { in: string | Element };
 
 export type StepClassKey = 'root' | StepPhase | 'hidden' | 'dimmed';
 
@@ -276,7 +290,8 @@ export function Step(inProps: StepProps): JSX.Element {
     group = id,
     in: parent,
     after,
-    defaultIn,
+    step: ownStep,
+    defaultAttachment,
     title,
     behavior: themeBehavior,
     defaultBehavior,
@@ -295,18 +310,34 @@ export function Step(inProps: StepProps): JSX.Element {
     'reveal';
   const appearances = rankAppearances(theme, appearancesOf(theme, behavior));
   const together = use(TogetherContext);
-  // Steps placed explicitly aren't placed by `defaultIn`. Joining a group
-  // with other steps is left to the store, which knows the group.
-  const placed =
+  const explicitWith =
+    withStep ?? (ownStep === true || ownStep === '' ? 'self' : undefined);
+  // Steps placed explicitly aren't attached by default. Joining a group with
+  // other steps is left to the store, which knows the group.
+  const attachment =
     together !== undefined ||
-    withStep !== undefined ||
+    explicitWith !== undefined ||
     parent !== undefined ||
-    after !== undefined;
+    after !== undefined
+      ? undefined
+      : defaultAttachment;
+  // Inert steps become steps of their own with a behavior of their own.
+  const defaultWith =
+    attachment !== undefined &&
+    'with' in attachment &&
+    inProps.behavior === undefined &&
+    shorthand === undefined
+      ? attachment.with
+      : undefined;
   const step = useStep({
-    with: together ?? withStep,
+    with: together ?? explicitWith,
     group,
     in: parent,
-    defaultIn: placed ? undefined : defaultIn,
+    defaultIn:
+      attachment !== undefined && 'in' in attachment
+        ? attachment.in
+        : undefined,
+    defaultWith,
     after,
     title,
     appearances,

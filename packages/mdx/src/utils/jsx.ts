@@ -9,6 +9,8 @@ import type { MdxJsxFlowElementHast } from 'mdast-util-mdx-jsx';
 export const DECK = '_SliderDeck';
 export const SLIDE = '_SliderSlide';
 export const STEP = '_SliderStep';
+export const LIST_ITEM = '_SliderListItem';
+export const PARAGRAPH = '_SliderParagraph';
 export const SLIDE_ELEMENT = '_SliderSlideElement';
 export const FORMULA = '_SliderFormula';
 export const NOTES = '_SliderNotes';

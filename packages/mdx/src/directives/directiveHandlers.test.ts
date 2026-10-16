@@ -7,7 +7,10 @@ import { slides } from '../test/compileDeck.ts';
 describe('directiveHandlers', () => {
   it('keeps colons that are not directives', async () => {
     expect(await slides('At 10:30, see a:b.')).toEqual([
-      { master: 'content', children: '<p>At 10:30, see a:b.</p>' },
+      {
+        master: 'content',
+        children: '<Paragraph>At 10:30, see a:b.</Paragraph>',
+      },
     ]);
   });
 

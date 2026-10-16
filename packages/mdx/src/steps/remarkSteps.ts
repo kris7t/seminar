@@ -8,7 +8,7 @@ import {
   type Attributes,
 } from '../directives/directives.ts';
 import { createStringAttribute } from '../utils/estree.ts';
-import { EXPLICIT_JSX, STEP } from '../utils/jsx.ts';
+import { EXPLICIT_JSX, NOTES, PARAGRAPH } from '../utils/jsx.ts';
 
 /**
  * Name of the hast property of list items with the attributes of their `:step`
@@ -61,7 +61,7 @@ export function getStepProps(
   ];
 }
 
-function transform(parent: Parents, file: VFile) {
+function transform(parent: Parents, file: VFile, inNotes: boolean) {
   if (parent.type === 'listItem') {
     // The directive applies to the whole item if it's in its first line.
     const [first] = parent.children;
@@ -83,24 +83,39 @@ function transform(parent: Parents, file: VFile) {
   }
   parent.children = parent.children.map((child) => {
     if ('children' in child) {
-      transform(child, file);
+      transform(
+        child,
+        file,
+        inNotes || (child.type === 'mdxJsxFlowElement' && child.name === NOTES),
+      );
     }
     if (child.type !== 'paragraph') {
       return child;
     }
     const directive = takeDirective(child.children, 'step');
-    if (directive === undefined) {
+    // Paragraphs of list items are part of the step of the item, notes
+    // aren't on the slide, and labels of container directives are for their
+    // components.
+    if (
+      directive === undefined &&
+      (parent.type === 'listItem' ||
+        inNotes ||
+        child.data?.directiveLabel === true)
+    ) {
       return child;
     }
     const step: MdxJsxFlowElement = {
       type: 'mdxJsxFlowElement',
-      name: STEP,
-      attributes: [
-        createStringAttribute('component', 'p'),
-        ...getStepProps(getAttributes(directive), file).map(([name, value]) =>
-          createStringAttribute(name, value),
-        ),
-      ],
+      name: PARAGRAPH,
+      attributes:
+        directive === undefined
+          ? []
+          : [
+              { type: 'mdxJsxAttribute', name: 'step', value: null },
+              ...getStepProps(getAttributes(directive), file).map(
+                ([name, value]) => createStringAttribute(name, value),
+              ),
+            ],
       // MDX compiles phrasing content in flow elements as expected.
       children: child.children as unknown as MdxJsxFlowElement['children'],
       data: EXPLICIT_JSX,
@@ -118,14 +133,16 @@ function transform(parent: Parents, file: VFile) {
  * - In the first line of a list item, at its start or its end, e.g.,
  *   `- :step Item`, the directive sets the props of the step of the item (see
  *   {@link rehypeListSteps}).
- * - Elsewhere in a paragraph, the paragraph becomes a step, as if it was
- *   wrapped in a `Step`.
+ * - Elsewhere in a paragraph, the paragraph becomes a step of its own.
+ *
+ * Paragraphs on slides are `Paragraph`s, which are shown with the previous
+ * step unless they have a `:step`.
  *
  * The attributes of the directive are the props of the step, e.g.,
  * `:step{with=initial group=name}`.
  */
 export function remarkSteps(): (tree: Root, file: VFile) => void {
   return (tree, file) => {
-    transform(tree, file);
+    transform(tree, file, false);
   };
 }

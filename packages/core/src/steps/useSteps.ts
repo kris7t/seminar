@@ -57,7 +57,7 @@ export interface StepHandle extends StepState {
  *
  * - `'self'` starts with a step of its own after the previous one, which is
  *   the default. Setting it explicitly also places a `Step` where it is,
- *   rather than in its `defaultIn`.
+ *   rather than by its `defaultAttachment`.
  * - `'previous'` shows its first step together with the previous stepper on
  *   the same level. If there is no previous stepper on the level, it works
  *   like `'initial'`.
@@ -104,6 +104,11 @@ export interface UseStepsOptions {
    * elements. Ignored if `with` is a handle.
    */
   defaultIn?: string | Element | undefined;
+  /**
+   * Like `with`, but only if the stepper doesn't join a group with other
+   * elements.
+   */
+  defaultWith?: 'previous' | 'initial' | undefined;
   /**
    * Name of the group to place this stepper right after, nested in the same
    * stepper as the group, before the steppers that follow the group in
@@ -153,6 +158,7 @@ export function useSteps(
     group,
     in: parent,
     defaultIn,
+    defaultWith,
     after,
     title,
     appearances,
@@ -173,6 +179,7 @@ export function useSteps(
         : store.attach(node, element, {
             count,
             placement,
+            defaultPlacement: defaultWith,
             parent,
             defaultParent: defaultIn,
             after,
@@ -184,6 +191,7 @@ export function useSteps(
       node,
       count,
       placement,
+      defaultWith,
       parent,
       defaultIn,
       after,
