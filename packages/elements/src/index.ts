@@ -7,7 +7,6 @@ export {
   type CalloutAlign,
   type CalloutClassKey,
   type CalloutColor,
-  type CalloutPoint,
   type CalloutProps,
   type CalloutVariant,
   type CalloutVariantOverrides,

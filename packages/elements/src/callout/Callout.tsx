@@ -10,17 +10,21 @@ import {
   type TypeText,
 } from '@mui/material/styles';
 import {
-  SLIDE_VIEW_ATTRIBUTE,
   SLIDE_HEIGHT,
   SLIDE_WIDTH,
   Step,
   type ComponentTheme,
+  parseSlidePoint,
+  resolveSlidePoint,
+  SLIDE_BOX,
+  useSlideBox,
   useSlideElement,
+  useSlidePoint,
+  type SlidePoint,
   type StepProps,
   type StepState,
 } from '@slider/core';
 import {
-  useCallback,
   useLayoutEffect,
   useRef,
   useState,
@@ -71,12 +75,6 @@ export type CalloutVariant =
 export type CalloutAlign =
   'left' | 'center' | 'right' | 'justify' | 'start' | 'end';
 
-/**
- * A point as `x,y`, as an MDX-friendly string or a JSX tuple. Numbers are
- * logical slide pixels, and percentages, like `50%`, fractions of a box.
- */
-export type CalloutPoint = string | readonly [number | string, number | string];
-
 /** Props of a speech bubble callout, which behaves like a step. */
 export interface CalloutProps extends Omit<
   StepProps,
@@ -98,8 +96,9 @@ export interface CalloutProps extends Omit<
    * place it on the slide with `at`. It points at the middle of the top or
    * bottom edge of the element, or at `at` in its box. Unless `in`, `with`,
    * `group`, or `after` is set, the callout is a step nested in the step of
-   * the element, or the step enclosing it, if any. The callout itself takes
-   * no room where it's rendered.
+   * the element, or the step enclosing it, if any, and `with="self"` places
+   * it where it is instead. The callout itself takes no room where it's
+   * rendered.
    */
   anchor?: Element | string | undefined;
   /**
@@ -130,14 +129,14 @@ export interface CalloutProps extends Omit<
    */
   stemOffset?: number | undefined;
   /** Shift from the character-box attachment, as `x,y` logical pixels. */
-  shift?: CalloutPoint | undefined;
+  shift?: SlidePoint | undefined;
   /**
    * Point to attach to, as `x,y` from the top left corner of the anchor, or
    * of the slide without one, e.g., `120,80` in logical pixels or `62%,40%`
    * of the size of the box. Defaults to the middle of the slide without an
    * anchor.
    */
-  at?: CalloutPoint | undefined;
+  at?: SlidePoint | undefined;
   /**
    * MUI palette color of the bubble, like `primary`, or a text color, like
    * `text.secondary`.
@@ -398,67 +397,6 @@ function optionalFiniteNumber(value: unknown): number | undefined {
   return Number.isFinite(converted) ? converted : undefined;
 }
 
-function calloutPoint(
-  value: CalloutPoint | undefined,
-): [number, number] | undefined {
-  const parts =
-    typeof value === 'string' ? value.trim().split(/[\s,]+/) : value;
-  if (parts?.length !== 2) return undefined;
-  const x = Number(parts[0]);
-  const y = Number(parts[1]);
-  return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : undefined;
-}
-
-/** A box in logical slide pixels. */
-interface Box {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-const SLIDE_BOX: Box = { x: 0, y: 0, width: SLIDE_WIDTH, height: SLIDE_HEIGHT };
-
-/** A coordinate in logical pixels, or as a fraction of the size of a box. */
-interface Coordinate {
-  value: number;
-  relative: boolean;
-}
-
-function coordinate(
-  value: number | string | undefined,
-): Coordinate | undefined {
-  if (value === undefined) return undefined;
-  const text = String(value).trim();
-  const relative = text.endsWith('%');
-  const number = Number(relative ? text.slice(0, -1) : text);
-  if (text === '' || !Number.isFinite(number)) return undefined;
-  return { value: relative ? number / 100 : number, relative };
-}
-
-/** Parses a point that may be relative to a box, see {@link CalloutPoint}. */
-function relativePoint(
-  value: CalloutPoint | undefined,
-): [Coordinate, Coordinate] | undefined {
-  const parts =
-    typeof value === 'string' ? value.trim().split(/[\s,]+/) : value;
-  if (parts?.length !== 2) return undefined;
-  const x = coordinate(parts[0]);
-  const y = coordinate(parts[1]);
-  return x === undefined || y === undefined ? undefined : [x, y];
-}
-
-/** Returns `point` in logical slide pixels, relative to `box`. */
-function resolvePoint(
-  [x, y]: [Coordinate, Coordinate],
-  box: Box,
-): [number, number] {
-  return [
-    box.x + (x.relative ? x.value * box.width : x.value),
-    box.y + (y.relative ? y.value * box.height : y.value),
-  ];
-}
-
 function fromAnchorOrigin(
   geometry: CalloutGeometry,
   anchorX: number,
@@ -476,10 +414,12 @@ function fromAnchorOrigin(
 function initialGeometry(ownerState: CalloutOwnerState): CalloutGeometry {
   const originX = SLIDE_WIDTH / 2;
   const originY = SLIDE_HEIGHT / 2;
-  const [shiftX, shiftY] = calloutPoint(ownerState.shift) ?? [0, 0];
-  const at = relativePoint(ownerState.at);
+  const shift = parseSlidePoint(ownerState.shift);
+  const [shiftX, shiftY] =
+    shift === undefined ? [0, 0] : resolveSlidePoint(shift, SLIDE_BOX);
+  const at = parseSlidePoint(ownerState.at);
   const [atX, atY] =
-    at === undefined ? [originX, originY] : resolvePoint(at, SLIDE_BOX);
+    at === undefined ? [originX, originY] : resolveSlidePoint(at, SLIDE_BOX);
   const anchorX = atX + shiftX;
   const anchorY = atY + shiftY;
   const geometry = calloutGeometry({
@@ -494,19 +434,6 @@ function initialGeometry(ownerState: CalloutOwnerState): CalloutGeometry {
     stemOffset: ownerState.stemOffset,
   });
   return fromAnchorOrigin(geometry, anchorX, anchorY, originX, originY);
-}
-
-function sameGeometry(left: CalloutGeometry, right: CalloutGeometry): boolean {
-  return (
-    left.x === right.x &&
-    left.y === right.y &&
-    left.width === right.width &&
-    left.height === right.height &&
-    left.angle === right.angle &&
-    left.tipX === right.tipX &&
-    left.tipY === right.tipY &&
-    left.path === right.path
-  );
 }
 
 /**
@@ -569,20 +496,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const preferredAngle = optionalFiniteNumber(angle);
   const preferredOffset = optionalFiniteNumber(offset);
   const preferredStemOffset = optionalFiniteNumber(stemOffset);
-  const preferredShift = calloutPoint(shift);
-  const absoluteAnchor = relativePoint(at);
-  const namedElement = useSlideElement(
-    typeof anchor === 'string' ? anchor : undefined,
-  );
-  const targetElement = typeof anchor === 'object' ? anchor : namedElement;
-  // Callouts pointing at an element are nested in its step, unless they are
-  // placed otherwise.
-  const nestInTarget =
-    targetElement !== undefined &&
-    stepProps.in === undefined &&
-    stepProps.with === undefined &&
-    stepProps.group === undefined &&
-    stepProps.after === undefined;
+  const targetElement = useSlideElement(anchor);
   const ownerState: CalloutOwnerState = {
     ...props,
     width,
@@ -593,101 +507,64 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     angle: preferredAngle,
     offset: preferredOffset,
     stemOffset: preferredStemOffset,
-    shift: preferredShift,
     color,
     variant,
     elevation,
   };
-  const originRef = useRef<HTMLSpanElement>(null);
+  const [origin, setOrigin] = useState<HTMLElement | null>(null);
   const positionerRef = useRef<HTMLSpanElement>(null);
-  const [geometry, setGeometry] = useState(() => initialGeometry(ownerState));
-
-  const updateGeometry = useCallback(() => {
-    const origin = originRef.current;
-    const positioner = positionerRef.current;
-    const frame = origin?.closest<HTMLElement>(`[${SLIDE_VIEW_ATTRIBUTE}]`);
-    if (
-      origin === null ||
-      positioner === null ||
-      frame === undefined ||
-      frame === null
-    )
-      return;
-    const frameRect = frame.getBoundingClientRect();
-    const originRect = origin.getBoundingClientRect();
-    const scale = frameRect.width / SLIDE_WIDTH || 1;
-    const originX = (originRect.left - frameRect.left) / scale;
-    const originY = (originRect.top - frameRect.top) / scale;
-    const targetRect = targetElement?.getBoundingClientRect();
-    // The box that `at` is relative to.
-    const box: Box =
-      targetRect === undefined
-        ? SLIDE_BOX
-        : {
-            x: (targetRect.left - frameRect.left) / scale,
-            y: (targetRect.top - frameRect.top) / scale,
-            width: targetRect.width / scale,
-            height: targetRect.height / scale,
-          };
-    const [shiftX, shiftY] = preferredShift ?? [0, 0];
-    // Without `at`, the callout points at the middle of the box, or at its
-    // top or bottom edge, if it has an anchor, as if it was a character.
-    const [atX, atY] =
-      absoluteAnchor !== undefined
-        ? resolvePoint(absoluteAnchor, box)
-        : [box.x + box.width / 2, box.y + box.height / 2];
-    const anchorX = atX + shiftX;
-    const anchorY = atY + shiftY;
-    const next = fromAnchorOrigin(
-      calloutGeometry({
-        anchorX,
-        anchorY,
-        anchorHeight:
-          absoluteAnchor === undefined && targetRect !== undefined
-            ? box.height
-            : 0,
-        width: width ?? (positioner.offsetWidth || maxWidth),
-        height: positioner.offsetHeight || INITIAL_HEIGHT,
-        radius,
-        stemSize,
-        angle: preferredAngle,
-        offset: preferredOffset,
-        stemOffset: preferredStemOffset,
-      }),
-      anchorX,
-      anchorY,
-      originX,
-      originY,
-    );
-    setGeometry((previous) => (sameGeometry(previous, next) ? previous : next));
-  }, [
-    preferredAngle,
-    preferredOffset,
-    preferredStemOffset,
-    absoluteAnchor,
-    preferredShift,
-    targetElement,
-    radius,
-    stemSize,
-    width,
-    maxWidth,
-  ]);
-
+  const originBox = useSlideBox(origin ?? undefined);
+  const anchored = useSlidePoint(targetElement, { at, shift });
+  const [size, setSize] = useState<[number, number] | undefined>();
   useLayoutEffect(() => {
-    updateGeometry();
     const positioner = positionerRef.current;
-    const observer =
-      positioner === null || typeof ResizeObserver === 'undefined'
-        ? undefined
-        : new ResizeObserver(updateGeometry);
-    if (positioner !== null) observer?.observe(positioner);
-    if (targetElement !== undefined) observer?.observe(targetElement);
-    window.addEventListener('resize', updateGeometry);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', updateGeometry);
+    if (positioner === null) return undefined;
+    // In logical pixels, since the scale of the slide is a transform.
+    const measure = () => {
+      setSize((previous) =>
+        previous?.[0] === positioner.offsetWidth &&
+        previous[1] === positioner.offsetHeight
+          ? previous
+          : [positioner.offsetWidth, positioner.offsetHeight],
+      );
     };
-  }, [updateGeometry, targetElement]);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(positioner);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+  const geometry =
+    anchored === undefined || originBox === undefined
+      ? initialGeometry(ownerState)
+      : fromAnchorOrigin(
+          calloutGeometry({
+            anchorX: anchored.point[0],
+            anchorY: anchored.point[1],
+            // Without `at`, callouts point at the top or bottom edge of their
+            // anchor, as if it was a character.
+            anchorHeight:
+              targetElement !== undefined && parseSlidePoint(at) === undefined
+                ? anchored.box.height
+                : 0,
+            width:
+              width ??
+              (size === undefined || size[0] === 0 ? maxWidth : size[0]),
+            height:
+              size === undefined || size[1] === 0 ? INITIAL_HEIGHT : size[1],
+            radius,
+            stemSize,
+            angle: preferredAngle,
+            offset: preferredOffset,
+            stemOffset: preferredStemOffset,
+          }),
+          anchored.point[0],
+          anchored.point[1],
+          originBox.x,
+          originBox.y,
+        );
 
   // Callouts with blocks are blocks themselves.
   const element = block ? 'div' : 'span';
@@ -728,7 +605,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   return (
     <CalloutOrigin
       as={element}
-      ref={originRef}
+      ref={setOrigin}
       className={calloutClasses.origin}
       ownerState={ownerState}
     >
@@ -746,8 +623,9 @@ export function Callout(inProps: CalloutProps): JSX.Element {
           defaultBehavior="scoped"
           className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
           ownerState={ownerState}
+          // Callouts are nested in the step of the element they point at.
+          defaultIn={targetElement}
           {...stepProps}
-          {...(nestInTarget && { in: targetElement })}
         >
           {stepChildren}
         </CalloutRoot>

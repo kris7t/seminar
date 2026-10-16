@@ -223,6 +223,9 @@ describe('Callout', () => {
           <Callout anchor="figure" with="initial" data-testid="placed">
             Placed
           </Callout>
+          <Callout anchor="figure" with="self" data-testid="own">
+            Own
+          </Callout>
           <Step id="figure">Figure</Step>
         </Slide>
       </Deck>,
@@ -239,7 +242,9 @@ describe('Callout', () => {
     // Nested in the step of the figure, which is still to come.
     expect(phase('nested')).toBe(stepClasses.distantFuture);
     expect(phase('placed')).toBe(stepClasses.current);
-    await user.keyboard('{ArrowRight}{ArrowRight}');
+    // With a step of its own, before the figure.
+    expect(phase('own')).toBe(stepClasses.future);
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=figure.1');
     expect(phase('nested')).toBe(stepClasses.current);
   });
