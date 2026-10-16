@@ -29,7 +29,7 @@ async function compile(
 describe('remarkDirectiveComponents', () => {
   it('renders text, leaf, and container directives with imported components', async () => {
     const module = await compile(
-      ':mark[important]{#result .yellow color=gold}\n\n::callout[Short]\n\n:::callout{side=left}\nLong *content*\n:::',
+      ':mark[important]{#result .yellow color=gold}\n\n::callout[Short]{at=640,360 shift=12,-8}\n\n:::callout{side=left}\nLong *content*\n:::',
       {
         directives: {
           mark: { source: STUB_URL, exportName: 'Highlighter' },
@@ -42,7 +42,9 @@ describe('remarkDirectiveComponents', () => {
     expect(text(rendered)).toContain(
       '<Highlighter id="result" className="yellow" color="gold">important</Highlighter>',
     );
-    expect(text(rendered)).toContain('<PluginCallout>Short</PluginCallout>');
+    expect(text(rendered)).toContain(
+      '<PluginCallout at="640,360" shift="12,-8">Short</PluginCallout>',
+    );
     expect(text(rendered)).toContain(
       '<PluginCallout side="left"><p>Long <em>content</em></p></PluginCallout>',
     );

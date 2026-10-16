@@ -98,7 +98,10 @@ describe('.deck.mdx', () => {
 
   it('passes custom variant shorthands from directives to steps', () => {
     render(<CalloutDeck />);
-    const callout = screen.getByText('Custom callout');
+    const callout = screen
+      .getByText('Custom callout')
+      .closest<HTMLElement>('.SliderCallout-root');
+    if (callout === null) throw new Error('Missing callout');
     expect(callout.classList).toContain('SliderStep-dimmed');
     expect(callout.hasAttribute('ghost')).toBe(false);
   });

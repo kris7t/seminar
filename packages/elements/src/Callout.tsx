@@ -1,20 +1,90 @@
 import { generateUtilityClasses } from '@mui/material';
-import { styled, useThemeProps } from '@mui/material/styles';
 import {
+  styled,
+  useTheme,
+  useThemeProps,
+  type Palette,
+  type PaletteColor,
+} from '@mui/material/styles';
+import {
+  SLIDE_VIEW_ATTRIBUTE,
+  SLIDE_HEIGHT,
   SLIDE_WIDTH,
   Step,
   type ComponentTheme,
   type StepProps,
+  type StepState,
 } from '@slider/core';
-import type { JSX } from 'react';
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type JSX,
+  type ReactNode,
+} from 'react';
 
-/** Props of a callout, which behaves like a step. */
-export type CalloutProps = Omit<StepProps, 'defaultVariant'>;
+import {
+  CALLOUT_SLIDE_MARGIN,
+  calloutGeometry,
+  type CalloutGeometry,
+} from './calloutGeometry.ts';
 
-export type CalloutClassKey = 'anchor' | 'positioner' | 'root';
+export const DEFAULT_CALLOUT_WIDTH = 360;
+export const DEFAULT_CALLOUT_STEM_SIZE = 36;
+
+/** Keys of the MUI theme palette whose values are palette colors. */
+export type CalloutColor = {
+  [Key in keyof Palette]: Palette[Key] extends PaletteColor ? Key : never;
+}[keyof Palette];
+
+/** A logical slide point, as an MDX-friendly string or a JSX tuple. */
+export type CalloutPoint = string | readonly [number, number];
+
+/** Props of a speech bubble callout, which behaves like a step. */
+export interface CalloutProps extends Omit<
+  StepProps,
+  'children' | 'color' | 'defaultVariant'
+> {
+  /** Width of the rounded body in logical slide pixels. */
+  width?: number | undefined;
+  /** Corner radius of the body. Defaults to twice the theme shape radius. */
+  radius?: number | undefined;
+  /** Width of the stem at the body, and its default length. */
+  stemSize?: number | undefined;
+  /**
+   * Direction from the bubble body to the directive anchor, in degrees. `0`
+   * selects the right edge and `90` the bottom edge. Omit it for automatic
+   * fitting; an explicit value is exact even when the bubble is clipped.
+   */
+  angle?: number | undefined;
+  /** Stem length from the body to the anchor. Defaults to `stemSize`. */
+  offset?: number | undefined;
+  /**
+   * Attachment position along the selected edge, from 0 to 1. Defaults to an
+   * automatically mirrored 0.3 or 0.7.
+   */
+  stemOffset?: number | undefined;
+  /** Shift from the character-box attachment, as `x,y` logical pixels. */
+  shift?: CalloutPoint | undefined;
+  /** Absolute attachment point, as `x,y` logical slide coordinates. */
+  at?: CalloutPoint | undefined;
+  /** MUI palette color of the bubble. */
+  color?: CalloutColor | undefined;
+  children?: StepProps['children'];
+}
+
+export type CalloutClassKey =
+  'anchor' | 'positioner' | 'root' | 'background' | 'content';
 
 export const calloutClasses: Record<CalloutClassKey, string> =
-  generateUtilityClasses('SliderCallout', ['anchor', 'positioner', 'root']);
+  generateUtilityClasses('SliderCallout', [
+    'anchor',
+    'positioner',
+    'root',
+    'background',
+    'content',
+  ]);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -30,6 +100,31 @@ declare module '@mui/material/styles' {
   }
 }
 
+interface CalloutOwnerState extends CalloutProps {
+  color: CalloutColor;
+  width: number;
+  radius: number;
+  stemSize: number;
+}
+
+interface PaletteColorLike {
+  main: string;
+  contrastText?: string | undefined;
+}
+
+function paletteColor(
+  palette: Palette,
+  color: CalloutColor,
+): PaletteColorLike | undefined {
+  const value = (palette as unknown as Record<PropertyKey, unknown>)[color];
+  return typeof value === 'object' &&
+    value !== null &&
+    'main' in value &&
+    typeof value.main === 'string'
+    ? (value as PaletteColorLike)
+    : undefined;
+}
+
 const CalloutAnchor = styled('span', {
   name: 'SliderCallout',
   slot: 'Anchor',
@@ -37,64 +132,307 @@ const CalloutAnchor = styled('span', {
   position: 'relative',
   display: 'inline-block',
   width: 0,
-  height: 0,
-  verticalAlign: 'baseline',
+  height: '1em',
+  verticalAlign: 'text-bottom',
 });
 
 const CalloutPositioner = styled('span', {
   name: 'SliderCallout',
   slot: 'Positioner',
-})({
+})<{ ownerState: CalloutOwnerState }>(({ ownerState }) => ({
   position: 'absolute',
   zIndex: 1,
+  top: '50%',
   left: 0,
-  bottom: '0.65em',
-  transform: 'translateX(-50%)',
-});
+  display: 'block',
+  width: ownerState.width,
+}));
 
 const CalloutRoot = styled(Step, {
   name: 'SliderCallout',
   slot: 'Root',
-})(({ theme }) => ({
-  position: 'relative',
+})<{ ownerState: CalloutOwnerState }>(({ theme, ownerState }) => {
+  const selected = paletteColor(theme.palette, ownerState.color);
+  const background = selected?.main ?? theme.palette.primary.main;
+  return {
+    position: 'relative',
+    display: 'block',
+    boxSizing: 'border-box',
+    width: '100%',
+    color: selected?.contrastText ?? theme.palette.getContrastText(background),
+  };
+});
+
+const CalloutBackground = styled('svg', {
+  name: 'SliderCallout',
+  slot: 'Background',
+})<{ ownerState: CalloutOwnerState }>(({ theme, ownerState }) => ({
+  position: 'absolute',
+  zIndex: -1,
+  inset: 0,
   display: 'block',
-  boxSizing: 'border-box',
-  width: 'max-content',
-  maxWidth: SLIDE_WIDTH / 3,
-  padding: theme.spacing(0.5, 1),
-  borderRadius: theme.shape.borderRadius,
-  color: theme.palette.primary.contrastText,
-  backgroundColor: theme.palette.primary.main,
-  boxShadow: theme.shadows[1],
-  '&::after': {
-    position: 'absolute',
-    top: '100%',
-    left: '50%',
-    width: '0.8em',
-    height: '0.45em',
-    background: 'inherit',
-    clipPath: 'polygon(0 0, 100% 0, 50% 100%)',
-    content: '""',
-    transform: 'translateX(-50%)',
-  },
+  width: '100%',
+  height: '100%',
+  overflow: 'visible',
+  pointerEvents: 'none',
+  fill:
+    paletteColor(theme.palette, ownerState.color)?.main ??
+    theme.palette.primary.main,
+  filter: 'drop-shadow(0 3px 5px rgb(0 0 0 / 0.25))',
 }));
 
+const CalloutContent = styled('span', {
+  name: 'SliderCallout',
+  slot: 'Content',
+})<{ ownerState: CalloutOwnerState }>(({ theme }) => ({
+  position: 'relative',
+  zIndex: 0,
+  display: 'block',
+  padding: theme.spacing(1, 1.5),
+}));
+
+const INITIAL_HEIGHT = 64;
+
+function finiteNumber(value: unknown, fallback: number): number {
+  const converted = Number(value);
+  return Number.isFinite(converted) ? converted : fallback;
+}
+
+function optionalFiniteNumber(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  const converted = Number(value);
+  return Number.isFinite(converted) ? converted : undefined;
+}
+
+function calloutPoint(
+  value: CalloutPoint | undefined,
+): [number, number] | undefined {
+  const parts =
+    typeof value === 'string' ? value.trim().split(/[\s,]+/) : value;
+  if (parts?.length !== 2) return undefined;
+  const x = Number(parts[0]);
+  const y = Number(parts[1]);
+  return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : undefined;
+}
+
+function fromAnchorOrigin(
+  geometry: CalloutGeometry,
+  anchorX: number,
+  anchorY: number,
+  originX: number,
+  originY: number,
+): CalloutGeometry {
+  return {
+    ...geometry,
+    x: geometry.x + anchorX - originX,
+    y: geometry.y + anchorY - originY,
+  };
+}
+
+function initialGeometry(ownerState: CalloutOwnerState): CalloutGeometry {
+  const originX = SLIDE_WIDTH / 2;
+  const originY = SLIDE_HEIGHT / 2;
+  const [shiftX, shiftY] = calloutPoint(ownerState.shift) ?? [0, 0];
+  const [atX, atY] = calloutPoint(ownerState.at) ?? [originX, originY];
+  const anchorX = atX + shiftX;
+  const anchorY = atY + shiftY;
+  const geometry = calloutGeometry({
+    anchorX,
+    anchorY,
+    width: ownerState.width,
+    height: INITIAL_HEIGHT,
+    radius: ownerState.radius,
+    stemSize: ownerState.stemSize,
+    angle: ownerState.angle,
+    offset: ownerState.offset,
+    stemOffset: ownerState.stemOffset,
+  });
+  return fromAnchorOrigin(geometry, anchorX, anchorY, originX, originY);
+}
+
+function sameGeometry(left: CalloutGeometry, right: CalloutGeometry): boolean {
+  return (
+    left.x === right.x &&
+    left.y === right.y &&
+    left.width === right.width &&
+    left.height === right.height &&
+    left.angle === right.angle &&
+    left.path === right.path
+  );
+}
+
 /**
- * An inline callout that participates in the steps of its slide. It uses the
- * `scoped` step variant unless `variant` or a variant shorthand is set.
+ * A speech bubble anchored to its position in the text. Its body and stem are
+ * drawn as an SVG path and placed in the logical coordinate space of the
+ * slide, before the slide is scaled for display.
+ *
+ * The callout participates in the steps of its slide and uses the `scoped`
+ * variant unless `variant` or a variant shorthand is set. Geometry and color
+ * may be set directly or through `SliderCallout.defaultProps` in the theme.
  */
 export function Callout(inProps: CalloutProps): JSX.Element {
+  const theme = useTheme();
   const props = useThemeProps({ props: inProps, name: 'SliderCallout' });
-  const { className, ...other } = props;
+  const {
+    width: requestedWidth = DEFAULT_CALLOUT_WIDTH,
+    radius: requestedRadius,
+    stemSize: requestedStemSize = DEFAULT_CALLOUT_STEM_SIZE,
+    angle,
+    offset,
+    stemOffset,
+    shift,
+    at,
+    color = 'primary',
+    className,
+    children,
+    ...stepProps
+  } = props;
+  const width = Math.min(
+    Math.max(finiteNumber(requestedWidth, DEFAULT_CALLOUT_WIDTH), 1),
+    SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN * 2,
+  );
+  const radius = Math.max(
+    finiteNumber(
+      requestedRadius ?? Number(theme.shape.borderRadius) * 2,
+      Number(theme.shape.borderRadius) * 2,
+    ),
+    0,
+  );
+  const stemSize = Math.max(
+    finiteNumber(requestedStemSize, DEFAULT_CALLOUT_STEM_SIZE),
+    0,
+  );
+  const preferredAngle = optionalFiniteNumber(angle);
+  const preferredOffset = optionalFiniteNumber(offset);
+  const preferredStemOffset = optionalFiniteNumber(stemOffset);
+  const preferredShift = calloutPoint(shift);
+  const absoluteAnchor = calloutPoint(at);
+  const ownerState: CalloutOwnerState = {
+    ...props,
+    width,
+    radius,
+    stemSize,
+    angle: preferredAngle,
+    offset: preferredOffset,
+    stemOffset: preferredStemOffset,
+    shift: preferredShift,
+    at: absoluteAnchor,
+    color,
+  };
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const positionerRef = useRef<HTMLSpanElement>(null);
+  const [geometry, setGeometry] = useState(() => initialGeometry(ownerState));
+
+  const updateGeometry = useCallback(() => {
+    const anchor = anchorRef.current;
+    const positioner = positionerRef.current;
+    const frame = anchor?.closest<HTMLElement>(`[${SLIDE_VIEW_ATTRIBUTE}]`);
+    if (
+      anchor === null ||
+      positioner === null ||
+      frame === undefined ||
+      frame === null
+    )
+      return;
+    const frameRect = frame.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const scale = frameRect.width / SLIDE_WIDTH || 1;
+    const measuredAnchorX =
+      (anchorRect.left + anchorRect.width / 2 - frameRect.left) / scale;
+    const measuredAnchorY =
+      (anchorRect.top + anchorRect.height / 2 - frameRect.top) / scale;
+    const [shiftX, shiftY] = preferredShift ?? [0, 0];
+    const [atX, atY] = absoluteAnchor ?? [measuredAnchorX, measuredAnchorY];
+    const anchorX = atX + shiftX;
+    const anchorY = atY + shiftY;
+    const next = fromAnchorOrigin(
+      calloutGeometry({
+        anchorX,
+        anchorY,
+        anchorHeight:
+          absoluteAnchor === undefined ? anchorRect.height / scale : 0,
+        width,
+        height: positioner.offsetHeight || INITIAL_HEIGHT,
+        radius,
+        stemSize,
+        angle: preferredAngle,
+        offset: preferredOffset,
+        stemOffset: preferredStemOffset,
+      }),
+      anchorX,
+      anchorY,
+      measuredAnchorX,
+      measuredAnchorY,
+    );
+    setGeometry((previous) => (sameGeometry(previous, next) ? previous : next));
+  }, [
+    preferredAngle,
+    preferredOffset,
+    preferredStemOffset,
+    absoluteAnchor,
+    preferredShift,
+    radius,
+    stemSize,
+    width,
+  ]);
+
+  useLayoutEffect(() => {
+    updateGeometry();
+    const positioner = positionerRef.current;
+    const observer =
+      positioner === null || typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(updateGeometry);
+    if (positioner !== null) observer?.observe(positioner);
+    window.addEventListener('resize', updateGeometry);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateGeometry);
+    };
+  }, [updateGeometry]);
+
+  const content = (body: ReactNode): ReactNode => (
+    <>
+      <CalloutBackground
+        aria-hidden
+        className={calloutClasses.background}
+        ownerState={ownerState}
+        viewBox={`0 0 ${String(geometry.width)} ${String(geometry.height)}`}
+      >
+        <path d={geometry.path} />
+      </CalloutBackground>
+      <CalloutContent
+        className={calloutClasses.content}
+        ownerState={ownerState}
+      >
+        {body}
+      </CalloutContent>
+    </>
+  );
+  const stepChildren =
+    typeof children === 'function'
+      ? (state: StepState): ReactNode => content(children(state))
+      : content(children);
+
   return (
-    <CalloutAnchor className={calloutClasses.anchor}>
-      <CalloutPositioner className={calloutClasses.positioner}>
+    <CalloutAnchor ref={anchorRef} className={calloutClasses.anchor}>
+      <CalloutPositioner
+        ref={positionerRef}
+        className={calloutClasses.positioner}
+        ownerState={ownerState}
+        style={{
+          transform: `translate(${String(geometry.x)}px, ${String(geometry.y)}px)`,
+        }}
+      >
         <CalloutRoot
           component="span"
           defaultVariant="scoped"
           className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
-          {...other}
-        />
+          ownerState={ownerState}
+          {...stepProps}
+        >
+          {stepChildren}
+        </CalloutRoot>
       </CalloutPositioner>
     </CalloutAnchor>
   );

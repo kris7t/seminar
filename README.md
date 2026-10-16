@@ -143,9 +143,18 @@ Presenter notes, shown only to the presenter.
   to `past`, and the rest to shown.
 - **Callouts:** add `@slider/elements` to the Slider plugins to use inline
   directives such as `:callout[Remember this]{only}`. The callout overlays the
-  slide above the directive's position. It is a step whose default variant is
-  `scoped`; it accepts the other step props, full variants, and built-in or
-  theme-defined variant shorthands.
+  slide with an SVG speech bubble pointing to the directive's position. Its
+  `width`, corner `radius`, stem width `stemSize`, stem length `offset`, edge
+  attachment `stemOffset`, `angle`, and MUI palette `color` can be changed
+  directly or with `SliderCallout.defaultProps` in the theme. The angle's
+  dominant direction selects the attachment edge (`0` right, `90` bottom),
+  while `stemOffset` runs from 0 to 1 along it. Omitted geometry is chosen to
+  fit the slide with an off-center stem; explicit geometry is exact and may be
+  clipped by the slide. The tip targets the corresponding edge of the
+  directive's character box; `shift=x,y` moves it, while `at=x,y` sets an
+  absolute logical slide point. It is a step whose default
+  variant is `scoped`; it accepts the other step props, full variants, and
+  built-in or theme-defined variant shorthands.
 - **Colons:** a colon followed by a word starts a directive like `:step`.
   Unknown ones, like in `10:30`, stay text, but write `\:step` for a literal
   `:step`.
