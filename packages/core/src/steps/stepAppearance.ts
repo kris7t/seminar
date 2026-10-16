@@ -38,8 +38,15 @@ export const BUILT_IN_APPEARANCE_RANKS: Readonly<
   hidden: 200,
 };
 
-/** How a variant of steps looks in each {@link StepPhase}. */
-export type StepAppearances = Readonly<Record<StepPhase, StepAppearance>>;
+/**
+ * How a variant of steps looks in each {@link StepPhase}. Phases without an
+ * appearance fall back to more general ones: `'current'` to `'open'`,
+ * `'distantFuture'` to `'future'`, and `'distantPast'` to `'past'`, and the
+ * rest are shown.
+ */
+export type StepAppearances = Readonly<
+  Partial<Record<StepPhase, StepAppearance>>
+>;
 
 /** An appearance with its rank in the theme. */
 export interface RankedAppearance {
@@ -47,7 +54,7 @@ export interface RankedAppearance {
   readonly rank: number;
 }
 
-/** How a variant of steps looks in each phase, with the ranks. */
+/** How a variant of steps looks in every phase, with the ranks. */
 export type RankedAppearances = Readonly<Record<StepPhase, RankedAppearance>>;
 
 declare module '@mui/material/styles' {
@@ -105,11 +112,16 @@ export function rankAppearances(
       name,
       rank: rankOf(theme, name),
     });
+    const open = appearances.open ?? 'shown';
+    const future = appearances.future ?? 'shown';
+    const past = appearances.past ?? 'shown';
     ranked = {
-      future: rank(appearances.future),
-      current: rank(appearances.current),
-      parent: rank(appearances.parent),
-      past: rank(appearances.past),
+      distantFuture: rank(appearances.distantFuture ?? future),
+      future: rank(future),
+      current: rank(appearances.current ?? open),
+      open: rank(open),
+      past: rank(past),
+      distantPast: rank(appearances.distantPast ?? past),
     };
     byAppearances.set(appearances, ranked);
   }
@@ -118,7 +130,7 @@ export function rankAppearances(
 
 /** Names of the built-in variants of steps. */
 export type BuiltInStepVariant =
-  'reveal' | 'dim' | 'preview' | 'focus' | 'only';
+  'reveal' | 'dim' | 'preview' | 'focus' | 'only' | 'scoped';
 
 /**
  * Appearances of the built-in variants of steps (see `StepVariant`), which
@@ -127,34 +139,22 @@ export type BuiltInStepVariant =
 export const BUILT_IN_STEP_VARIANTS: Readonly<
   Record<BuiltInStepVariant, StepAppearances>
 > = {
-  reveal: {
-    future: 'hidden',
-    current: 'shown',
-    parent: 'shown',
-    past: 'shown',
-  },
-  dim: { future: 'hidden', current: 'shown', parent: 'shown', past: 'dimmed' },
-  preview: {
-    future: 'dimmed',
-    current: 'shown',
-    parent: 'shown',
-    past: 'shown',
-  },
-  focus: {
-    future: 'dimmed',
-    current: 'shown',
-    parent: 'shown',
-    past: 'dimmed',
-  },
-  only: { future: 'hidden', current: 'shown', parent: 'shown', past: 'hidden' },
+  reveal: { future: 'hidden' },
+  dim: { future: 'hidden', past: 'dimmed' },
+  preview: { future: 'dimmed' },
+  focus: { future: 'dimmed', past: 'dimmed' },
+  only: { future: 'hidden', past: 'hidden' },
+  scoped: { future: 'hidden', distantPast: 'hidden' },
 };
 
 /** Steps that are always shown, e.g., `Steps`, whose content changes instead. */
 export const ALWAYS_SHOWN: RankedAppearances = {
+  distantFuture: SHOWN,
   future: SHOWN,
   current: SHOWN,
-  parent: SHOWN,
+  open: SHOWN,
   past: SHOWN,
+  distantPast: SHOWN,
 };
 
 /**

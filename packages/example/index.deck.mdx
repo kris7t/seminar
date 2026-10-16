@@ -84,9 +84,12 @@ Notes that don't fit below the slide can be expanded.
 :step{in=parse only} `:step{in=parse}` nests a callout in the step of
 the `parse` group, wherever it is on the slide
 
-:step{in=parse only} so callouts come and go with their item
+:step{in=parse scoped} `{only}` callouts go after their turn, but
+`{scoped}` ones like this stay
 
-:step{in=render focus} and look at least as hidden as it
+:step{in=parse scoped} until their item is past
+
+:step{in=render focus} Callouts also look at least as hidden as their item
 
 ### Ranges of steps {after=1 before=4}
 

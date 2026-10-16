@@ -29,15 +29,21 @@ export type StepPath = readonly number[];
 /**
  * Where the presentation is relative to a stepper:
  *
+ * - `'distantFuture'`: like `'future'`, but the step the stepper is nested in
+ *   (in the DOM or with `in`), or one enclosing that, isn't shown yet either.
  * - `'future'`: the stepper isn't shown yet.
  * - `'current'`: the current step of the slide is one of the steps of the
  *   stepper.
- * - `'parent'`: like `'current'`, but a step nested inside the stepper has
- *   been shown since, which is the current step of the slide or encloses it.
- * - `'past'`: a later step on the same level, or on an enclosing level, has
- *   been shown.
+ * - `'open'`: like `'current'`, but a step nested inside the stepper has been
+ *   shown since, which is the current step of the slide or encloses it.
+ * - `'past'`: a later step on the same level has been shown.
+ * - `'distantPast'`: like `'past'`, but the step the stepper is nested in, or
+ *   one enclosing that, is past, too.
+ *
+ * Steppers that aren't nested in any step are never in the distant phases.
  */
-export type StepPhase = 'future' | 'current' | 'parent' | 'past';
+export type StepPhase =
+  'distantFuture' | 'future' | 'current' | 'open' | 'past' | 'distantPast';
 
 /** Where a stepper is in the steps of its level. */
 interface StepPlace {
@@ -51,11 +57,6 @@ interface StepPlace {
 
 /** State of a stepper as stored in a {@link StepStore}. */
 export interface StepStatus extends StepPlace {
-  /**
-   * Whether the level of the stepper is open, i.e., the stepper it is nested
-   * in is current or a parent, or it isn't nested in any.
-   */
-  isOpen: boolean;
   /**
    * How the stepper it is nested in looks, including the steppers that one is
    * nested in, which the stepper should look at least as hidden as.
@@ -151,6 +152,13 @@ const FUTURE: StepPlace = { stepIndex: -1, phase: 'future' };
 const PAST: StepPlace = {
   stepIndex: Number.POSITIVE_INFINITY,
   phase: 'past',
+};
+
+const DISTANT_FUTURE: StepPlace = { stepIndex: -1, phase: 'distantFuture' };
+
+const DISTANT_PAST: StepPlace = {
+  stepIndex: Number.POSITIVE_INFINITY,
+  phase: 'distantPast',
 };
 
 function levelKey(level: StepPath): string {
@@ -369,7 +377,6 @@ export class StepStore {
     if (
       cached?.stepIndex === status.stepIndex &&
       cached.phase === status.phase &&
-      cached.isOpen === status.isOpen &&
       cached.inherited === status.inherited
     ) {
       return cached;
@@ -912,12 +919,10 @@ export class StepStore {
     const place = this.#computePlace(node);
     const parent = this.#getLayout().parents.get(node);
     if (parent === undefined) {
-      return { ...place, isOpen: true, inherited: SHOWN };
+      return { ...place, inherited: SHOWN };
     }
-    const parentPhase = this.#computePlace(parent).phase;
     return {
       ...place,
-      isOpen: parentPhase === 'current' || parentPhase === 'parent',
       inherited: this.#computeAppearance(parent, new Set([node])),
     };
   }
@@ -952,7 +957,7 @@ export class StepStore {
       const position = path[depth] ?? 0;
       if (position !== step) {
         // The enclosing step is either already done or not yet shown.
-        return position > step ? PAST : FUTURE;
+        return position > step ? DISTANT_PAST : DISTANT_FUTURE;
       }
     }
     const position = path[level.length] ?? 0;
@@ -966,7 +971,7 @@ export class StepStore {
     const nested = path[level.length + 1] ?? 0;
     return {
       stepIndex: position - first,
-      phase: nested > 0 ? 'parent' : 'current',
+      phase: nested > 0 ? 'open' : 'current',
     };
   }
 }

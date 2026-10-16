@@ -116,12 +116,19 @@ Presenter notes, shown only to the presenter.
 - **Step styles:** `:step{variant=…}` or a shorthand like `:step{only}`, or
   `{steps=…}` on a slide, sets how steps look before, during, and after their
   turn: `reveal` (the default), `dim` (past steps are dimmed), `preview`
-  (future steps are dimmed), `focus` (both), or `only` (hidden outside their
-  turn). `:step{in=name}` nests a
+  (future steps are dimmed), `focus` (both), `only` (hidden outside their
+  turn), or `scoped` (like `reveal`, but hidden once the step it's nested in
+  is past). `:step{in=name}` nests a
   step in the step of the group `name`, e.g., for callouts elsewhere on the
   slide. Nested steps look at least as hidden as their parent. Themes can
   restyle steps as `SliderStep`, and add variants with `stepVariants` and
-  looks between shown, dimmed, and hidden with `stepAppearances`.
+  looks between shown, dimmed, and hidden with `stepAppearances`. Variants
+  set the look in each phase: `future`, `current`, `open` (current, with a
+  nested step shown), `past`, and for nested steps, `distantFuture` and
+  `distantPast`, while their parent is still to come or already past, e.g.,
+  `{ distantPast: 'hidden' }` hides callouts with their dimmed parent.
+  `current` falls back to `open`, `distantFuture` to `future`, `distantPast`
+  to `past`, and the rest to shown.
 - **Colons:** a colon followed by a word starts a directive like `:step`.
   Unknown ones, like in `10:30`, stay text, but write `\:step` for a literal
   `:step`.

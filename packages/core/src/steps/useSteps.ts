@@ -35,11 +35,6 @@ export interface StepState {
    */
   isCurrent: boolean;
   /**
-   * Whether the level of the stepper is open, i.e., the step it is nested in
-   * (in the DOM or with `in`) is current or a parent, or it isn't nested.
-   */
-  isOpen: boolean;
-  /**
    * How the step that the stepper is nested in looks, which the stepper
    * should look at least as hidden as.
    */
@@ -122,7 +117,6 @@ export interface UseStepsOptions {
 const UNLINKED: StepStatus = {
   stepIndex: -1,
   phase: 'future',
-  isOpen: true,
   inherited: SHOWN,
 };
 
@@ -175,7 +169,7 @@ export function useSteps(
           }),
     [store, node, count, placement, parent, after, title, appearances],
   );
-  const { stepIndex, phase, isOpen, inherited } = useSyncExternalStore(
+  const { stepIndex, phase, inherited } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,
     linked ? getUnlinkedStatus : () => store.getStatus(node),
   );
@@ -186,12 +180,11 @@ export function useSteps(
       stepCount: count,
       stepIndex: clampedIndex,
       phase,
-      isActive: phase !== 'future',
-      isCurrent: phase === 'current' || phase === 'parent',
-      isOpen,
+      isActive: phase !== 'future' && phase !== 'distantFuture',
+      isCurrent: phase === 'current' || phase === 'open',
       inherited,
     }),
-    [ref, count, clampedIndex, phase, isOpen, inherited],
+    [ref, count, clampedIndex, phase, inherited],
   );
   return linked ? withStep : ownStep;
 }

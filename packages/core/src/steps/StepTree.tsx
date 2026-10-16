@@ -5,7 +5,7 @@ import { scrollIntoView } from '../sidebar/Sidebar.tsx';
 import type { StepPath, StepStore, StepTreeEntry } from './StepStore.ts';
 
 /** Where a step is relative to the current one. */
-type EntryPhase = 'past' | 'parent' | 'current' | 'future';
+type EntryPhase = 'past' | 'open' | 'current' | 'future';
 
 function phaseOf(path: StepPath, current: StepPath): EntryPhase {
   // The start of the slide doesn't enclose the steps of the slide.
@@ -19,7 +19,7 @@ function phaseOf(path: StepPath, current: StepPath): EntryPhase {
       return step < position ? 'past' : 'future';
     }
   }
-  return path.length === current.length ? 'current' : 'parent';
+  return path.length === current.length ? 'current' : 'open';
 }
 
 interface EntryProps {
@@ -60,7 +60,7 @@ function Entry({
             variant: 'body2',
             noWrap: true,
             sx: [
-              phase === 'parent' && { fontWeight: 500 },
+              phase === 'open' && { fontWeight: 500 },
               phase === 'future' && { color: 'text.secondary' },
               label === '' && { fontStyle: 'italic' },
               skipped && {

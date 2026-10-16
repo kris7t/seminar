@@ -7,7 +7,7 @@ import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Step, stepClasses, type StepVariant } from './Step.tsx';
-import type { StepAppearances } from './stepAppearance.ts';
+import { rankAppearances, type StepAppearances } from './stepAppearance.ts';
 
 /**
  * Returns how `element` looks, including what it inherits from the elements
@@ -26,8 +26,8 @@ function appearanceOf(element: Element): string {
 function stateOf(text: string): string {
   const element = screen.getByText(text);
   const phase =
-    ['future', 'current', 'parent', 'past'].find((name) =>
-      element.classList.contains(stepClasses[name as 'future']),
+    ['distantFuture', 'future', 'current', 'open', 'past', 'distantPast'].find(
+      (name) => element.classList.contains(stepClasses[name as 'future']),
     ) ?? '?';
   return `${phase} ${appearanceOf(element)}`;
 }
@@ -57,9 +57,10 @@ describe('step variants', () => {
   it('tells the phases apart', async () => {
     const user = userEvent.setup();
     renderSlide();
+    // Distant while the step it is nested in is still to come.
     expect([stateOf('A'), stateOf('B'), stateOf('C')]).toEqual([
       'future hidden',
-      'future hidden',
+      'distantFuture hidden',
       'future hidden',
     ]);
     await user.keyboard('{ArrowRight}');
@@ -69,13 +70,13 @@ describe('step variants', () => {
     ]);
     await user.keyboard('{ArrowRight}');
     expect([stateOf('A'), stateOf('B')]).toEqual([
-      'parent shown',
+      'open shown',
       'current shown',
     ]);
     await user.keyboard('{ArrowRight}');
     expect([stateOf('A'), stateOf('B'), stateOf('C')]).toEqual([
       'past shown',
-      'past shown',
+      'distantPast shown',
       'current shown',
     ]);
   });
@@ -165,40 +166,74 @@ describe('step variants', () => {
       ]);
       await user.keyboard('{ArrowRight}');
       expect(states()).toEqual([
-        'parent shown',
+        'open shown',
         'current shown',
         'future hidden',
         'future hidden',
       ]);
       await user.keyboard('{ArrowRight}{ArrowRight}');
+      // Distant once the step they are nested in is past.
       expect(states()).toEqual([
         'past shown',
-        'past shown',
-        'past shown',
+        'distantPast shown',
+        'distantPast shown',
         'current shown',
       ]);
     });
 
-    it('marks steps whose parent is current as open', async () => {
+    it('tells the distant phases apart', async () => {
       const user = userEvent.setup();
-      renderCallouts('reveal', 'reveal');
-      const isOpen = () =>
-        screen.getByText('X').classList.contains(stepClasses.open);
-      expect(isOpen()).toBe(false);
-      await user.keyboard('{ArrowRight}');
-      expect(isOpen()).toBe(true);
-      await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
-      expect(isOpen()).toBe(false);
-      expect(screen.getByText('A').classList.contains(stepClasses.open)).toBe(
-        true,
+      const theme = createSlideTheme({
+        stepVariants: {
+          callout: { future: 'hidden', distantPast: 'hidden' },
+        } as Record<string, StepAppearances>,
+      });
+      render(
+        <Deck theme={theme}>
+          <Slide title="Callouts">
+            <Step group="a" variant="dim">
+              A
+            </Step>
+            <Step group="b">B</Step>
+            <Step in="a" variant={'callout' as StepVariant}>
+              X
+            </Step>
+          </Slide>
+        </Deck>,
       );
+      expect(stateOf('X')).toBe('distantFuture hidden');
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect([stateOf('A'), stateOf('X')]).toEqual([
+        'open shown',
+        'current shown',
+      ]);
+      // Hidden once A is past, although A is only dimmed.
+      await user.keyboard('{ArrowRight}');
+      expect([stateOf('A'), stateOf('X')]).toEqual([
+        'past dimmed',
+        'distantPast hidden',
+      ]);
+    });
+
+    it('hides scoped steps once the step they are nested in is past', async () => {
+      const user = userEvent.setup();
+      renderCallouts('reveal', 'scoped');
+      const states = () => ['X', 'Y'].map(stateOf);
+      expect(states()).toEqual([
+        'distantFuture hidden',
+        'distantFuture hidden',
+      ]);
+      await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+      expect(states()).toEqual(['past shown', 'current shown']);
+      await user.keyboard('{ArrowRight}');
+      expect(states()).toEqual(['distantPast hidden', 'distantPast hidden']);
     });
 
     it('looks at least as hidden as the step it is nested in', async () => {
       const user = userEvent.setup();
       renderCallouts('only', 'focus');
       // Hidden with the future parent, although focus would only dim it.
-      expect(stateOf('X')).toBe('future hidden');
+      expect(stateOf('X')).toBe('distantFuture hidden');
       await user.keyboard('{ArrowRight}');
       expect([stateOf('X'), stateOf('Y')]).toEqual([
         'future dimmed',
@@ -218,8 +253,8 @@ describe('step variants', () => {
       await user.keyboard('{ArrowRight}');
       expect([stateOf('A'), stateOf('X'), stateOf('Y')]).toEqual([
         'past hidden',
-        'past hidden',
-        'past hidden',
+        'distantPast hidden',
+        'distantPast hidden',
       ]);
     });
 
@@ -229,7 +264,7 @@ describe('step variants', () => {
       await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
       expect([stateOf('A'), stateOf('X')]).toEqual([
         'past shown',
-        'past hidden',
+        'distantPast hidden',
       ]);
     });
 
@@ -256,7 +291,27 @@ describe('step variants', () => {
         stateOf('A'),
         appearanceOf(screen.getByTestId('b')),
         stateOf('X'),
-      ]).toEqual(['past hidden', 'shown', 'past hidden']);
+      ]).toEqual(['past hidden', 'shown', 'distantPast hidden']);
+    });
+  });
+
+  it('falls back to more general phases', () => {
+    const ranked = rankAppearances(createSlideTheme(), {
+      future: 'dimmed',
+      open: 'hidden',
+      distantPast: 'hidden',
+    });
+    expect(
+      Object.fromEntries(
+        Object.entries(ranked).map(([phase, { name }]) => [phase, name]),
+      ),
+    ).toEqual({
+      distantFuture: 'dimmed',
+      future: 'dimmed',
+      current: 'hidden',
+      open: 'hidden',
+      past: 'shown',
+      distantPast: 'hidden',
     });
   });
 
@@ -264,12 +319,7 @@ describe('step variants', () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
       stepVariants: {
-        dim: {
-          future: 'dimmed',
-          current: 'shown',
-          parent: 'shown',
-          past: 'hidden',
-        },
+        dim: { future: 'dimmed', past: 'hidden' },
       },
     });
     render(
@@ -288,7 +338,7 @@ describe('step variants', () => {
     // Hidden with A, which the theme hides after its turn.
     expect([stateOf('A'), stateOf('X')]).toEqual([
       'past hidden',
-      'past hidden',
+      'distantPast hidden',
     ]);
   });
 
@@ -297,12 +347,7 @@ describe('step variants', () => {
     const theme = createSlideTheme({
       stepAppearances: { faded: 50 } as Record<string, number>,
       stepVariants: {
-        dim: {
-          future: 'hidden',
-          current: 'shown',
-          parent: 'shown',
-          past: 'faded' as 'dimmed',
-        },
+        dim: { future: 'hidden', past: 'faded' as 'dimmed' },
       },
     });
     render(
@@ -333,12 +378,7 @@ describe('step variants', () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
       stepVariants: {
-        ghost: {
-          future: 'dimmed',
-          current: 'shown',
-          parent: 'shown',
-          past: 'hidden',
-        },
+        ghost: { future: 'dimmed', past: 'hidden' },
       } as Record<string, StepAppearances>,
     });
     const ghost = { ghost: '' } as Record<string, string>;

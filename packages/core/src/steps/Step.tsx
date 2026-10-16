@@ -41,15 +41,17 @@ export interface StepVariantOverrides {}
 /**
  * How a step looks before, while, and after it's the current step:
  *
- * | Variant   | future | current, parent | past   |
- * | --------- | ------ | --------------- | ------ |
- * | `reveal`  | hidden | shown           | shown  |
- * | `dim`     | hidden | shown           | dimmed |
- * | `preview` | dimmed | shown           | shown  |
- * | `focus`   | dimmed | shown           | dimmed |
- * | `only`    | hidden | shown           | hidden |
+ * | Variant   | future | current, open | past   | distant past |
+ * | --------- | ------ | ------------- | ------ | ------------ |
+ * | `reveal`  | hidden | shown         | shown  | shown        |
+ * | `dim`     | hidden | shown         | dimmed | dimmed       |
+ * | `preview` | dimmed | shown         | shown  | shown        |
+ * | `focus`   | dimmed | shown         | dimmed | dimmed       |
+ * | `only`    | hidden | shown         | hidden | hidden       |
+ * | `scoped`  | hidden | shown         | shown  | hidden       |
  *
- * See {@link StepPhase} for the phases. Themes can change these and add
+ * The distant future looks like the future. See {@link StepPhase} for the
+ * phases. Themes can change these and add
  * further variants (see {@link StepVariantOverrides}) with `stepVariants`.
  */
 export type StepVariant =
@@ -157,11 +159,21 @@ export interface StepProps
   sx?: SxProps<Theme>;
 }
 
-export type StepClassKey = 'root' | StepPhase | 'open' | 'hidden' | 'dimmed';
+export type StepClassKey = 'root' | StepPhase | 'hidden' | 'dimmed';
 
 export const stepClasses: Record<StepClassKey, string> = generateUtilityClasses(
   'SliderStep',
-  ['root', 'future', 'current', 'parent', 'past', 'open', 'hidden', 'dimmed'],
+  [
+    'root',
+    'distantFuture',
+    'future',
+    'current',
+    'open',
+    'past',
+    'distantPast',
+    'hidden',
+    'dimmed',
+  ],
 );
 
 declare module '@mui/material/styles' {
@@ -210,9 +222,9 @@ const StepRoot = styled('div', {
  * elements, so that they aren't dimmed twice.
  *
  * Can be themed as `SliderStep` in the `components` of the MUI theme. The step
- * has a class for its phase (`SliderStep-future`, `-current`, `-parent`, or
- * `-past`, see {@link StepPhase}), `SliderStep-open` if the step it is nested
- * in is current or a parent, or it isn't nested, and `SliderStep-hidden` or
+ * has a class for its phase (`SliderStep-distantFuture`, `-future`,
+ * `-current`, `-open`, `-past`, or `-distantPast`, see {@link StepPhase}),
+ * and `SliderStep-hidden` or
  * `SliderStep-dimmed` if it has to hide or dim itself, or the class of an
  * appearance added by the theme (see {@link StepAppearanceOverrides}). The
  * opacity of dimmed steps is the `--SliderStep-dim-opacity` custom property.
@@ -252,7 +264,7 @@ export function Step(inProps: StepProps): JSX.Element {
     title,
     appearances,
   });
-  const { ref, phase, isOpen, inherited } = step;
+  const { ref, phase, inherited } = step;
   // Elements inside a step already look like it, e.g., hidden or dimmed.
   const appearance = moreHidden(
     moreHidden(appearances[phase], inherited),
@@ -265,7 +277,6 @@ export function Step(inProps: StepProps): JSX.Element {
       className={classNames(
         stepClasses.root,
         stepClasses[phase],
-        isOpen ? stepClasses.open : undefined,
         appearanceClass('SliderStep', appearance, enclosing),
         className,
       )}

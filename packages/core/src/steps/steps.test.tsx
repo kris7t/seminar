@@ -21,12 +21,12 @@ function navigateTo(hash: string) {
 function shownItems(): string[] {
   return [
     ...document.querySelectorAll(
-      `.${stepClasses.root}:not(.${stepClasses.future})`,
+      `.${stepClasses.root}:not(.${stepClasses.future}, .${stepClasses.distantFuture})`,
     ),
   ].map(
     (element) =>
       (element.classList.contains(stepClasses.current) ||
-      element.classList.contains(stepClasses.parent)
+      element.classList.contains(stepClasses.open)
         ? '*'
         : '') + (element.getAttribute('data-name') ?? ''),
   );

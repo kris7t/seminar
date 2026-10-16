@@ -54,16 +54,17 @@ export interface StepsProps extends Omit<
   sx?: SxProps<Theme>;
 }
 
-export type StepsClassKey = 'root' | StepPhase | 'open' | 'hidden' | 'dimmed';
+export type StepsClassKey = 'root' | StepPhase | 'hidden' | 'dimmed';
 
 export const stepsClasses: Record<StepsClassKey, string> =
   generateUtilityClasses('SliderSteps', [
     'root',
+    'distantFuture',
     'future',
     'current',
-    'parent',
-    'past',
     'open',
+    'past',
+    'distantPast',
     'hidden',
     'dimmed',
   ]);
@@ -130,7 +131,7 @@ export function Steps(inProps: StepsProps): JSX.Element {
     title,
     appearances: ALWAYS_SHOWN,
   });
-  const { ref, stepIndex, phase, isOpen, inherited } = step;
+  const { ref, stepIndex, phase, inherited } = step;
   // The content is always shown, unless the step it is nested in isn't.
   const appearance = moreHidden(inherited, enclosing);
   return (
@@ -140,7 +141,6 @@ export function Steps(inProps: StepsProps): JSX.Element {
       className={classNames(
         stepsClasses.root,
         stepsClasses[phase],
-        isOpen ? stepsClasses.open : undefined,
         appearanceClass('SliderSteps', appearance, enclosing),
         className,
       )}
