@@ -75,10 +75,29 @@ export interface SliderConfig {
   directives?: Record<string, DirectiveComponentConfig> | undefined;
 }
 
+/**
+ * How a Remark directive was written: `text` for `:name[…]` inline, `leaf`
+ * for `::name[…]` on a line of its own, and `container` for `:::name` with
+ * Markdown content up to the closing `:::`.
+ */
+export type DirectiveForm = 'text' | 'leaf' | 'container';
+
 /** A named React component imported to render a Remark directive. */
 export interface DirectiveComponentConfig {
   /** Module that exports the component. */
   source: string;
   /** Name of the component's export. */
   exportName: string;
+  /**
+   * Prop that receives the {@link DirectiveForm} of the directive, e.g.,
+   * `directive`. Without it, the component isn't told the form.
+   */
+  formProp?: string | undefined;
+  /**
+   * Prop that receives the label of a container directive, `:::name[label]`,
+   * as plain text. The content of a container directive is the children of
+   * the component, while the label of text and leaf directives is. Without
+   * it, the label is the first paragraph of the children.
+   */
+  labelProp?: string | undefined;
 }

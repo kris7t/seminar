@@ -15,6 +15,7 @@ import {
   SLIDE_WIDTH,
   Step,
   type ComponentTheme,
+  type DirectiveForm,
   type StepProps,
   type StepState,
 } from '@slider/core';
@@ -33,6 +34,7 @@ import {
   calloutGeometry,
   type CalloutGeometry,
 } from './calloutGeometry.ts';
+import { CalloutTitle, calloutTitleClasses } from './CalloutTitle.tsx';
 import {
   clampElevation,
   ShadowFilter,
@@ -87,7 +89,23 @@ export interface CalloutProps extends Omit<
    * lines. Defaults to 360.
    */
   maxWidth?: number | undefined;
-  /** Alignment of the text. Defaults to `center`. */
+  /**
+   * How the callout was written in MDX, which the `callout` directive sets:
+   * `text` (the default) for `:callout[…]` in the text, `leaf` for
+   * `::callout[…]` on a line of its own, and `container` for `:::callout`
+   * with Markdown content. Leaf and container callouts take no room on the
+   * slide, so they can point anywhere with `at`.
+   */
+  directive?: DirectiveForm | undefined;
+  /**
+   * Title shown above the content as a {@link CalloutTitle}, e.g., the label
+   * of a `:::callout[…]` directive.
+   */
+  heading?: ReactNode;
+  /**
+   * Alignment of the text. Defaults to `left` for container callouts, and to
+   * `center` otherwise.
+   */
   align?: CalloutAlign | undefined;
   /** Corner radius of the body. Defaults to twice the theme shape radius. */
   radius?: number | undefined;
@@ -160,6 +178,7 @@ interface CalloutOwnerState extends CalloutProps {
   width: number | undefined;
   maxWidth: number;
   align: CalloutAlign;
+  directive: DirectiveForm;
   radius: number;
   stemSize: number;
 }
@@ -225,6 +244,14 @@ const CalloutAnchor = styled('span', {
   width: 0,
   height: '1em',
   verticalAlign: 'text-bottom',
+  variants: [
+    {
+      // Takes no room between the blocks around it, and points at where
+      // the next one starts, unless `at` is set.
+      props: ({ directive }) => directive !== 'text',
+      style: { position: 'absolute', display: 'block', height: 0 },
+    },
+  ],
 });
 
 const CalloutPositioner = styled('span', {
@@ -327,6 +354,29 @@ const CalloutContent = styled('span', {
   display: 'block',
   padding: theme.spacing(1, 1.5),
   textAlign: ownerState.align,
+  variants: [
+    {
+      // Blocks of container callouts are as far apart as the padding,
+      // rather than a line apart like on slides, which would be loose for a
+      // bubble. They have no room at the edges, and none below the title,
+      // which has room of its own. Margins of the first and last blocks
+      // inside blocks, like the paragraphs of list items, would also show at
+      // the edges.
+      props: { directive: 'container' },
+      style: {
+        '& :is(p, ul, ol, dl, blockquote, pre, figure, table)': {
+          marginBlock: theme.spacing(1),
+        },
+        [[1, 2, 3]
+          .map((depth) => `& ${'> :first-child '.repeat(depth)}`)
+          .concat(`& > .${calloutTitleClasses.root} + *`)
+          .join(', ')]: { marginTop: 0 },
+        [[1, 2, 3]
+          .map((depth) => `& ${'> :last-child '.repeat(depth)}`)
+          .join(', ')]: { marginBottom: 0 },
+      },
+    },
+  ],
 }));
 
 const INITIAL_HEIGHT = 64;
@@ -416,7 +466,9 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const {
     width: requestedWidth,
     maxWidth: requestedMaxWidth = DEFAULT_CALLOUT_MAX_WIDTH,
-    align = 'center',
+    directive = 'text',
+    align = directive === 'container' ? 'left' : 'center',
+    heading,
     radius: requestedRadius,
     stemSize: requestedStemSize = DEFAULT_CALLOUT_STEM_SIZE,
     angle,
@@ -467,6 +519,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     width,
     maxWidth,
     align,
+    directive,
     radius,
     stemSize,
     angle: preferredAngle,
@@ -551,6 +604,8 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     };
   }, [updateGeometry]);
 
+  // Containers hold blocks, like paragraphs and lists.
+  const element = directive === 'container' ? 'div' : 'span';
   const shadowId = useSvgId('SliderCallout-shadow');
   const shadow = theme.shadows[elevation] ?? 'none';
 
@@ -572,9 +627,11 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         <path d={geometry.path} filter={shadowFilterUrl(shadowId, shadow)} />
       </CalloutBackground>
       <CalloutContent
+        as={element}
         className={calloutClasses.content}
         ownerState={ownerState}
       >
+        {heading !== undefined && <CalloutTitle>{heading}</CalloutTitle>}
         {body}
       </CalloutContent>
     </>
@@ -586,11 +643,13 @@ export function Callout(inProps: CalloutProps): JSX.Element {
 
   return (
     <CalloutAnchor
+      as={element}
       ref={anchorRef}
       className={calloutClasses.anchor}
       ownerState={ownerState}
     >
       <CalloutPositioner
+        as={element}
         ref={positionerRef}
         className={calloutClasses.positioner}
         ownerState={ownerState}
@@ -599,7 +658,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         }}
       >
         <CalloutRoot
-          component="span"
+          component={element}
           defaultBehavior="scoped"
           className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
           ownerState={ownerState}

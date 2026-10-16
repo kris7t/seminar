@@ -4,6 +4,7 @@ import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Callout, calloutClasses } from './Callout.tsx';
+import { calloutTitleClasses } from './CalloutTitle.tsx';
 
 declare module './Callout.tsx' {
   interface CalloutVariantOverrides {
@@ -175,6 +176,72 @@ describe('Callout', () => {
         '--SliderCallout-palette-main',
       ),
     ).toBe('rgb(102,102,102)');
+  });
+
+  it('takes no room as a leaf or container directive', () => {
+    render(
+      <Deck>
+        <Slide title="Callout">
+          <Callout>Text</Callout>
+          <Callout directive="leaf" at="100,200">
+            Leaf
+          </Callout>
+          <Callout directive="container">
+            <p>First</p>
+            <p>Second</p>
+          </Callout>
+        </Slide>
+      </Deck>,
+    );
+    const anchorOf = (text: string) => {
+      const anchor = screen
+        .getByText(text)
+        .closest<HTMLElement>(`.${calloutClasses.anchor}`);
+      if (anchor === null) throw new Error(`Missing anchor for ${text}`);
+      return anchor;
+    };
+    expect(getComputedStyle(anchorOf('Text')).position).toBe('relative');
+    expect(anchorOf('Text').tagName).toBe('SPAN');
+    expect(getComputedStyle(anchorOf('Leaf')).position).toBe('absolute');
+    expect(getComputedStyle(anchorOf('Leaf')).height).toBe('0px');
+    expect(anchorOf('Leaf').tagName).toBe('SPAN');
+    const container = anchorOf('First');
+    expect(getComputedStyle(container).position).toBe('absolute');
+    // Containers hold blocks.
+    expect(container.tagName).toBe('DIV');
+    expect(
+      [...container.querySelectorAll('span')].filter(
+        (element) => element.closest('svg') === null,
+      ),
+    ).toEqual([]);
+  });
+
+  it('shows a heading styled by the theme, and aligns containers left', () => {
+    const theme = createSlideTheme({
+      components: {
+        SliderCalloutTitle: {
+          defaultProps: { variant: 'h4' },
+          styleOverrides: { root: { color: 'rgb(1, 2, 3)' } },
+        },
+      },
+    });
+    render(
+      <Deck theme={theme}>
+        <Slide title="Callout">
+          <Callout directive="container" heading="Note">
+            <p>Body</p>
+          </Callout>
+        </Slide>
+      </Deck>,
+    );
+    const title = screen.getByText('Note');
+    expect(title.classList.contains(calloutTitleClasses.root)).toBe(true);
+    expect(getComputedStyle(title).fontSize).toBe('32px');
+    expect(getComputedStyle(title).color).toBe('rgb(1, 2, 3)');
+    const content = title.parentElement;
+    if (content === null) throw new Error('Missing content');
+    expect(getComputedStyle(content).textAlign).toBe('left');
+    expect(getComputedStyle(title).textAlign).toBe('center');
   });
 
   it('centers its text by default', () => {

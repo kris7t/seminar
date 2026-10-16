@@ -9,7 +9,9 @@
     "directives": {
       "callout": {
         "source": "@slider/elements",
-        "exportName": "Callout"
+        "exportName": "Callout",
+        "formProp": "directive",
+        "labelProp": "heading"
       }
     }
   },

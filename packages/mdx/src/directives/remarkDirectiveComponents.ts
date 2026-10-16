@@ -9,6 +9,7 @@ import type {
   MdxJsxFlowElement,
   MdxJsxTextElement,
 } from 'mdast-util-mdx';
+import { toString } from 'mdast-util-to-string';
 import type { VFile } from 'vfile';
 
 import { createEsm, createStringAttribute } from '../utils/estree.ts';
@@ -21,6 +22,10 @@ export interface DirectiveComponent {
   source: string;
   /** Name of the component's export. */
   exportName: string;
+  /** Prop that receives the form of the directive: text, leaf, or container. */
+  formProp?: string | undefined;
+  /** Prop that receives the label of a container directive as plain text. */
+  labelProp?: string | undefined;
 }
 
 /** Directive names and the React components that render them. */
@@ -32,6 +37,13 @@ export interface RemarkDirectiveComponentsOptions {
 }
 
 type Directive = ContainerDirective | LeafDirective | TextDirective;
+
+/** Values of the `formProp` of directive components, see `DirectiveForm`. */
+const FORMS: Record<Directive['type'], string> = {
+  textDirective: 'text',
+  leafDirective: 'leaf',
+  containerDirective: 'container',
+};
 
 interface MutableParent {
   children: Nodes[];
@@ -68,10 +80,24 @@ export function parseDirectiveComponents(
       );
       continue;
     }
-    result[name] = {
+    const component: DirectiveComponent = {
       source: descriptor['source'],
       exportName: descriptor['exportName'],
     };
+    for (const key of ['formProp', 'labelProp'] as const) {
+      const prop = descriptor[key];
+      if (prop === undefined) {
+        continue;
+      }
+      if (typeof prop !== 'string' || prop === '') {
+        file.message(
+          `Expected \`${key}\` of the \`${name}\` directive in ${source} to be a nonempty string`,
+        );
+        continue;
+      }
+      component[key] = prop;
+    }
+    result[name] = component;
   }
   return result;
 }
@@ -113,14 +139,33 @@ function replaceDirectives(
       };
       imports.set(key, imported);
     }
+    const attributes = attributesOf(node);
+    if (component.formProp !== undefined) {
+      attributes.push(
+        createStringAttribute(component.formProp, FORMS[node.type]),
+      );
+    }
+    let children: Nodes[] = node.children;
+    if (
+      node.type === 'containerDirective' &&
+      component.labelProp !== undefined
+    ) {
+      const [first, ...rest] = node.children;
+      if (first?.type === 'paragraph' && first.data?.directiveLabel === true) {
+        attributes.push(
+          createStringAttribute(component.labelProp, toString(first)),
+        );
+        children = rest;
+      }
+    }
     const element = {
       type:
         node.type === 'textDirective'
           ? 'mdxJsxTextElement'
           : 'mdxJsxFlowElement',
       name: imported.local,
-      attributes: attributesOf(node),
-      children: node.children,
+      attributes,
+      children,
       data: EXPLICIT_JSX,
       position: node.position,
     } as MdxJsxFlowElement | MdxJsxTextElement;

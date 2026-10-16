@@ -1,5 +1,6 @@
 export type {
   DirectiveComponentConfig,
+  DirectiveForm,
   MathConfig,
   SliderConfig,
 } from './config/SliderConfig.ts';

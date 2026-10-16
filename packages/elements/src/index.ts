@@ -13,6 +13,12 @@ export {
   type CalloutVariantOverrides,
 } from './callout/Callout.tsx';
 export {
+  CalloutTitle,
+  calloutTitleClasses,
+  type CalloutTitleClassKey,
+  type CalloutTitleProps,
+} from './callout/CalloutTitle.tsx';
+export {
   clampElevation,
   parseBoxShadow,
   ShadowFilter,

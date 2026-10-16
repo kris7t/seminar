@@ -2,7 +2,10 @@ import { evaluate } from '@mdx-js/mdx';
 import * as runtime from 'react/jsx-runtime';
 import { describe, expect, it, vi } from 'vitest';
 
+import { VFile } from 'vfile';
+
 import { sliderMdxOptions } from '../options.ts';
+import { parseDirectiveComponents } from './remarkDirectiveComponents.ts';
 import {
   isComponent,
   renderDeck,
@@ -48,6 +51,52 @@ describe('remarkDirectiveComponents', () => {
     expect(text(rendered)).toContain(
       '<PluginCallout side="left"><p>Long <em>content</em></p></PluginCallout>',
     );
+  });
+
+  it('tells components the form and the label of the directive', async () => {
+    const module = await compile(
+      ':callout[Inline]\n\n::callout[Leaf]\n\n:::callout[Title]{side=left}\nLong *content*\n:::\n\n:::note[Kept]\nBody\n:::',
+      {
+        directives: {
+          callout: {
+            source: STUB_URL,
+            exportName: 'PluginCallout',
+            formProp: 'directive',
+            labelProp: 'title',
+          },
+          note: { source: STUB_URL, exportName: 'Highlighter' },
+        },
+      },
+    );
+    const deck = renderDeck(module);
+    const rendered = text([deck.props.children].flat().map(renderSlideExport));
+    expect(rendered).toContain(
+      '<PluginCallout directive="text">Inline</PluginCallout>',
+    );
+    expect(rendered).toContain(
+      '<PluginCallout directive="leaf">Leaf</PluginCallout>',
+    );
+    expect(rendered).toContain(
+      '<PluginCallout side="left" directive="container" title="Title"><p>Long <em>content</em></p></PluginCallout>',
+    );
+    // Without `labelProp`, the label stays the first paragraph.
+    expect(rendered).toContain(
+      '<Highlighter><p>Kept</p><p>Body</p></Highlighter>',
+    );
+  });
+
+  it('warns about invalid props in directive configs', () => {
+    const file = new VFile();
+    expect(
+      parseDirectiveComponents(
+        { callout: { source: 'pkg', exportName: 'Callout', formProp: 3 } },
+        'the test config',
+        file,
+      ),
+    ).toEqual({ callout: { source: 'pkg', exportName: 'Callout' } });
+    expect(file.messages.map(({ reason }) => reason)).toEqual([
+      'Expected `formProp` of the `callout` directive in the test config to be a nonempty string',
+    ]);
   });
 
   it('lets the theme override components registered by plugins', async () => {
