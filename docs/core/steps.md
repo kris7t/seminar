@@ -1,0 +1,144 @@
+# Steps
+
+Steps reveal the content of a slide bit by bit. Going forward shows the next
+step, until the slide is done and the next slide comes.
+
+## Revealing content
+
+`:step` in a list item or a paragraph shows it in a new step:
+
+```mdx
+- Shown up front
+- :step Shown in the first step
+- and this one along with it
+- :step Shown in the second step
+
+:step This paragraph is shown in the third step.
+```
+
+Content without `:step` is shown with the step before it, or up front if
+there is none. This holds for list items, paragraphs, images, and also
+elements like columns. So `:step` marks where a new step begins, and
+everything after it follows along until the next `:step`.
+
+`:step{with=initial}` shows something up front, even after other steps, and
+`:step{with=previous}` explicitly with the step before it.
+
+Images take `step` and the other attributes of `:step` in their attributes,
+e.g., `![Results](./results.png){step}`. Other elements take them the same
+way, e.g., `:::column{step}`.
+
+## Nested steps
+
+Steps in a nested list are steps of their list item, and come right after
+it:
+
+```mdx
+- :step Parsing
+  - :step Tokens
+  - :step Syntax tree
+- :step Rendering
+```
+
+The step tree (Shift+T) shows how the steps of the current slide nest, and
+the address shows the current step, e.g., `#parsing&step=1.2` for Syntax
+tree.
+
+A paragraph or image in a list item is shown with its item, and one with
+`:step` is a nested step of the item.
+
+## Groups
+
+Steps with the same `group` are shown together, wherever they are on the
+slide:
+
+```mdx
+- :step{group=pro} Markdown is easy to write
+- :step{group=con} but layout control is limited
+- :step{group=pro} Diffs are readable
+- :step{group=con} but figures still need components
+```
+
+Here, both pros are shown in the first step, and both cons in the second
+one. The group is placed at its least nested element, or its first one.
+
+A step with a name, like `:step{#parse}`, is in the group of the same name,
+unless it has a `group`. The address can refer to steps by their group,
+e.g., `#intro&step=parse`, which keeps working when steps are added before
+it.
+
+`:step{title=…}` names a step in the step tree, instead of its text.
+
+## Placing steps elsewhere
+
+A step is usually placed where it is in the text, after the steps before it.
+Two attributes place it elsewhere:
+
+- `in=parse` nests the step in the group `parse`, as if it was inside it,
+  e.g., an explanation of a step written further down.
+- `after=parse` places the step right after the group `parse`, at the same
+  level.
+
+```mdx
+- :step{group=parse} Parsing turns Markdown into a syntax tree
+- :step{group=render} Rendering turns the tree into React elements
+
+:step{in=parse} This is shown in a step nested in parsing,
+before rendering.
+```
+
+## Behaviors
+
+A step can do more than appear. Its behavior sets how it looks before,
+during, and after its turn:
+
+| Behavior  | Before | During | After  | Once its parent is past |
+| --------- | ------ | ------ | ------ | ----------------------- |
+| `reveal`  | hidden | shown  | shown  | shown                   |
+| `dim`     | hidden | shown  | dimmed | dimmed                  |
+| `preview` | dimmed | shown  | shown  | shown                   |
+| `focus`   | dimmed | shown  | dimmed | dimmed                  |
+| `only`    | hidden | shown  | hidden | hidden                  |
+| `scoped`  | hidden | shown  | shown  | hidden                  |
+
+`reveal` is the default. A step's turn lasts while its nested steps are
+shown, too.
+
+The behavior is a bare word on the step, e.g., `:step{only}`, or
+`behavior=only`. `{steps=dim}` on a slide sets the default behavior of its
+steps, e.g., to dim past steps, so that the audience follows the current one:
+
+```mdx
+### Step by step {steps=dim}
+
+- :step First, this
+- :step then this
+- :step{focus} and this one dimmed before and after
+```
+
+Content shown with a step looks like it. Themes can change how behaviors look
+and add new ones.
+
+## Ranges of steps
+
+`from`, `after`, `to`, and `before` on a slide limit the steps shown when
+going through it, e.g., to show only part of a slide, and the rest in a
+recap:
+
+```mdx
+### Overview {after=1 to=parse}
+```
+
+Their values are step numbers, like `1` or `2.1`, or names of groups. `from`
+and `to` include the step they refer to, `after` and `before` don't. The
+skipped steps can still be chosen from the step tree.
+
+## Steps in JSX
+
+JSX on a slide can use the components of `@slider/core`:
+
+- `<Step>` takes the same props as `:step`, e.g., `<Step group="parse" only>`.
+- `<Together>` shows the `<Step>`s directly inside it in a single step.
+- `<Steps count={3}>` takes several steps, and passes the current one to a
+  function as its children, e.g., to highlight parts of a figure one after
+  another.

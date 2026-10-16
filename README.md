@@ -25,8 +25,7 @@ shows most of the features below.
 
 ## Writing decks
 
-A deck is an MDX file whose name ends in `.deck.mdx`. Its frontmatter selects
-the theme:
+A deck is an MDX file whose name ends in `.deck.mdx`:
 
 ```mdx
 ---
@@ -47,7 +46,11 @@ Subtitle of the title slide
 - :step This one appears in a new step
 - and the ones after it along with it
 
-:step So does this paragraph.
+![Architecture](./arch.svg){#arch width=600 step}
+
+::callout[The parser]{for=arch at=30%,40%}
+
+The formula $e^{i\pi} + 1 = 0$ is typeset at build time.
 
 <Calculator />
 
@@ -56,61 +59,18 @@ Presenter notes, shown only to the presenter.
 :::
 ```
 
-- **Slides:** `#` starts the title slide, `##` a section, `###` a content
-  slide, `---` a slide without a title, and `::slide[Title]` one without a
-  heading. `depth:` in the frontmatter shifts these levels.
-- **Slide props:** attributes at the end of a heading set the id, the master,
-  classes, or the title in the table of contents, e.g.,
-  `## Intro {#intro .wide section title=Introduction}`. Ids appear in the
-  address, e.g., `#intro`.
-- **Element names:** ids inside a slide, like `<img id="arch">` or
-  `:step{#parse}`, name elements on that slide only, so that slides can be
-  shown several times at once, recapped, and included. References to them in
-  inline SVG, like `fill="url(#gradient)"` or `href="#icon"`, keep working,
-  and `useSlideElement` finds them in components.
-- **Spare slides:** `{spare}` marks a slide, or the slides of a section, as
-  spare, e.g., for questions. Going through the deck skips them, but they can
-  be chosen from the table of contents or the overview. `{noslide}` on a
-  heading groups slides without a slide of its own.
-- **Languages:** `lang:` in the frontmatter sets the language of the deck,
-  defaulting to English, and `{lang=…}` that of a slide. The interface is in
-  the language of the deck, if available (English, Hungarian, German, or
-  French), and viewers can switch to English. `uiLanguages: [de, fr]` offers
-  other languages, and `uiLanguages: [{ pt: ./pt.json }]` adds one from a file
-  like those in [`packages/core/src/i18n/locales`](packages/core/src/i18n/locales).
-- **Steps:** `:step` at the start of a list item or paragraph shows it in a new
-  step. Other items and paragraphs are shown with the step before them, and
-  `:step{with=initial}` shows them up front. `:step{group=name}` reveals items together, and the address refers to
-  it by name, e.g., `#intro&step=name`. A step with an id, like
-  `:step{#name}`, is in the group `name`, unless it has a `group`. `:step{title=…}` names a step in the
-  step tree (Shift+T). `<Step>`, `<Steps>`, and `<Together>` do the same in
-  JSX.
-- **Step behaviors:** `:step{only}` or `{steps=only}` on a slide sets how steps
-  look before, during, and after their turn: `reveal` (the default), `dim`,
-  `preview`, `focus`, `only`, or `scoped` (hidden once its parent step is
-  past). `:step{in=name}` nests a step in the group `name`. Themes can add
-  behaviors with `stepBehaviors`.
-- **Step ranges:** `{from=…}`, `{after=…}`, `{to=…}`, and `{before=…}` on a
-  slide limit the steps shown when going through it, e.g., `{after=1 to=parse}`.
-- **Recaps:** `::recap[#id]` shows the slide `id` again, continuing its steps
-  where its previous showing ended.
-- **Includes:** `::include[./other.deck.mdx#id]` includes a slide or a section
-  of another deck, and `::include[./other.deck.mdx]` the whole deck. Only the
-  included slides are bundled.
-- **Images:** images next to the deck, e.g., `![Architecture](./arch.svg)`,
-  are bundled, and an image on a line of its own is a block. Attributes after
-  an image set its id, classes, size, and steps, e.g.,
-  `![Architecture](./arch.svg){#arch width=600 step}`. The title of a block
-  image is its caption, e.g., `![A parse tree](./tree.svg "Parsing")`, where
-  the alt text says what the image shows. Like paragraphs, images
-  are shown with the step before them, unless they are steps of their own.
-- **Math:** `$…$` and `$$…$$` are typeset with MathJax at build time.
-- **Notes:** `:::notes` blocks hold presenter notes.
-- **Components:** imported React components can be used as slide content or as
-  masters. `useSlideState` keeps their state in the slide, shared by every view
-  of it, and `useResetSlideState` resets it.
+Headings start slides, `:step` reveals content step by step, and attributes in
+braces name slides and elements. Decks can also show slides again in recaps,
+include slides of other decks, mark spare slides for questions, and switch the
+interface language.
 
-Write `\:step` for a literal `:step`.
+See the [documentation](docs/README.md) for the syntax:
+
+- [Decks and slides](docs/core/decks.md)
+- [Content](docs/core/content.md): images, math, notes, and components
+- [Steps](docs/core/steps.md)
+- [Recaps and includes](docs/core/reuse.md)
+- [Elements](docs/elements/README.md): callouts and columns
 
 Decks can also be written in JSX with `Deck` and `Slide` from `@slider/core`;
 see [`ExampleDeck.tsx`](packages/example/src/ExampleDeck.tsx).
@@ -190,33 +150,12 @@ Every `.deck.mdx` file then gets its own HTML page. Pass
 `slider({ selfContained: false })` to keep scripts and assets in separate
 files, e.g., for hosting with a Content Security Policy.
 
-## Elements
-
-[`@slider/elements`](packages/elements) adds presentation elements as MDX
-directives. Enable it as a plugin:
+Presentation elements, like callouts and columns, come from
+[`@slider/elements`](packages/elements), which is enabled as a plugin:
 
 ```ts
 slider({ plugins: ['@slider/elements'] });
 ```
-
-- **Callouts:** `:callout[Remember this]` shows a speech bubble
-  pointing at its position in the text. It's a step whose default behavior is
-  `scoped`. On a line of its own, `::callout[…]{for=arch}` takes no room, and
-  points at the element `arch`, or at `at=62%,40%` in its box, e.g., in an
-  image, as a step nested in the step of `arch`, if any. `:::callout[Title]{for=arch}` holds Markdown content up to the
-  closing `:::`, left-aligned under a centered title. Callouts fit their text
-  up to `maxWidth`, unless `width` is set. `color` (a palette color
-  like `secondary`, or a text color like `text.secondary`), `variant=outlined`,
-  `align`, `angle`, and `elevation` (a shadow of the theme) change its look,
-  and themes can set defaults and add variants with `SliderCallout` and
-  `SliderCalloutTitle`.
-
-- **Columns:** consecutive `:::column` containers are laid out side by side,
-  sharing the width, e.g., with `{grow=2}` or `{width=400}`, and
-  `:::column[Title]` shows a centered title. `::::columns{gap=… align=…}`
-  around them spaces them, with more colons than the fences inside it. Like
-  paragraphs, columns are shown with the step before them, unless they are
-  steps of their own, e.g., `:::column{step}`.
 
 ## License
 
