@@ -195,6 +195,11 @@ export function AudienceWindow({
         <CssBaseline />
         <SlideTransitionStyles />
         <Box
+          // The audience only watches: the slide doesn't take the input of
+          // this window, like hovering, clicks, focus, or selecting text,
+          // which the mirror shows from the presenter view instead with
+          // attributes, synthetic events, and highlights.
+          inert
           sx={{
             position: 'fixed',
             inset: 0,
