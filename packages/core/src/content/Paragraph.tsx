@@ -1,11 +1,9 @@
 import type { JSX } from 'react';
 
-import { Step, type StepAttachment, type StepProps } from './Step.tsx';
+import { Step, WITH_PREVIOUS, type StepProps } from '../steps/Step.tsx';
 
 /** Props of a {@link Paragraph}. */
 export type ParagraphProps = Omit<StepProps, 'component' | 'defaultAttachment'>;
-
-const WITH_PREVIOUS: StepAttachment = { with: 'previous' };
 
 /**
  * A paragraph, which is shown with the previous step, so that it appears in

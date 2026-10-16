@@ -1,11 +1,9 @@
 import type { JSX } from 'react';
 
-import { Step, type StepAttachment, type StepProps } from './Step.tsx';
+import { Step, WITH_PREVIOUS, type StepProps } from '../steps/Step.tsx';
 
 /** Props of a {@link ListItem}. */
 export type ListItemProps = Omit<StepProps, 'component' | 'defaultAttachment'>;
-
-const WITH_PREVIOUS: StepAttachment = { with: 'previous' };
 
 /**
  * An item of a list, which is shown with the previous step, unless it's a

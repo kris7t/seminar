@@ -88,6 +88,8 @@ export {
 export {
   Step,
   stepClasses,
+  WITH_INITIAL,
+  WITH_PREVIOUS,
   type StepClassKey,
   type StepAttachment,
   type StepProps,
@@ -95,8 +97,14 @@ export {
   type StepBehaviorOverrides,
   type StepBehaviorShorthands,
 } from './steps/Step.tsx';
-export { ListItem, type ListItemProps } from './steps/ListItem.tsx';
-export { Paragraph, type ParagraphProps } from './steps/Paragraph.tsx';
+export {
+  Image,
+  imageClasses,
+  type ImageClassKey,
+  type ImageProps,
+} from './content/Image.tsx';
+export { ListItem, type ListItemProps } from './content/ListItem.tsx';
+export { Paragraph, type ParagraphProps } from './content/Paragraph.tsx';
 export { Together, type TogetherProps } from './steps/Together.tsx';
 export {
   Steps,

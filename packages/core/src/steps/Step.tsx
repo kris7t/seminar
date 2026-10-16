@@ -204,6 +204,15 @@ export interface StepProps
 export type StepAttachment =
   { with: 'previous' | 'initial' } | { in: string | Element };
 
+/**
+ * Attaches a step to the previous step by default, e.g., for content shown
+ * in order with the steps around it, like paragraphs.
+ */
+export const WITH_PREVIOUS: StepAttachment = { with: 'previous' };
+
+/** Attaches a step to the initial step by default, i.e., shows it up front. */
+export const WITH_INITIAL: StepAttachment = { with: 'initial' };
+
 export type StepClassKey = 'root' | StepPhase | 'hidden' | 'dimmed';
 
 export const stepClasses: Record<StepClassKey, string> = generateUtilityClasses(
