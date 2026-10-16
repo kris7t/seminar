@@ -9,9 +9,9 @@
     "directives": {
       "callout": {
         "source": "@slider/elements",
-        "exportName": "Callout",
+        "exportName": "CalloutDirective",
         "formProp": "directive",
-        "labelProp": "heading"
+        "labelProp": "label"
       }
     }
   },

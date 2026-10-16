@@ -4,7 +4,6 @@ import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Callout, calloutClasses } from './Callout.tsx';
-import { calloutTitleClasses } from './CalloutTitle.tsx';
 
 declare module './Callout.tsx' {
   interface CalloutVariantOverrides {
@@ -45,7 +44,7 @@ describe('Callout', () => {
     cleanup();
   });
 
-  it('is an inline scoped step by default', async () => {
+  it('is a scoped step by default', async () => {
     const user = userEvent.setup();
     render(
       <Deck>
@@ -65,10 +64,10 @@ describe('Callout', () => {
     if (positioner === null) throw new Error('Missing callout positioner');
     expect(positioner.classList).toContain(calloutClasses.positioner);
     expect(getComputedStyle(positioner).position).toBe('absolute');
-    const anchor = positioner.parentElement;
-    if (anchor === null) throw new Error('Missing callout anchor');
-    expect(anchor.classList).toContain(calloutClasses.anchor);
-    expect(getComputedStyle(anchor).width).toBe('0px');
+    const origin = positioner.parentElement;
+    if (origin === null) throw new Error('Missing callout origin');
+    expect(origin.classList).toContain(calloutClasses.origin);
+    expect(getComputedStyle(origin).width).toBe('0px');
     await user.keyboard('{ArrowRight}{ArrowRight}');
     expect(callout.classList).not.toContain(stepClasses.hidden);
     await user.keyboard('{ArrowRight}');
@@ -178,70 +177,39 @@ describe('Callout', () => {
     ).toBe('rgb(102,102,102)');
   });
 
-  it('takes no room as a leaf or container directive', () => {
+  it('takes no room, and holds blocks in divs', () => {
     render(
       <Deck>
         <Slide title="Callout">
-          <Callout>Text</Callout>
-          <Callout directive="leaf" at="100,200">
-            Leaf
-          </Callout>
-          <Callout directive="container">
+          <Callout at="100,200">Phrasing</Callout>
+          <Callout block>
             <p>First</p>
             <p>Second</p>
           </Callout>
         </Slide>
       </Deck>,
     );
-    const anchorOf = (text: string) => {
-      const anchor = screen
+    const originOf = (text: string) => {
+      const origin = screen
         .getByText(text)
-        .closest<HTMLElement>(`.${calloutClasses.anchor}`);
-      if (anchor === null) throw new Error(`Missing anchor for ${text}`);
-      return anchor;
+        .closest<HTMLElement>(`.${calloutClasses.origin}`);
+      if (origin === null) throw new Error(`Missing origin for ${text}`);
+      return origin;
     };
-    expect(getComputedStyle(anchorOf('Text')).position).toBe('relative');
-    expect(anchorOf('Text').tagName).toBe('SPAN');
-    expect(getComputedStyle(anchorOf('Leaf')).position).toBe('absolute');
-    expect(getComputedStyle(anchorOf('Leaf')).height).toBe('0px');
-    expect(anchorOf('Leaf').tagName).toBe('SPAN');
-    const container = anchorOf('First');
-    expect(getComputedStyle(container).position).toBe('absolute');
-    // Containers hold blocks.
-    expect(container.tagName).toBe('DIV');
+    expect(getComputedStyle(originOf('Phrasing')).position).toBe('absolute');
+    expect(getComputedStyle(originOf('Phrasing')).height).toBe('0px');
+    expect(originOf('Phrasing').tagName).toBe('SPAN');
+    const blocks = originOf('First');
+    expect(getComputedStyle(blocks).position).toBe('absolute');
+    expect(blocks.tagName).toBe('DIV');
     expect(
-      [...container.querySelectorAll('span')].filter(
+      [...blocks.querySelectorAll('span')].filter(
         (element) => element.closest('svg') === null,
       ),
     ).toEqual([]);
-  });
-
-  it('shows a heading styled by the theme, and aligns containers left', () => {
-    const theme = createSlideTheme({
-      components: {
-        SliderCalloutTitle: {
-          defaultProps: { variant: 'h4' },
-          styleOverrides: { root: { color: 'rgb(1, 2, 3)' } },
-        },
-      },
-    });
-    render(
-      <Deck theme={theme}>
-        <Slide title="Callout">
-          <Callout directive="container" heading="Note">
-            <p>Body</p>
-          </Callout>
-        </Slide>
-      </Deck>,
-    );
-    const title = screen.getByText('Note');
-    expect(title.classList.contains(calloutTitleClasses.root)).toBe(true);
-    expect(getComputedStyle(title).fontSize).toBe('32px');
-    expect(getComputedStyle(title).color).toBe('rgb(1, 2, 3)');
-    const content = title.parentElement;
+    const content = screen.getByText('First').parentElement;
     if (content === null) throw new Error('Missing content');
     expect(getComputedStyle(content).textAlign).toBe('left');
-    expect(getComputedStyle(title).textAlign).toBe('center');
   });
 
   it('is nested in the step of the element it points at', async () => {
@@ -249,10 +217,10 @@ describe('Callout', () => {
     render(
       <Deck>
         <Slide title="Callout">
-          <Callout for="figure" data-testid="nested">
+          <Callout anchor="figure" data-testid="nested">
             Nested
           </Callout>
-          <Callout for="figure" with="initial" data-testid="placed">
+          <Callout anchor="figure" with="initial" data-testid="placed">
             Placed
           </Callout>
           <Step id="figure">Figure</Step>

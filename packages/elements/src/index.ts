@@ -13,6 +13,10 @@ export {
   type CalloutVariantOverrides,
 } from './callout/Callout.tsx';
 export {
+  CalloutDirective,
+  type CalloutDirectiveProps,
+} from './callout/CalloutDirective.tsx';
+export {
   CalloutTitle,
   calloutTitleClasses,
   type CalloutTitleClassKey,

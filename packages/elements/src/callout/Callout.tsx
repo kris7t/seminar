@@ -15,7 +15,6 @@ import {
   SLIDE_WIDTH,
   Step,
   type ComponentTheme,
-  type DirectiveForm,
   useSlideElement,
   type StepProps,
   type StepState,
@@ -35,7 +34,7 @@ import {
   calloutGeometry,
   type CalloutGeometry,
 } from './calloutGeometry.ts';
-import { CalloutTitle, calloutTitleClasses } from './CalloutTitle.tsx';
+import { calloutTitleClasses } from './CalloutTitle.tsx';
 import {
   clampElevation,
   ShadowFilter,
@@ -94,21 +93,23 @@ export interface CalloutProps extends Omit<
    */
   maxWidth?: number | undefined;
   /**
-   * How the callout was written in MDX, which the `callout` directive sets:
-   * `text` (the default) for `:callout[…]` in the text, `leaf` for
-   * `::callout[…]` on a line of its own, and `container` for `:::callout`
-   * with Markdown content. Leaf and container callouts take no room on the
-   * slide, so they can point anywhere with `at`.
+   * What the callout points at: an element, the name of an element on the
+   * slide, e.g., `arch` for an image with `{#arch}` in MDX, or nothing, to
+   * place it on the slide with `at`. It points at the middle of the top or
+   * bottom edge of the element, or at `at` in its box. Unless `in`, `with`,
+   * `group`, or `after` is set, the callout is a step nested in the step of
+   * the element, or the step enclosing it, if any. The callout itself takes
+   * no room where it's rendered.
    */
-  directive?: DirectiveForm | undefined;
+  anchor?: Element | string | undefined;
   /**
-   * Title shown above the content as a {@link CalloutTitle}, e.g., the label
-   * of a `:::callout[…]` directive.
+   * Whether the content is blocks, like paragraphs and lists, rather than
+   * phrasing content. Blocks are left-aligned by default.
    */
-  heading?: ReactNode;
+  block?: boolean | undefined;
   /**
-   * Alignment of the text. Defaults to `left` for container callouts, and to
-   * `center` otherwise.
+   * Alignment of the text. Defaults to `left` for blocks, and to `center`
+   * otherwise.
    */
   align?: CalloutAlign | undefined;
   /** Corner radius of the body. Defaults to twice the theme shape radius. */
@@ -131,17 +132,10 @@ export interface CalloutProps extends Omit<
   /** Shift from the character-box attachment, as `x,y` logical pixels. */
   shift?: CalloutPoint | undefined;
   /**
-   * Name of the element on the slide to point at, e.g., `arch` for an image
-   * with `{#arch}` in MDX. The callout points at the middle of its top or
-   * bottom edge, or at `at` in its box. Unless `in`, `with`, `group`, or
-   * `after` is set, the callout is a step nested in the step of the element,
-   * or the step enclosing it, if any.
-   */
-  for?: string | undefined;
-  /**
-   * Point to attach to, as `x,y` from the top left corner of the slide, or of
-   * the element named by `for`, e.g., `120,80` in logical pixels or `62%,40%`
-   * of the size of the box.
+   * Point to attach to, as `x,y` from the top left corner of the anchor, or
+   * of the slide without one, e.g., `120,80` in logical pixels or `62%,40%`
+   * of the size of the box. Defaults to the middle of the slide without an
+   * anchor.
    */
   at?: CalloutPoint | undefined;
   /**
@@ -161,11 +155,12 @@ export interface CalloutProps extends Omit<
 }
 
 export type CalloutClassKey =
-  'anchor' | 'positioner' | 'root' | 'background' | 'content';
+  'anchor' | 'origin' | 'positioner' | 'root' | 'background' | 'content';
 
 export const calloutClasses: Record<CalloutClassKey, string> =
   generateUtilityClasses('SliderCallout', [
     'anchor',
+    'origin',
     'positioner',
     'root',
     'background',
@@ -193,8 +188,7 @@ interface CalloutOwnerState extends CalloutProps {
   /** Width of the body, or `undefined` to fit its text up to `maxWidth`. */
   width: number | undefined;
   maxWidth: number;
-  align: CalloutAlign;
-  directive: DirectiveForm;
+  block: boolean;
   radius: number;
   stemSize: number;
 }
@@ -250,24 +244,19 @@ function textColors(palette: Palette): [CalloutColor, PaletteColorLike][] {
   });
 }
 
-const CalloutAnchor = styled('span', {
+/**
+ * Where the callout is rendered, which takes no room, and which its bubble is
+ * placed relative to.
+ */
+const CalloutOrigin = styled('span', {
   name: 'SliderCallout',
-  slot: 'Anchor',
-  overridesResolver: (_props, styles) => styles['anchor'],
+  slot: 'Origin',
+  overridesResolver: (_props, styles) => styles['origin'],
 })<{ ownerState: CalloutOwnerState }>({
-  position: 'relative',
-  display: 'inline-block',
+  position: 'absolute',
+  display: 'block',
   width: 0,
-  height: '1em',
-  verticalAlign: 'text-bottom',
-  variants: [
-    {
-      // Takes no room between the blocks around it, and points at where
-      // the next one starts, unless `at` is set.
-      props: ({ directive }) => directive !== 'text',
-      style: { position: 'absolute', display: 'block', height: 0 },
-    },
-  ],
+  height: 0,
 });
 
 const CalloutPositioner = styled('span', {
@@ -369,7 +358,7 @@ const CalloutContent = styled('span', {
   zIndex: 0,
   display: 'block',
   padding: theme.spacing(1, 1.5),
-  textAlign: ownerState.align,
+  textAlign: ownerState.align ?? 'center',
   variants: [
     {
       // Blocks of container callouts are as far apart as the padding,
@@ -378,8 +367,9 @@ const CalloutContent = styled('span', {
       // which has room of its own. Margins of the first and last blocks
       // inside blocks, like the paragraphs of list items, would also show at
       // the edges.
-      props: { directive: 'container' },
+      props: { block: true },
       style: {
+        textAlign: ownerState.align ?? 'left',
         '& :is(p, ul, ol, dl, blockquote, pre, figure, table)': {
           marginBlock: theme.spacing(1),
         },
@@ -534,16 +524,14 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const {
     width: requestedWidth,
     maxWidth: requestedMaxWidth = DEFAULT_CALLOUT_MAX_WIDTH,
-    directive = 'text',
-    align = directive === 'container' ? 'left' : 'center',
-    heading,
+    anchor,
+    block = false,
     radius: requestedRadius,
     stemSize: requestedStemSize = DEFAULT_CALLOUT_STEM_SIZE,
     angle,
     offset,
     stemOffset,
     shift,
-    for: target,
     at,
     color = 'primary',
     variant = 'filled',
@@ -583,7 +571,10 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const preferredStemOffset = optionalFiniteNumber(stemOffset);
   const preferredShift = calloutPoint(shift);
   const absoluteAnchor = relativePoint(at);
-  const targetElement = useSlideElement(target);
+  const namedElement = useSlideElement(
+    typeof anchor === 'string' ? anchor : undefined,
+  );
+  const targetElement = typeof anchor === 'object' ? anchor : namedElement;
   // Callouts pointing at an element are nested in its step, unless they are
   // placed otherwise.
   const nestInTarget =
@@ -596,8 +587,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     ...props,
     width,
     maxWidth,
-    align,
-    directive,
+    block,
     radius,
     stemSize,
     angle: preferredAngle,
@@ -608,28 +598,26 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     variant,
     elevation,
   };
-  const anchorRef = useRef<HTMLSpanElement>(null);
+  const originRef = useRef<HTMLSpanElement>(null);
   const positionerRef = useRef<HTMLSpanElement>(null);
   const [geometry, setGeometry] = useState(() => initialGeometry(ownerState));
 
   const updateGeometry = useCallback(() => {
-    const anchor = anchorRef.current;
+    const origin = originRef.current;
     const positioner = positionerRef.current;
-    const frame = anchor?.closest<HTMLElement>(`[${SLIDE_VIEW_ATTRIBUTE}]`);
+    const frame = origin?.closest<HTMLElement>(`[${SLIDE_VIEW_ATTRIBUTE}]`);
     if (
-      anchor === null ||
+      origin === null ||
       positioner === null ||
       frame === undefined ||
       frame === null
     )
       return;
     const frameRect = frame.getBoundingClientRect();
-    const anchorRect = anchor.getBoundingClientRect();
+    const originRect = origin.getBoundingClientRect();
     const scale = frameRect.width / SLIDE_WIDTH || 1;
-    const measuredAnchorX =
-      (anchorRect.left + anchorRect.width / 2 - frameRect.left) / scale;
-    const measuredAnchorY =
-      (anchorRect.top + anchorRect.height / 2 - frameRect.top) / scale;
+    const originX = (originRect.left - frameRect.left) / scale;
+    const originY = (originRect.top - frameRect.top) / scale;
     const targetRect = targetElement?.getBoundingClientRect();
     // The box that `at` is relative to.
     const box: Box =
@@ -642,14 +630,12 @@ export function Callout(inProps: CalloutProps): JSX.Element {
             height: targetRect.height / scale,
           };
     const [shiftX, shiftY] = preferredShift ?? [0, 0];
-    // Without `at`, the callout points at an edge of its target, or of the
-    // characters around its anchor, as if the target was a character.
+    // Without `at`, the callout points at the middle of the box, or at its
+    // top or bottom edge, if it has an anchor, as if it was a character.
     const [atX, atY] =
       absoluteAnchor !== undefined
         ? resolvePoint(absoluteAnchor, box)
-        : targetRect !== undefined
-          ? [box.x + box.width / 2, box.y + box.height / 2]
-          : [measuredAnchorX, measuredAnchorY];
+        : [box.x + box.width / 2, box.y + box.height / 2];
     const anchorX = atX + shiftX;
     const anchorY = atY + shiftY;
     const next = fromAnchorOrigin(
@@ -657,11 +643,9 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         anchorX,
         anchorY,
         anchorHeight:
-          absoluteAnchor !== undefined
-            ? 0
-            : targetRect !== undefined
-              ? box.height
-              : anchorRect.height / scale,
+          absoluteAnchor === undefined && targetRect !== undefined
+            ? box.height
+            : 0,
         width: width ?? (positioner.offsetWidth || maxWidth),
         height: positioner.offsetHeight || INITIAL_HEIGHT,
         radius,
@@ -672,8 +656,8 @@ export function Callout(inProps: CalloutProps): JSX.Element {
       }),
       anchorX,
       anchorY,
-      measuredAnchorX,
-      measuredAnchorY,
+      originX,
+      originY,
     );
     setGeometry((previous) => (sameGeometry(previous, next) ? previous : next));
   }, [
@@ -705,8 +689,8 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     };
   }, [updateGeometry, targetElement]);
 
-  // Containers hold blocks, like paragraphs and lists.
-  const element = directive === 'container' ? 'div' : 'span';
+  // Callouts with blocks are blocks themselves.
+  const element = block ? 'div' : 'span';
   const shadowId = useSvgId('SliderCallout-shadow');
   const shadow = theme.shadows[elevation] ?? 'none';
 
@@ -732,7 +716,6 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         className={calloutClasses.content}
         ownerState={ownerState}
       >
-        {heading !== undefined && <CalloutTitle>{heading}</CalloutTitle>}
         {body}
       </CalloutContent>
     </>
@@ -743,10 +726,10 @@ export function Callout(inProps: CalloutProps): JSX.Element {
       : content(children);
 
   return (
-    <CalloutAnchor
+    <CalloutOrigin
       as={element}
-      ref={anchorRef}
-      className={calloutClasses.anchor}
+      ref={originRef}
+      className={calloutClasses.origin}
       ownerState={ownerState}
     >
       <CalloutPositioner
@@ -769,6 +752,6 @@ export function Callout(inProps: CalloutProps): JSX.Element {
           {stepChildren}
         </CalloutRoot>
       </CalloutPositioner>
-    </CalloutAnchor>
+    </CalloutOrigin>
   );
 }
