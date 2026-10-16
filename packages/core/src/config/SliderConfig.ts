@@ -100,4 +100,11 @@ export interface DirectiveComponentConfig {
    * it, the label is the first paragraph of the children.
    */
   labelProp?: string | undefined;
+  /**
+   * Directive to wrap consecutive leaf or container directives of this kind
+   * in, unless they are directly in one already, e.g., `columns` for
+   * `:::column`s, which then don't need a `::::columns` around them. The
+   * wrapper has no attributes, so it's written explicitly to set them.
+   */
+  wrapIn?: string | undefined;
 }

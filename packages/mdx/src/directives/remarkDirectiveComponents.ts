@@ -26,6 +26,11 @@ export interface DirectiveComponent {
   formProp?: string | undefined;
   /** Prop that receives the label of a container directive as plain text. */
   labelProp?: string | undefined;
+  /**
+   * Directive that consecutive directives of this kind are wrapped in, unless
+   * they are in one already.
+   */
+  wrapIn?: string | undefined;
 }
 
 /** Directive names and the React components that render them. */
@@ -84,7 +89,7 @@ export function parseDirectiveComponents(
       source: descriptor['source'],
       exportName: descriptor['exportName'],
     };
-    for (const key of ['formProp', 'labelProp'] as const) {
+    for (const key of ['formProp', 'labelProp', 'wrapIn'] as const) {
       const prop = descriptor[key];
       if (prop === undefined) {
         continue;
@@ -108,6 +113,62 @@ function attributesOf(directive: Directive): MdxJsxAttribute[] {
       ? []
       : [createStringAttribute(name === 'class' ? 'className' : name, value)],
   );
+}
+
+/**
+ * Wraps runs of consecutive leaf and container directives that have a
+ * `wrapIn` in a container directive of that name, unless they're directly in
+ * one already, e.g., `:::column`s in `::::columns`.
+ */
+function wrapDirectives(
+  parent: MutableParent,
+  components: DirectiveComponents,
+): void {
+  const wrapper = (node: Nodes): string | undefined =>
+    (node.type === 'leafDirective' || node.type === 'containerDirective') &&
+    components[node.name]?.wrapIn !== undefined
+      ? components[node.name]?.wrapIn
+      : undefined;
+  const parentName =
+    'type' in parent && (parent as Nodes).type === 'containerDirective'
+      ? (parent as ContainerDirective).name
+      : undefined;
+  const children: Nodes[] = [];
+  const wrappers = new Set<Nodes>();
+  for (const child of parent.children) {
+    if ('children' in child) {
+      wrapDirectives(child, components);
+    }
+    const name = wrapper(child);
+    if (name === undefined || name === parentName) {
+      children.push(child);
+      continue;
+    }
+    const previous = children.at(-1);
+    if (
+      previous?.type === 'containerDirective' &&
+      previous.name === name &&
+      wrappers.has(previous)
+    ) {
+      previous.children.push(child as ContainerDirective);
+      if (previous.position !== undefined && child.position !== undefined) {
+        previous.position.end = child.position.end;
+      }
+      continue;
+    }
+    const wrapped: ContainerDirective = {
+      type: 'containerDirective',
+      name,
+      attributes: {},
+      children: [child as ContainerDirective],
+    };
+    wrappers.add(wrapped);
+    if (child.position !== undefined) {
+      wrapped.position = structuredClone(child.position);
+    }
+    children.push(wrapped);
+  }
+  parent.children = children;
 }
 
 function replaceDirectives(
@@ -190,6 +251,14 @@ function applyDirectiveComponents(
       ),
     );
   }
+  for (const [name, { wrapIn }] of Object.entries(components)) {
+    if (wrapIn !== undefined && components[wrapIn] === undefined) {
+      file.message(
+        `The \`${name}\` directive is wrapped in the \`${wrapIn}\` directive, which has no component`,
+      );
+    }
+  }
+  wrapDirectives(tree, components);
   const imports = new Map<
     string,
     { local: string; component: DirectiveComponent }

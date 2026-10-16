@@ -1,4 +1,4 @@
-import { evaluate } from '@mdx-js/mdx';
+import { compile as mdxCompile, evaluate } from '@mdx-js/mdx';
 import * as runtime from 'react/jsx-runtime';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -82,6 +82,56 @@ describe('remarkDirectiveComponents', () => {
     // Without `labelProp`, the label stays the first paragraph.
     expect(rendered).toContain(
       '<Highlighter><p>Kept</p><Paragraph>Body</Paragraph></Highlighter>',
+    );
+  });
+
+  it('wraps consecutive directives in their wrappers', async () => {
+    const module = await compile(
+      [
+        ':::column[A]\nOne\n:::',
+        ':::column[B]\nTwo\n:::',
+        'Between',
+        ':::column[C]\nThree\n:::',
+        '::::columns{gap=8}\n:::column[D]\nFour\n:::\n::::',
+      ].join('\n\n'),
+      {
+        directives: {
+          columns: { source: STUB_URL, exportName: 'Highlighter' },
+          column: {
+            source: STUB_URL,
+            exportName: 'PluginCallout',
+            labelProp: 'title',
+            wrapIn: 'columns',
+          },
+        },
+      },
+    );
+    const deck = renderDeck(module);
+    const rendered = text([deck.props.children].flat().map(renderSlideExport));
+    expect(rendered).toContain(
+      '<Highlighter><PluginCallout title="A"><Paragraph>One</Paragraph></PluginCallout>' +
+        '<PluginCallout title="B"><Paragraph>Two</Paragraph></PluginCallout></Highlighter>' +
+        '<Paragraph>Between</Paragraph>' +
+        '<Highlighter><PluginCallout title="C"><Paragraph>Three</Paragraph></PluginCallout></Highlighter>' +
+        '<Highlighter gap="8"><PluginCallout title="D"><Paragraph>Four</Paragraph></PluginCallout></Highlighter>',
+    );
+  });
+
+  it('warns about wrappers without components', async () => {
+    const file = await mdxCompile(':::column\nOne\n:::', {
+      ...sliderMdxOptions({
+        importSource: STUB_URL,
+        directives: {
+          column: {
+            source: STUB_URL,
+            exportName: 'PluginCallout',
+            wrapIn: 'missing',
+          },
+        },
+      }),
+    });
+    expect(file.messages.map(({ reason }) => reason)).toContain(
+      'The `column` directive is wrapped in the `missing` directive, which has no component',
     );
   });
 
