@@ -22,20 +22,23 @@ export type StepAppearance =
   | 'shown'
   | 'dimmed'
   | 'hidden'
+  | 'collapsed'
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- Empty unless augmented.
   | keyof StepAppearanceOverrides;
 
 /**
  * Ranks of the built-in appearances: the higher the rank, the more hidden the
- * appearance. Themes can slot their own appearances in between with
- * `stepAppearances`, e.g., `{ blurred: 50 }`.
+ * appearance. `hidden` keeps the space of the content, while `collapsed`
+ * removes it from the layout. Themes can slot their own appearances in
+ * between with `stepAppearances`, e.g., `{ blurred: 50 }`.
  */
 export const BUILT_IN_APPEARANCE_RANKS: Readonly<
-  Record<'shown' | 'dimmed' | 'hidden', number>
+  Record<'shown' | 'dimmed' | 'hidden' | 'collapsed', number>
 > = {
   shown: 0,
   dimmed: 100,
   hidden: 200,
+  collapsed: 300,
 };
 
 /**
@@ -130,7 +133,15 @@ export function rankAppearances(
 
 /** Names of the built-in step behaviors. */
 export type BuiltInStepBehavior =
-  'reveal' | 'dim' | 'preview' | 'focus' | 'only' | 'scoped';
+  | 'reveal'
+  | 'dim'
+  | 'preview'
+  | 'focus'
+  | 'only'
+  | 'scoped'
+  | 'insert'
+  | 'expand'
+  | 'swap';
 
 /**
  * Appearances of the built-in step behaviors (see `StepBehavior`), which
@@ -145,6 +156,9 @@ export const BUILT_IN_STEP_BEHAVIORS: Readonly<
   focus: { future: 'dimmed', past: 'dimmed' },
   only: { future: 'hidden', past: 'hidden' },
   scoped: { future: 'hidden', distantPast: 'hidden' },
+  insert: { future: 'collapsed' },
+  expand: { future: 'collapsed', distantPast: 'collapsed' },
+  swap: { future: 'collapsed', past: 'collapsed' },
 };
 
 /** Steps that are always shown, e.g., `Steps`, whose content changes instead. */

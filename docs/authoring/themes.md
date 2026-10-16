@@ -90,8 +90,9 @@ declare module '@mui/material/styles' {
 
 ## Step behaviors and appearances
 
-Steps look one of a few ways, their appearances: `shown`, `dimmed`, or
-`hidden`. A behavior, like `dim`, says which appearance a step has in each
+Steps look one of a few ways, their appearances: `shown`, `dimmed`,
+`hidden`, which keeps the space of the content, or `collapsed`, which removes
+it from the layout. A behavior, like `dim`, says which appearance a step has in each
 phase:
 
 - `future`, refined by `distantFuture` before its parent step,
@@ -102,11 +103,12 @@ phase:
 
 Each appearance has a rank, which orders them by precedence:
 
-| Appearance | Rank |
-| ---------- | ---- |
-| `shown`    | 0    |
-| `dimmed`   | 100  |
-| `hidden`   | 200  |
+| Appearance  | Rank |
+| ----------- | ---- |
+| `shown`     | 0    |
+| `dimmed`    | 100  |
+| `hidden`    | 200  |
+| `collapsed` | 300  |
 
 Nested steps look at least as hidden as the steps they're nested in, so the
 rank decides which appearance wins when they meet. A step whose own
@@ -131,8 +133,6 @@ steps nest:
   hidden steps around it override.
 - Between `dimmed` and `hidden`, e.g., `ghosted` at 150, for something
   stronger than dimming that still shows the content.
-- Above `hidden`, e.g., `collapsed` at 300, for something that also hides
-  the content, but more, e.g., without keeping its space.
 
 For example, an `emphasized` step at 10 makes the steps nested in it
 emphasized, too, even those nested with `in`, while an emphasized step in a

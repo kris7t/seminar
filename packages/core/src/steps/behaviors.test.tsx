@@ -14,6 +14,9 @@ import { rankAppearances, type StepAppearances } from './stepAppearance.ts';
  * it's inside.
  */
 function appearanceOf(element: Element): string {
+  if (element.closest(`.${stepClasses.collapsed}`) !== null) {
+    return 'collapsed';
+  }
   if (element.closest(`.${stepClasses.hidden}`) !== null) {
     return 'hidden';
   }
@@ -86,6 +89,8 @@ describe('step behaviors', () => {
     ['preview', 'dimmed', 'shown'],
     ['focus', 'dimmed', 'dimmed'],
     ['only', 'hidden', 'hidden'],
+    ['insert', 'collapsed', 'shown'],
+    ['swap', 'collapsed', 'collapsed'],
   ] as const)('styles %s steps', async (behavior, future, past) => {
     const user = userEvent.setup();
     renderSlide(behavior);
@@ -93,6 +98,39 @@ describe('step behaviors', () => {
     await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
     expect(stateOf('A')).toBe(`past ${past}`);
     expect(stateOf('C')).toBe('current shown');
+  });
+
+  it('swaps steps in the same place', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="Swaps">
+          <Step with="initial" behavior="swap">
+            A
+          </Step>
+          <Step behavior="swap">B</Step>
+          <Step behavior="swap">C</Step>
+        </Slide>
+      </Deck>,
+    );
+    const states = () => ['A', 'B', 'C'].map((text) => stateOf(text));
+    expect(states()).toEqual([
+      'current shown',
+      'future collapsed',
+      'future collapsed',
+    ]);
+    await user.keyboard('{ArrowRight}');
+    expect(states()).toEqual([
+      'past collapsed',
+      'current shown',
+      'future collapsed',
+    ]);
+    await user.keyboard('{ArrowRight}');
+    expect(states()).toEqual([
+      'past collapsed',
+      'past collapsed',
+      'current shown',
+    ]);
   });
 
   it('takes the behavior from the slide', async () => {
@@ -255,6 +293,42 @@ describe('step behaviors', () => {
         'past hidden',
         'distantPast hidden',
         'distantPast hidden',
+      ]);
+    });
+
+    it('collapses expanded steps once the step they are nested in is past', async () => {
+      const user = userEvent.setup();
+      renderCallouts('reveal', 'expand');
+      const states = () => ['X', 'Y'].map(stateOf);
+      expect(states()).toEqual([
+        'distantFuture collapsed',
+        'distantFuture collapsed',
+      ]);
+      await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+      expect(states()).toEqual(['past shown', 'current shown']);
+      await user.keyboard('{ArrowRight}');
+      expect(states()).toEqual([
+        'distantPast collapsed',
+        'distantPast collapsed',
+      ]);
+    });
+
+    it('collapses steps nested in collapsed steps', async () => {
+      const user = userEvent.setup();
+      renderCallouts('swap', 'reveal');
+      expect(stateOf('X')).toBe('distantFuture collapsed');
+      expect(getComputedStyle(screen.getByText('X')).display).toBe('none');
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect([stateOf('A'), stateOf('X')]).toEqual([
+        'open shown',
+        'current shown',
+      ]);
+      // Collapsed with the parent once it's past, rather than only hidden.
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect([stateOf('A'), stateOf('X'), stateOf('Y')]).toEqual([
+        'past collapsed',
+        'distantPast collapsed',
+        'distantPast collapsed',
       ]);
     });
 

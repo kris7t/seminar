@@ -78,6 +78,20 @@ Notes that don't fit below the slide can be expanded.
 
 :step Poof
 
+### Making room
+
+- Hidden steps keep their space, so the slide doesn't move
+- :step{insert} `:step{insert}` makes room for a step when it's shown
+  - :step{expand} `:step{expand}` also makes room for a nested step
+  - :step{expand} and frees it once its parent is past
+- :step{with=initial} pushing the items after it down
+
+:step{swap with=initial} `:step{swap}` shows steps in the same place: first this
+
+:step{swap} `:step{swap}` shows steps in the same place: then this one instead
+
+:step{swap} `:step{swap}` shows steps in the same place: like versions of a figure
+
 ### Callouts
 
 - :step{group=parse} Parsing turns Markdown into a syntax tree

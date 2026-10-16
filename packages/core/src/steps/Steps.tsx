@@ -54,7 +54,8 @@ export interface StepsProps extends Omit<
   sx?: SxProps<Theme>;
 }
 
-export type StepsClassKey = 'root' | StepPhase | 'hidden' | 'dimmed';
+export type StepsClassKey =
+  'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
 
 export const stepsClasses: Record<StepsClassKey, string> =
   generateUtilityClasses('SliderSteps', [
@@ -67,6 +68,7 @@ export const stepsClasses: Record<StepsClassKey, string> =
     'distantPast',
     'hidden',
     'dimmed',
+    'collapsed',
   ]);
 
 declare module '@mui/material/styles' {
@@ -97,6 +99,7 @@ const StepsRoot = styled('div', {
   [`&.${stepsClasses.dimmed}`]: {
     opacity: 'var(--SliderStep-dim-opacity, 0.35)',
   },
+  [`&.${stepsClasses.collapsed}`]: { display: 'none' },
 });
 
 /**

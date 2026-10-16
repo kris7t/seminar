@@ -46,16 +46,23 @@ export interface StepBehaviorOverrides {}
 /**
  * How a step looks before, while, and after it's the current step:
  *
- * | Behavior  | future | current, open | past   | distant past |
- * | --------- | ------ | ------------- | ------ | ------------ |
- * | `reveal`  | hidden | shown         | shown  | shown        |
- * | `dim`     | hidden | shown         | dimmed | dimmed       |
- * | `preview` | dimmed | shown         | shown  | shown        |
- * | `focus`   | dimmed | shown         | dimmed | dimmed       |
- * | `only`    | hidden | shown         | hidden | hidden       |
- * | `scoped`  | hidden | shown         | shown  | hidden       |
+ * | Behavior  | future    | current, open | past      | distant past |
+ * | --------- | --------- | ------------- | --------- | ------------ |
+ * | `reveal`  | hidden    | shown         | shown     | shown        |
+ * | `dim`     | hidden    | shown         | dimmed    | dimmed       |
+ * | `preview` | dimmed    | shown         | shown     | shown        |
+ * | `focus`   | dimmed    | shown         | dimmed    | dimmed       |
+ * | `only`    | hidden    | shown         | hidden    | hidden       |
+ * | `scoped`  | hidden    | shown         | shown     | hidden       |
+ * | `insert`  | collapsed | shown         | shown     | shown        |
+ * | `expand`  | collapsed | shown         | shown     | collapsed    |
+ * | `swap`    | collapsed | shown         | collapsed | collapsed    |
  *
- * The distant future looks like the future. See {@link StepPhase} for the
+ * Hidden steps keep their space in the layout, while collapsed steps take no
+ * space, so `insert` makes room for a step when it's shown, `expand` also
+ * frees it once the step it's nested in is past, and `swap` shows steps one
+ * after another in the same place. The distant future looks like
+ * the future. See {@link StepPhase} for the
  * phases. Themes can change these and add
  * further behaviors (see {@link StepBehaviorOverrides}) with `stepBehaviors`.
  */
@@ -213,7 +220,8 @@ export const WITH_PREVIOUS: StepAttachment = { with: 'previous' };
 /** Attaches a step to the initial step by default, i.e., shows it up front. */
 export const WITH_INITIAL: StepAttachment = { with: 'initial' };
 
-export type StepClassKey = 'root' | StepPhase | 'hidden' | 'dimmed';
+export type StepClassKey =
+  'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
 
 export const stepClasses: Record<StepClassKey, string> = generateUtilityClasses(
   'SliderStep',
@@ -227,6 +235,7 @@ export const stepClasses: Record<StepClassKey, string> = generateUtilityClasses(
     'distantPast',
     'hidden',
     'dimmed',
+    'collapsed',
   ],
 );
 
@@ -259,6 +268,7 @@ const StepRoot = styled('div', {
   [`&.${stepClasses.dimmed}`]: {
     opacity: 'var(--SliderStep-dim-opacity, 0.35)',
   },
+  [`&.${stepClasses.collapsed}`]: { display: 'none' },
   '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
 });
 
@@ -278,8 +288,8 @@ const StepRoot = styled('div', {
  * Can be themed as `SliderStep` in the `components` of the MUI theme. The step
  * has a class for its phase (`SliderStep-distantFuture`, `-future`,
  * `-current`, `-open`, `-past`, or `-distantPast`, see {@link StepPhase}),
- * and `SliderStep-hidden` or
- * `SliderStep-dimmed` if it has to hide or dim itself, or the class of an
+ * and `SliderStep-dimmed`, `-hidden`, or `-collapsed` if it has to dim,
+ * hide, or collapse itself, or the class of an
  * appearance added by the theme (see {@link StepAppearanceOverrides}). The
  * opacity of dimmed steps is the `--SliderStep-dim-opacity` custom property.
  * Add behaviors with `stepBehaviors` in the theme, which map phases to

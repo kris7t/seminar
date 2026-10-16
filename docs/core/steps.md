@@ -92,17 +92,51 @@ before rendering.
 A step can do more than appear. Its behavior sets how it looks before,
 during, and after its turn:
 
-| Behavior  | Before | During | After  | Once its parent is past |
-| --------- | ------ | ------ | ------ | ----------------------- |
-| `reveal`  | hidden | shown  | shown  | shown                   |
-| `dim`     | hidden | shown  | dimmed | dimmed                  |
-| `preview` | dimmed | shown  | shown  | shown                   |
-| `focus`   | dimmed | shown  | dimmed | dimmed                  |
-| `only`    | hidden | shown  | hidden | hidden                  |
-| `scoped`  | hidden | shown  | shown  | hidden                  |
+| Behavior  | Before    | During | After     | Once its parent is past |
+| --------- | --------- | ------ | --------- | ----------------------- |
+| `reveal`  | hidden    | shown  | shown     | shown                   |
+| `dim`     | hidden    | shown  | dimmed    | dimmed                  |
+| `preview` | dimmed    | shown  | shown     | shown                   |
+| `focus`   | dimmed    | shown  | dimmed    | dimmed                  |
+| `only`    | hidden    | shown  | hidden    | hidden                  |
+| `scoped`  | hidden    | shown  | shown     | hidden                  |
+| `insert`  | collapsed | shown  | shown     | shown                   |
+| `expand`  | collapsed | shown  | shown     | collapsed               |
+| `swap`    | collapsed | shown  | collapsed | collapsed               |
 
 `reveal` is the default. A step's turn lasts while its nested steps are
 shown, too.
+
+Hidden steps keep their space, so that the slide doesn't move when they
+appear. Collapsed steps take no space instead:
+
+- `insert` makes room for a step when it's shown, pushing the content after
+  it, e.g., a line inserted into a listing.
+- `expand` also collapses a step again once the step it's nested in is past,
+  e.g., details that expand under their item one by one, and fold away when
+  the next item comes, so that a long outline fits on a slide:
+
+```mdx
+- :step Parsing
+  - :step{expand} Tokens
+  - :step{expand} Syntax tree
+- :step Rendering
+  - :step{expand} React elements
+```
+
+- `swap` shows steps one after another in the same place, e.g., versions of
+  a figure, where each one replaces the one before:
+
+```mdx
+:step{swap with=initial} ![First draft](./draft-1.svg)
+
+:step{swap} ![Second draft](./draft-2.svg)
+
+:step{swap} ![Final version](./final.svg)
+```
+
+`with=initial` shows the first one up front, until the second one replaces
+it. Steps nested in a collapsed step are collapsed with it.
 
 The behavior is a bare word on the step, e.g., `:step{only}`, or
 `behavior=only`. `{steps=dim}` on a slide sets the default behavior of its
