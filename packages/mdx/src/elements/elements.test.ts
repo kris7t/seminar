@@ -22,6 +22,58 @@ describe('slide elements', () => {
     ]);
   });
 
+  it('refers to the elements of the slide in attributes', async () => {
+    expect(
+      (
+        await slides(`
+## One
+
+<svg aria-labelledby="label other">
+  <title id="label">Boxes</title>
+  <defs><linearGradient id="fade" /><rect id="box" /></defs>
+  <rect fill="url(#fade)" stroke="url('#other')" />
+  <use href="#box" />
+  <a href="#intro">Elsewhere</a>
+</svg>
+`)
+      ).map(({ children }) => children),
+    ).toEqual([
+      '<SlideElement as="svg" references={"aria-labelledby":[["label"]," other"]}>' +
+        '<SlideElement as="title" name="label">Boxes</SlideElement>' +
+        '<defs><SlideElement as="linearGradient" name="fade"></SlideElement>' +
+        '<SlideElement as="rect" name="box"></SlideElement></defs>' +
+        '<SlideElement as="rect" references={"fill":["url(#",["fade"],")"]} stroke="url(\'#other\')"></SlideElement>' +
+        '<SlideElement as="use" references={"href":["#",["box"]]}></SlideElement>' +
+        '<a>Elsewhere</a></SlideElement>',
+    ]);
+  });
+
+  it('finds the names in the url references of styles', async () => {
+    expect(
+      (
+        await slides(`
+## One
+
+export const active = true;
+
+<svg>
+  <linearGradient id="on" />
+  <linearGradient id="off" />
+  <rect style={{ fill: "url('#on')" }} />
+  <rect style={{ fill: \`url(#\${active ? 'on' : 'off'})\` }} />
+  <rect style={{ fill: 'url(#elsewhere)' }} />
+</svg>
+`)
+      ).map(({ children }) => children),
+    ).toEqual([
+      '<svg><SlideElement as="linearGradient" name="on"></SlideElement>' +
+        '<SlideElement as="linearGradient" name="off"></SlideElement>' +
+        '<SlideElement as="rect" styleNames=["on"] style={"fill":"url(\'#on\')"}></SlideElement>' +
+        '<SlideElement as="rect" styleNames=["on","off"] style={"fill":"url(#on)"}></SlideElement>' +
+        '<rect></rect></svg>',
+    ]);
+  });
+
   it('reports ids used more than once, but not groups of ids', async () => {
     const file = await compile(
       `

@@ -219,4 +219,59 @@ describe('SlideElement', () => {
     await user.keyboard('{ArrowLeft}');
     expect(window.location.hash).toBe('#slide=1&step=figure');
   });
+
+  it('refers to the elements of the same rendering', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide id="boxes">
+          <svg>
+            <SlideElement as="linearGradient" name="fade" />
+            <SlideElement
+              as="rect"
+              data-testid="rect"
+              references={{ fill: ['url(#', ['fade'], ')'] }}
+            />
+          </svg>
+        </Slide>
+        <Slide recap="boxes" />
+      </Deck>,
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    await user.keyboard('o');
+    const rects = screen.getAllByTestId('rect');
+    expect(rects.length).toBeGreaterThanOrEqual(2);
+    for (const rect of rects) {
+      const id = /^url\(#(.+)\)$/.exec(rect.getAttribute('fill') ?? '')?.[1];
+      // The gradient of the same rendering, which is in the same SVG.
+      expect(id).toBeDefined();
+      expect(
+        rect.closest('svg')?.querySelector(`#${CSS.escape(id ?? '')}`),
+      ).not.toBeNull();
+    }
+    expect(new Set(rects.map((rect) => rect.getAttribute('fill'))).size).toBe(
+      rects.length,
+    );
+  });
+
+  it('refers to the elements of the same rendering in styles', () => {
+    render(
+      <Deck>
+        <Slide>
+          <svg>
+            <SlideElement as="linearGradient" name="fade" data-testid="fade" />
+            <SlideElement
+              as="rect"
+              data-testid="rect"
+              styleNames={['fade']}
+              style={{ fill: 'url("#fade")', stroke: 'url(#other)' }}
+            />
+          </svg>
+        </Slide>
+      </Deck>,
+    );
+    const rect = screen.getByTestId('rect');
+    expect(rect.style.fill).toBe(`url("#${screen.getByTestId('fade').id}")`);
+    expect(rect.style.stroke).toBe('url("#other")');
+  });
 });

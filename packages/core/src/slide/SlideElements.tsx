@@ -143,27 +143,94 @@ export function useSlideElement(
   return typeof target === 'object' ? target : named;
 }
 
+/**
+ * The value of an attribute that refers to elements on the slide, as parts
+ * that are either text or, in a single-element array, the name of an
+ * element, e.g., `['url(#', ['gradient'], ')']`.
+ */
+export type SlideElementReference = readonly (string | readonly [string])[];
+
 export type SlideElementProps<T extends ElementType> = {
   /** The element or component to render. */
   as: T;
-  /** Name of the element on the slide. */
-  name: string;
+  /** Name of the element on the slide, if any. */
+  name?: string | undefined;
+  /**
+   * Attributes that refer to elements on the slide by their names, e.g., the
+   * `fill` of an SVG shape, `url(#gradient)`, which get the ids of the
+   * elements in the same rendering of the slide.
+   */
+  references?: Readonly<Record<string, SlideElementReference>> | undefined;
+  /**
+   * Names of elements on the slide that the `style` refers to in `url(#…)`,
+   * e.g., `url('#gradient')`, which get the ids of the elements in the same
+   * rendering of the slide.
+   */
+  styleNames?: readonly string[] | undefined;
 } & Omit<ComponentProps<T>, 'id' | 'ref'>;
+
+/** Matches references to ids in CSS, e.g., `url(#gradient)`. */
+const URL_PATTERN = /url\(\s*(['"]?)#([^)'"\s]+)\1\s*\)/g;
+
+/** Makes the `url(#…)` references to `names` in `style` refer to `idOf`. */
+function resolveStyle(
+  style: unknown,
+  names: readonly string[],
+  idOf: (name: string) => string,
+): unknown {
+  if (typeof style !== 'object' || style === null) {
+    return style;
+  }
+  return Object.fromEntries(
+    Object.entries(style).map(([property, value]) => [
+      property,
+      typeof value === 'string'
+        ? value.replace(URL_PATTERN, (match, quote: string, name: string) =>
+            names.includes(name)
+              ? `url(${quote}#${idOf(name)}${quote})`
+              : match,
+          )
+        : value,
+    ]),
+  );
+}
 
 /**
  * Renders `as` as the element called `name` on the enclosing slide, with an
  * id that is unique in the document, even if the slide is rendered several
  * times. Components get the id and a ref, which they should pass to their
- * root element.
+ * root element. The `references` to other elements get their ids in the same
+ * rendering of the slide.
  *
- * MDX decks render elements with an `id` in a slide like this.
+ * MDX decks render elements with an `id` in a slide like this, as well as
+ * elements that refer to them, e.g., in inline SVG.
  */
 export function SlideElement<T extends ElementType>({
   as,
   name,
+  references,
+  styleNames,
   ...props
 }: SlideElementProps<T>): JSX.Element {
-  const id = useSlideElementId(name);
-  const ref = useSlideElementRef(name);
-  return createElement(as, { ...props, id, ref });
+  const store = use(SlideElementContext);
+  const idOf = (target: string) => store?.idOf(target) ?? target;
+  const id = useSlideElementId(name ?? '');
+  const ref = useSlideElementRef(name ?? '');
+  const resolved = Object.fromEntries(
+    Object.entries(references ?? {}).map(([attribute, parts]) => [
+      attribute,
+      parts
+        .map((part) => (typeof part === 'string' ? part : idOf(part[0])))
+        .join(''),
+    ]),
+  );
+  const style = (props as { style?: unknown }).style;
+  return createElement(as, {
+    ...props,
+    ...(styleNames === undefined || style === undefined
+      ? {}
+      : { style: resolveStyle(style, styleNames, idOf) }),
+    ...resolved,
+    ...(name === undefined ? {} : { id, ref }),
+  });
 }

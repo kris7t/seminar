@@ -65,8 +65,9 @@ Presenter notes, shown only to the presenter.
   address, e.g., `#intro`.
 - **Element names:** ids inside a slide, like `<img id="arch">` or
   `:step{#parse}`, name elements on that slide only, so that slides can be
-  shown several times at once, recapped, and included. `useSlideElement` finds
-  them in components.
+  shown several times at once, recapped, and included. References to them in
+  inline SVG, like `fill="url(#gradient)"` or `href="#icon"`, keep working,
+  and `useSlideElement` finds them in components.
 - **Spare slides:** `{spare}` marks a slide, or the slides of a section, as
   spare, e.g., for questions. Going through the deck skips them, but they can
   be chosen from the table of contents or the overview. `{noslide}` on a

@@ -63,6 +63,7 @@ export {
   useSlideElementId,
   useSlideElementRef,
   type SlideElementProps,
+  type SlideElementReference,
 } from './slide/SlideElements.tsx';
 export {
   SlideStateScope,
