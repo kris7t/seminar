@@ -69,9 +69,9 @@ export function ClosingMaster({
   );
 }
 
-// Section slides have a background of their own, which would fade in and out
-// over the whole slide, so they appear at once.
-SectionMaster.cut = true;
+// Have a long fade out from sections.
+SectionMaster.fadeAfter = 600;
+SectionMaster.cut = 'in' as const;
 
 export const theme = createSlideTheme({
   palette: {

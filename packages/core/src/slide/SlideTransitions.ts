@@ -34,6 +34,20 @@ declare module '@mui/material/styles' {
 /** What changes in a transition: the step of a slide, or the slide. */
 export type SlideTransitionKind = 'step' | 'slide';
 
+export const DEFAULT_SLIDE_TRANSITIONS: Record<
+  SlideTransitionKind,
+  { duration: number; easing: string }
+> = {
+  step: {
+    duration: 150,
+    easing: 'ease',
+  },
+  slide: {
+    duration: 0,
+    easing: 'ease',
+  },
+};
+
 /** Returns how the slide fades in a transition of `kind` in `theme`. */
 export function getFadeTransition(
   theme: Theme,
@@ -42,8 +56,8 @@ export function getFadeTransition(
   const transition =
     kind === 'step' ? theme.stepTransition : theme.slideTransition;
   return {
-    duration: transition?.duration ?? 150,
-    easing: transition?.easing ?? 'ease',
+    duration: transition?.duration ?? DEFAULT_SLIDE_TRANSITIONS[kind].duration,
+    easing: transition?.easing ?? DEFAULT_SLIDE_TRANSITIONS[kind].easing,
   };
 }
 
