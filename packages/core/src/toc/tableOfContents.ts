@@ -28,8 +28,26 @@ export interface ResolvedTocEntry {
   /** Whether the entry has a slide of its own. */
   hasSlide: boolean;
   title: ReactNode;
+  /**
+   * Whether the title stands in for a slide without one, e.g., `Slide 3`,
+   * rather than being the title of the entry or of its slide.
+   */
+  standIn?: boolean;
   children: ResolvedTocEntry[];
 }
+
+/** Titles of entries without one, e.g., in the language of the interface. */
+export interface StandInTitles {
+  /** The title of entries without a slide or a title. */
+  untitled: ReactNode;
+  /** The title of a slide without one, by its zero-based index. */
+  slide: (slideIndex: number) => ReactNode;
+}
+
+const ENGLISH_STAND_INS: StandInTitles = {
+  untitled: 'Untitled',
+  slide: (slideIndex) => `Slide ${String(slideIndex + 1)}`,
+};
 
 function getSlideTitle(slide: ReactNode): ReactNode {
   return isValidElement<{ title?: ReactNode }>(slide)
@@ -44,16 +62,18 @@ function getSlideTitle(slide: ReactNode): ReactNode {
  * nested entries left.
  *
  * @param slideIds The ids of the slides of the deck, by index.
+ * @param standIns The titles of entries without one. Defaults to English.
  */
 export function resolveToc(
   entries: readonly TocEntry[],
   slides: readonly ReactNode[],
   slideIds: readonly (string | undefined)[],
+  standIns: StandInTitles = ENGLISH_STAND_INS,
 ): ResolvedTocEntry[] {
   return entries.flatMap(
     ({ slide, title, children = [] }): ResolvedTocEntry[] => {
       if (slide === undefined) {
-        const resolved = resolveToc(children, slides, slideIds);
+        const resolved = resolveToc(children, slides, slideIds, standIns);
         const first = resolved[0];
         return first === undefined
           ? []
@@ -61,7 +81,7 @@ export function resolveToc(
               {
                 slideIndex: first.slideIndex,
                 hasSlide: false,
-                title: title ?? 'Untitled',
+                title: title ?? standIns.untitled,
                 children: resolved,
               },
             ];
@@ -74,15 +94,14 @@ export function resolveToc(
       if (slideIndex >= slides.length) {
         return [];
       }
+      const own = title ?? getSlideTitle(slides[slideIndex]);
       return [
         {
           slideIndex,
           hasSlide: true,
-          title:
-            title ??
-            getSlideTitle(slides[slideIndex]) ??
-            `Slide ${String(slideIndex + 1)}`,
-          children: resolveToc(children, slides, slideIds),
+          title: own ?? standIns.slide(slideIndex),
+          ...(own === undefined ? { standIn: true } : {}),
+          children: resolveToc(children, slides, slideIds, standIns),
         },
       ];
     },
@@ -127,14 +146,13 @@ export function slideTitles(
   const titles: ReactNode[] = slides.map(getSlideTitle);
   const found = new Set<number>();
   const visit = (nested: readonly ResolvedTocEntry[]) => {
-    for (const { slideIndex, hasSlide, title, children } of nested) {
+    for (const { slideIndex, hasSlide, title, standIn, children } of nested) {
       // The first entry of a slide wins, as in a hand-written table of
       // contents with several entries for a slide.
       if (hasSlide && !found.has(slideIndex)) {
         found.add(slideIndex);
         // Not the stand-in title of slides without one.
-        titles[slideIndex] =
-          title === `Slide ${String(slideIndex + 1)}` ? undefined : title;
+        titles[slideIndex] = standIn === true ? undefined : title;
       }
       visit(children);
     }

@@ -20,6 +20,7 @@ import SlideshowIcon from '@mui/icons-material/Slideshow';
 import SpeakerNotesIcon from '@mui/icons-material/SpeakerNotes';
 import TagIcon from '@mui/icons-material/Tag';
 import TocIcon from '@mui/icons-material/Toc';
+import TranslateIcon from '@mui/icons-material/Translate';
 import {
   Dialog,
   Divider,
@@ -32,9 +33,17 @@ import {
   useMediaQuery,
   type SvgIconProps,
 } from '@mui/material';
-import type { ComponentType, JSX, ReactNode } from 'react';
+import {
+  useState,
+  type ComponentType,
+  type JSX,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { formatShortcut, languageName } from '../i18n/messages.ts';
+import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
 import { useFullscreen } from '../notes/useFullscreen.ts';
 import type { PointerMode } from '../presentation/pointer.tsx';
@@ -69,9 +78,13 @@ export interface DeckMenuProps {
 
 interface Item {
   label: string;
+  /** A value shown after the label, like the chosen language. */
+  detail?: string;
+  /** The language of the {@link detail}. */
+  detailLang?: string;
   icon: ComponentType<SvgIconProps>;
   shortcut?: string;
-  action: () => void;
+  action: (event: MouseEvent<HTMLElement>) => void;
   disabled?: boolean;
   /**
    * Whether the setting toggled by the item is on, if it's a toggle. Items of
@@ -135,6 +148,9 @@ export function DeckMenu({
   onPresenterView,
   presenterSettings,
 }: DeckMenuProps): JSX.Element {
+  const { lang: uiLang, t, locales, setLang } = useUiLanguage();
+  // Where the menu of the languages is open, if it is.
+  const [languagesAt, setLanguagesAt] = useState<MenuPosition>();
   const fullscreen = useFullscreen();
   const presenting = fullscreen || presenterView;
   const deck = useDeck();
@@ -168,19 +184,19 @@ export function DeckMenu({
     [
       presenting
         ? {
-            label: 'Stop presentation',
+            label: t('stopPresentation'),
             icon: CancelPresentationIcon,
             shortcut: 'P',
             action: onPresent,
           }
         : {
-            label: 'Start presentation',
+            label: t('startPresentation'),
             icon: SlideshowIcon,
             shortcut: 'P',
             action: onPresent,
           },
       {
-        label: 'Presenter view',
+        label: t('presenterView'),
         icon: CoPresentIcon,
         shortcut: 'Shift+P',
         action: onPresenterView,
@@ -189,14 +205,14 @@ export function DeckMenu({
     ],
     [
       {
-        label: 'Next step',
+        label: t('nextStep'),
         icon: NavigateNextIcon,
         shortcut: 'Right',
         action: deck.next,
         disabled: atEnd,
       },
       {
-        label: 'Previous step',
+        label: t('previousStep'),
         icon: NavigateBeforeIcon,
         shortcut: 'Left',
         action: deck.previous,
@@ -206,21 +222,21 @@ export function DeckMenu({
     // The current slide.
     [
       {
-        label: 'First step',
+        label: t('firstStep'),
         icon: SkipPreviousIcon,
         shortcut: 'Shift+Home',
         action: deck.firstStep,
         disabled: atFirstStep,
       },
       {
-        label: 'Last step',
+        label: t('lastStep'),
         icon: SkipNextIcon,
         shortcut: 'Shift+End',
         action: deck.lastStep,
         disabled: atLastStep,
       },
       {
-        label: 'Reset slide',
+        label: t('resetSlide'),
         icon: SettingsBackupRestoreIcon,
         action: () => {
           deck.resetSlide(slideIndex);
@@ -230,21 +246,21 @@ export function DeckMenu({
     ],
     [
       {
-        label: 'Next slide',
+        label: t('nextSlide'),
         icon: KeyboardDoubleArrowRightIcon,
         shortcut: 'PgDn',
         action: deck.nextSlide,
         disabled: isLastSlide,
       },
       {
-        label: 'Previous slide',
+        label: t('previousSlide'),
         icon: KeyboardDoubleArrowLeftIcon,
         shortcut: 'PgUp',
         action: deck.previousSlide,
         disabled: isFirstSlide,
       },
       {
-        label: 'First slide',
+        label: t('firstSlide'),
         icon: FirstPageIcon,
         shortcut: 'Home',
         action: () => {
@@ -253,7 +269,7 @@ export function DeckMenu({
         disabled: slideIndex === firstSlideIndex && atFirstStep,
       },
       {
-        label: 'Last slide',
+        label: t('lastSlide'),
         icon: LastPageIcon,
         shortcut: 'End',
         action: () => {
@@ -264,13 +280,13 @@ export function DeckMenu({
     ],
     [
       {
-        label: 'Go to slide…',
+        label: t('goToSlideEllipsis'),
         icon: TagIcon,
         shortcut: 'G',
         action: onGoToSlide,
       },
       {
-        label: 'Slide overview',
+        label: t('slideOverview'),
         icon: GridViewIcon,
         shortcut: 'O',
         action: () => {
@@ -278,7 +294,7 @@ export function DeckMenu({
         },
       },
       {
-        label: 'Table of contents',
+        label: t('tableOfContents'),
         icon: TocIcon,
         shortcut: 'T',
         action: () => {
@@ -288,7 +304,7 @@ export function DeckMenu({
         checked: showToc,
       },
       {
-        label: 'Steps',
+        label: t('steps'),
         icon: AutoAwesomeMotionIcon,
         shortcut: 'Shift+T',
         action: () => {
@@ -302,28 +318,28 @@ export function DeckMenu({
       : [
           [
             {
-              label: 'Focus on notes',
+              label: t('focusOnNotes'),
               icon: SpeakerNotesIcon,
               shortcut: 'N',
               action: presenterSettings.onFocusNotes,
               checked: presenterSettings.notesOnly,
             },
             {
-              label: 'Show pointer to the audience',
+              label: t('showPointer'),
               icon: MouseIcon,
               shortcut: 'M',
               action: presenterSettings.onMirrorPointer,
               checked: presenterSettings.pointerMode === 'mirror',
             },
             {
-              label: 'Laser pointer',
+              label: t('laserPointer'),
               icon: FlareIcon,
               shortcut: 'L',
               action: presenterSettings.onLaserPointer,
               checked: presenterSettings.pointerMode === 'laser',
             },
             {
-              label: 'Reset time elapsed',
+              label: t('resetTimeElapsed'),
               icon: RestartAltIcon,
               shortcut: 'R',
               action: presenterSettings.onResetTimer,
@@ -332,7 +348,7 @@ export function DeckMenu({
         ]),
     [
       {
-        label: 'Text selection',
+        label: t('textSelection'),
         icon: HighlightAltIcon,
         shortcut: 'S',
         action: () => {
@@ -341,21 +357,52 @@ export function DeckMenu({
         checked: !mouseNavigation,
       },
     ],
-  ];
+    // The language of the user interface, if the deck offers several, which
+    // are chosen from a menu of their own.
+    locales.length > 1
+      ? [
+          {
+            label: t('language'),
+            icon: TranslateIcon,
+            detail: languageName(uiLang),
+            detailLang: uiLang,
+            action: (event: MouseEvent<HTMLElement>) => {
+              // At the pointer, or at the item if chosen with the keyboard.
+              const { left, right, top } =
+                event.currentTarget.getBoundingClientRect();
+              setLanguagesAt(
+                event.detail > 0
+                  ? { top: event.clientY, left: event.clientX }
+                  : { top, left: Math.min(right, left + 160) },
+              );
+            },
+          },
+        ]
+      : [],
+  ].filter((group) => group.length > 0);
 
   const items = groups.flatMap((group, i) => [
     ...(i > 0 ? [<Divider key={`divider-${String(i)}`} />] : []),
     ...group.map(
-      ({ label, icon: Icon, shortcut, action, disabled = false, checked }) => (
+      ({
+        label,
+        detail,
+        detailLang,
+        icon: Icon,
+        shortcut,
+        action,
+        disabled = false,
+        checked,
+      }) => (
         <MenuItem
           key={label}
           disabled={disabled}
           {...(checked === undefined
             ? {}
             : { role: 'menuitemcheckbox', 'aria-checked': checked })}
-          onClick={() => {
+          onClick={(event) => {
             onClose();
-            action();
+            action(event);
           }}
         >
           <ItemIcon>
@@ -366,24 +413,96 @@ export function DeckMenu({
             )}
           </ItemIcon>
           <ListItemText>{label}</ListItemText>
+          {detail !== undefined && (
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              lang={detailLang}
+              sx={{ ml: 3 }}
+            >
+              {detail}
+            </Typography>
+          )}
           {showShortcuts && shortcut !== undefined && (
-            <Shortcut>{shortcut}</Shortcut>
+            <Shortcut>{formatShortcut(t, shortcut)}</Shortcut>
           )}
         </MenuItem>
       ),
     ),
   ]);
 
-  const open = anchorPosition !== undefined;
+  const languageItems = locales.map(({ lang }) => (
+    <MenuItem
+      key={lang}
+      role="menuitemradio"
+      aria-checked={lang === uiLang}
+      onClick={() => {
+        setLanguagesAt(undefined);
+        setLang(lang);
+      }}
+    >
+      <ItemIcon>{lang === uiLang && <CheckIcon fontSize="small" />}</ItemIcon>
+      {/* Each language is named in itself. */}
+      <ListItemText lang={lang}>{languageName(lang)}</ListItemText>
+    </MenuItem>
+  ));
+
+  return (
+    <>
+      <MenuSurface
+        position={anchorPosition}
+        onClose={onClose}
+        asDialog={asDialog}
+        label={t('menu')}
+        lang={uiLang}
+      >
+        {items}
+      </MenuSurface>
+      <MenuSurface
+        position={languagesAt}
+        onClose={() => {
+          setLanguagesAt(undefined);
+        }}
+        asDialog={asDialog}
+        label={t('language')}
+        lang={uiLang}
+      >
+        {languageItems}
+      </MenuSurface>
+    </>
+  );
+}
+
+interface MenuSurfaceProps {
+  /** Where the menu is open, or `undefined` if it's closed. */
+  position: MenuPosition | undefined;
+  onClose: () => void;
+  /** Whether to show the menu as a dialog, e.g., on touch screens. */
+  asDialog: boolean;
+  label: string;
+  lang: string;
+  children: ReactNode;
+}
+
+/** A menu at `position`, or a dialog in the middle of the screen. */
+function MenuSurface({
+  position,
+  onClose,
+  asDialog,
+  label,
+  lang,
+  children,
+}: MenuSurfaceProps): JSX.Element {
+  const open = position !== undefined;
   if (asDialog) {
     return (
       <Dialog
         open={open}
         onClose={onClose}
-        slotProps={{ paper: { 'aria-label': 'Menu' } }}
+        slotProps={{ paper: { 'aria-label': label, lang } }}
       >
         <MenuList autoFocusItem={open} sx={LIST_STYLES}>
-          {items}
+          {children}
         </MenuList>
       </Dialog>
     );
@@ -393,21 +512,21 @@ export function DeckMenu({
       open={open}
       onClose={onClose}
       anchorReference="anchorPosition"
-      {...(anchorPosition === undefined
+      {...(position === undefined
         ? {}
         : {
-            anchorPosition: {
-              top: anchorPosition.top,
-              left: anchorPosition.left,
-            },
+            anchorPosition: { top: position.top, left: position.left },
             transformOrigin: {
-              vertical: anchorPosition.verticalAlign ?? 'top',
-              horizontal: anchorPosition.align ?? 'left',
+              vertical: position.verticalAlign ?? 'top',
+              horizontal: position.align ?? 'left',
             },
           })}
-      slotProps={{ list: { dense: true, sx: LIST_STYLES } }}
+      slotProps={{
+        paper: { lang },
+        list: { dense: true, sx: LIST_STYLES, 'aria-label': label },
+      }}
     >
-      {items}
+      {children}
     </Menu>
   );
 }

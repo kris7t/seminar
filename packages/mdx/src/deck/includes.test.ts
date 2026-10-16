@@ -102,6 +102,34 @@ describe('::include', () => {
     ).toEqual([{ slide: 0 }, { slide: 1, title: 'Short' }]);
   });
 
+  it('keeps the languages of included slides', async () => {
+    expect(
+      (await includedSlides('## Mine\n\n::include[./german.deck.mdx]')).map(
+        ({ id, lang }) => ({ id, lang }),
+      ),
+    ).toEqual([
+      { id: 'mine', lang: undefined },
+      { id: 'hallo', lang: 'de' },
+      { id: 'bonjour', lang: 'fr' },
+    ]);
+    // Only where they differ from the language of this deck.
+    expect(
+      (
+        await includedSlides(
+          '---\nlang: de\n---\n\n## Mine\n\n::include[./german.deck.mdx]',
+        )
+      ).map(({ id, lang }) => ({ id, lang })),
+    ).toEqual([
+      { id: 'mine', lang: undefined },
+      { id: 'hallo', lang: undefined },
+      { id: 'bonjour', lang: 'fr' },
+    ]);
+    const [, slide] = await includedSlides(
+      '## Mine\n\n::include[./german.deck.mdx#hallo]{lang=de-AT}',
+    );
+    expect(slide?.['lang']).toBe('de-AT');
+  });
+
   it('includes a recap as the slide with the range it would have', async () => {
     const [slide] = await includedSlides(
       '::include[./talk.deck.mdx#intro-recap]',

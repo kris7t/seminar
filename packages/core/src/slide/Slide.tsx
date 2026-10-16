@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { DeckContext } from '../deck/DeckContext.ts';
 import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
 import type { StepVariant } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
@@ -73,6 +74,12 @@ export interface SlideProps {
    * the {@link Deck}.
    */
   recapOf?: number | undefined;
+  /**
+   * The language of the slide, as a BCP 47 tag, if it differs from the
+   * language of the deck, e.g., for a slide included from a deck in another
+   * language.
+   */
+  lang?: string | undefined;
   children?: ReactNode;
 }
 
@@ -92,7 +99,7 @@ function resolveMaster(
 
 /** A single slide of a {@link Deck}. */
 export function Slide({
-  master = 'content',
+  master: masterName = 'content',
   title,
   className,
   steps,
@@ -102,6 +109,7 @@ export function Slide({
   before,
   fromLast,
   recapOf,
+  lang,
   children,
 }: SlideProps): JSX.Element {
   const theme = useTheme();
@@ -122,14 +130,25 @@ export function Slide({
       store.setRange(undefined);
     };
   }, [store, from, after, to, before, fromLast]);
+  // Every view of the slide tells its language, e.g., for reading it out,
+  // even in the user interface, which may be in another language.
+  const slideLang = lang ?? use(DeckContext)?.lang;
   // Masters are looked up rather than defined during render, so their state is
   // preserved. Use `createElement` to avoid tripping `static-components`.
+  const master = createElement(
+    resolveMaster(masterName, theme.master),
+    { title, className },
+    children,
+  );
   const content = (
     <StepVariantContext value={steps}>
-      {createElement(
-        resolveMaster(master, theme.master),
-        { title, className },
-        children,
+      {slideLang === undefined ? (
+        master
+      ) : (
+        // Without a box of its own, so that the master is laid out as before.
+        <div lang={slideLang} style={{ display: 'contents' }}>
+          {master}
+        </div>
       )}
     </StepVariantContext>
   );

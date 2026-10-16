@@ -1,6 +1,7 @@
 import { Box, IconButton } from '@mui/material';
 import type { JSX } from 'react';
 
+import { useT } from '../i18n/UiLanguageContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
 import { useFullscreen } from '../notes/useFullscreen.ts';
 
@@ -37,13 +38,14 @@ export function MenuButton({
   open,
   onOpen,
 }: MenuButtonProps): JSX.Element | null {
+  const t = useT();
   const fullscreen = useFullscreen();
   if (fullscreen) {
     return null;
   }
   return (
     <IconButton
-      aria-label="Menu"
+      aria-label={t('menu')}
       aria-haspopup="menu"
       aria-expanded={open}
       onClick={(event) => {

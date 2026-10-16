@@ -17,6 +17,7 @@ import {
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
 
 export interface GoToSlideDialogProps {
   open: boolean;
@@ -28,12 +29,14 @@ export function GoToSlideDialog({
   open,
   onClose,
 }: GoToSlideDialogProps): JSX.Element {
+  const { lang } = useUiLanguage();
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <Dialog
       open={open}
       onClose={onClose}
       slotProps={{
+        paper: { lang },
         transition: {
           // When opened from the context menu, the menu takes the focus back
           // as it closes, so focus the input again once the dialog is shown.
@@ -58,6 +61,7 @@ function GoToSlideForm({
   inputRef: RefObject<HTMLInputElement | null>;
   onClose: () => void;
 }): JSX.Element {
+  const { t } = useUiLanguage();
   const { slideIndex, slideCount, goTo } = useDeck();
   const [value, setValue] = useState(String(slideIndex + 1));
   const slideNumber = Number(value);
@@ -76,7 +80,7 @@ function GoToSlideForm({
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <DialogTitle>Go to slide</DialogTitle>
+      <DialogTitle>{t('goToSlide')}</DialogTitle>
       <DialogContent>
         <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
           <TextField
@@ -96,7 +100,7 @@ function GoToSlideForm({
             sx={{ width: '7em' }}
             slotProps={{
               htmlInput: {
-                'aria-label': 'Slide number',
+                'aria-label': t('slideNumber'),
                 min: 1,
                 max: slideCount,
                 step: 1,
@@ -108,10 +112,10 @@ function GoToSlideForm({
       </DialogContent>
       <DialogActions>
         <Button color="inherit" onClick={onClose}>
-          Cancel
+          {t('cancel')}
         </Button>
         <Button type="submit" disabled={!valid}>
-          OK
+          {t('ok')}
         </Button>
       </DialogActions>
     </form>

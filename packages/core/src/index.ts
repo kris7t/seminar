@@ -103,3 +103,19 @@ export {
   SLIDE_HEIGHT,
   SLIDE_WIDTH,
 } from './theme/createSlideTheme.ts';
+export { default as FRENCH } from './i18n/locales/fr.ts';
+export { default as GERMAN } from './i18n/locales/de.ts';
+export { default as HUNGARIAN } from './i18n/locales/hu.ts';
+export {
+  ENGLISH,
+  type MessageKey,
+  type MessageValues,
+  type Translate,
+  type UiCatalog,
+  type UiLocale,
+} from './i18n/messages.ts';
+export {
+  useT,
+  useUiLanguage,
+  type UiLanguage,
+} from './i18n/UiLanguageContext.ts';

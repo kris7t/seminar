@@ -7,6 +7,7 @@ import {
   type RefCallback,
 } from 'react';
 
+import { useT } from '../i18n/UiLanguageContext.ts';
 import type { Size } from '../deck/useFitScale.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
 import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
@@ -44,6 +45,8 @@ function useHeight(): [RefCallback<HTMLElement>, number] {
 
 export interface NotesDisplayProps {
   notes: ReactNode;
+  /** The language of the notes, if known. */
+  notesLang?: string | undefined;
   /** Size of the area of the slide, including the black bars. */
   size: Size;
   /** Scale of the slide in the area. */
@@ -65,9 +68,11 @@ export interface NotesDisplayProps {
  */
 export function NotesDisplay({
   notes,
+  notesLang,
   size,
   scale,
 }: NotesDisplayProps): JSX.Element | null {
+  const t = useT();
   const fullscreen = useFullscreen();
   const [measureRef, notesHeight] = useHeight();
   const [expanded, setExpanded] = useState(false);
@@ -83,7 +88,8 @@ export function NotesDisplay({
       {/* Also measures the notes when they don't fit. */}
       <Box
         ref={measureRef}
-        aria-label="Presenter notes"
+        lang={notesLang}
+        aria-label={t('presenterNotes')}
         aria-hidden={!fits}
         sx={[
           NOTES_STYLES,
@@ -107,7 +113,8 @@ export function NotesDisplay({
       {!fits && (
         <Box
           {...{ [INTERACTIVE_ATTRIBUTE]: true }}
-          aria-label="Presenter notes"
+          lang={notesLang}
+          aria-label={t('presenterNotes')}
           sx={[
             {
               position: 'absolute',

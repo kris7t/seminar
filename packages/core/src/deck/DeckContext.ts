@@ -4,6 +4,13 @@ import type { ResolvedTocEntry } from '../toc/tableOfContents.ts';
 import type { GoToSteps } from './useDeckNavigation.ts';
 
 export interface DeckState {
+  /** The language of the slides, if the deck sets it. */
+  lang: string | undefined;
+  /**
+   * The language of each slide: its own, or that of the deck, e.g., for the
+   * text taken from the slide in the user interface, like its title.
+   */
+  slideLangs: readonly (string | undefined)[];
   /** Zero-based index of the currently shown slide. */
   slideIndex: number;
   slideCount: number;

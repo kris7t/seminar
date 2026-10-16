@@ -1,6 +1,9 @@
 import { List, ListItemButton, ListItemText, Typography } from '@mui/material';
 import { useSyncExternalStore, type JSX } from 'react';
 
+import { useDeck } from '../deck/DeckContext.ts';
+import type { Translate } from '../i18n/messages.ts';
+import { useT } from '../i18n/UiLanguageContext.ts';
 import { scrollIntoView } from '../sidebar/Sidebar.tsx';
 import type { StepPath, StepStore, StepTreeEntry } from './StepStore.ts';
 
@@ -30,6 +33,8 @@ interface EntryProps {
   level: number;
   current: StepPath;
   store: StepStore;
+  /** The language of the labels, which are taken from the slide. */
+  lang: string | undefined;
 }
 
 function Entry({
@@ -39,6 +44,7 @@ function Entry({
   level,
   current,
   store,
+  lang,
 }: EntryProps): JSX.Element {
   const phase = phaseOf(path, current);
   // Going through the slide skips steps outside its range, but they can still
@@ -55,6 +61,8 @@ function Entry({
       sx={{ pl: 2 + level * 2 }}
     >
       <ListItemText
+        // Placeholders are in the language of the user interface.
+        lang={label === '' ? undefined : lang}
         slotProps={{
           primary: {
             variant: 'body2',
@@ -82,18 +90,21 @@ function renderEntries(
   level: number,
   current: StepPath,
   store: StepStore,
+  t: Translate,
+  lang: string | undefined,
 ): JSX.Element[] {
   return entries.flatMap(({ path, label, children }) => [
     <Entry
       key={path.join('.')}
       path={path}
       label={label}
-      fallback={`Step ${String(path.at(-1))}`}
+      fallback={t('step', { number: path.at(-1) ?? 0 })}
       level={level}
       current={current}
       store={store}
+      lang={lang}
     />,
-    ...renderEntries(children, level + 1, current, store),
+    ...renderEntries(children, level + 1, current, store, t, lang),
   ]);
 }
 
@@ -113,6 +124,9 @@ export interface StepTreeProps {
  * Should be rendered with the {@link uiTheme}.
  */
 export function StepTree({ store }: StepTreeProps): JSX.Element {
+  const t = useT();
+  const { slideIndex, slideLangs } = useDeck();
+  const lang = slideLangs[slideIndex];
   const tree = useSyncExternalStore(store.subscribe, store.getTree);
   const current = useSyncExternalStore(store.subscribe, store.getPath);
   // Re-renders the entries when the range changes.
@@ -123,14 +137,14 @@ export function StepTree({ store }: StepTreeProps): JSX.Element {
         variant="body2"
         sx={{ px: 2, py: 1, color: 'text.secondary' }}
       >
-        This slide has no steps.
+        {t('noSteps')}
       </Typography>
     );
   }
   return (
     <List
       component="nav"
-      aria-label="Steps"
+      aria-label={t('steps')}
       dense
       // Keep the focus where it is, so that keys like Space keep navigating.
       onMouseDown={(event) => {
@@ -141,12 +155,13 @@ export function StepTree({ store }: StepTreeProps): JSX.Element {
       <Entry
         path={[]}
         label=""
-        fallback="Start of the slide"
+        fallback={t('startOfSlide')}
         level={0}
         current={current}
         store={store}
+        lang={lang}
       />
-      {renderEntries(tree, 0, current, store)}
+      {renderEntries(tree, 0, current, store, t, lang)}
     </List>
   );
 }

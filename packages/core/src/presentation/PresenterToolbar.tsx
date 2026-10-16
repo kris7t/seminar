@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import {
   useEffect,
+  useMemo,
   useState,
   type ComponentType,
   type JSX,
@@ -28,6 +29,8 @@ import {
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { formatShortcut } from '../i18n/messages.ts';
+import { useT, useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
 import type { PointerMode } from './pointer.tsx';
 
@@ -79,10 +82,13 @@ const MIN_FULL_TOOLBAR_WIDTH = 840;
  */
 const MIN_REDUCED_TOOLBAR_WIDTH = 640;
 
-const CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, {
-  hour: 'numeric',
-  minute: '2-digit',
-});
+/** Formats the time of day in the language of the user interface. */
+function useClockFormat(lang: string): Intl.DateTimeFormat {
+  return useMemo(
+    () => new Intl.DateTimeFormat(lang, { hour: 'numeric', minute: '2-digit' }),
+    [lang],
+  );
+}
 
 interface ToolButtonProps {
   label: string;
@@ -103,6 +109,7 @@ function ToolButton({
   disabled = false,
   pressed,
 }: ToolButtonProps): JSX.Element {
+  const t = useT();
   const button = (
     <IconButton
       aria-label={label}
@@ -119,7 +126,13 @@ function ToolButton({
   return disabled ? (
     button
   ) : (
-    <Tooltip title={shortcut === undefined ? label : `${label} (${shortcut})`}>
+    <Tooltip
+      title={
+        shortcut === undefined
+          ? label
+          : `${label} (${formatShortcut(t, shortcut)})`
+      }
+    >
       {button}
     </Tooltip>
   );
@@ -193,6 +206,8 @@ export function PresenterToolbar({
   menuOpen,
   onOpenMenu,
 }: PresenterToolbarProps): JSX.Element {
+  const { lang, t } = useUiLanguage();
+  const clockFormat = useClockFormat(lang);
   const deck = useDeck();
   const {
     slideIndex,
@@ -213,7 +228,7 @@ export function PresenterToolbar({
   const reduced = width < MIN_FULL_TOOLBAR_WIDTH;
   const compact = width < MIN_REDUCED_TOOLBAR_WIDTH;
   const slideNumber = (
-    <Tooltip title="Go to slide (G)">
+    <Tooltip title={`${t('goToSlide')} (G)`}>
       <Button
         color="inherit"
         onClick={onGoToSlide}
@@ -226,7 +241,7 @@ export function PresenterToolbar({
   return (
     <Box
       role="toolbar"
-      aria-label="Presenter controls"
+      aria-label={t('presenterControls')}
       onMouseDown={(event) => {
         event.preventDefault();
       }}
@@ -252,14 +267,14 @@ export function PresenterToolbar({
       ) : (
         <Group>
           <ToolButton
-            label="Previous slide"
+            label={t('previousSlide')}
             shortcut="PgUp"
             icon={KeyboardDoubleArrowLeftIcon}
             onClick={deck.previousSlide}
             disabled={previousSlideIndex === undefined}
           />
           <ToolButton
-            label="Previous step"
+            label={t('previousStep')}
             shortcut="Left"
             icon={NavigateBeforeIcon}
             onClick={deck.previous}
@@ -267,14 +282,14 @@ export function PresenterToolbar({
           />
           {slideNumber}
           <ToolButton
-            label="Next step"
+            label={t('nextStep')}
             shortcut="Right"
             icon={NavigateNextIcon}
             onClick={deck.next}
             disabled={nextSlideIndex === undefined && atLastStep}
           />
           <ToolButton
-            label="Next slide"
+            label={t('nextSlide')}
             shortcut="PgDn"
             icon={KeyboardDoubleArrowRightIcon}
             onClick={deck.nextSlide}
@@ -283,7 +298,7 @@ export function PresenterToolbar({
           {!reduced && (
             <>
               <ToolButton
-                label="Slide overview"
+                label={t('slideOverview')}
                 shortcut="O"
                 icon={GridViewIcon}
                 onClick={() => {
@@ -291,7 +306,7 @@ export function PresenterToolbar({
                 }}
               />
               <ToolButton
-                label="Table of contents"
+                label={t('tableOfContents')}
                 shortcut="T"
                 icon={TocIcon}
                 pressed={showToc}
@@ -301,7 +316,7 @@ export function PresenterToolbar({
                 }}
               />
               <ToolButton
-                label="Steps"
+                label={t('steps')}
                 shortcut="Shift+T"
                 icon={AutoAwesomeMotionIcon}
                 pressed={showSteps}
@@ -312,7 +327,7 @@ export function PresenterToolbar({
             </>
           )}
           <ToolButton
-            label="Focus on notes"
+            label={t('focusOnNotes')}
             shortcut="N"
             icon={SpeakerNotesIcon}
             pressed={notesOnly}
@@ -321,14 +336,14 @@ export function PresenterToolbar({
             }}
           />
           <ToolButton
-            label="Show pointer to the audience"
+            label={t('showPointer')}
             shortcut="M"
             icon={MouseIcon}
             pressed={pointerMode === 'mirror'}
             onClick={onMirrorPointer}
           />
           <ToolButton
-            label="Laser pointer"
+            label={t('laserPointer')}
             shortcut="L"
             icon={FlareIcon}
             pressed={pointerMode === 'laser'}
@@ -336,7 +351,7 @@ export function PresenterToolbar({
           />
           {!reduced && (
             <ToolButton
-              label="Text selection"
+              label={t('textSelection')}
               shortcut="S"
               icon={HighlightAltIcon}
               pressed={!mouseNavigation}
@@ -349,19 +364,19 @@ export function PresenterToolbar({
       )}
       <Group>
         <Typography
-          aria-label="Time elapsed"
+          aria-label={t('timeElapsed')}
           sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
         >
           {formatElapsed(now - start)}
         </Typography>
         <ToolButton
-          label="Reset time elapsed"
+          label={t('resetTimeElapsed')}
           shortcut="R"
           icon={RestartAltIcon}
           onClick={onResetTimer}
         />
         <Typography
-          aria-label="Current time"
+          aria-label={t('currentTime')}
           sx={{
             ml: 2,
             color: 'text.secondary',
@@ -369,11 +384,11 @@ export function PresenterToolbar({
             whiteSpace: 'nowrap',
           }}
         >
-          {CLOCK_FORMAT.format(now)}
+          {clockFormat.format(now)}
         </Typography>
-        <Tooltip title="Menu">
+        <Tooltip title={t('menu')}>
           <IconButton
-            aria-label="Menu"
+            aria-label={t('menu')}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             color="inherit"

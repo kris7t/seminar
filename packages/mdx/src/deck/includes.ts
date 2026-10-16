@@ -11,6 +11,7 @@ import type { VFile } from 'vfile';
 import { getAttributes } from '../directives/directives.ts';
 import { createEsm } from '../utils/estree.ts';
 import { getDeckFrontmatter, parseDeck } from './frontmatter.ts';
+import { getDeckLang } from './uiLocales.ts';
 import { slideExportName, titleExportName } from './recmaSlideExports.ts';
 import {
   buildSlides,
@@ -28,6 +29,8 @@ export interface IncludeContext {
   file: VFile;
   /** The depth of the deck, see `getDeckFrontmatter`. */
   depth: number;
+  /** The language of the deck, see `getDeckLang`. */
+  lang: string;
   /** Collects the imports of the included slides. */
   esm: RootContent[];
   /** Counts the imported slides, to name them. */
@@ -46,6 +49,8 @@ export interface IncludeContext {
 /** The slides of an included deck, as {@link buildSlides} creates them. */
 interface DeckStructure {
   depth: number;
+  /** The language of the deck. */
+  lang: string;
   /** The slides, including divisions without slides. */
   slides: SlideDraft[];
   /** The index of the exported component of each slide that has one. */
@@ -115,10 +120,13 @@ function readStructure(
 ): DeckStructure {
   context.onDependency?.(deckPath);
   const { tree, file } = parseDeck(readFileSync(deckPath, 'utf8'), deckPath);
-  const depth = getDeckFrontmatter(tree, file)['depth'] as number;
+  const frontmatter = getDeckFrontmatter(tree, file);
+  const depth = frontmatter['depth'] as number;
+  const lang = getDeckLang(frontmatter, file);
   const nested: IncludeContext = {
     file,
     depth,
+    lang,
     // The included deck imports the slides it includes itself.
     esm: [],
     imports: { count: 0 },
@@ -147,7 +155,7 @@ function readStructure(
       exports.set(slide, exports.size);
     }
   }
-  return { depth, slides, exports };
+  return { depth, lang, slides, exports };
 }
 
 /** Resolves the module `specifier` imported by the deck at `from`. */
@@ -232,7 +240,13 @@ function titleText(slide: SlideDraft): string | undefined {
 }
 
 /** Attributes of `::include` by the form of the directive. */
-const CONTENT_ATTRIBUTES = new Set(['title', 'spare', 'copy', ...STEP_BOUNDS]);
+const CONTENT_ATTRIBUTES = new Set([
+  'title',
+  'spare',
+  'copy',
+  'lang',
+  ...STEP_BOUNDS,
+]);
 
 const DIVISION_ATTRIBUTES = new Set(['title', 'spare', 'copy', ...STEP_BOUNDS]);
 
@@ -318,7 +332,7 @@ export function includeSlides(
     });
     return [];
   }
-  const { slides: source, exports, depth } = structure;
+  const { slides: source, exports, depth, lang: deckLang } = structure;
   const { id, classes, attributes } = getAttributes(directive);
   const copy = attributes.get('copy');
   const isCopy = copy === '' || copy === 'true';
@@ -389,6 +403,11 @@ export function includeSlides(
       draft.include = name;
     }
     draft.origin = origin;
+    // Read out in the language of the other deck, or its own.
+    const slideLang = rendered.attributes.get('lang') ?? deckLang;
+    if (slideLang !== context.lang) {
+      draft.attributes.set('lang', slideLang);
+    }
     // The title of the slide, rendered by the other deck, e.g., for the table
     // of contents.
     const title = importTitle(rendered);
@@ -482,6 +501,10 @@ export function includeSlides(
       }
       draft.tocTitle = attributes.get('title');
       draft.spareAttribute = attributes.get('spare');
+      const lang = attributes.get('lang');
+      if (lang !== undefined && !isRecap) {
+        draft.attributes.set('lang', lang);
+      }
       return [draft];
     }
     report(DIVISION_ATTRIBUTES, 'a division');

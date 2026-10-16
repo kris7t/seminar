@@ -13,6 +13,10 @@ export interface SlideGroup {
   level: number;
   /** The slide where the group starts, even if it has no slides. */
   start: number;
+  /** Whether the division has a slide of its own, which starts the group. */
+  hasSlide?: boolean;
+  /** Whether the title stands in for a slide without one. */
+  standIn?: boolean;
   /**
    * Indices of the slides of the group, starting with its own slide, if it has
    * one. Divisions without a slide of their own may have no slides, e.g., if
@@ -34,15 +38,17 @@ export function groupSlides(
   const divisions: {
     slideIndex: number;
     hasSlide: boolean;
+    standIn: boolean;
     title: ReactNode;
     level: number;
   }[] = [];
   const visit = (entries: readonly ResolvedTocEntry[], level: number) => {
-    for (const { slideIndex, hasSlide, title, children } of entries) {
+    for (const { slideIndex, hasSlide, standIn, title, children } of entries) {
       if (children.length > 0) {
         divisions.push({
           slideIndex,
           hasSlide,
+          standIn: standIn === true,
           title,
           level: Math.min(level, MAX_LEVEL),
         });
@@ -61,7 +67,7 @@ export function groupSlides(
   }
   for (const [
     i,
-    { slideIndex, hasSlide, title, level },
+    { slideIndex, hasSlide, standIn, title, level },
   ] of divisions.entries()) {
     const end = divisions[i + 1]?.slideIndex ?? slideCount;
     // Divisions on the same slide, e.g., in a hand-written table of contents,
@@ -72,6 +78,8 @@ export function groupSlides(
         title,
         level,
         start: slideIndex,
+        hasSlide,
+        ...(standIn ? { standIn } : {}),
         slides: range(slideIndex, end),
       });
     }

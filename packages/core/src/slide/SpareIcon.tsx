@@ -1,6 +1,8 @@
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import type { JSX } from 'react';
 
+import { useT } from '../i18n/UiLanguageContext.ts';
+
 import { SmallArchiveBoxIcon, type MarkIconProps } from './smallIcons.tsx';
 
 /**
@@ -12,6 +14,7 @@ export function SpareIcon({
   small = false,
   ...props
 }: MarkIconProps): JSX.Element {
+  const t = useT();
   const Icon = small ? SmallArchiveBoxIcon : Inventory2OutlinedIcon;
-  return <Icon fontSize="small" titleAccess="Spare slide" {...props} />;
+  return <Icon fontSize="small" titleAccess={t('spareSlide')} {...props} />;
 }

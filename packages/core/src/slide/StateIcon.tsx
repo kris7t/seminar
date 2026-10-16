@@ -2,6 +2,8 @@ import CodeIcon from '@mui/icons-material/Code';
 import { Badge } from '@mui/material';
 import type { JSX } from 'react';
 
+import { useT } from '../i18n/UiLanguageContext.ts';
+
 import { SmallCodeIcon, type MarkIconProps } from './smallIcons.tsx';
 
 export interface StateIconProps extends MarkIconProps {
@@ -20,11 +22,12 @@ export function StateIcon({
   small = false,
   ...props
 }: StateIconProps): JSX.Element {
+  const t = useT();
   const Icon = small ? SmallCodeIcon : CodeIcon;
   const icon = (
     <Icon
       fontSize="small"
-      titleAccess={changed ? 'Changed' : 'Keeps your changes'}
+      titleAccess={t(changed ? 'changed' : 'keepsYourChanges')}
       {...props}
     />
   );

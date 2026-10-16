@@ -16,6 +16,8 @@ import {
 } from '@mui/material';
 import { useId, useState, type JSX } from 'react';
 
+import type { Translate } from '../i18n/messages.ts';
+import { useT, useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import type { ScreenDetailed, ScreenDetails } from './screens.ts';
 
 export interface ScreenDialogProps {
@@ -25,12 +27,16 @@ export interface ScreenDialogProps {
   onClose: () => void;
 }
 
-function describe(screen: ScreenDetailed, current: boolean): string {
+function describe(
+  t: Translate,
+  screen: ScreenDetailed,
+  current: boolean,
+): string {
   const details = [
     `${String(screen.width)}×${String(screen.height)}`,
-    ...(screen.isPrimary ? ['primary'] : []),
-    ...(screen.isInternal ? ['built-in'] : []),
-    ...(current ? ['this window is here'] : []),
+    ...(screen.isPrimary ? [t('primaryScreen')] : []),
+    ...(screen.isInternal ? [t('builtInScreen')] : []),
+    ...(current ? [t('thisWindowIsHere')] : []),
   ];
   return details.join(', ');
 }
@@ -45,6 +51,7 @@ export function ScreenDialog({
   onChoose,
   onClose,
 }: ScreenDialogProps): JSX.Element {
+  const { lang } = useUiLanguage();
   return (
     // A fixed width, so that long names of screens are cut off instead of
     // making the dialog wider.
@@ -53,6 +60,7 @@ export function ScreenDialog({
       onClose={onClose}
       fullWidth
       maxWidth="xs"
+      slotProps={{ paper: { lang } }}
     >
       {/* Remount the form each time the dialog opens to reset it. */}
       {screens !== undefined && (
@@ -67,6 +75,7 @@ function ScreenForm({
   onChoose,
   onClose,
 }: ScreenDialogProps & { screens: ScreenDetails }): JSX.Element {
+  const t = useT();
   const labelId = useId();
   // Most likely, the presentation goes to the projector, not to the screen
   // the presenter is looking at.
@@ -86,11 +95,11 @@ function ScreenForm({
         }
       }}
     >
-      <DialogTitle>Start presentation</DialogTitle>
+      <DialogTitle>{t('startPresentation')}</DialogTitle>
       <DialogContent>
         <FormControl fullWidth>
           <FormLabel id={labelId} sx={{ mb: 1 }}>
-            Show the slides in full screen on:
+            {t('showSlidesOn')}
           </FormLabel>
           <RadioGroup
             aria-labelledby={labelId}
@@ -106,7 +115,7 @@ function ScreenForm({
               const Icon = screen.isInternal ? LaptopIcon : DesktopWindowsIcon;
               const name =
                 screen.label === ''
-                  ? `Screen ${String(index + 1)}`
+                  ? t('screen', { number: index + 1 })
                   : screen.label;
               return (
                 <FormControlLabel
@@ -134,7 +143,7 @@ function ScreenForm({
                           color="textSecondary"
                           noWrap
                         >
-                          {describe(screen, screen === currentScreen)}
+                          {describe(t, screen, screen === currentScreen)}
                         </Typography>
                       </Box>
                     </Box>
@@ -155,9 +164,9 @@ function ScreenForm({
       </DialogContent>
       <DialogActions>
         <Button color="inherit" onClick={onClose}>
-          Cancel
+          {t('cancel')}
         </Button>
-        <Button type="submit">OK</Button>
+        <Button type="submit">{t('ok')}</Button>
       </DialogActions>
     </form>
   );

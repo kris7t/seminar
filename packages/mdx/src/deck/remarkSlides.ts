@@ -19,6 +19,12 @@ import {
   createSpreadAttribute,
   createStringAttribute,
 } from '../utils/estree.ts';
+import {
+  CORE_UI_LOCALES,
+  getDeckLang,
+  getUiLocaleSources,
+  type UiLocaleSource,
+} from './uiLocales.ts';
 import { getDeckFrontmatter, type DeckDefaults } from './frontmatter.ts';
 import {
   expandSelfIncludes,
@@ -195,6 +201,11 @@ function createSlideElement(
   };
 }
 
+/** The name of the import of the language of the user interface at `index`. */
+function uiLocaleName(index: number): string {
+  return `_SliderUiLocale${String(index)}`;
+}
+
 /** Returns the module to import the theme from, if any. */
 function getThemeSource(
   frontmatter: Record<string, unknown>,
@@ -217,10 +228,23 @@ function createDeckAttributes(
   frontmatter: Record<string, unknown>,
   themeSource: string | undefined,
   toc: TocEntry[],
+  lang: string,
+  uiLocales: readonly UiLocaleSource[],
   file: VFile,
 ): MdxJsxFlowElement['attributes'] {
   const attributes: MdxJsxFlowElement['attributes'] = [
     createExpressionAttribute('toc', JSON.stringify(toc)),
+    createExpressionAttribute('lang', JSON.stringify(lang)),
+    createExpressionAttribute(
+      'uiLocales',
+      `[${uiLocales
+        .map(({ lang: uiLang, module }, index) =>
+          module === undefined
+            ? uiLocaleName(index)
+            : `{ lang: ${JSON.stringify(uiLang)}, catalog: ${uiLocaleName(index)} }`,
+        )
+        .join(', ')}]`,
+    ),
   ];
   const { mouseNavigation } = frontmatter;
   if (mouseNavigation !== undefined) {
@@ -309,6 +333,7 @@ export function remarkSlides({
     const esm: RootContent[] = [];
     const frontmatter = getDeckFrontmatter(tree, file, defaults);
     const depth = frontmatter['depth'] as number;
+    const lang = getDeckLang(frontmatter, file);
     // Read by `rehypeMath`.
     (file.data as { sliderFrontmatter?: unknown }).sliderFrontmatter =
       frontmatter;
@@ -316,6 +341,7 @@ export function remarkSlides({
     const includeContext: IncludeContext = {
       file,
       depth,
+      lang,
       esm: includeEsm,
       imports: { count: 0 },
       stack: [],
@@ -340,6 +366,14 @@ export function remarkSlides({
     resolveDivisionIds(slides, depth);
     const bindings = collectBindings(esm);
     const themeSource = getThemeSource(frontmatter, file);
+    const uiLocales = getUiLocaleSources(frontmatter, lang, file);
+    // The languages of the core come with the components, and the others
+    // from their own modules.
+    const coreLocales = uiLocales.flatMap(({ lang: uiLang, module }, index) =>
+      module === undefined
+        ? [`${CORE_UI_LOCALES.get(uiLang) ?? ''} as ${uiLocaleName(index)}`]
+        : [],
+    );
     const deck: MdxJsxFlowElement = {
       type: 'mdxJsxFlowElement',
       name: DECK,
@@ -348,6 +382,8 @@ export function remarkSlides({
         frontmatter,
         themeSource,
         createToc(slides, depth),
+        lang,
+        uiLocales,
         file,
       ),
       children: slides
@@ -356,11 +392,27 @@ export function remarkSlides({
     };
     tree.children = [
       createEsm(
-        `import { Deck as ${DECK}, Slide as ${SLIDE}, Step as ${STEP}, Formula as ${FORMULA}, Notes as ${NOTES} } from ${JSON.stringify(importSource)};`,
+        `import { ${[
+          `Deck as ${DECK}`,
+          `Slide as ${SLIDE}`,
+          `Step as ${STEP}`,
+          `Formula as ${FORMULA}`,
+          `Notes as ${NOTES}`,
+          ...coreLocales,
+        ].join(', ')} } from ${JSON.stringify(importSource)};`,
       ),
       ...(themeSource === undefined
         ? []
         : [createEsm(`import ${THEME} from ${JSON.stringify(themeSource)};`)]),
+      ...uiLocales.flatMap(({ module }, index) =>
+        module === undefined
+          ? []
+          : [
+              createEsm(
+                `import ${uiLocaleName(index)} from ${JSON.stringify(module)};`,
+              ),
+            ],
+      ),
       createEsm(`export const frontmatter = ${JSON.stringify(frontmatter)};`),
       ...includeEsm,
       ...esm,

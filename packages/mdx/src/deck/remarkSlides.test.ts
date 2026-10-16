@@ -262,6 +262,59 @@ author: Someone
     expect((module as unknown as { answer: number }).answer).toBe(42);
   });
 
+  describe('languages', () => {
+    it('sets the language of the deck and its slides', async () => {
+      const module = await compileDeck(
+        '---\nlang: hu\n---\n\n## A\n\n## B {lang=en}',
+      );
+      const deck = renderDeck(module);
+      expect(deck.props).toMatchObject({
+        lang: 'hu',
+        // And English, unless the deck lists its languages.
+        uiLocales: [{ lang: 'hu' }, { lang: 'en' }],
+      });
+      expect(
+        deck.props.children.map(
+          (slide) => (slide as { props: { lang?: string } }).props.lang,
+        ),
+      ).toEqual([undefined, 'en']);
+    });
+
+    it('defaults to English', async () => {
+      const deck = renderDeck(await compileDeck('## A'));
+      expect(deck.props).toMatchObject({
+        lang: 'en',
+        uiLocales: [{ lang: 'en' }],
+      });
+    });
+
+    it('imports the languages of the user interface', async () => {
+      const code = String(
+        await compile(
+          '---\nlang: de-AT\nuiLanguages: [en, hu, { pt: ./pt.json }]\n---\n\n## A',
+          sliderMdxOptions({ importSource: STUB_URL }),
+        ),
+      );
+      expect(code).toContain('GERMAN as _SliderUiLocale0');
+      expect(code).toContain('ENGLISH as _SliderUiLocale1');
+      expect(code).toContain('HUNGARIAN as _SliderUiLocale2');
+      expect(code).toContain('import _SliderUiLocale3 from "./pt.json"');
+      expect(code).toContain('lang: "pt"');
+      expect(code).not.toContain('FRENCH');
+    });
+
+    it('warns about languages without a user interface', async () => {
+      const file = await compile(
+        '---\nlang: ja\nuiLanguages: [xx]\n---\n\n## A',
+        sliderMdxOptions({ importSource: STUB_URL }),
+      );
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining("isn't available in `ja`"),
+        expect.stringContaining("isn't available in `xx`"),
+      ]);
+    });
+  });
+
   describe('depth', () => {
     const DOCUMENT = '# A\n\n## B\n\n### C\n\n#### D\n\nText';
 

@@ -9,6 +9,8 @@ import {
 import type { JSX } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import type { Translate } from '../i18n/messages.ts';
+import { useT } from '../i18n/UiLanguageContext.ts';
 import { scrollIntoView } from '../sidebar/Sidebar.tsx';
 import { RecapIcon } from '../slide/RecapIcon.tsx';
 import { RecappedIcon } from '../slide/RecappedIcon.tsx';
@@ -30,6 +32,10 @@ interface RenderEntriesOptions {
   /** Goes to a slide, if it isn't the current one, and shows its steps. */
   showSteps: (slideIndex: number) => void;
   resetSlide: (slideIndex: number) => void;
+  t: Translate;
+  /** The language of the deck, and of each slide, for their titles. */
+  lang: string | undefined;
+  slideLangs: readonly (string | undefined)[];
 }
 
 /**
@@ -57,6 +63,9 @@ function renderEntries({
   goTo,
   showSteps,
   resetSlide,
+  t,
+  lang,
+  slideLangs,
 }: RenderEntriesOptions): JSX.Element[] {
   return entries.flatMap((entry) => {
     const isCurrent = entry.hasSlide && entry.slideIndex === current;
@@ -72,13 +81,13 @@ function renderEntries({
       original !== undefined
         ? {
             target: original,
-            label: 'Go to recapped slide',
+            label: t('goToRecappedSlide'),
             Icon: RecapIcon,
           }
         : firstRecap >= 0
           ? {
               target: firstRecap,
-              label: 'Go to first recap',
+              label: t('goToFirstRecap'),
               Icon: RecappedIcon,
             }
           : undefined;
@@ -121,12 +130,12 @@ function renderEntries({
                   <IconButton
                     edge={steps ? false : 'end'}
                     size="small"
-                    aria-label="Reset slide"
+                    aria-label={t('resetSlide')}
                     onClick={() => {
                       resetSlide(entry.slideIndex);
                     }}
                   >
-                    <StateIcon changed titleAccess="Reset slide" />
+                    <StateIcon changed titleAccess={t('resetSlide')} />
                   </IconButton>
                 ) : (
                   // Only a mark, in the place of the button, which shows its
@@ -150,12 +159,12 @@ function renderEntries({
                 <IconButton
                   edge="end"
                   size="small"
-                  aria-label="Show steps"
+                  aria-label={t('showSteps')}
                   onClick={() => {
                     showSteps(entry.slideIndex);
                   }}
                 >
-                  <StepsIcon titleAccess="Show steps" />
+                  <StepsIcon titleAccess={t('showSteps')} />
                 </IconButton>
               )}
             </Box>
@@ -172,6 +181,15 @@ function renderEntries({
           sx={{ pl: 2 + level * 2 }}
         >
           <ListItemText
+            // The titles of slides are in the language of the slide, unless
+            // they stand in for one, like `Slide 3`.
+            lang={
+              entry.standIn === true
+                ? undefined
+                : entry.hasSlide
+                  ? slideLangs[entry.slideIndex]
+                  : lang
+            }
             slotProps={{
               primary: {
                 variant: 'body2',
@@ -200,6 +218,9 @@ function renderEntries({
         goTo,
         showSteps,
         resetSlide,
+        t,
+        lang,
+        slideLangs,
       }),
     ];
   });
@@ -223,7 +244,10 @@ export function TocList(): JSX.Element {
     goTo,
     setShowSteps,
     resetSlide,
+    lang,
+    slideLangs,
   } = useDeck();
+  const t = useT();
   const showSteps = (index: number) => {
     if (index !== slideIndex) {
       goTo(index);
@@ -234,7 +258,7 @@ export function TocList(): JSX.Element {
   return (
     <List
       component="nav"
-      aria-label="Table of contents"
+      aria-label={t('tableOfContents')}
       dense
       // Keep the focus where it is, so that keys like Space keep navigating.
       onMouseDown={(event) => {
@@ -254,6 +278,9 @@ export function TocList(): JSX.Element {
         goTo,
         showSteps,
         resetSlide,
+        t,
+        lang,
+        slideLangs,
       })}
     </List>
   );

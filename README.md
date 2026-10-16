@@ -75,6 +75,18 @@ Presenter notes, shown only to the presenter.
   slide that isn't spare. Without a slide in the address, the deck starts at
   its first slide that isn't spare. `:slide{…}` in a heading does the same, and also makes
   headings deeper than `depth:` slides.
+- **Languages:** `lang:` in the frontmatter sets the language of the deck,
+  e.g., `lang: hu`, which defaults to English, and `{lang=…}` that of a
+  slide, so that screen readers read them out correctly. Included slides keep
+  the language of their deck, unless the include has `{lang=…}`. The menus and
+  buttons are shown in the language of the deck, if slider has it (English,
+  Hungarian, German, or French), or in English, which viewers can also choose
+  in the menu, and which their browsers may prefer. `uiLanguages: [de, fr]`
+  offers other languages instead of English, e.g., for students
+  from abroad, and `uiLanguages: [{ pt: ./pt.json }]` adds a language from a
+  file with its messages in the JSON format of i18next, like those in
+  [`packages/core/src/i18n/locales`](packages/core/src/i18n/locales). Only
+  the offered languages are bundled.
 - **Steps:** list items with `:step` at their start or end appear in new
   steps, and so do paragraphs with `:step`. `:step{with=previous}` and
   `:step{with=initial}` attach them to other steps, and `:step{group=name}`

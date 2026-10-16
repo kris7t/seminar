@@ -217,7 +217,7 @@ describe('the presenter view', () => {
       expect.not.stringContaining('fullscreen'),
     );
     expect(audience.document.title).toBe('Deck');
-    expect(document.title).toBe('Deck (presenter view)');
+    expect(document.title).toBe('Deck (Presenter view)');
     const body = audience.document.body;
     expect(body.textContent).toContain('First');
     expect(body.textContent).not.toContain('Some notes');

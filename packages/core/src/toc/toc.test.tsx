@@ -61,7 +61,13 @@ describe('resolveToc', () => {
         hasSlide: true,
         title: 'A',
         children: [
-          { slideIndex: 1, hasSlide: true, title: 'Slide 2', children: [] },
+          {
+            slideIndex: 1,
+            hasSlide: true,
+            title: 'Slide 2',
+            standIn: true,
+            children: [],
+          },
         ],
       },
       { slideIndex: 2, hasSlide: true, title: 'X', children: [] },

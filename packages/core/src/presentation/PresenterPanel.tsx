@@ -2,6 +2,7 @@ import { Box, ThemeProvider, Typography, type Theme } from '@mui/material';
 import { use, useSyncExternalStore, type JSX, type ReactNode } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { useT } from '../i18n/UiLanguageContext.ts';
 import { useFitScale, type Size } from '../deck/useFitScale.ts';
 import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
@@ -69,9 +70,10 @@ function Preview({
   size,
   slideTheme,
 }: PreviewProps): JSX.Element {
+  const t = useT();
   return (
     <Box sx={{ flex: 'none', display: 'flex', flexDirection: 'column' }}>
-      <Heading>{upcoming?.heading ?? 'Next slide'}</Heading>
+      <Heading>{upcoming?.heading ?? t('nextSlide')}</Heading>
       <Box
         sx={{ position: 'relative', overflow: 'hidden' }}
         style={{ width: size.width, height: size.height }}
@@ -87,7 +89,7 @@ function Preview({
               color: 'text.secondary',
             }}
           >
-            End of the presentation
+            {t('endOfPresentation')}
           </Box>
         ) : (
           <ThemeProvider theme={slideTheme}>
@@ -117,6 +119,8 @@ export interface PresenterPanelProps {
   slides: readonly ReactNode[];
   /** The presenter notes of the current slide, if any. */
   notes: ReactNode;
+  /** The language of the notes, if known. */
+  notesLang?: string | undefined;
   /** MUI theme of the slides, for the previews. */
   slideTheme: Theme;
   /** Whether the panel is below or next to the slide. */
@@ -141,10 +145,12 @@ export interface PresenterPanelProps {
 export function PresenterPanel({
   slides,
   notes,
+  notesLang,
   slideTheme,
   layout,
   notesOnly = false,
 }: PresenterPanelProps): JSX.Element {
+  const t = useT();
   const { slideIndex, nextSlideIndex } = useDeck();
   const nextStep = useHasNextStep();
   // The size of the contents of the panel, without its padding.
@@ -153,12 +159,12 @@ export function PresenterPanel({
   const nextSlide: Upcoming | undefined =
     nextSlideIndex === undefined
       ? undefined
-      : { heading: 'Next slide', index: nextSlideIndex, nextStep: false };
+      : { heading: t('nextSlide'), index: nextSlideIndex, nextStep: false };
   const wanted: (Upcoming | undefined)[] = notesOnly
     ? []
     : nextStep
       ? [
-          { heading: 'Next step', index: slideIndex, nextStep: true },
+          { heading: t('nextStep'), index: slideIndex, nextStep: true },
           ...(nextSlide === undefined ? [] : [nextSlide]),
         ]
       : [nextSlide];
@@ -173,7 +179,7 @@ export function PresenterPanel({
     <Box
       ref={ref}
       component="aside"
-      aria-label="Presenter view"
+      aria-label={t('presenterView')}
       sx={{
         flex: 1,
         display: 'flex',
@@ -215,8 +221,9 @@ export function PresenterPanel({
           minHeight: 0,
         }}
       >
-        <Heading>Notes</Heading>
+        <Heading>{t('notes')}</Heading>
         <Box
+          lang={notes === undefined ? undefined : notesLang}
           sx={[
             NOTES_STYLES,
             {
@@ -230,7 +237,9 @@ export function PresenterPanel({
           ]}
         >
           {notes ?? (
-            <Typography sx={{ color: 'text.secondary' }}>No notes</Typography>
+            <Typography sx={{ color: 'text.secondary' }}>
+              {t('noNotes')}
+            </Typography>
           )}
         </Box>
       </Box>

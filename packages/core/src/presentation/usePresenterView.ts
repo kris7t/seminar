@@ -99,7 +99,10 @@ function windowFeatures(screen: ScreenDetailed | undefined): string {
  * The presenter view ends when the audience window is closed, either by
  * {@link PresenterView.close} or by the user, or when this window is closed.
  */
-export function usePresenterView(): PresenterView {
+export function usePresenterView(
+  /** The name of the presenter view, added to the title of its window. */
+  label = 'Presenter view',
+): PresenterView {
   const [audience, setAudience] = useState<AudienceWindow>();
 
   const open = useCallback((screen?: ScreenDetailed) => {
@@ -138,11 +141,11 @@ export function usePresenterView(): PresenterView {
       return undefined;
     }
     const title = document.title;
-    document.title = `${title} (presenter view)`;
+    document.title = `${title} (${label})`;
     return () => {
       document.title = title;
     };
-  }, [audience]);
+  }, [audience, label]);
 
   useEffect(() => {
     if (audience === undefined) {

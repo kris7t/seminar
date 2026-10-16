@@ -1,6 +1,8 @@
 import { Box, Fade, Typography } from '@mui/material';
 import type { JSX } from 'react';
 
+import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
+
 export interface SwipeHintProps {
   open: boolean;
 }
@@ -15,9 +17,11 @@ export interface SwipeHintProps {
  * Should be rendered with the {@link uiTheme}.
  */
 export function SwipeHint({ open }: SwipeHintProps): JSX.Element {
+  const { lang, t } = useUiLanguage();
   return (
     <Box
       role="status"
+      lang={lang}
       sx={{
         position: 'absolute',
         inset: 0,
@@ -41,7 +45,7 @@ export function SwipeHint({ open }: SwipeHintProps): JSX.Element {
             textAlign: 'center',
           }}
         >
-          This slide has more steps. Tap to go through them.
+          {t('moreSteps')}
         </Typography>
       </Fade>
     </Box>

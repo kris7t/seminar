@@ -10,6 +10,9 @@
       "@slider/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./locales/*.json": {
+      "default": "./dist/i18n/locales/*.json"
     }
   },
   "files": [

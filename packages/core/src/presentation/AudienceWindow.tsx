@@ -18,6 +18,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import { useDeck } from '../deck/DeckContext.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { correctRipples } from '../slide/rippleScale.ts';
@@ -106,7 +107,14 @@ export function AudienceWindow({
     () => (frame === null ? undefined : correctRipples(frame)),
     [frame],
   );
-  const { slideIndex } = useDeck();
+  const { slideIndex, lang } = useDeck();
+  const { lang: uiLang, t } = useUiLanguage();
+  // Like the page of the deck, the window is in the language of the slides.
+  useEffect(() => {
+    if (lang !== undefined) {
+      target.document.documentElement.setAttribute('lang', lang);
+    }
+  }, [target, lang]);
   const [needsClick, setNeedsClick] = useState(false);
   const scale = useFitScale(target);
 
@@ -220,7 +228,9 @@ export function AudienceWindow({
                 color: 'common.white',
               }}
             >
-              <Typography variant="h5">Click to show in full screen</Typography>
+              <Typography variant="h5" lang={uiLang}>
+                {t('clickToShowInFullScreen')}
+              </Typography>
             </ButtonBase>
           </ThemeProvider>
         )}

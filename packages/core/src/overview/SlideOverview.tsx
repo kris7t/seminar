@@ -17,6 +17,7 @@ import {
 } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import { useT, useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import { RecapIcon } from '../slide/RecapIcon.tsx';
 import { RecappedIcon } from '../slide/RecappedIcon.tsx';
 import { SpareIcon } from '../slide/SpareIcon.tsx';
@@ -65,6 +66,8 @@ interface ThumbnailProps {
   slide: ReactNode;
   /** The title of the slide in the table of contents, if any. */
   title: ReactNode;
+  /** The language of the slide, and its title. */
+  lang: string | undefined;
   current: boolean;
   /** Whether the slide has steps, which is shown by its number. */
   steps: boolean;
@@ -86,6 +89,7 @@ function Thumbnail({
   slideTheme,
   slide,
   title,
+  lang,
   current,
   steps,
   state,
@@ -95,6 +99,15 @@ function Thumbnail({
   recapped,
   onSelect,
 }: ThumbnailProps): JSX.Element {
+  const t = useT();
+  // Told after the title, in the order of the icons.
+  const notes = [
+    ...(spare ? [t('spareNote')] : []),
+    ...(recap ? [t('recapNote')] : []),
+    ...(recapped ? [t('recappedLaterNote')] : []),
+    ...(state ? [t(stateChanged ? 'changedNote' : 'keepsChangesNote')] : []),
+    ...(steps ? [t('withStepsNote')] : []),
+  ];
   const ref = useRef<HTMLButtonElement>(null);
   const view = useMemo<SlideView>(
     () => ({ index, kind: 'thumbnail', interactive: false }),
@@ -195,7 +208,7 @@ function Thumbnail({
       <Tooltip
         // Shows the title of slides that don't show it, e.g., with their
         // master, or recaps with a title of their own.
-        title={title ?? ''}
+        title={title === undefined ? '' : <span lang={lang}>{title}</span>}
         // The button has a name of its own.
         describeChild
         enterDelay={500}
@@ -219,13 +232,13 @@ function Thumbnail({
         >
           {/* Titles may have markup, so they can't go in an aria-label. */}
           <Box component="span" sx={VISUALLY_HIDDEN}>
-            {`Slide ${String(index + 1)}`}
-            {title !== undefined && <>: {title}</>}
-            {spare && ' (spare)'}
-            {recap && ' (recap)'}
-            {recapped && ' (recapped later)'}
-            {state && (stateChanged ? ' (changed)' : ' (keeps changes)')}
-            {steps && ' (with steps)'}
+            {t('slide', { number: index + 1 })}
+            {title !== undefined && (
+              <>
+                : <span lang={lang}>{title}</span>
+              </>
+            )}
+            {notes.map((note) => ` (${note})`)}
           </Box>
         </ButtonBase>
       </Tooltip>
@@ -268,7 +281,10 @@ export function SlideOverview({
     hasSteps,
     hasState,
     stateChanged,
+    lang,
+    slideLangs,
   } = useDeck();
+  const { lang: uiLang, t } = useUiLanguage();
   const slideTheme = useTheme();
   const groups = useMemo(
     () => groupSlides(toc, slides.length),
@@ -287,7 +303,8 @@ export function SlideOverview({
       <Box
         // Not a dialog, so that the navigation keys still work in it.
         role="region"
-        aria-label="Slide overview"
+        aria-label={t('slideOverview')}
+        lang={uiLang}
         {...menuHandlers}
         sx={{
           position: 'fixed',
@@ -302,65 +319,76 @@ export function SlideOverview({
           WebkitTouchCallout: 'none',
         }}
       >
-        {groups.map(({ title, level, start, slides: groupSlides }) => {
-          // Divisions of only spare slides are dimmed like their thumbnails.
-          const spare =
-            groupSlides.length > 0 &&
-            groupSlides.every((index) => spares[index] === true);
-          return (
-            <Box
-              component="section"
-              key={`${String(start)}-${String(level)}`}
-              sx={{ '& + &': { mt: 3 } }}
-            >
-              {title !== undefined && (
-                <Typography
-                  variant={HEADING_VARIANTS[level] ?? 'h6'}
-                  component={HEADING_ELEMENTS[level] ?? 'h4'}
-                  sx={[
-                    {
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      color: 'text.primary',
-                      mx: 1,
-                      mb: 1,
-                    },
-                    spare && { opacity: 0.5 },
-                  ]}
-                >
-                  {title}
-                  {spare && <SpareIcon sx={{ fontSize: '0.8em' }} />}
-                </Typography>
-              )}
+        {groups.map(
+          ({ title, level, start, hasSlide, standIn, slides: groupSlides }) => {
+            // Titles are in the language of the slide of the division, or of
+            // the deck, unless they stand in for one.
+            const titleLang =
+              standIn === true
+                ? undefined
+                : hasSlide === true
+                  ? slideLangs[start]
+                  : lang;
+            // Divisions of only spare slides are dimmed like their thumbnails.
+            const spare =
+              groupSlides.length > 0 &&
+              groupSlides.every((index) => spares[index] === true);
+            return (
               <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(auto-fill, ${String(THUMBNAIL_WIDTH + 16)}px)`,
-                  gap: 1,
-                }}
+                component="section"
+                key={`${String(start)}-${String(level)}`}
+                sx={{ '& + &': { mt: 3 } }}
               >
-                {groupSlides.map((index) => (
-                  <Thumbnail
-                    key={index}
-                    index={index}
-                    slideTheme={slideTheme}
-                    slide={slides[index]}
-                    title={titles[index]}
-                    current={index === overviewIndex}
-                    steps={hasSteps[index] === true}
-                    state={hasState[index] === true}
-                    stateChanged={stateChanged[index] === true}
-                    spare={spares[index] === true}
-                    recap={recapOf[index] !== undefined}
-                    recapped={recapOf.includes(index)}
-                    onSelect={onSelect}
-                  />
-                ))}
+                {title !== undefined && (
+                  <Typography
+                    variant={HEADING_VARIANTS[level] ?? 'h6'}
+                    component={HEADING_ELEMENTS[level] ?? 'h4'}
+                    sx={[
+                      {
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        color: 'text.primary',
+                        mx: 1,
+                        mb: 1,
+                      },
+                      spare && { opacity: 0.5 },
+                    ]}
+                  >
+                    <span lang={titleLang}>{title}</span>
+                    {spare && <SpareIcon sx={{ fontSize: '0.8em' }} />}
+                  </Typography>
+                )}
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(auto-fill, ${String(THUMBNAIL_WIDTH + 16)}px)`,
+                    gap: 1,
+                  }}
+                >
+                  {groupSlides.map((index) => (
+                    <Thumbnail
+                      key={index}
+                      index={index}
+                      slideTheme={slideTheme}
+                      slide={slides[index]}
+                      title={titles[index]}
+                      lang={slideLangs[index]}
+                      current={index === overviewIndex}
+                      steps={hasSteps[index] === true}
+                      state={hasState[index] === true}
+                      stateChanged={stateChanged[index] === true}
+                      spare={spares[index] === true}
+                      recap={recapOf[index] !== undefined}
+                      recapped={recapOf.includes(index)}
+                      onSelect={onSelect}
+                    />
+                  ))}
+                </Box>
               </Box>
-            </Box>
-          );
-        })}
+            );
+          },
+        )}
       </Box>
     </ThemeProvider>
   );

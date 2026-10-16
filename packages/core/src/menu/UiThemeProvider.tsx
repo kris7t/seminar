@@ -1,6 +1,7 @@
 import { Box, ThemeProvider } from '@mui/material';
 import type { JSX, ReactNode } from 'react';
 
+import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import { darkUiTheme, uiTheme } from './uiTheme.ts';
 
 export interface UiThemeProviderProps {
@@ -10,8 +11,8 @@ export interface UiThemeProviderProps {
 }
 
 /**
- * Provides the theme of the user interface to `children`, and the matching
- * `color-scheme`, so that the browser draws their scrollbars and form
+ * Provides the theme of the user interface to `children`, its language, and
+ * the matching `color-scheme`, so that the browser draws their scrollbars and form
  * controls in light or dark, too.
  *
  * Doesn't add a box to the layout. Elements rendered in a portal, like menus,
@@ -21,9 +22,13 @@ export function UiThemeProvider({
   dark = false,
   children,
 }: UiThemeProviderProps): JSX.Element {
+  const { lang } = useUiLanguage();
   return (
     <ThemeProvider theme={dark ? darkUiTheme : uiTheme}>
-      <Box sx={{ display: 'contents', colorScheme: dark ? 'dark' : 'light' }}>
+      <Box
+        lang={lang}
+        sx={{ display: 'contents', colorScheme: dark ? 'dark' : 'light' }}
+      >
         {children}
       </Box>
     </ThemeProvider>
