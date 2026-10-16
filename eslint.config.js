@@ -24,6 +24,7 @@ export default defineConfig(
             'packages/*/vitest.setup.ts',
             'packages/*/client.d.ts',
           ],
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 9,
         },
         tsconfigRootDir: import.meta.dirname,
       },

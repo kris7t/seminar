@@ -15,6 +15,7 @@
   "references": [
     { "path": "./tsconfig.lib.json" },
     { "path": "../core/tsconfig.lib.json" },
+    { "path": "../elements/tsconfig.lib.json" },
     { "path": "../mdx/tsconfig.lib.json" }
   ]
 }

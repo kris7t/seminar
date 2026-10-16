@@ -1,0 +1,48 @@
+{
+  "name": "@slider/elements",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reusable presentation elements for slider decks",
+  "license": "Apache-2.0",
+  "type": "module",
+  "slider": {
+    "directives": {
+      "callout": {
+        "source": "@slider/elements",
+        "exportName": "Callout"
+      }
+    }
+  },
+  "exports": {
+    ".": {
+      "@slider/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "peerDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^9.5.0",
+    "@slider/core": "0.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.5.0",
+    "@slider/core": "0.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "react": "^19.3.1",
+    "vitest": "^5.0.4"
+  }
+}

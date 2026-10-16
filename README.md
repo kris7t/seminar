@@ -141,6 +141,11 @@ Presenter notes, shown only to the presenter.
   `{ distantPast: 'hidden' }` hides callouts with their dimmed parent.
   `current` falls back to `open`, `distantFuture` to `future`, `distantPast`
   to `past`, and the rest to shown.
+- **Callouts:** add `@slider/elements` to the Slider plugins to use inline
+  directives such as `:callout[Remember this]{only}`. The callout overlays the
+  slide above the directive's position. It is a step whose default variant is
+  `scoped`; it accepts the other step props, full variants, and built-in or
+  theme-defined variant shorthands.
 - **Colons:** a colon followed by a word starts a directive like `:step`.
   Unknown ones, like in `10:30`, stay text, but write `\:step` for a literal
   `:step`.
@@ -207,6 +212,7 @@ and selection of text fields, selected text, and the ripples of buttons.
 | Package                                           | Description                                           |
 | ------------------------------------------------- | ----------------------------------------------------- |
 | [`@slider/core`](packages/core)                   | Deck, slides, steps, themes, and the presenter view   |
+| [`@slider/elements`](packages/elements)           | Reusable presentation elements and MDX directives     |
 | [`@slider/mdx`](packages/mdx)                     | Compiles decks written in MDX                         |
 | [`@slider/rollup-plugin`](packages/rollup-plugin) | Rollup and Vite plugin for `.deck.mdx` files          |
 | [`@slider/vite-plugin`](packages/vite-plugin)     | Vite plugin with HTML pages and self-contained builds |
@@ -227,7 +233,9 @@ export default defineConfig({
 
 Every `.deck.mdx` file then gets its own HTML page. Pass
 `slider({ selfContained: false })` to keep scripts and assets in separate
-files, e.g., for hosting with a Content Security Policy.
+files, e.g., for hosting with a Content Security Policy. Packages with Slider
+components and MDX directives can be enabled as plugins, for example
+`slider({ plugins: ['@slider/elements'] })`.
 
 ## License
 

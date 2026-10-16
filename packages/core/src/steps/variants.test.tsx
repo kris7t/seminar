@@ -407,4 +407,37 @@ describe('step variants', () => {
     expect(screen.getByText('A').hasAttribute('only')).toBe(false);
     expect(screen.getByText('B').hasAttribute('ghost')).toBe(false);
   });
+
+  it('lets wrappers set a default while keeping custom shorthands', async () => {
+    const user = userEvent.setup();
+    const theme = createSlideTheme({
+      stepVariants: {
+        ghost: { future: 'dimmed', past: 'hidden' },
+      } as Record<string, StepAppearances>,
+    });
+    const ghost = { ghost: '' } as Record<string, string>;
+    render(
+      <Deck theme={theme}>
+        <Slide title="Steps" steps="preview">
+          <Step defaultVariant="only">A</Step>
+          <Step defaultVariant="only" {...ghost}>
+            B
+          </Step>
+          <Step defaultVariant="only" variant="dim">
+            C
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    expect([stateOf('A'), stateOf('B'), stateOf('C')]).toEqual([
+      'future hidden',
+      'future dimmed',
+      'future hidden',
+    ]);
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+    expect([stateOf('A'), stateOf('B')]).toEqual([
+      'past hidden',
+      'past hidden',
+    ]);
+  });
 });

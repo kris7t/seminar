@@ -149,10 +149,17 @@ export interface StepProps
   title?: string | undefined;
   /**
    * How the step looks in its phases. Defaults to a shorthand like `only`
-   * (see {@link StepVariantShorthands}), then to the `steps` of the slide,
-   * then to the `defaultProps` of the theme, then to `'reveal'`.
+   * (see {@link StepVariantShorthands}), then to `defaultVariant`, the `steps`
+   * of the slide, the `defaultProps` of the theme, and finally `'reveal'`.
    */
   variant?: StepVariant | undefined;
+  /**
+   * Variant to use when neither `variant` nor a variant shorthand is set.
+   * Wrapper components can use this to choose their usual behavior while
+   * still supporting built-in and theme-defined shorthands. Takes precedence
+   * over the default of the slide and theme.
+   */
+  defaultVariant?: StepVariant | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   children?: ReactNode | ((state: StepState) => ReactNode);
@@ -246,6 +253,7 @@ export function Step(inProps: StepProps): JSX.Element {
     after,
     title,
     variant: themeVariant,
+    defaultVariant,
     className,
     children,
     ...rest
@@ -253,7 +261,12 @@ export function Step(inProps: StepProps): JSX.Element {
   const [shorthand, other] = splitShorthands(theme, rest);
   // The variant of the slide takes precedence over the default of the theme.
   const variant =
-    inProps.variant ?? shorthand ?? slideVariant ?? themeVariant ?? 'reveal';
+    inProps.variant ??
+    shorthand ??
+    defaultVariant ??
+    slideVariant ??
+    themeVariant ??
+    'reveal';
   const appearances = rankAppearances(theme, appearancesOf(theme, variant));
   const together = use(TogetherContext);
   const step = useStep({

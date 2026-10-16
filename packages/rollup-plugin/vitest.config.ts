@@ -4,10 +4,13 @@ import { defineProject } from 'vitest/config';
 import slider from './src/index.ts';
 
 export default defineProject({
-  plugins: [slider({ plugins: ['./src/fixtures/plugin.ts'] })],
+  plugins: [
+    slider({ plugins: ['./src/fixtures/plugin.ts', '@slider/elements'] }),
+  ],
   resolve: {
     // Use the TypeScript sources of workspace packages directly.
     conditions: ['@slider/source', ...defaultClientConditions],
+    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled'],
   },
   test: {
     environment: 'jsdom',

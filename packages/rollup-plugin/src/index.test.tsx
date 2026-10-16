@@ -8,6 +8,7 @@ import Plain, {
   frontmatter as plainFrontmatter,
 } from './fixtures/plain.deck.mdx';
 import Talk, { frontmatter } from './fixtures/talk.deck.mdx';
+import CalloutDeck from './fixtures/callout.deck.mdx';
 
 function OverrideMaster({ title }: SlideMasterProps): JSX.Element {
   return <h1 data-master="override">{title}</h1>;
@@ -90,8 +91,16 @@ describe('.deck.mdx', () => {
     expect(
       screen.getByText('From a Slider plugin').closest('aside'),
     ).toHaveProperty('dataset.plugin', 'callout');
+    expect(screen.getByText('Inline callout').tagName).toBe('SPAN');
     await user.click(screen.getByText('Uses the default theme'));
-    expect(window.location.hash).toBe('#plain-deck');
+    expect(window.location.hash).toBe('#plain-deck&step=1');
+  });
+
+  it('passes custom variant shorthands from directives to steps', () => {
+    render(<CalloutDeck />);
+    const callout = screen.getByText('Custom callout');
+    expect(callout.classList).toContain('SliderStep-dimmed');
+    expect(callout.hasAttribute('ghost')).toBe(false);
   });
 
   it('renders math with SVG and MathML', () => {
