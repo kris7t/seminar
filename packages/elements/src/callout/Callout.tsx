@@ -16,6 +16,7 @@ import {
   Step,
   type ComponentTheme,
   type DirectiveForm,
+  useSlideElement,
   type StepProps,
   type StepState,
 } from '@slider/core';
@@ -71,8 +72,11 @@ export type CalloutVariant =
 export type CalloutAlign =
   'left' | 'center' | 'right' | 'justify' | 'start' | 'end';
 
-/** A logical slide point, as an MDX-friendly string or a JSX tuple. */
-export type CalloutPoint = string | readonly [number, number];
+/**
+ * A point as `x,y`, as an MDX-friendly string or a JSX tuple. Numbers are
+ * logical slide pixels, and percentages, like `50%`, fractions of a box.
+ */
+export type CalloutPoint = string | readonly [number | string, number | string];
 
 /** Props of a speech bubble callout, which behaves like a step. */
 export interface CalloutProps extends Omit<
@@ -126,7 +130,19 @@ export interface CalloutProps extends Omit<
   stemOffset?: number | undefined;
   /** Shift from the character-box attachment, as `x,y` logical pixels. */
   shift?: CalloutPoint | undefined;
-  /** Absolute attachment point, as `x,y` logical slide coordinates. */
+  /**
+   * Name of the element on the slide to point at, e.g., `arch` for an image
+   * with `{#arch}` in MDX. The callout points at the middle of its top or
+   * bottom edge, or at `at` in its box. Unless `in`, `with`, `group`, or
+   * `after` is set, the callout is a step nested in the step of the element,
+   * or the step enclosing it, if any.
+   */
+  for?: string | undefined;
+  /**
+   * Point to attach to, as `x,y` from the top left corner of the slide, or of
+   * the element named by `for`, e.g., `120,80` in logical pixels or `62%,40%`
+   * of the size of the box.
+   */
   at?: CalloutPoint | undefined;
   /**
    * MUI palette color of the bubble, like `primary`, or a text color, like
@@ -403,6 +419,56 @@ function calloutPoint(
   return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : undefined;
 }
 
+/** A box in logical slide pixels. */
+interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const SLIDE_BOX: Box = { x: 0, y: 0, width: SLIDE_WIDTH, height: SLIDE_HEIGHT };
+
+/** A coordinate in logical pixels, or as a fraction of the size of a box. */
+interface Coordinate {
+  value: number;
+  relative: boolean;
+}
+
+function coordinate(
+  value: number | string | undefined,
+): Coordinate | undefined {
+  if (value === undefined) return undefined;
+  const text = String(value).trim();
+  const relative = text.endsWith('%');
+  const number = Number(relative ? text.slice(0, -1) : text);
+  if (text === '' || !Number.isFinite(number)) return undefined;
+  return { value: relative ? number / 100 : number, relative };
+}
+
+/** Parses a point that may be relative to a box, see {@link CalloutPoint}. */
+function relativePoint(
+  value: CalloutPoint | undefined,
+): [Coordinate, Coordinate] | undefined {
+  const parts =
+    typeof value === 'string' ? value.trim().split(/[\s,]+/) : value;
+  if (parts?.length !== 2) return undefined;
+  const x = coordinate(parts[0]);
+  const y = coordinate(parts[1]);
+  return x === undefined || y === undefined ? undefined : [x, y];
+}
+
+/** Returns `point` in logical slide pixels, relative to `box`. */
+function resolvePoint(
+  [x, y]: [Coordinate, Coordinate],
+  box: Box,
+): [number, number] {
+  return [
+    box.x + (x.relative ? x.value * box.width : x.value),
+    box.y + (y.relative ? y.value * box.height : y.value),
+  ];
+}
+
 function fromAnchorOrigin(
   geometry: CalloutGeometry,
   anchorX: number,
@@ -421,7 +487,9 @@ function initialGeometry(ownerState: CalloutOwnerState): CalloutGeometry {
   const originX = SLIDE_WIDTH / 2;
   const originY = SLIDE_HEIGHT / 2;
   const [shiftX, shiftY] = calloutPoint(ownerState.shift) ?? [0, 0];
-  const [atX, atY] = calloutPoint(ownerState.at) ?? [originX, originY];
+  const at = relativePoint(ownerState.at);
+  const [atX, atY] =
+    at === undefined ? [originX, originY] : resolvePoint(at, SLIDE_BOX);
   const anchorX = atX + shiftX;
   const anchorY = atY + shiftY;
   const geometry = calloutGeometry({
@@ -475,6 +543,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     offset,
     stemOffset,
     shift,
+    for: target,
     at,
     color = 'primary',
     variant = 'filled',
@@ -513,7 +582,16 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const preferredOffset = optionalFiniteNumber(offset);
   const preferredStemOffset = optionalFiniteNumber(stemOffset);
   const preferredShift = calloutPoint(shift);
-  const absoluteAnchor = calloutPoint(at);
+  const absoluteAnchor = relativePoint(at);
+  const targetElement = useSlideElement(target);
+  // Callouts pointing at an element are nested in its step, unless they are
+  // placed otherwise.
+  const nestInTarget =
+    targetElement !== undefined &&
+    stepProps.in === undefined &&
+    stepProps.with === undefined &&
+    stepProps.group === undefined &&
+    stepProps.after === undefined;
   const ownerState: CalloutOwnerState = {
     ...props,
     width,
@@ -526,7 +604,6 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     offset: preferredOffset,
     stemOffset: preferredStemOffset,
     shift: preferredShift,
-    at: absoluteAnchor,
     color,
     variant,
     elevation,
@@ -553,8 +630,26 @@ export function Callout(inProps: CalloutProps): JSX.Element {
       (anchorRect.left + anchorRect.width / 2 - frameRect.left) / scale;
     const measuredAnchorY =
       (anchorRect.top + anchorRect.height / 2 - frameRect.top) / scale;
+    const targetRect = targetElement?.getBoundingClientRect();
+    // The box that `at` is relative to.
+    const box: Box =
+      targetRect === undefined
+        ? SLIDE_BOX
+        : {
+            x: (targetRect.left - frameRect.left) / scale,
+            y: (targetRect.top - frameRect.top) / scale,
+            width: targetRect.width / scale,
+            height: targetRect.height / scale,
+          };
     const [shiftX, shiftY] = preferredShift ?? [0, 0];
-    const [atX, atY] = absoluteAnchor ?? [measuredAnchorX, measuredAnchorY];
+    // Without `at`, the callout points at an edge of its target, or of the
+    // characters around its anchor, as if the target was a character.
+    const [atX, atY] =
+      absoluteAnchor !== undefined
+        ? resolvePoint(absoluteAnchor, box)
+        : targetRect !== undefined
+          ? [box.x + box.width / 2, box.y + box.height / 2]
+          : [measuredAnchorX, measuredAnchorY];
     const anchorX = atX + shiftX;
     const anchorY = atY + shiftY;
     const next = fromAnchorOrigin(
@@ -562,7 +657,11 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         anchorX,
         anchorY,
         anchorHeight:
-          absoluteAnchor === undefined ? anchorRect.height / scale : 0,
+          absoluteAnchor !== undefined
+            ? 0
+            : targetRect !== undefined
+              ? box.height
+              : anchorRect.height / scale,
         width: width ?? (positioner.offsetWidth || maxWidth),
         height: positioner.offsetHeight || INITIAL_HEIGHT,
         radius,
@@ -583,6 +682,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     preferredStemOffset,
     absoluteAnchor,
     preferredShift,
+    targetElement,
     radius,
     stemSize,
     width,
@@ -597,12 +697,13 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         ? undefined
         : new ResizeObserver(updateGeometry);
     if (positioner !== null) observer?.observe(positioner);
+    if (targetElement !== undefined) observer?.observe(targetElement);
     window.addEventListener('resize', updateGeometry);
     return () => {
       observer?.disconnect();
       window.removeEventListener('resize', updateGeometry);
     };
-  }, [updateGeometry]);
+  }, [updateGeometry, targetElement]);
 
   // Containers hold blocks, like paragraphs and lists.
   const element = directive === 'container' ? 'div' : 'span';
@@ -663,6 +764,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
           className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
           ownerState={ownerState}
           {...stepProps}
+          {...(nestInTarget && { in: targetElement })}
         >
           {stepChildren}
         </CalloutRoot>

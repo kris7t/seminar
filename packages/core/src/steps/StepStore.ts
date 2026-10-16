@@ -80,9 +80,10 @@ export interface StepOptions {
   placement: StepPlacement;
   /**
    * Group of the stepper to nest the stepper in, instead of the stepper
-   * enclosing its elements.
+   * enclosing its elements, or an element whose stepper, or the stepper
+   * enclosing it, to nest the stepper in.
    */
-  parent?: string | undefined;
+  parent?: string | Element | undefined;
   /**
    * Group of the stepper to place the stepper right after, on the level of
    * that stepper, i.e., nested in the same stepper. Takes precedence over
@@ -695,8 +696,10 @@ export class StepStore {
       const predecessor = predecessors.get(node);
       const parent =
         predecessor === undefined
-          ? (this.#findGroup(anchor.options.parent, node, anchors) ??
-            this.#findParent(node, anchor.element, anchors))
+          ? typeof anchor.options.parent === 'object'
+            ? this.#findParent(node, anchor.options.parent, anchors, true)
+            : (this.#findGroup(anchor.options.parent, node, anchors) ??
+              this.#findParent(node, anchor.element, anchors))
           : findParent(predecessor);
       // A stepper placed after one nested in it ends up in itself.
       const result = parent === node ? undefined : parent;
@@ -811,14 +814,18 @@ export class StepStore {
       : undefined;
   }
 
-  /** Finds the closest stepper enclosing `element` of `node`. */
+  /**
+   * Finds the closest stepper enclosing `element` of `node`, or that
+   * `element` is an element of, if `inclusive`.
+   */
   #findParent(
     node: StepNode,
     element: Element,
     anchors: Map<StepNode, Anchor>,
+    inclusive = false,
   ): StepNode | undefined {
     for (
-      let ancestor = element.parentElement;
+      let ancestor = inclusive ? element : element.parentElement;
       ancestor !== null;
       ancestor = ancestor.parentElement
     ) {

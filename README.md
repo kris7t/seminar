@@ -192,10 +192,11 @@ slider({ plugins: ['@slider/elements'] });
 
 - **Callouts:** `:callout[Remember this]` shows a speech bubble
   pointing at its position in the text. It's a step whose default behavior is
-  `scoped`. On a line of its own, `::callout[…]{at=x,y}` takes no room, e.g.,
-  to point into an image, and `:::callout[Title]{at=x,y}` holds Markdown
-  content up to the closing `:::`, left-aligned under a centered title. It fits
-  its text up to `maxWidth`, unless `width` is set. `color` (a palette color
+  `scoped`. On a line of its own, `::callout[…]{for=arch}` takes no room, and
+  points at the element `arch`, or at `at=62%,40%` in its box, e.g., in an
+  image, as a step nested in the step of `arch`, if any. `:::callout[Title]{for=arch}` holds Markdown content up to the
+  closing `:::`, left-aligned under a centered title. Callouts fit their text
+  up to `maxWidth`, unless `width` is set. `color` (a palette color
   like `secondary`, or a text color like `text.secondary`), `variant=outlined`,
   `align`, `angle`, and `elevation` (a shadow of the theme) change its look,
   and themes can set defaults and add variants with `SliderCallout` and

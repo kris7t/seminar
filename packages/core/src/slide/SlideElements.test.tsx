@@ -105,4 +105,41 @@ describe('SlideElement', () => {
       screen.getByTestId('joined').classList.contains(stepClasses.current),
     ).toBe(true);
   });
+
+  it('nests steps in the step of an element', async () => {
+    const user = userEvent.setup();
+    function Pointer() {
+      return (
+        <Step in={useSlideElement('figure')} data-testid="pointer">
+          Pointer
+        </Step>
+      );
+    }
+    // The element is in a step of a component, rendered after the pointer.
+    function Figure() {
+      return (
+        <Step data-testid="figure">
+          <SlideElement as="span" name="figure">
+            Figure
+          </SlideElement>
+        </Step>
+      );
+    }
+    render(
+      <Deck>
+        <Slide>
+          <Pointer />
+          <Figure />
+        </Slide>
+      </Deck>,
+    );
+    const isCurrent = (testId: string) =>
+      screen.getByTestId(testId).classList.contains(stepClasses.current);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    expect(isCurrent('figure')).toBe(true);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=1.1');
+    expect(isCurrent('pointer')).toBe(true);
+  });
 });

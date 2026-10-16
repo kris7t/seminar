@@ -91,10 +91,11 @@ export interface UseStepsOptions {
   /**
    * Name of the group whose stepper this stepper is nested in, as if its
    * elements were inside the elements of the group. This allows nesting steps,
-   * e.g., callouts, outside of the step they belong to. Ignored if `with` is a
-   * handle.
+   * e.g., callouts, outside of the step they belong to. An element nests the
+   * stepper in the stepper of the element, or the stepper enclosing it, e.g.,
+   * for callouts pointing at the element. Ignored if `with` is a handle.
    */
-  in?: string | undefined;
+  in?: string | Element | undefined;
   /**
    * Name of the group to place this stepper right after, nested in the same
    * stepper as the group, before the steppers that follow the group in

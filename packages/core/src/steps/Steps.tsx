@@ -39,7 +39,7 @@ export interface StepsProps extends Omit<
   /** See the `group` option of {@link useSteps}. */
   group?: string | undefined;
   /** See the `in` option of {@link useSteps}. */
-  in?: string | undefined;
+  in?: string | Element | undefined;
   /** See the `after` option of `useSteps`. */
   after?: string | undefined;
   /**

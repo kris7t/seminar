@@ -244,6 +244,38 @@ describe('Callout', () => {
     expect(getComputedStyle(title).textAlign).toBe('center');
   });
 
+  it('is nested in the step of the element it points at', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="Callout">
+          <Callout for="figure" data-testid="nested">
+            Nested
+          </Callout>
+          <Callout for="figure" with="initial" data-testid="placed">
+            Placed
+          </Callout>
+          <Step id="figure">Figure</Step>
+        </Slide>
+      </Deck>,
+    );
+    const phase = (testId: string) =>
+      [...screen.getByTestId(testId).classList].find((name) =>
+        [
+          stepClasses.distantFuture,
+          stepClasses.future,
+          stepClasses.current,
+          stepClasses.past,
+        ].includes(name),
+      );
+    // Nested in the step of the figure, which is still to come.
+    expect(phase('nested')).toBe(stepClasses.distantFuture);
+    expect(phase('placed')).toBe(stepClasses.current);
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=figure.1');
+    expect(phase('nested')).toBe(stepClasses.current);
+  });
+
   it('centers its text by default', () => {
     render(
       <Deck>

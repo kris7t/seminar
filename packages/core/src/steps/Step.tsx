@@ -150,9 +150,10 @@ export interface StepProps
   group?: string | undefined;
   /**
    * Name of the group to nest the step in, as if it was inside the elements of
-   * the group. See the `in` option of `useSteps`.
+   * the group, or an element whose step to nest it in. See the `in` option of
+   * `useSteps`.
    */
-  in?: string | undefined;
+  in?: string | Element | undefined;
   /** See the `after` option of `useSteps`. */
   after?: string | undefined;
   /**
