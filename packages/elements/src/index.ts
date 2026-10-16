@@ -1,6 +1,7 @@
 export {
   Callout,
   calloutClasses,
+  DEFAULT_CALLOUT_ELEVATION,
   DEFAULT_CALLOUT_STEM_SIZE,
   DEFAULT_CALLOUT_WIDTH,
   type CalloutClassKey,
@@ -9,4 +10,15 @@ export {
   type CalloutProps,
   type CalloutVariant,
   type CalloutVariantOverrides,
-} from './Callout.tsx';
+} from './callout/Callout.tsx';
+export {
+  clampElevation,
+  parseBoxShadow,
+  ShadowFilter,
+  shadowFilterUrl,
+  shadowExtent,
+  type ShadowFilterProps,
+  type ShadowLayer,
+  type SvgBounds,
+} from './utils/shadow.tsx';
+export { useSvgId } from './utils/useSvgId.ts';

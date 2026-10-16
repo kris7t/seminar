@@ -119,6 +119,38 @@ describe('Callout', () => {
     expect(positioner.style.transform).toBe('translate(330px, 318px)');
   });
 
+  it('casts the shadow of its elevation in the theme', () => {
+    const theme = createSlideTheme({
+      components: {
+        SliderCallout: { defaultProps: { elevation: 2 } },
+      },
+    });
+    render(
+      <Deck theme={theme}>
+        <Slide title="Callout">
+          <Callout>Default</Callout>
+          <Callout elevation={0}>Flat</Callout>
+        </Slide>
+      </Deck>,
+    );
+    const layers = (text: string) => {
+      const path = calloutWithText(text).querySelector('path');
+      const id = /^url\(#(.+)\)$/.exec(path?.getAttribute('filter') ?? '')?.[1];
+      if (id === undefined) return [];
+      return [
+        ...(document.getElementById(id)?.querySelectorAll('feFlood') ?? []),
+      ].map((flood) => flood.getAttribute('flood-color'));
+    };
+    // The layers of `theme.shadows[2]`.
+    expect(layers('Default')).toEqual([
+      'rgba(0,0,0,0.2)',
+      'rgba(0,0,0,0.14)',
+      'rgba(0,0,0,0.12)',
+    ]);
+    expect(layers('Flat')).toEqual([]);
+    expect(calloutWithText('Flat').querySelector('filter')).toBeNull();
+  });
+
   it('takes its geometry and palette color from theme default props', () => {
     const theme = createSlideTheme({
       palette: {

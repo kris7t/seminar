@@ -1,7 +1,11 @@
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '@slider/core';
 import { describe, expect, it } from 'vitest';
 
-import { CALLOUT_SLIDE_MARGIN, calloutGeometry } from './calloutGeometry.ts';
+import {
+  CALLOUT_SLIDE_MARGIN,
+  calloutBounds,
+  calloutGeometry,
+} from './calloutGeometry.ts';
 
 const BASE = {
   anchorX: SLIDE_WIDTH / 2,
@@ -95,4 +99,25 @@ describe('calloutGeometry', () => {
     expect(geometry.angle).toBe(90);
     expect(10 + geometry.x).toBeLessThan(CALLOUT_SLIDE_MARGIN);
   });
+});
+
+describe('calloutBounds', () => {
+  it.each([0, 45, 90, 135, 180, 225, 270, 315])(
+    'covers the body and the stem pointing at %i degrees',
+    (angle) => {
+      const geometry = calloutGeometry({ ...BASE, angle, offset: 50 });
+      const bounds = calloutBounds(geometry);
+      // The anchor is the tip of the stem.
+      const tip = { x: -geometry.x, y: -geometry.y };
+      expect([geometry.tipX, geometry.tipY]).toEqual([tip.x, tip.y]);
+      expect(bounds.x).toBe(Math.min(0, tip.x));
+      expect(bounds.y).toBe(Math.min(0, tip.y));
+      expect(bounds.x + bounds.width).toBe(Math.max(BASE.width, tip.x));
+      expect(bounds.y + bounds.height).toBe(Math.max(BASE.height, tip.y));
+      // The stem sticks out of the body on the side it points to.
+      const outside =
+        tip.x < 0 || tip.y < 0 || tip.x > BASE.width || tip.y > BASE.height;
+      expect(outside).toBe(true);
+    },
+  );
 });

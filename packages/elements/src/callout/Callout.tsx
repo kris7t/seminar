@@ -26,12 +26,20 @@ import {
 
 import {
   CALLOUT_SLIDE_MARGIN,
+  calloutBounds,
   calloutGeometry,
   type CalloutGeometry,
 } from './calloutGeometry.ts';
+import {
+  clampElevation,
+  ShadowFilter,
+  shadowFilterUrl,
+} from '../utils/shadow.tsx';
+import { useSvgId } from '../utils/useSvgId.ts';
 
 export const DEFAULT_CALLOUT_WIDTH = 360;
 export const DEFAULT_CALLOUT_STEM_SIZE = 36;
+export const DEFAULT_CALLOUT_ELEVATION = 4;
 
 /** Keys of the MUI theme palette whose values are palette colors. */
 export type CalloutColor = {
@@ -84,6 +92,12 @@ export interface CalloutProps extends Omit<
   color?: CalloutColor | undefined;
   /** Visual treatment of the bubble. Defaults to `filled`. */
   variant?: CalloutVariant | undefined;
+  /**
+   * Shadow depth of the bubble, from 0 to 24, which selects one of the
+   * `shadows` of the MUI theme, like the `elevation` of a `Paper`. Defaults
+   * to 4.
+   */
+  elevation?: number | undefined;
   children?: StepProps['children'];
 }
 
@@ -116,6 +130,7 @@ declare module '@mui/material/styles' {
 interface CalloutOwnerState extends CalloutProps {
   color: CalloutColor;
   variant: CalloutVariant;
+  elevation: number;
   width: number;
   radius: number;
   stemSize: number;
@@ -235,7 +250,6 @@ const CalloutBackground = styled('svg', {
   stroke: 'var(--SliderCallout-outline)',
   strokeWidth: 'var(--SliderCallout-outline-width)',
   strokeLinejoin: 'round',
-  filter: 'drop-shadow(0 3px 5px rgb(0 0 0 / 0.25))',
 });
 
 const CalloutContent = styled('span', {
@@ -315,6 +329,8 @@ function sameGeometry(left: CalloutGeometry, right: CalloutGeometry): boolean {
     left.width === right.width &&
     left.height === right.height &&
     left.angle === right.angle &&
+    left.tipX === right.tipX &&
+    left.tipY === right.tipY &&
     left.path === right.path
   );
 }
@@ -342,6 +358,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     at,
     color = 'primary',
     variant = 'filled',
+    elevation: requestedElevation = DEFAULT_CALLOUT_ELEVATION,
     className,
     children,
     ...stepProps
@@ -361,6 +378,10 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     finiteNumber(requestedStemSize, DEFAULT_CALLOUT_STEM_SIZE),
     0,
   );
+  const elevation = clampElevation(
+    theme,
+    finiteNumber(requestedElevation, DEFAULT_CALLOUT_ELEVATION),
+  );
   const preferredAngle = optionalFiniteNumber(angle);
   const preferredOffset = optionalFiniteNumber(offset);
   const preferredStemOffset = optionalFiniteNumber(stemOffset);
@@ -378,6 +399,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     at: absoluteAnchor,
     color,
     variant,
+    elevation,
   };
   const anchorRef = useRef<HTMLSpanElement>(null);
   const positionerRef = useRef<HTMLSpanElement>(null);
@@ -451,6 +473,9 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     };
   }, [updateGeometry]);
 
+  const shadowId = useSvgId('SliderCallout-shadow');
+  const shadow = theme.shadows[elevation] ?? 'none';
+
   const content = (body: ReactNode): ReactNode => (
     <>
       <CalloutBackground
@@ -459,7 +484,14 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         ownerState={ownerState}
         viewBox={`0 0 ${String(geometry.width)} ${String(geometry.height)}`}
       >
-        <path d={geometry.path} />
+        <defs>
+          <ShadowFilter
+            id={shadowId}
+            shadow={shadow}
+            bounds={calloutBounds(geometry)}
+          />
+        </defs>
+        <path d={geometry.path} filter={shadowFilterUrl(shadowId, shadow)} />
       </CalloutBackground>
       <CalloutContent
         className={calloutClasses.content}

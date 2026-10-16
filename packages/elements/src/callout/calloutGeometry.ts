@@ -35,6 +35,9 @@ export interface CalloutGeometry {
   height: number;
   /** Direction from the body attachment to the anchor. */
   angle: number;
+  /** Tip of the stem relative to the body, which may lie outside of it. */
+  tipX: number;
+  tipY: number;
   /** SVG path of the rounded body and triangular stem. */
   path: string;
 }
@@ -350,6 +353,8 @@ export function calloutGeometry({
     width,
     height,
     angle: placement.angle,
+    tipX: tip.x,
+    tipY: tip.y,
     path: speechBubblePath(
       width,
       height,
@@ -359,5 +364,33 @@ export function calloutGeometry({
       placement.base,
       tip,
     ),
+  };
+}
+
+/** A rectangle relative to the body of a callout. */
+export interface CalloutBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Bounds of the body and the stem of a callout, whichever direction the stem
+ * points to.
+ */
+export function calloutBounds({
+  width,
+  height,
+  tipX,
+  tipY,
+}: CalloutGeometry): CalloutBounds {
+  const left = Math.min(0, tipX);
+  const top = Math.min(0, tipY);
+  return {
+    x: left,
+    y: top,
+    width: Math.max(width, tipX) - left,
+    height: Math.max(height, tipY) - top,
   };
 }
