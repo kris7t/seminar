@@ -37,7 +37,7 @@ import {
 } from '../utils/shadow.tsx';
 import { useSvgId } from '../utils/useSvgId.ts';
 
-export const DEFAULT_CALLOUT_WIDTH = 360;
+export const DEFAULT_CALLOUT_MAX_WIDTH = 360;
 export const DEFAULT_CALLOUT_STEM_SIZE = 36;
 export const DEFAULT_CALLOUT_ELEVATION = 4;
 
@@ -57,6 +57,10 @@ export type CalloutVariant =
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- Empty unless augmented.
   | keyof CalloutVariantOverrides;
 
+/** Alignment of the text in a callout. */
+export type CalloutAlign =
+  'left' | 'center' | 'right' | 'justify' | 'start' | 'end';
+
 /** A logical slide point, as an MDX-friendly string or a JSX tuple. */
 export type CalloutPoint = string | readonly [number, number];
 
@@ -65,8 +69,18 @@ export interface CalloutProps extends Omit<
   StepProps,
   'children' | 'color' | 'defaultBehavior'
 > {
-  /** Width of the rounded body in logical slide pixels. */
+  /**
+   * Width of the rounded body in logical slide pixels. Without it, the body
+   * fits its text, up to `maxWidth`.
+   */
   width?: number | undefined;
+  /**
+   * Width of the body without `width`, beyond which its text breaks into
+   * lines. Defaults to 360.
+   */
+  maxWidth?: number | undefined;
+  /** Alignment of the text. Defaults to `center`. */
+  align?: CalloutAlign | undefined;
   /** Corner radius of the body. Defaults to twice the theme shape radius. */
   radius?: number | undefined;
   /** Width of the stem at the body, and its default length. */
@@ -131,7 +145,10 @@ interface CalloutOwnerState extends CalloutProps {
   color: CalloutColor;
   variant: CalloutVariant;
   elevation: number;
-  width: number;
+  /** Width of the body, or `undefined` to fit its text up to `maxWidth`. */
+  width: number | undefined;
+  maxWidth: number;
+  align: CalloutAlign;
   radius: number;
   stemSize: number;
 }
@@ -178,7 +195,9 @@ const CalloutPositioner = styled('span', {
   top: '50%',
   left: 0,
   display: 'block',
-  width: ownerState.width,
+  ...(ownerState.width === undefined
+    ? { width: 'max-content', maxWidth: ownerState.maxWidth }
+    : { width: ownerState.width }),
 }));
 
 const CalloutRoot = styled(Step, {
@@ -256,11 +275,12 @@ const CalloutContent = styled('span', {
   name: 'SliderCallout',
   slot: 'Content',
   overridesResolver: (_props, styles) => styles['content'],
-})<{ ownerState: CalloutOwnerState }>(({ theme }) => ({
+})<{ ownerState: CalloutOwnerState }>(({ theme, ownerState }) => ({
   position: 'relative',
   zIndex: 0,
   display: 'block',
   padding: theme.spacing(1, 1.5),
+  textAlign: ownerState.align,
 }));
 
 const INITIAL_HEIGHT = 64;
@@ -311,7 +331,7 @@ function initialGeometry(ownerState: CalloutOwnerState): CalloutGeometry {
   const geometry = calloutGeometry({
     anchorX,
     anchorY,
-    width: ownerState.width,
+    width: ownerState.width ?? ownerState.maxWidth,
     height: INITIAL_HEIGHT,
     radius: ownerState.radius,
     stemSize: ownerState.stemSize,
@@ -348,7 +368,9 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const theme = useTheme();
   const props = useThemeProps({ props: inProps, name: 'SliderCallout' });
   const {
-    width: requestedWidth = DEFAULT_CALLOUT_WIDTH,
+    width: requestedWidth,
+    maxWidth: requestedMaxWidth = DEFAULT_CALLOUT_MAX_WIDTH,
+    align = 'center',
     radius: requestedRadius,
     stemSize: requestedStemSize = DEFAULT_CALLOUT_STEM_SIZE,
     angle,
@@ -363,9 +385,16 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     children,
     ...stepProps
   } = props;
-  const width = Math.min(
-    Math.max(finiteNumber(requestedWidth, DEFAULT_CALLOUT_WIDTH), 1),
-    SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN * 2,
+  // Callouts stay narrower than the slide.
+  const bodyWidth = (value: number) =>
+    Math.min(Math.max(value, 1), SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN * 2);
+  const requestedExactWidth = optionalFiniteNumber(requestedWidth);
+  const width =
+    requestedExactWidth === undefined
+      ? undefined
+      : bodyWidth(requestedExactWidth);
+  const maxWidth = bodyWidth(
+    finiteNumber(requestedMaxWidth, DEFAULT_CALLOUT_MAX_WIDTH),
   );
   const radius = Math.max(
     finiteNumber(
@@ -390,6 +419,8 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const ownerState: CalloutOwnerState = {
     ...props,
     width,
+    maxWidth,
+    align,
     radius,
     stemSize,
     angle: preferredAngle,
@@ -433,7 +464,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         anchorY,
         anchorHeight:
           absoluteAnchor === undefined ? anchorRect.height / scale : 0,
-        width,
+        width: width ?? (positioner.offsetWidth || maxWidth),
         height: positioner.offsetHeight || INITIAL_HEIGHT,
         radius,
         stemSize,
@@ -456,6 +487,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     radius,
     stemSize,
     width,
+    maxWidth,
   ]);
 
   useLayoutEffect(() => {

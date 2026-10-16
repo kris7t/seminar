@@ -119,6 +119,53 @@ describe('Callout', () => {
     expect(positioner.style.transform).toBe('translate(330px, 318px)');
   });
 
+  it('fits its text up to its maximum width without a width', () => {
+    const theme = createSlideTheme({
+      components: {
+        SliderCallout: { defaultProps: { maxWidth: 240, align: 'left' } },
+      },
+    });
+    render(
+      <Deck theme={theme}>
+        <Slide title="Callout">
+          <Callout>Fitted</Callout>
+          <Callout width={300} align="right">
+            Fixed
+          </Callout>
+        </Slide>
+      </Deck>,
+    );
+    const style = (text: string, slot: 'positioner' | 'content') => {
+      const callout = calloutWithText(text);
+      const element =
+        slot === 'positioner'
+          ? callout.parentElement
+          : callout.querySelector(`.${calloutClasses.content}`);
+      if (element === null) throw new Error(`Missing ${slot}`);
+      return getComputedStyle(element);
+    };
+    expect(style('Fitted', 'positioner').width).toBe('max-content');
+    expect(style('Fitted', 'positioner').maxWidth).toBe('240px');
+    expect(style('Fitted', 'content').textAlign).toBe('left');
+    expect(style('Fixed', 'positioner').width).toBe('300px');
+    expect(style('Fixed', 'content').textAlign).toBe('right');
+  });
+
+  it('centers its text by default', () => {
+    render(
+      <Deck>
+        <Slide title="Callout">
+          <Callout>Centered</Callout>
+        </Slide>
+      </Deck>,
+    );
+    const content = calloutWithText('Centered').querySelector(
+      `.${calloutClasses.content}`,
+    );
+    if (content === null) throw new Error('Missing content');
+    expect(getComputedStyle(content).textAlign).toBe('center');
+  });
+
   it('casts the shadow of its elevation in the theme', () => {
     const theme = createSlideTheme({
       components: {

@@ -187,9 +187,10 @@ slider({ plugins: ['@slider/elements'] });
 
 - **Callouts:** `:callout[Remember this]` shows a speech bubble
   pointing at its position in the text. It's a step whose default behavior is
-  `scoped`. `color`, `variant=outlined`, `width`, `angle`, and `elevation` (a
-  shadow of the theme) change its look,
-  and themes can set defaults and add variants with `SliderCallout`.
+  `scoped`. It fits its text up to `maxWidth`, unless `width` is set.
+  `color`, `variant=outlined`, `align`, `angle`, and `elevation` (a shadow of
+  the theme) change its look, and themes can set defaults and add variants
+  with `SliderCallout`.
 
 ## License
 
