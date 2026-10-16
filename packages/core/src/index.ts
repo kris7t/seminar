@@ -79,6 +79,7 @@ export {
   useSlideView,
   type SlideView,
   type SlideViewKind,
+  type SlideViewState,
 } from './slide/SlideViewContext.ts';
 export {
   getStepTransition,

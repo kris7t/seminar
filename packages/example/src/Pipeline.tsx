@@ -1,4 +1,4 @@
-import { Box, Typography, useMediaQuery } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
   useOwnAnimation,
@@ -34,10 +34,7 @@ export function Pipeline(): JSX.Element {
   const reached = stages.findLastIndex(([, step]) => step.isActive);
   // Animate where the slide is presented, but not in thumbnails or previews,
   // which show how a step ends, nor for viewers who prefer less motion.
-  const { kind } = useSlideView();
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-  const animates =
-    (kind === 'audience' || kind === 'presenter') && !reducedMotion;
+  const { animated } = useSlideView();
   const ownAnimation = useOwnAnimation();
   return (
     <Box
@@ -88,7 +85,7 @@ export function Pipeline(): JSX.Element {
           // with the slide.
           opacity: reached < 0 ? 0 : 1,
           transform: `translateX(${String(Math.max(reached, 0) * (STAGE_WIDTH + STAGE_GAP))}px)`,
-          transition: animates
+          transition: animated
             ? theme.transitions.create(['transform', 'opacity'], {
                 duration: theme.transitions.duration.complex,
               })

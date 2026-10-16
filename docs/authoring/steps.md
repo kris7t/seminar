@@ -115,16 +115,16 @@ changes, e.g., moving a marker along a path, should follow these guidelines:
   step tree, or a recap, where the component must show the end state right
   away.
 - **Animate only where the slide is presented.** Thumbnails, previews, and
-  probes show a step as it ends: check `useSlideView().kind`, and skip
-  animations unless it's `audience` or `presenter`.
+  probes show a step as it ends: animate only when `useSlideView().animated`
+  is true, which also respects reduced motion.
 - **Keep animations short and interruptible.** Presenters step quickly, e.g.,
   by holding an arrow key. CSS transitions continue from where they are when
   the step changes again, while timers and long animations fall behind.
 - **Use the timing of the theme.** Take durations and easings from the
   theme, e.g., from its `stepTransition`, or from `theme.transitions`, e.g.,
   `theme.transitions.create('transform')`, so that themes can change them.
-- **Respect reduced motion.** Turn animations off when
-  `(prefers-reduced-motion: reduce)` matches, as the fades of the slide do.
+- **Respect reduced motion.** `animated` is false when the viewer prefers
+  reduced motion, as the fades of the slide are.
 - **Keep views in step.** The audience window and the presenter view render
   the slide separately, so an animation must not depend on state of its own,
   like a random start or the time it mounted, but only on the steps and the

@@ -1,4 +1,4 @@
-import { createContext, use, type Context } from 'react';
+import { createContext, use, useSyncExternalStore, type Context } from 'react';
 
 /**
  * Where a slide is rendered. A deck may render the same slide in several
@@ -31,9 +31,11 @@ export interface SlideView {
   index: number;
   kind: SlideViewKind;
   /**
-   * Whether the presenter interacts with the slide in this view. Other views
-   * are inert, so expensive or interactive content, like code editors, may
-   * render a lighter preview in them.
+   * Whether the presenter interacts with the slide in this view, i.e., the
+   * slide of the deck window, which is the presenter view while presenting.
+   * Other views are inert: e.g., the audience window mirrors the slide, and
+   * doesn't take input. So expensive work, like a simulation, should run in
+   * this view, and share its results with the others through slide state.
    */
   interactive: boolean;
   /**
@@ -52,12 +54,65 @@ const DEFAULT_VIEW: SlideView = {
 export const SlideViewContext: Context<SlideView> =
   createContext<SlideView>(DEFAULT_VIEW);
 
+/** A rendering of a slide, with flags for what it's for. */
+export interface SlideViewState extends SlideView {
+  /**
+   * Whether the slide is being presented in this view, at the current step,
+   * i.e., in the `audience` or `presenter` view, which should show it in full
+   * fidelity. Other views show a step as it ends, or aren't shown at all.
+   */
+  presented: boolean;
+  /**
+   * Whether the view is shown, i.e., anything but a `probe`, so that the
+   * slide has to render more than its steps.
+   */
+  visible: boolean;
+  /**
+   * Whether the slide should animate in this view: it's being presented, and
+   * the viewer doesn't prefer reduced motion. Components that animate when
+   * the step changes should check this.
+   */
+  animated: boolean;
+}
+
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
+/** Returns the media query of reduced motion, if there are media queries. */
+function reducedMotionQuery(): MediaQueryList | undefined {
+  // Not every environment has media queries, e.g., jsdom.
+  return 'matchMedia' in window ? window.matchMedia(REDUCED_MOTION) : undefined;
+}
+
+function subscribeToReducedMotion(listener: () => void): () => void {
+  const query = reducedMotionQuery();
+  query?.addEventListener('change', listener);
+  return () => {
+    query?.removeEventListener('change', listener);
+  };
+}
+
+function prefersReducedMotion(): boolean {
+  return reducedMotionQuery()?.matches ?? false;
+}
+
 /**
  * Returns the view the enclosing slide is rendered in. Outside of a deck, the
  * slide is assumed to be the first slide of an interactive audience view.
  */
-export function useSlideView(): SlideView {
-  return use(SlideViewContext);
+export function useSlideView(): SlideViewState {
+  const view = use(SlideViewContext);
+  const reducedMotion = useSyncExternalStore(
+    subscribeToReducedMotion,
+    prefersReducedMotion,
+    () => false,
+  );
+  const presented = view.kind === 'audience' || view.kind === 'presenter';
+  return {
+    ...view,
+    presented,
+    visible: view.kind !== 'probe',
+    animated: presented && !reducedMotion,
+  };
 }
 
 /** The data attribute of the element of a slide view with its kind. */

@@ -98,7 +98,14 @@ describe('useSlideProbe', () => {
     await idle();
     expect(views).toEqual([
       {
-        view: { index: 1, kind: 'probe', interactive: false },
+        view: {
+          index: 1,
+          kind: 'probe',
+          interactive: false,
+          presented: false,
+          visible: false,
+          animated: false,
+        },
         // In a document without a window, which doesn't load the image.
         shown: false,
       },

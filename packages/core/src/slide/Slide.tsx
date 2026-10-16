@@ -13,7 +13,7 @@ import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepBehaviorContext } from '../steps/StepBehaviorContext.ts';
 import { SlideElementScope } from './SlideElements.tsx';
-import { SlideViewContext, useSlideView } from './SlideViewContext.ts';
+import { SlideViewContext } from './SlideViewContext.ts';
 
 export interface SlideProps {
   /**
@@ -114,7 +114,7 @@ export function Slide({
   children,
 }: SlideProps): JSX.Element {
   const theme = useTheme();
-  const view = useSlideView();
+  const view = use(SlideViewContext);
   // Before painting, so that the slide doesn't show a step outside the range.
   const store = use(StepStoreContext);
   useLayoutEffect(() => {

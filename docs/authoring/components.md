@@ -55,8 +55,19 @@ components must render there in full fidelity.
 
 Heavy state, like a running simulation, a video, or a camera stream, should
 be owned by the interactive view: it runs the work and keeps the results in
-[slide state](#slide-state), which the other views render. Thumbnails,
-previews, and probes can render a lighter version, judged by `kind`.
+[slide state](#slide-state), which the other views render.
+
+`useSlideView` also has flags for common checks:
+
+- `presented`: the slide is being presented, in the `audience` or
+  `presenter` view, so it should render in full fidelity. Thumbnails,
+  previews, and probes can render a lighter version.
+- `visible`: the view is shown, i.e., it isn't a `probe`, which only needs
+  the steps of the slide, so that expensive set-up, like connections or
+  timers, can be left out.
+- `animated`: the slide is presented, and the viewer doesn't prefer reduced
+  motion, so that animations should play, see
+  [Animations](steps.md#animations).
 
 ## Input
 
