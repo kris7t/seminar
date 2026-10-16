@@ -7,4 +7,6 @@ export {
   type CalloutColor,
   type CalloutPoint,
   type CalloutProps,
+  type CalloutVariant,
+  type CalloutVariantOverrides,
 } from './Callout.tsx';

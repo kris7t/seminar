@@ -20,17 +20,18 @@ describe('calloutGeometry', () => {
     expect(geometry.x).toBeCloseTo(-76.32);
     expect(geometry.y).toBeCloseTo(-137.59);
     expect(geometry.path).toContain('M 20 0');
-    expect(geometry.path).toContain('M 70 100');
-    expect(geometry.path).toContain('L 110 100 Z');
+    expect(geometry.path).toContain('H 110 L');
+    expect(geometry.path).toContain('L 70 100 H 20');
+    expect(geometry.path.match(/\bM /g)).toHaveLength(1);
   });
 
   it('mirrors the automatic stem attachment across the slide', () => {
     expect(calloutGeometry({ ...BASE, anchorX: 200 }).path).toContain(
-      'M 70 100',
+      'H 110 L',
     );
     expect(
       calloutGeometry({ ...BASE, anchorX: SLIDE_WIDTH - 200 }).path,
-    ).toContain('M 190 100');
+    ).toContain('H 230 L');
   });
 
   it('uses the angle to select an edge and honors both offsets', () => {
@@ -45,7 +46,7 @@ describe('calloutGeometry', () => {
       y: -40,
       angle: 0,
     });
-    expect(geometry.path).toContain('M 300 20 L 320 40 L 300 60 Z');
+    expect(geometry.path).toContain('V 20 L 320 40 L 300 60 V 80');
   });
 
   it('anchors above and below callouts to the corresponding character edge', () => {

@@ -38,6 +38,17 @@ export type CalloutColor = {
   [Key in keyof Palette]: Palette[Key] extends PaletteColor ? Key : never;
 }[keyof Palette];
 
+/** Further visual variants of callouts, added by module augmentation. */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- Augmented by themes.
+export interface CalloutVariantOverrides {}
+
+/** Visual treatment of a callout, independently of its step behavior. */
+export type CalloutVariant =
+  | 'filled'
+  | 'outlined'
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- Empty unless augmented.
+  | keyof CalloutVariantOverrides;
+
 /** A logical slide point, as an MDX-friendly string or a JSX tuple. */
 export type CalloutPoint = string | readonly [number, number];
 
@@ -71,6 +82,8 @@ export interface CalloutProps extends Omit<
   at?: CalloutPoint | undefined;
   /** MUI palette color of the bubble. */
   color?: CalloutColor | undefined;
+  /** Visual treatment of the bubble. Defaults to `filled`. */
+  variant?: CalloutVariant | undefined;
   children?: StepProps['children'];
 }
 
@@ -102,6 +115,7 @@ declare module '@mui/material/styles' {
 
 interface CalloutOwnerState extends CalloutProps {
   color: CalloutColor;
+  variant: CalloutVariant;
   width: number;
   radius: number;
   stemSize: number;
@@ -109,6 +123,8 @@ interface CalloutOwnerState extends CalloutProps {
 
 interface PaletteColorLike {
   main: string;
+  light?: string | undefined;
+  dark?: string | undefined;
   contrastText?: string | undefined;
 }
 
@@ -128,7 +144,8 @@ function paletteColor(
 const CalloutAnchor = styled('span', {
   name: 'SliderCallout',
   slot: 'Anchor',
-})({
+  overridesResolver: (_props, styles) => styles['anchor'],
+})<{ ownerState: CalloutOwnerState }>({
   position: 'relative',
   display: 'inline-block',
   width: 0,
@@ -139,6 +156,7 @@ const CalloutAnchor = styled('span', {
 const CalloutPositioner = styled('span', {
   name: 'SliderCallout',
   slot: 'Positioner',
+  overridesResolver: (_props, styles) => styles['positioner'],
 })<{ ownerState: CalloutOwnerState }>(({ ownerState }) => ({
   position: 'absolute',
   zIndex: 1,
@@ -151,22 +169,60 @@ const CalloutPositioner = styled('span', {
 const CalloutRoot = styled(Step, {
   name: 'SliderCallout',
   slot: 'Root',
-})<{ ownerState: CalloutOwnerState }>(({ theme, ownerState }) => {
-  const selected = paletteColor(theme.palette, ownerState.color);
-  const background = selected?.main ?? theme.palette.primary.main;
+  overridesResolver: (_props, styles) => styles['root'],
+})<{ ownerState: CalloutOwnerState }>(({ theme }) => {
+  const colorVariants = Object.keys(theme.palette).flatMap((color) => {
+    const selected = paletteColor(theme.palette, color as CalloutColor);
+    if (selected === undefined) return [];
+    return [
+      {
+        props: { color: color as CalloutColor },
+        style: {
+          '--SliderCallout-palette-main': selected.main,
+          '--SliderCallout-palette-light': selected.light ?? selected.main,
+          '--SliderCallout-palette-dark': selected.dark ?? selected.main,
+          '--SliderCallout-palette-contrastText':
+            selected.contrastText ??
+            theme.palette.getContrastText(selected.main),
+        },
+      },
+    ];
+  });
   return {
     position: 'relative',
     display: 'block',
     boxSizing: 'border-box',
     width: '100%',
-    color: selected?.contrastText ?? theme.palette.getContrastText(background),
+    color: 'var(--SliderCallout-color)',
+    variants: [
+      {
+        props: { variant: 'filled' },
+        style: {
+          '--SliderCallout-background': 'var(--SliderCallout-palette-main)',
+          '--SliderCallout-color': 'var(--SliderCallout-palette-contrastText)',
+          '--SliderCallout-outline': 'transparent',
+          '--SliderCallout-outline-width': 0,
+        },
+      },
+      {
+        props: { variant: 'outlined' },
+        style: {
+          '--SliderCallout-background': theme.palette.background.paper,
+          '--SliderCallout-color': 'var(--SliderCallout-palette-main)',
+          '--SliderCallout-outline': 'var(--SliderCallout-palette-main)',
+          '--SliderCallout-outline-width': 2,
+        },
+      },
+      ...colorVariants,
+    ],
   };
 });
 
 const CalloutBackground = styled('svg', {
   name: 'SliderCallout',
   slot: 'Background',
-})<{ ownerState: CalloutOwnerState }>(({ theme, ownerState }) => ({
+  overridesResolver: (_props, styles) => styles['background'],
+})<{ ownerState: CalloutOwnerState }>({
   position: 'absolute',
   zIndex: -1,
   inset: 0,
@@ -175,15 +231,17 @@ const CalloutBackground = styled('svg', {
   height: '100%',
   overflow: 'visible',
   pointerEvents: 'none',
-  fill:
-    paletteColor(theme.palette, ownerState.color)?.main ??
-    theme.palette.primary.main,
+  fill: 'var(--SliderCallout-background)',
+  stroke: 'var(--SliderCallout-outline)',
+  strokeWidth: 'var(--SliderCallout-outline-width)',
+  strokeLinejoin: 'round',
   filter: 'drop-shadow(0 3px 5px rgb(0 0 0 / 0.25))',
-}));
+});
 
 const CalloutContent = styled('span', {
   name: 'SliderCallout',
   slot: 'Content',
+  overridesResolver: (_props, styles) => styles['content'],
 })<{ ownerState: CalloutOwnerState }>(({ theme }) => ({
   position: 'relative',
   zIndex: 0,
@@ -267,8 +325,8 @@ function sameGeometry(left: CalloutGeometry, right: CalloutGeometry): boolean {
  * slide, before the slide is scaled for display.
  *
  * The callout participates in the steps of its slide and uses the `scoped`
- * behavior unless `behavior` or a behavior shorthand is set. Geometry and color
- * may be set directly or through `SliderCallout.defaultProps` in the theme.
+ * behavior unless `behavior` or a behavior shorthand is set. Geometry, color,
+ * and visual variant may be set directly or through the MUI theme.
  */
 export function Callout(inProps: CalloutProps): JSX.Element {
   const theme = useTheme();
@@ -283,6 +341,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     shift,
     at,
     color = 'primary',
+    variant = 'filled',
     className,
     children,
     ...stepProps
@@ -318,6 +377,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     shift: preferredShift,
     at: absoluteAnchor,
     color,
+    variant,
   };
   const anchorRef = useRef<HTMLSpanElement>(null);
   const positionerRef = useRef<HTMLSpanElement>(null);
@@ -415,7 +475,11 @@ export function Callout(inProps: CalloutProps): JSX.Element {
       : content(children);
 
   return (
-    <CalloutAnchor ref={anchorRef} className={calloutClasses.anchor}>
+    <CalloutAnchor
+      ref={anchorRef}
+      className={calloutClasses.anchor}
+      ownerState={ownerState}
+    >
       <CalloutPositioner
         ref={positionerRef}
         className={calloutClasses.positioner}

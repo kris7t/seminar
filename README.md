@@ -152,7 +152,16 @@ Presenter notes, shown only to the presenter.
   fit the slide with an off-center stem; explicit geometry is exact and may be
   clipped by the slide. The tip targets the corresponding edge of the
   directive's character box; `shift=x,y` moves it, while `at=x,y` sets an
-  absolute logical slide point. It is a step whose default
+  absolute logical slide point. `variant=filled` (the default) fills the
+  bubble with its MUI palette `color`; `variant=outlined` uses that color for
+  its text and outline. Themes can override or add variants with
+  `SliderCallout.variants` and `CalloutVariantOverrides`. As in MUI components,
+  all slots receive the `variant` and `color` in their `ownerState`, so
+  `styleOverrides.background` can, for example, use the selected palette
+  color's `dark` shade for the SVG outline. Root variants can style slots with
+  `calloutClasses` or set the `--SliderCallout-background`,
+  `--SliderCallout-color`, `--SliderCallout-outline`, and
+  `--SliderCallout-outline-width` properties. It is a step whose default
   behavior is `scoped`; it accepts the other step props, full behaviors, and
   built-in or theme-defined behavior shorthands.
 - **Colons:** a colon followed by a word starts a directive like `:step`.

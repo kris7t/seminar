@@ -77,19 +77,30 @@ function attachmentPoint(
   stemSize: number,
   stemOffset: number,
 ): Point {
-  const halfBase = stemSize / 2;
+  const halfBase = stemHalfBase(edge, width, height, radius, stemSize);
   if (edge === 'top' || edge === 'bottom') {
-    const inset = radius + Math.min(halfBase, Math.max(0, width / 2 - radius));
+    const inset = radius + halfBase;
     return {
       x: clamp(width * stemOffset, inset, width - inset),
       y: edge === 'top' ? 0 : height,
     };
   }
-  const inset = radius + Math.min(halfBase, Math.max(0, height / 2 - radius));
+  const inset = radius + halfBase;
   return {
     x: edge === 'left' ? 0 : width,
     y: clamp(height * stemOffset, inset, height - inset),
   };
+}
+
+function stemHalfBase(
+  edge: Edge,
+  width: number,
+  height: number,
+  radius: number,
+  stemSize: number,
+): number {
+  const edgeLength = edge === 'top' || edge === 'bottom' ? width : height;
+  return Math.min(stemSize / 2, Math.max(0, edgeLength / 2 - radius));
 }
 
 function positionFor(
@@ -218,36 +229,56 @@ function automaticPlacement(
   return best;
 }
 
-function roundedRectanglePath(
+function speechBubblePath(
   width: number,
   height: number,
   radius: number,
+  stemSize: number,
+  edge: Edge,
+  base: Point,
+  tip: Point,
 ): string {
+  const halfBase = stemHalfBase(edge, width, height, radius, stemSize);
   return [
     `M ${String(radius)} 0`,
+    ...(edge === 'top'
+      ? [
+          `H ${String(base.x - halfBase)}`,
+          `L ${String(tip.x)} ${String(tip.y)}`,
+          `L ${String(base.x + halfBase)} 0`,
+        ]
+      : []),
     `H ${String(width - radius)}`,
     `Q ${String(width)} 0 ${String(width)} ${String(radius)}`,
+    ...(edge === 'right'
+      ? [
+          `V ${String(base.y - halfBase)}`,
+          `L ${String(tip.x)} ${String(tip.y)}`,
+          `L ${String(width)} ${String(base.y + halfBase)}`,
+        ]
+      : []),
     `V ${String(height - radius)}`,
     `Q ${String(width)} ${String(height)} ${String(width - radius)} ${String(height)}`,
+    ...(edge === 'bottom'
+      ? [
+          `H ${String(base.x + halfBase)}`,
+          `L ${String(tip.x)} ${String(tip.y)}`,
+          `L ${String(base.x - halfBase)} ${String(height)}`,
+        ]
+      : []),
     `H ${String(radius)}`,
     `Q 0 ${String(height)} 0 ${String(height - radius)}`,
+    ...(edge === 'left'
+      ? [
+          `V ${String(base.y + halfBase)}`,
+          `L ${String(tip.x)} ${String(tip.y)}`,
+          `L 0 ${String(base.y - halfBase)}`,
+        ]
+      : []),
     `V ${String(radius)}`,
     `Q 0 0 ${String(radius)} 0`,
     'Z',
   ].join(' ');
-}
-
-function stemPath(
-  edge: Edge,
-  stemSize: number,
-  base: Point,
-  tip: Point,
-): string {
-  const halfBase = stemSize / 2;
-  if (edge === 'top' || edge === 'bottom') {
-    return `M ${String(base.x - halfBase)} ${String(base.y)} L ${String(tip.x)} ${String(tip.y)} L ${String(base.x + halfBase)} ${String(base.y)} Z`;
-  }
-  return `M ${String(base.x)} ${String(base.y - halfBase)} L ${String(tip.x)} ${String(tip.y)} L ${String(base.x)} ${String(base.y + halfBase)} Z`;
 }
 
 /**
@@ -319,11 +350,14 @@ export function calloutGeometry({
     width,
     height,
     angle: placement.angle,
-    path: `${roundedRectanglePath(width, height, radius)} ${stemPath(
-      placement.edge,
+    path: speechBubblePath(
+      width,
+      height,
+      radius,
       stemSize,
+      placement.edge,
       placement.base,
       tip,
-    )}`,
+    ),
   };
 }

@@ -5,6 +5,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Callout, calloutClasses } from './Callout.tsx';
 
+declare module './Callout.tsx' {
+  interface CalloutVariantOverrides {
+    soft: true;
+  }
+}
+
 declare module '@mui/material/styles' {
   interface Palette {
     accent: Palette['primary'];
@@ -144,9 +150,137 @@ describe('Callout', () => {
       `.${calloutClasses.background}`,
     );
     if (background === null) throw new Error('Missing callout background');
-    expect(getComputedStyle(background).fill).toBe('rgb(18, 52, 86)');
+    expect(
+      getComputedStyle(callout).getPropertyValue(
+        '--SliderCallout-palette-main',
+      ),
+    ).toBe('#123456');
+    expect(getComputedStyle(background).fill).toBe(
+      'var(--SliderCallout-background)',
+    );
     expect(background.querySelector('path')?.getAttribute('d')).toContain(
       'M 24 0',
     );
+  });
+
+  it('applies palette colors to filled and outlined variants', () => {
+    const theme = createSlideTheme({
+      palette: {
+        accent: { main: '#123456', contrastText: '#ffffff' },
+      },
+    });
+    render(
+      <Deck theme={theme}>
+        <Slide title="Callouts">
+          <Callout color="accent">Filled</Callout>
+          <Callout color="accent" variant="outlined">
+            Outlined
+          </Callout>
+        </Slide>
+      </Deck>,
+    );
+    const filled = getComputedStyle(calloutWithText('Filled'));
+    expect(filled.getPropertyValue('--SliderCallout-palette-main')).toBe(
+      '#123456',
+    );
+    expect(filled.getPropertyValue('--SliderCallout-color')).toBe(
+      'var(--SliderCallout-palette-contrastText)',
+    );
+    expect(filled.getPropertyValue('--SliderCallout-outline-width')).toBe('0');
+
+    const outlined = getComputedStyle(calloutWithText('Outlined'));
+    expect(outlined.getPropertyValue('--SliderCallout-background')).toBe(
+      theme.palette.background.paper,
+    );
+    expect(outlined.getPropertyValue('--SliderCallout-color')).toBe(
+      'var(--SliderCallout-palette-main)',
+    );
+    expect(outlined.getPropertyValue('--SliderCallout-outline')).toBe(
+      'var(--SliderCallout-palette-main)',
+    );
+    expect(outlined.getPropertyValue('--SliderCallout-outline-width')).toBe(
+      '2',
+    );
+  });
+
+  it('lets slot overrides use the variant, color, and palette shades', () => {
+    const theme = createSlideTheme({
+      palette: {
+        accent: {
+          main: '#123456',
+          light: '#456789',
+          dark: '#091a2b',
+          contrastText: '#ffffff',
+        },
+      },
+      components: {
+        SliderCallout: {
+          styleOverrides: {
+            background: ({ theme: styleTheme, ownerState }) =>
+              ownerState.variant === 'filled' && ownerState.color === 'accent'
+                ? {
+                    stroke: styleTheme.palette.accent.dark,
+                    strokeWidth: 3,
+                  }
+                : {},
+          },
+        },
+      },
+    });
+    render(
+      <Deck theme={theme}>
+        <Slide title="Callout">
+          <Callout color="accent">Dark outline</Callout>
+        </Slide>
+      </Deck>,
+    );
+    const background = calloutWithText('Dark outline').querySelector(
+      `.${calloutClasses.background}`,
+    );
+    if (background === null) throw new Error('Missing callout background');
+    expect(getComputedStyle(background).stroke).toBe('rgb(9, 26, 43)');
+    expect(getComputedStyle(background).strokeWidth).toBe('3');
+  });
+
+  it('lets themes extend variants and override their CSS', () => {
+    const theme = createSlideTheme({
+      components: {
+        SliderCallout: {
+          variants: [
+            {
+              props: { variant: 'outlined' },
+              style: { '--SliderCallout-outline-width': 6 },
+            },
+            {
+              props: { variant: 'soft' },
+              style: {
+                '--SliderCallout-background': '#abcdef',
+                '--SliderCallout-color': '#010203',
+                '--SliderCallout-outline': '#fedcba',
+                '--SliderCallout-outline-width': 4,
+              },
+            },
+          ],
+        },
+      },
+    });
+    render(
+      <Deck theme={theme}>
+        <Slide title="Callout">
+          <Callout variant="outlined">Overridden</Callout>
+          <Callout variant="soft">Soft</Callout>
+        </Slide>
+      </Deck>,
+    );
+    expect(
+      getComputedStyle(calloutWithText('Overridden')).getPropertyValue(
+        '--SliderCallout-outline-width',
+      ),
+    ).toBe('6');
+    const soft = getComputedStyle(calloutWithText('Soft'));
+    expect(soft.getPropertyValue('--SliderCallout-background')).toBe('#abcdef');
+    expect(soft.getPropertyValue('--SliderCallout-color')).toBe('#010203');
+    expect(soft.getPropertyValue('--SliderCallout-outline')).toBe('#fedcba');
+    expect(soft.getPropertyValue('--SliderCallout-outline-width')).toBe('4');
   });
 });
