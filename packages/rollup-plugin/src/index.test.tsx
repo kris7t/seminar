@@ -87,6 +87,9 @@ describe('.deck.mdx', () => {
     });
     render(<Plain />);
     expect(screen.getByRole('heading').textContent).toBe('Plain deck');
+    expect(
+      screen.getByText('From a Slider plugin').closest('aside'),
+    ).toHaveProperty('dataset.plugin', 'callout');
     await user.click(screen.getByText('Uses the default theme'));
     expect(window.location.hash).toBe('#plain-deck');
   });

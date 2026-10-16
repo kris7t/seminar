@@ -23,6 +23,18 @@ export function Notes(): null {
   return null;
 }
 
+export function PluginCallout(): null {
+  return null;
+}
+
+export function ThemeCallout(): null {
+  return null;
+}
+
+export function Highlighter(): null {
+  return null;
+}
+
 /** Stand-ins for the languages of the user interface. */
 export const ENGLISH = { lang: 'en', catalog: {} };
 

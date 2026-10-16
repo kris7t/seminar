@@ -1,4 +1,8 @@
-export type { MathConfig, SliderConfig } from './config/SliderConfig.ts';
+export type {
+  DirectiveComponentConfig,
+  MathConfig,
+  SliderConfig,
+} from './config/SliderConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
 export type { GoToSteps } from './deck/useDeckNavigation.ts';

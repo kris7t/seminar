@@ -4,7 +4,7 @@ import { defineProject } from 'vitest/config';
 import slider from './src/index.ts';
 
 export default defineProject({
-  plugins: [slider()],
+  plugins: [slider({ plugins: ['./src/fixtures/plugin.ts'] })],
   resolve: {
     // Use the TypeScript sources of workspace packages directly.
     conditions: ['@slider/source', ...defaultClientConditions],

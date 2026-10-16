@@ -1,5 +1,18 @@
 export { directiveHandlers } from './directives/directiveHandlers.ts';
 export {
+  getSliderConfigs,
+  remarkSliderConfig,
+  type LoadedSliderConfigEntry,
+  type RemarkSliderConfigOptions,
+} from './config/remarkSliderConfig.ts';
+export {
+  parseDirectiveComponents,
+  remarkDirectiveComponents,
+  type DirectiveComponent,
+  type DirectiveComponents,
+  type RemarkDirectiveComponentsOptions,
+} from './directives/remarkDirectiveComponents.ts';
+export {
   getDeckFrontmatter,
   readDeckFrontmatter,
   type DeckDefaults,
@@ -12,8 +25,10 @@ export {
 export {
   CONFIG_CONDITION,
   importWithNode,
+  loadSliderConfig,
   loadThemeConfig,
   type ImportedModule,
+  type LoadedSliderConfig,
   type LoadedThemeConfig,
   type ModuleImporter,
 } from './math/themeConfig.ts';

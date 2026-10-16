@@ -28,8 +28,8 @@ export type ModuleImporter = (
   importer: string,
 ) => Promise<ImportedModule>;
 
-/** The compile-time config of a theme, as written by the theme. */
-export interface LoadedThemeConfig {
+/** A compile-time Slider config loaded from a plugin or theme. */
+export interface LoadedSliderConfig {
   config: unknown;
   /** Path to resolve packages needed by the config from, e.g., math fonts. */
   base: string;
@@ -66,30 +66,29 @@ export const importWithNode: ModuleImporter = async (specifier, importer) => {
 };
 
 /**
- * Loads the compile-time config of the theme `theme` imported by the deck at
- * `deckPath`. Theme packages may provide it as
+ * Loads the compile-time config of the Slider plugin or theme `source` for the
+ * deck at `deckPath`. Packages may provide it as
  *
  * 1. a JSON file with the `slider` export condition, e.g.,
  *    `"exports": { ".": { "slider": "./slider.json", "default": … } }`,
- *    which allows packages with several themes to configure each of them, or
+ *    which allows package subpaths to have different configs, or
  * 2. the `slider` key of their `package.json`, which is simpler for packages
- *    with a single theme.
+ *    with a single config.
  *
- * Otherwise, e.g., for themes in local files, the theme module is imported
- * with `importModule` and the config is its `slider` export. This runs the
- * theme module at compile time, so it shouldn't access browser globals at the
- * top level.
+ * Otherwise, e.g., for local files, the module is imported with
+ * `importModule` and the config is its `slider` export. This runs the module
+ * at compile time, so it shouldn't access browser globals at the top level.
  */
-export async function loadThemeConfig(
-  theme: string,
+export async function loadSliderConfig(
+  source: string,
   deckPath: string,
   importModule: ModuleImporter,
-): Promise<LoadedThemeConfig> {
-  const installed = isBareSpecifier(theme)
-    ? readPackage(theme, deckPath)
+): Promise<LoadedSliderConfig> {
+  const installed = isBareSpecifier(source)
+    ? readPackage(source, deckPath)
     : undefined;
   if (installed !== undefined) {
-    const configPath = resolveExport(theme, installed, {
+    const configPath = resolveExport(source, installed, {
       conditions: [CONFIG_CONDITION],
       unsafe: true,
     });
@@ -109,10 +108,22 @@ export async function loadThemeConfig(
       };
     }
   }
-  const { module, dependencies = [] } = await importModule(theme, deckPath);
+  const { module, dependencies = [] } = await importModule(source, deckPath);
   return {
     config: module['slider'],
-    base: installed?.directory ?? path.resolve(path.dirname(deckPath), theme),
+    base: installed?.directory ?? path.resolve(path.dirname(deckPath), source),
     dependencies,
   };
 }
+
+/** Theme-specific name retained for compatibility. */
+export function loadThemeConfig(
+  theme: string,
+  deckPath: string,
+  importModule: ModuleImporter,
+): Promise<LoadedSliderConfig> {
+  return loadSliderConfig(theme, deckPath, importModule);
+}
+
+/** Theme-specific name retained for compatibility. */
+export type LoadedThemeConfig = LoadedSliderConfig;

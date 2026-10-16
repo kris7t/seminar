@@ -22,13 +22,14 @@ export interface MathConfig {
    * package. Defaults to `newcm` (New Computer Modern), which is installed
    * with MathJax.
    *
-   * The font package is resolved from the theme (or the deck, if the deck sets
-   * the font), so themes should depend on the package of their font.
+   * The font package is resolved from the plugin, theme, or deck that sets the
+   * font, so packages should depend on the package of their font.
    */
   font?: string | undefined;
   /**
    * TeX macros, e.g., `{ R: '\\mathbb{R}', norm: ['\\lVert #1 \\rVert', 1] }`.
-   * Macros of the frontmatter are added to those of the theme.
+   * Macros of plugins, the theme, and the frontmatter are merged in that
+   * order.
    */
   macros?: Record<string, string | [string, number]> | undefined;
   /**
@@ -40,10 +41,10 @@ export interface MathConfig {
 }
 
 /**
- * Options of a theme that apply when compiling decks, since they can't be
- * changed at runtime.
+ * Options of a Slider plugin or theme that apply when compiling decks, since
+ * they can't be changed at runtime.
  *
- * Theme packages provide them as either
+ * Plugin and theme packages provide them as either
  *
  * 1. a JSON file with the `slider` export condition, e.g.,
  *    `"exports": { ".": { "slider": "./slider.json", "default": … } }`,
@@ -51,8 +52,9 @@ export interface MathConfig {
  * 2. the `slider` key of their `package.json`, which is simpler for packages
  *    with a single theme.
  *
- * Other theme modules, like local files, export them as `slider`. Reading this
- * export runs the theme module when compiling decks, outside of the browser:
+ * Other plugin and theme modules, like local files, export them as `slider`.
+ * Reading this export runs the module when compiling decks, outside of the
+ * browser:
  *
  * - The module shouldn't access browser globals, like `window`, at the top
  *   level.
@@ -65,4 +67,18 @@ export interface MathConfig {
  */
 export interface SliderConfig {
   math?: MathConfig | undefined;
+  /**
+   * React components that render named Remark directives in MDX decks.
+   * `source` is the module to import from and `exportName` is its named
+   * component export.
+   */
+  directives?: Record<string, DirectiveComponentConfig> | undefined;
+}
+
+/** A named React component imported to render a Remark directive. */
+export interface DirectiveComponentConfig {
+  /** Module that exports the component. */
+  source: string;
+  /** Name of the component's export. */
+  exportName: string;
 }

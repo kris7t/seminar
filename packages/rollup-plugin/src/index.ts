@@ -1,12 +1,18 @@
 import path from 'node:path';
 
 import mdx, { type Options as MdxOptions } from '@mdx-js/rollup';
-import { sliderMdxOptions, type SliderMdxOptions } from '@slider/mdx';
+import {
+  importWithNode,
+  loadSliderConfig,
+  sliderMdxOptions,
+  type LoadedSliderConfigEntry,
+  type SliderMdxOptions,
+} from '@slider/mdx';
 
 export interface SliderPluginOptions
   extends
     Omit<MdxOptions, 'include'>,
-    Omit<SliderMdxOptions, 'defaultTheme' | 'onDependency'> {
+    Omit<SliderMdxOptions, 'defaultTheme' | 'onDependency' | 'sliderConfigs'> {
   /**
    * Module to import the theme of decks from, unless they set their own
    * `theme` in the frontmatter. Relative paths, like `./src/theme.ts`, are
@@ -19,10 +25,18 @@ export interface SliderPluginOptions
    * Files to compile as decks. Defaults to files ending in `.deck.mdx`.
    */
   include?: MdxOptions['include'];
+  /**
+   * Slider plugins that extend MDX compilation through their config. Relative
+   * paths are resolved against the root of the project.
+   */
+  plugins?: readonly string[] | undefined;
 }
 
 /** The plugin, which works with both Rollup and Vite. */
-export type SliderPlugin = ReturnType<typeof mdx> & { enforce: 'pre' };
+export type SliderPlugin = ReturnType<typeof mdx> & {
+  enforce: 'pre';
+  watchChange(id: string): void;
+};
 
 /**
  * Compiles `.deck.mdx` files into `Deck` components with MDX (see
@@ -42,6 +56,11 @@ export type SliderPlugin = ReturnType<typeof mdx> & { enforce: 'pre' };
  * after the slides have been created, rehype plugins run after list items have
  * been turned into steps, and recma plugins run after the slide titles have
  * been resolved.
+ *
+ * Slider plugins can be listed in `plugins`. Their compile-time config is
+ * read through the `slider` export condition or `slider` key in their
+ * `package.json`. The deck's theme is merged after them, so it can replace
+ * directive components registered by plugins.
  */
 export default function slider({
   defaultTheme = '@slider/theme-default',
@@ -50,6 +69,7 @@ export default function slider({
   importSource,
   math,
   importModule,
+  plugins = [],
   remarkPlugins = [],
   rehypePlugins = [],
   recmaPlugins = [],
@@ -58,7 +78,18 @@ export default function slider({
   // Files that decks depend on at compile time, e.g., the configs of their
   // themes, by the path of the deck.
   const dependencies = new Map<string, Set<string>>();
-  const createMdx = (root: string) => {
+  const pluginDependencies = new Set<string>();
+  const createMdx = async (root: string) => {
+    const sliderConfigs: LoadedSliderConfigEntry[] = [];
+    const importer = importModule ?? importWithNode;
+    const importerPath = path.join(root, 'deck.mdx');
+    for (const source of plugins) {
+      const loaded = await loadSliderConfig(source, importerPath, importer);
+      sliderConfigs.push({ source, ...loaded });
+      for (const dependency of loaded.dependencies) {
+        pluginDependencies.add(dependency);
+      }
+    }
     const sliderOptions = sliderMdxOptions({
       importSource,
       defaultTheme:
@@ -70,6 +101,7 @@ export default function slider({
       defaultMouseNavigation,
       math,
       importModule,
+      sliderConfigs,
       onDependency(deckPath, dependency) {
         let deckDependencies = dependencies.get(deckPath);
         if (deckDependencies === undefined) {
@@ -107,15 +139,34 @@ export default function slider({
   // Relative paths are resolved against the root of the project, which Vite
   // only tells us in the `config` hook. Rollup doesn't call it, so we fall
   // back to the working directory there.
+  let rootPath = process.cwd();
   let inner: ReturnType<typeof mdx> | undefined;
+  let pendingInner: Promise<ReturnType<typeof mdx>> | undefined;
+  let configured:
+    | {
+        config: Parameters<SliderPlugin['config']>[0];
+        env: Parameters<SliderPlugin['config']>[1];
+      }
+    | undefined;
+  const getInner = async (root: string): Promise<ReturnType<typeof mdx>> => {
+    if (inner !== undefined) {
+      return inner;
+    }
+    pendingInner ??= createMdx(root);
+    inner = await pendingInner;
+    if (configured !== undefined) {
+      inner.config(configured.config, configured.env);
+    }
+    return inner;
+  };
   const plugin: SliderPlugin = {
     name: 'slider',
     // Vite has to compile the MDX before transforming the resulting JSX.
     enforce: 'pre',
     config(config, env) {
       const { root } = config as { root?: string };
-      inner = createMdx(path.resolve(root ?? process.cwd()));
-      inner.config(config, env);
+      configured = { config, env };
+      rootPath = path.resolve(root ?? process.cwd());
     },
     // `this` is the plugin context of Rollup or Vite.
     async transform(
@@ -123,13 +174,23 @@ export default function slider({
       value: string,
       id: string,
     ) {
-      inner ??= createMdx(process.cwd());
+      const mdxPlugin = await getInner(rootPath);
       dependencies.delete(id);
-      const result = await inner.transform(value, id);
+      const result = await mdxPlugin.transform(value, id);
+      for (const dependency of pluginDependencies) {
+        this.addWatchFile(dependency);
+      }
       for (const dependency of dependencies.get(id) ?? []) {
         this.addWatchFile(dependency);
       }
       return result;
+    },
+    watchChange(id) {
+      if (pluginDependencies.has(id)) {
+        inner = undefined;
+        pendingInner = undefined;
+        pluginDependencies.clear();
+      }
     },
   };
   return plugin;

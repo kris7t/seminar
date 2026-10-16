@@ -19,9 +19,10 @@ import {
 } from './mathjax.ts';
 import {
   importWithNode,
-  loadThemeConfig,
+  loadSliderConfig,
   type ModuleImporter,
 } from './themeConfig.ts';
+import { getSliderConfigs } from '../config/remarkSliderConfig.ts';
 
 /**
  * Options for rendering math. See `MathConfig` in `@slider/core`.
@@ -311,13 +312,25 @@ async function createRenderer(
   { math, importModule = importWithNode, onDependency }: RehypeMathOptions,
   file: VFile,
 ): Promise<MathRenderer | undefined> {
-  const deckPath = file.path === '' ? path.resolve('deck.mdx') : file.path;
+  const deckPath = file.path || path.resolve('deck.mdx');
   const frontmatter = getFrontmatter(file);
   const configs: MathConfig[] = [math ?? {}];
   const bases = [deckPath];
-  if (typeof frontmatter['theme'] === 'string') {
+  const loadedConfigs = getSliderConfigs(file);
+  if (loadedConfigs !== undefined) {
+    for (const loaded of loadedConfigs) {
+      bases.unshift(loaded.base);
+      configs.push(
+        parseMathConfig(
+          isRecord(loaded.config) ? loaded.config['math'] : undefined,
+          `the config of ${loaded.source}`,
+          file,
+        ),
+      );
+    }
+  } else if (typeof frontmatter['theme'] === 'string') {
     try {
-      const { config, base, dependencies } = await loadThemeConfig(
+      const { config, base, dependencies } = await loadSliderConfig(
         frontmatter['theme'],
         deckPath,
         importModule,
@@ -351,10 +364,11 @@ async function createRenderer(
  * Renders the math of a deck, as parsed by `remark-math`, to `Formula`
  * elements with SVG and MathML (for accessibility) with MathJax.
  *
- * Options are taken from `options.math`, the theme of the deck (see
- * {@link loadThemeConfig}), and the `math` key of the frontmatter, in order of
- * increasing precedence. See `MathConfig` in `@slider/core` for the options
- * and the caveats of rendering math at compile time.
+ * Options are taken from `options.math`, the configured Slider plugins, the
+ * theme of the deck (see {@link loadSliderConfig}), and the `math` key of the
+ * frontmatter, in order of increasing precedence. See `MathConfig` in
+ * `@slider/core` for the options and the caveats of rendering math at compile
+ * time.
  *
  * All glyphs of the font are loaded before rendering, since MathJax would
  * otherwise restart formulas that need more glyphs, defining their labels

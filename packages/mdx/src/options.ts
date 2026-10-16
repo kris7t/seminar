@@ -16,6 +16,14 @@ import { directiveHandlers } from './directives/directiveHandlers.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
 import { remarkSteps } from './steps/remarkSteps.ts';
+import {
+  remarkDirectiveComponents,
+  type DirectiveComponents,
+} from './directives/remarkDirectiveComponents.ts';
+import {
+  remarkSliderConfig,
+  type LoadedSliderConfigEntry,
+} from './config/remarkSliderConfig.ts';
 
 export interface SliderMdxOptions
   extends RemarkSlidesOptions, Omit<RehypeMathOptions, 'math'> {
@@ -24,6 +32,10 @@ export interface SliderMdxOptions
    * disable math, so that `$` is not special in decks.
    */
   math?: MathConfig | false | undefined;
+  /** React components that render named Remark directives. */
+  directives?: DirectiveComponents | undefined;
+  /** Compile-time configs supplied by the MDX integration. */
+  sliderConfigs?: readonly LoadedSliderConfigEntry[] | undefined;
 }
 
 /**
@@ -42,6 +54,8 @@ export function sliderMdxOptions({
   math,
   importModule,
   onDependency,
+  directives,
+  sliderConfigs,
   ...options
 }: SliderMdxOptions = {}): Pick<
   CompileOptions,
@@ -57,6 +71,11 @@ export function sliderMdxOptions({
       remarkNotes,
       remarkSteps,
       [remarkSlides, { ...options, onDependency }],
+      [
+        remarkSliderConfig,
+        { configs: sliderConfigs, importModule, onDependency },
+      ],
+      [remarkDirectiveComponents, { directives }],
     ],
     rehypePlugins: [
       rehypeListSteps,
