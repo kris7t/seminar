@@ -69,6 +69,10 @@ export function ClosingMaster({
   );
 }
 
+// Section slides have a background of their own, which would fade in and out
+// over the whole slide, so they appear at once.
+SectionMaster.transition = 'cut' as const;
+
 export const theme = createSlideTheme({
   palette: {
     primary: { main: '#00639b' },
