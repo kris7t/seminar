@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
-import { Step, stepClasses, type StepVariant } from './Step.tsx';
+import { Step, stepClasses, type StepBehavior } from './Step.tsx';
 import { rankAppearances, type StepAppearances } from './stepAppearance.ts';
 
 /**
@@ -32,20 +32,20 @@ function stateOf(text: string): string {
   return `${phase} ${appearanceOf(element)}`;
 }
 
-function renderSlide(variant?: StepVariant, slideVariant?: StepVariant) {
+function renderSlide(behavior?: StepBehavior, slideBehavior?: StepBehavior) {
   return render(
     <Deck>
-      <Slide title="Steps" {...(slideVariant ? { steps: slideVariant } : {})}>
-        <Step variant={variant}>
-          A<Step variant={variant}>B</Step>
+      <Slide title="Steps" {...(slideBehavior ? { steps: slideBehavior } : {})}>
+        <Step behavior={behavior}>
+          A<Step behavior={behavior}>B</Step>
         </Step>
-        <Step variant={variant}>C</Step>
+        <Step behavior={behavior}>C</Step>
       </Slide>
     </Deck>,
   );
 }
 
-describe('step variants', () => {
+describe('step behaviors', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
   });
@@ -86,16 +86,16 @@ describe('step variants', () => {
     ['preview', 'dimmed', 'shown'],
     ['focus', 'dimmed', 'dimmed'],
     ['only', 'hidden', 'hidden'],
-  ] as const)('styles %s steps', async (variant, future, past) => {
+  ] as const)('styles %s steps', async (behavior, future, past) => {
     const user = userEvent.setup();
-    renderSlide(variant);
+    renderSlide(behavior);
     expect(stateOf('C')).toBe(`future ${future}`);
     await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
     expect(stateOf('A')).toBe(`past ${past}`);
     expect(stateOf('C')).toBe('current shown');
   });
 
-  it('takes the variant from the slide', async () => {
+  it('takes the behavior from the slide', async () => {
     const user = userEvent.setup();
     renderSlide(undefined, 'dim');
     await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
@@ -105,14 +105,14 @@ describe('step variants', () => {
   it('prefers the slide to the default of the theme', async () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
-      components: { SliderStep: { defaultProps: { variant: 'only' } } },
+      components: { SliderStep: { defaultProps: { behavior: 'only' } } },
     });
     render(
       <ThemeProvider theme={theme}>
         <Deck theme={theme}>
           <Slide title="Steps" steps="dim">
             <Step>A</Step>
-            <Step variant="reveal">B</Step>
+            <Step behavior="reveal">B</Step>
             <Step>C</Step>
           </Slide>
         </Deck>
@@ -132,20 +132,20 @@ describe('step variants', () => {
 
   describe('nesting with in', () => {
     function renderCallouts(
-      parentVariant: StepVariant,
-      calloutVariant: StepVariant,
+      parentBehavior: StepBehavior,
+      calloutBehavior: StepBehavior,
     ) {
       return render(
         <Deck>
           <Slide title="Callouts">
-            <Step group="a" variant={parentVariant}>
+            <Step group="a" behavior={parentBehavior}>
               A
             </Step>
             <Step group="b">B</Step>
-            <Step in="a" variant={calloutVariant}>
+            <Step in="a" behavior={calloutBehavior}>
               X
             </Step>
-            <Step in="a" variant={calloutVariant}>
+            <Step in="a" behavior={calloutBehavior}>
               Y
             </Step>
           </Slide>
@@ -184,18 +184,18 @@ describe('step variants', () => {
     it('tells the distant phases apart', async () => {
       const user = userEvent.setup();
       const theme = createSlideTheme({
-        stepVariants: {
+        stepBehaviors: {
           callout: { future: 'hidden', distantPast: 'hidden' },
         } as Record<string, StepAppearances>,
       });
       render(
         <Deck theme={theme}>
           <Slide title="Callouts">
-            <Step group="a" variant="dim">
+            <Step group="a" behavior="dim">
               A
             </Step>
             <Step group="b">B</Step>
-            <Step in="a" variant={'callout' as StepVariant}>
+            <Step in="a" behavior={'callout' as StepBehavior}>
               X
             </Step>
           </Slide>
@@ -273,10 +273,10 @@ describe('step variants', () => {
       render(
         <Deck>
           <Slide title="Both">
-            <Step group="a" variant="only">
+            <Step group="a" behavior="only">
               A
             </Step>
-            <Step variant="preview" data-testid="b">
+            <Step behavior="preview" data-testid="b">
               <Step in="a">X</Step>
             </Step>
           </Slide>
@@ -315,17 +315,17 @@ describe('step variants', () => {
     });
   });
 
-  it('takes the appearances of variants from the theme', async () => {
+  it('takes the appearances of behaviors from the theme', async () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
-      stepVariants: {
+      stepBehaviors: {
         dim: { future: 'dimmed', past: 'hidden' },
       },
     });
     render(
       <Deck theme={theme}>
         <Slide title="Steps">
-          <Step group="a" variant="dim">
+          <Step group="a" behavior="dim">
             A
           </Step>
           <Step>B</Step>
@@ -346,19 +346,19 @@ describe('step variants', () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
       stepAppearances: { faded: 50 } as Record<string, number>,
-      stepVariants: {
+      stepBehaviors: {
         dim: { future: 'hidden', past: 'faded' as 'dimmed' },
       },
     });
     render(
       <Deck theme={theme}>
         <Slide title="Steps">
-          <Step group="a" variant="dim">
+          <Step group="a" behavior="dim">
             A
           </Step>
           <Step>B</Step>
           <Step in="a">X</Step>
-          <Step in="a" variant="focus">
+          <Step in="a" behavior="focus">
             Y
           </Step>
         </Slide>
@@ -374,10 +374,10 @@ describe('step variants', () => {
     expect(classesOf('Y')).not.toContain('SliderStep-faded');
   });
 
-  it('takes variants from shorthands', async () => {
+  it('takes behaviors from shorthands', async () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
-      stepVariants: {
+      stepBehaviors: {
         ghost: { future: 'dimmed', past: 'hidden' },
       } as Record<string, StepAppearances>,
     });
@@ -387,7 +387,7 @@ describe('step variants', () => {
         <Slide title="Steps">
           <Step only>A</Step>
           <Step {...ghost}>B</Step>
-          <Step only variant="preview">
+          <Step only behavior="preview">
             C
           </Step>
           <Step only={false}>D</Step>
@@ -411,7 +411,7 @@ describe('step variants', () => {
   it('lets wrappers set a default while keeping custom shorthands', async () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
-      stepVariants: {
+      stepBehaviors: {
         ghost: { future: 'dimmed', past: 'hidden' },
       } as Record<string, StepAppearances>,
     });
@@ -419,11 +419,11 @@ describe('step variants', () => {
     render(
       <Deck theme={theme}>
         <Slide title="Steps" steps="preview">
-          <Step defaultVariant="only">A</Step>
-          <Step defaultVariant="only" {...ghost}>
+          <Step defaultBehavior="only">A</Step>
+          <Step defaultBehavior="only" {...ghost}>
             B
           </Step>
-          <Step defaultVariant="only" variant="dim">
+          <Step defaultBehavior="only" behavior="dim">
             C
           </Step>
         </Slide>

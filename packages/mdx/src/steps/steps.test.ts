@@ -194,7 +194,7 @@ describe('steps', () => {
     ]);
   });
 
-  it('passes shorthands of variants to the step', async () => {
+  it('passes shorthands of behaviors to the step', async () => {
     expect(await content('- :step{only} A\n\n:step{dim} B')).toEqual([
       '<ul>\n<Step component="li" only="">A</Step>\n</ul>' +
         '<Step component="p" dim="">B</Step>',

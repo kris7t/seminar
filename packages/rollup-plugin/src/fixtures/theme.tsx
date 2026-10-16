@@ -2,7 +2,7 @@ import { createSlideTheme, type SlideMasterProps } from '@slider/core';
 import type { JSX } from 'react';
 
 declare module '@slider/core' {
-  interface StepVariantOverrides {
+  interface StepBehaviorOverrides {
     ghost: true;
   }
 }
@@ -13,5 +13,5 @@ function SectionMaster({ title }: SlideMasterProps): JSX.Element {
 
 export default createSlideTheme({
   master: { section: SectionMaster },
-  stepVariants: { ghost: { future: 'dimmed', past: 'hidden' } },
+  stepBehaviors: { ghost: { future: 'dimmed', past: 'hidden' } },
 });

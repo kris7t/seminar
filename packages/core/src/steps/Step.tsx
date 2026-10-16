@@ -18,30 +18,30 @@ import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../utils/classNames.ts';
 import {
   appearanceClass,
-  BUILT_IN_STEP_VARIANTS,
+  BUILT_IN_STEP_BEHAVIORS,
   moreHidden,
   rankAppearances,
   StepAppearanceContext,
-  type BuiltInStepVariant,
+  type BuiltInStepBehavior,
   type StepAppearances,
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepStore.ts';
-import { StepVariantContext } from './StepVariantContext.ts';
+import { StepBehaviorContext } from './StepBehaviorContext.ts';
 import { TogetherContext } from './TogetherContext.ts';
 import { useStep, type StepState, type StepWith } from './useSteps.ts';
 
 /**
- * Further variants of steps. Add them by module augmentation, e.g.,
- * `interface StepVariantOverrides { fancy: true }`, and give them appearances
- * with `stepVariants` in the theme.
+ * Further behaviors of steps. Add them by module augmentation, e.g.,
+ * `interface StepBehaviorOverrides { fancy: true }`, and give them appearances
+ * with `stepBehaviors` in the theme.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- Augmented by themes.
-export interface StepVariantOverrides {}
+export interface StepBehaviorOverrides {}
 
 /**
  * How a step looks before, while, and after it's the current step:
  *
- * | Variant   | future | current, open | past   | distant past |
+ * | Behavior  | future | current, open | past   | distant past |
  * | --------- | ------ | ------------- | ------ | ------------ |
  * | `reveal`  | hidden | shown         | shown  | shown        |
  * | `dim`     | hidden | shown         | dimmed | dimmed       |
@@ -52,66 +52,66 @@ export interface StepVariantOverrides {}
  *
  * The distant future looks like the future. See {@link StepPhase} for the
  * phases. Themes can change these and add
- * further variants (see {@link StepVariantOverrides}) with `stepVariants`.
+ * further behaviors (see {@link StepBehaviorOverrides}) with `stepBehaviors`.
  */
-export type StepVariant =
-  | BuiltInStepVariant
+export type StepBehavior =
+  | BuiltInStepBehavior
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- Empty unless augmented.
-  | keyof StepVariantOverrides;
+  | keyof StepBehaviorOverrides;
 
 declare module '@mui/material/styles' {
   interface Theme {
     /**
-     * How the variants of steps look in each phase, in addition to and
-     * overriding the built-in ones (see {@link StepVariant}).
+     * How the behaviors of steps look in each phase, in addition to and
+     * overriding the built-in ones (see {@link StepBehavior}).
      */
-    stepVariants?: Partial<Record<StepVariant, StepAppearances>> | undefined;
+    stepBehaviors?: Partial<Record<StepBehavior, StepAppearances>> | undefined;
   }
 
   interface ThemeOptions {
-    stepVariants?: Partial<Record<StepVariant, StepAppearances>> | undefined;
+    stepBehaviors?: Partial<Record<StepBehavior, StepAppearances>> | undefined;
   }
 }
 
 /**
- * Separates the shorthands of variants (see {@link StepVariantShorthands})
+ * Separates the behavior shorthands (see {@link StepBehaviorShorthands})
  * from the other `props`, which are passed to the element.
  *
- * @returns The variant of the shorthand, if any, or of the last one if there
+ * @returns The behavior of the shorthand, if any, or of the last one if there
  *   are several, and the other props.
  */
 function splitShorthands<Props extends object>(
   theme: Theme,
   props: Props,
-): [variant: StepVariant | undefined, other: Props] {
-  let variant: StepVariant | undefined;
+): [behavior: StepBehavior | undefined, other: Props] {
+  let behavior: StepBehavior | undefined;
   const other = Object.fromEntries(
     Object.entries(props).filter(([name, value]) => {
       if (
-        !Object.hasOwn(BUILT_IN_STEP_VARIANTS, name) &&
-        !Object.hasOwn(theme.stepVariants ?? {}, name)
+        !Object.hasOwn(BUILT_IN_STEP_BEHAVIORS, name) &&
+        !Object.hasOwn(theme.stepBehaviors ?? {}, name)
       ) {
         return true;
       }
       // `false` turns the shorthand off, e.g., `only={false}`.
       if (value === true || value === '') {
-        variant = name as StepVariant;
+        behavior = name as StepBehavior;
       }
       return false;
     }),
   ) as Props;
-  return [variant, other];
+  return [behavior, other];
 }
 
-/** Returns how `variant` looks in each phase in `theme`. */
-function appearancesOf(theme: Theme, variant: StepVariant): StepAppearances {
-  const builtIn = BUILT_IN_STEP_VARIANTS as Partial<
-    Record<StepVariant, StepAppearances>
+/** Returns how `behavior` looks in each phase in `theme`. */
+function appearancesOf(theme: Theme, behavior: StepBehavior): StepAppearances {
+  const builtIn = BUILT_IN_STEP_BEHAVIORS as Partial<
+    Record<StepBehavior, StepAppearances>
   >;
   return (
-    theme.stepVariants?.[variant] ??
-    builtIn[variant] ??
-    BUILT_IN_STEP_VARIANTS.reveal
+    theme.stepBehaviors?.[behavior] ??
+    builtIn[behavior] ??
+    BUILT_IN_STEP_BEHAVIORS.reveal
   );
 }
 
@@ -119,15 +119,17 @@ function appearancesOf(theme: Theme, variant: StepVariant): StepAppearances {
 const TRANSITION_DURATION = 150;
 
 /**
- * Shorthands for the variants of steps, e.g., `<Step only>` or `:step{only}`
- * for `variant="only"`.
+ * Shorthands for step behaviors, e.g., `<Step only>` or `:step{only}` for
+ * `behavior="only"`.
  */
-export type StepVariantShorthands = Partial<
-  Record<StepVariant, boolean | '' | undefined>
+export type StepBehaviorShorthands = Partial<
+  Record<StepBehavior, boolean | '' | undefined>
 >;
 
 export interface StepProps
-  extends Omit<HTMLAttributes<HTMLElement>, 'children'>, StepVariantShorthands {
+  extends
+    Omit<HTMLAttributes<HTMLElement>, 'children'>,
+    StepBehaviorShorthands {
   /**
    * See {@link StepWith}. Ignored directly inside a {@link Together}, which
    * determines the step instead.
@@ -148,18 +150,19 @@ export interface StepProps
    */
   title?: string | undefined;
   /**
-   * How the step looks in its phases. Defaults to a shorthand like `only`
-   * (see {@link StepVariantShorthands}), then to `defaultVariant`, the `steps`
-   * of the slide, the `defaultProps` of the theme, and finally `'reveal'`.
+   * How the step behaves across its phases. Defaults to a shorthand like
+   * `only` (see {@link StepBehaviorShorthands}), then to `defaultBehavior`,
+   * the `steps` of the slide, the `defaultProps` of the theme, and finally
+   * `'reveal'`.
    */
-  variant?: StepVariant | undefined;
+  behavior?: StepBehavior | undefined;
   /**
-   * Variant to use when neither `variant` nor a variant shorthand is set.
+   * Behavior to use when neither `behavior` nor a behavior shorthand is set.
    * Wrapper components can use this to choose their usual behavior while
    * still supporting built-in and theme-defined shorthands. Takes precedence
    * over the default of the slide and theme.
    */
-  defaultVariant?: StepVariant | undefined;
+  defaultBehavior?: StepBehavior | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   children?: ReactNode | ((state: StepState) => ReactNode);
@@ -198,7 +201,7 @@ declare module '@mui/material/styles' {
 }
 
 interface StepOwnerState extends StepProps {
-  variant: StepVariant;
+  behavior: StepBehavior;
   phase: StepPhase;
 }
 
@@ -218,8 +221,8 @@ const StepRoot = styled('div', {
 /**
  * Content shown from a step of the presentation.
  *
- * Its `variant` determines how it looks before, while, and after it's the
- * current step (see {@link StepVariant}). Hidden steps keep their space in the
+ * Its `behavior` determines how it looks before, while, and after it's the
+ * current step (see {@link StepBehavior}). Hidden steps keep their space in the
  * layout. Steps inside the step are nested inside it, and are shown after it.
  * Steps can also be nested in a group elsewhere with `in`.
  *
@@ -235,15 +238,15 @@ const StepRoot = styled('div', {
  * `SliderStep-dimmed` if it has to hide or dim itself, or the class of an
  * appearance added by the theme (see {@link StepAppearanceOverrides}). The
  * opacity of dimmed steps is the `--SliderStep-dim-opacity` custom property.
- * Add variants with `stepVariants` in the theme, and style them with
+ * Add behaviors with `stepBehaviors` in the theme, and style them with
  * `variants` here, e.g.,
- * `{ props: { variant: 'fancy' }, style: { '&.SliderStep-current': { color:
+ * `{ props: { behavior: 'fancy' }, style: { '&.SliderStep-current': { color:
  * 'red' } } }`. Only hiding and dimming are inherited by nested steps.
  */
 export function Step(inProps: StepProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SliderStep' });
   const theme = useTheme();
-  const slideVariant = use(StepVariantContext);
+  const slideBehavior = use(StepBehaviorContext);
   const enclosing = use(StepAppearanceContext);
   const {
     component = 'div',
@@ -252,22 +255,22 @@ export function Step(inProps: StepProps): JSX.Element {
     in: parent,
     after,
     title,
-    variant: themeVariant,
-    defaultVariant,
+    behavior: themeBehavior,
+    defaultBehavior,
     className,
     children,
     ...rest
   } = props;
   const [shorthand, other] = splitShorthands(theme, rest);
-  // The variant of the slide takes precedence over the default of the theme.
-  const variant =
-    inProps.variant ??
+  // The behavior of the slide takes precedence over the default of the theme.
+  const behavior =
+    inProps.behavior ??
     shorthand ??
-    defaultVariant ??
-    slideVariant ??
-    themeVariant ??
+    defaultBehavior ??
+    slideBehavior ??
+    themeBehavior ??
     'reveal';
-  const appearances = rankAppearances(theme, appearancesOf(theme, variant));
+  const appearances = rankAppearances(theme, appearancesOf(theme, behavior));
   const together = use(TogetherContext);
   const step = useStep({
     with: together ?? withStep,
@@ -293,7 +296,7 @@ export function Step(inProps: StepProps): JSX.Element {
         appearanceClass('SliderStep', appearance, enclosing),
         className,
       )}
-      ownerState={{ ...props, variant, phase }}
+      ownerState={{ ...props, behavior, phase }}
       {...other}
     >
       <StepAppearanceContext value={appearance}>

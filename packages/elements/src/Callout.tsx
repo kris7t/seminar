@@ -44,7 +44,7 @@ export type CalloutPoint = string | readonly [number, number];
 /** Props of a speech bubble callout, which behaves like a step. */
 export interface CalloutProps extends Omit<
   StepProps,
-  'children' | 'color' | 'defaultVariant'
+  'children' | 'color' | 'defaultBehavior'
 > {
   /** Width of the rounded body in logical slide pixels. */
   width?: number | undefined;
@@ -267,7 +267,7 @@ function sameGeometry(left: CalloutGeometry, right: CalloutGeometry): boolean {
  * slide, before the slide is scaled for display.
  *
  * The callout participates in the steps of its slide and uses the `scoped`
- * variant unless `variant` or a variant shorthand is set. Geometry and color
+ * behavior unless `behavior` or a behavior shorthand is set. Geometry and color
  * may be set directly or through `SliderCallout.defaultProps` in the theme.
  */
 export function Callout(inProps: CalloutProps): JSX.Element {
@@ -426,7 +426,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
       >
         <CalloutRoot
           component="span"
-          defaultVariant="scoped"
+          defaultBehavior="scoped"
           className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
           ownerState={ownerState}
           {...stepProps}

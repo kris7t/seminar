@@ -70,9 +70,9 @@ export {
   stepClasses,
   type StepClassKey,
   type StepProps,
-  type StepVariant,
-  type StepVariantOverrides,
-  type StepVariantShorthands,
+  type StepBehavior,
+  type StepBehaviorOverrides,
+  type StepBehaviorShorthands,
 } from './steps/Step.tsx';
 export { Together, type TogetherProps } from './steps/Together.tsx';
 export {
@@ -85,8 +85,8 @@ export type { StepPath, StepPhase } from './steps/StepStore.ts';
 export type { StepRange } from './steps/stepRange.ts';
 export {
   BUILT_IN_APPEARANCE_RANKS,
-  BUILT_IN_STEP_VARIANTS,
-  type BuiltInStepVariant,
+  BUILT_IN_STEP_BEHAVIORS,
+  type BuiltInStepBehavior,
   type StepAppearance,
   type StepAppearanceOverrides,
   type StepAppearances,

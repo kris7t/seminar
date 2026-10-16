@@ -125,7 +125,7 @@ Presenter notes, shown only to the presenter.
   with their own state with `{copy}`. The slides
   are imported from the other deck, which resolves its own imports, and
   bundlers only keep the included slides and what they import.
-- **Step styles:** `:step{variant=…}` or a shorthand like `:step{only}`, or
+- **Step behaviors:** `:step{behavior=…}` or a shorthand like `:step{only}`, or
   `{steps=…}` on a slide, sets how steps look before, during, and after their
   turn: `reveal` (the default), `dim` (past steps are dimmed), `preview`
   (future steps are dimmed), `focus` (both), `only` (hidden outside their
@@ -133,8 +133,8 @@ Presenter notes, shown only to the presenter.
   is past). `:step{in=name}` nests a
   step in the step of the group `name`, e.g., for callouts elsewhere on the
   slide. Nested steps look at least as hidden as their parent. Themes can
-  restyle steps as `SliderStep`, and add variants with `stepVariants` and
-  looks between shown, dimmed, and hidden with `stepAppearances`. Variants
+  restyle steps as `SliderStep`, and add behaviors with `stepBehaviors` and
+  looks between shown, dimmed, and hidden with `stepAppearances`. Behaviors
   set the look in each phase: `future`, `current`, `open` (current, with a
   nested step shown), `past`, and for nested steps, `distantFuture` and
   `distantPast`, while their parent is still to come or already past, e.g.,
@@ -153,8 +153,8 @@ Presenter notes, shown only to the presenter.
   clipped by the slide. The tip targets the corresponding edge of the
   directive's character box; `shift=x,y` moves it, while `at=x,y` sets an
   absolute logical slide point. It is a step whose default
-  variant is `scoped`; it accepts the other step props, full variants, and
-  built-in or theme-defined variant shorthands.
+  behavior is `scoped`; it accepts the other step props, full behaviors, and
+  built-in or theme-defined behavior shorthands.
 - **Colons:** a colon followed by a word starts a directive like `:step`.
   Unknown ones, like in `10:30`, stay text, but write `\:step` for a literal
   `:step`.

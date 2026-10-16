@@ -16,7 +16,7 @@ declare module '@mui/material/styles' {
 }
 
 declare module '@slider/core' {
-  interface StepVariantOverrides {
+  interface StepBehaviorOverrides {
     ghost: true;
   }
 }
@@ -68,10 +68,10 @@ describe('Callout', () => {
     expect(callout.classList).toContain(stepClasses.hidden);
   });
 
-  it('supports full variants and built-in or custom shorthands', async () => {
+  it('supports full behaviors and built-in or custom shorthands', async () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
-      stepVariants: {
+      stepBehaviors: {
         ghost: { future: 'dimmed', past: 'hidden' },
       },
     });
@@ -79,7 +79,7 @@ describe('Callout', () => {
       <Deck theme={theme}>
         <Slide title="Callouts">
           <Callout only>Only</Callout>
-          <Callout variant="dim">Dim</Callout>
+          <Callout behavior="dim">Dim</Callout>
           <Callout ghost>Ghost</Callout>
         </Slide>
       </Deck>,

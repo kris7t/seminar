@@ -96,7 +96,7 @@ describe('.deck.mdx', () => {
     expect(window.location.hash).toBe('#plain-deck&step=1');
   });
 
-  it('passes custom variant shorthands from directives to steps', () => {
+  it('passes custom behavior shorthands from directives to steps', () => {
     render(<CalloutDeck />);
     const callout = screen
       .getByText('Custom callout')

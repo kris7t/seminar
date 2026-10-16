@@ -277,7 +277,7 @@ export const FLAGS: ReadonlySet<string> = new Set(['spare', 'noslide']);
  * Applies the attributes of a `:slide` directive to a slide.
  *
  * A bare word, like `section`, sets the master to a master of the theme, like
- * the shorthands of step variants. `master=Name` sets the master to a
+ * the shorthands of step behaviors. `master=Name` sets the master to a
  * component imported or declared in the document if there is one, and to a
  * master of the theme otherwise. `master=` takes precedence over bare words,
  * and of several bare words, the last one is used. Classes are passed to the

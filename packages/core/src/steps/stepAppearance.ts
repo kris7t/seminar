@@ -39,7 +39,7 @@ export const BUILT_IN_APPEARANCE_RANKS: Readonly<
 };
 
 /**
- * How a variant of steps looks in each {@link StepPhase}. Phases without an
+ * How a step behavior looks in each {@link StepPhase}. Phases without an
  * appearance fall back to more general ones: `'current'` to `'open'`,
  * `'distantFuture'` to `'future'`, and `'distantPast'` to `'past'`, and the
  * rest are shown.
@@ -54,7 +54,7 @@ export interface RankedAppearance {
   readonly rank: number;
 }
 
-/** How a variant of steps looks in every phase, with the ranks. */
+/** How a step behavior looks in every phase, with the ranks. */
 export type RankedAppearances = Readonly<Record<StepPhase, RankedAppearance>>;
 
 declare module '@mui/material/styles' {
@@ -128,16 +128,16 @@ export function rankAppearances(
   return ranked;
 }
 
-/** Names of the built-in variants of steps. */
-export type BuiltInStepVariant =
+/** Names of the built-in step behaviors. */
+export type BuiltInStepBehavior =
   'reveal' | 'dim' | 'preview' | 'focus' | 'only' | 'scoped';
 
 /**
- * Appearances of the built-in variants of steps (see `StepVariant`), which
- * themes may extend with `stepVariants`.
+ * Appearances of the built-in step behaviors (see `StepBehavior`), which
+ * themes may extend with `stepBehaviors`.
  */
-export const BUILT_IN_STEP_VARIANTS: Readonly<
-  Record<BuiltInStepVariant, StepAppearances>
+export const BUILT_IN_STEP_BEHAVIORS: Readonly<
+  Record<BuiltInStepBehavior, StepAppearances>
 > = {
   reveal: { future: 'hidden' },
   dim: { future: 'hidden', past: 'dimmed' },

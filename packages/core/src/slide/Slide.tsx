@@ -9,9 +9,9 @@ import {
 
 import { DeckContext } from '../deck/DeckContext.ts';
 import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
-import type { StepVariant } from '../steps/Step.tsx';
+import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
-import { StepVariantContext } from '../steps/StepVariantContext.ts';
+import { StepBehaviorContext } from '../steps/StepBehaviorContext.ts';
 import { SlideViewContext, useSlideView } from './SlideViewContext.ts';
 
 export interface SlideProps {
@@ -36,8 +36,8 @@ export interface SlideProps {
   title?: ReactNode;
   /** Classes of the slide passed to the master. */
   className?: string | undefined;
-  /** Variant of the steps on the slide that don't set their own. */
-  steps?: StepVariant | undefined;
+  /** Behavior of the steps on the slide that don't set their own. */
+  steps?: StepBehavior | undefined;
   /**
    * The first step to show when going through the slide, e.g., `2`, `1.1`, or
    * the name of a step group (see `StepRange`).
@@ -141,7 +141,7 @@ export function Slide({
     children,
   );
   const content = (
-    <StepVariantContext value={steps}>
+    <StepBehaviorContext value={steps}>
       {slideLang === undefined ? (
         master
       ) : (
@@ -150,7 +150,7 @@ export function Slide({
           {master}
         </div>
       )}
-    </StepVariantContext>
+    </StepBehaviorContext>
   );
   // Recaps share the state of the slide they recap.
   return recapOf === undefined ? (
