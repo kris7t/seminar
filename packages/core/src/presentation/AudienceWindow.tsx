@@ -8,6 +8,7 @@ import {
   type Theme,
 } from '@mui/material';
 import {
+  use,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -23,6 +24,11 @@ import { useDeck } from '../deck/DeckContext.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { correctRipples } from '../slide/rippleScale.ts';
 import { SlideMirror } from '../slide/SlideMirror.tsx';
+import {
+  getStepTransition,
+  SlideTransitionsContext,
+} from '../slide/SlideTransitions.ts';
+import { SlideTransitionStyles } from '../slide/SlideTransitionStyles.tsx';
 import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
 import { SelectionFrame } from '../slide/SelectionFrame.tsx';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
@@ -107,6 +113,13 @@ export function AudienceWindow({
     () => (frame === null ? undefined : correctRipples(frame)),
     [frame],
   );
+  // Fade the slide at the same time as the presenter view.
+  const transitions = use(SlideTransitionsContext);
+  const fades = getStepTransition(theme).duration > 0;
+  useEffect(
+    () => (frame === null || !fades ? undefined : transitions.register(frame)),
+    [frame, fades, transitions],
+  );
   const { slideIndex, lang } = useDeck();
   const { lang: uiLang, t } = useUiLanguage();
   // Like the page of the deck, the window is in the language of the slides.
@@ -180,6 +193,7 @@ export function AudienceWindow({
     <CacheProvider value={cache}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <SlideTransitionStyles />
         <Box
           sx={{
             position: 'fixed',

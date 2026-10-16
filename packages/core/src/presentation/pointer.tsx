@@ -11,6 +11,7 @@ import {
 import { generateUtilityClasses } from '@mui/material';
 import { styled, useThemeProps } from '@mui/material/styles';
 
+import type { SlideTransitions } from '../slide/SlideTransitions.ts';
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import { isTextField } from './mirror/interactionState.ts';
@@ -181,8 +182,11 @@ export interface PointerTrackingHandlers {
 export function usePointerTracking(
   store: PointerStore,
   mode: PointerMode,
+  transitions?: SlideTransitions,
 ): PointerTrackingHandlers {
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  /** The slide the pointer was last over. */
+  const frameRef = useRef<HTMLElement>(undefined);
   /** Starts counting the time until the pointer becomes idle again. */
   const wake = useCallback(() => {
     clearTimeout(timeoutRef.current);
@@ -210,12 +214,17 @@ export function usePointerTracking(
   useEffect(() => {
     wake();
   }, [wake, mode]);
-  return {
-    onPointerMove: (event: PointerEvent<HTMLElement>) => {
-      if (event.pointerType === 'touch') {
-        return;
-      }
-      const rect = event.currentTarget.getBoundingClientRect();
+  /**
+   * Moves the pointer to `event` over `frame`, with the cursor over `target`,
+   * or with the previous cursor if it isn't known.
+   */
+  const move = useCallback(
+    (
+      event: globalThis.PointerEvent | PointerEvent<HTMLElement>,
+      frame: HTMLElement,
+      target: Element | undefined,
+    ) => {
+      const rect = frame.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) {
         return;
       }
@@ -223,15 +232,82 @@ export function usePointerTracking(
         x: ((event.clientX - rect.left) * SLIDE_WIDTH) / rect.width,
         y: ((event.clientY - rect.top) * SLIDE_HEIGHT) / rect.height,
         cursor:
-          event.target instanceof Element
-            ? cursorShape(event.target, { x: event.clientX, y: event.clientY })
-            : 'default',
+          target === undefined
+            ? (store.get()?.cursor ?? 'default')
+            : cursorShape(target, { x: event.clientX, y: event.clientY }),
         idle: false,
       });
       wake();
     },
-    onPointerLeave: hide,
+    [store, wake],
+  );
+  // While the slide fades, the browser doesn't know what's under the
+  // pointer, so the pointer keeps its cursor and follows the mouse by the
+  // box of the slide, rather than leaving it.
+  const running = useSyncExternalStore(
+    transitions?.subscribe ?? noSubscription,
+    () => transitions?.running ?? false,
+  );
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!running || frame === undefined) {
+      return undefined;
+    }
+    const doc = frame.ownerDocument;
+    const onPointerMove = (event: globalThis.PointerEvent) => {
+      if (
+        event.pointerType === 'touch' ||
+        (event.target instanceof Node && frame.contains(event.target))
+      ) {
+        return;
+      }
+      const rect = frame.getBoundingClientRect();
+      if (
+        event.clientX < rect.left ||
+        event.clientX >= rect.right ||
+        event.clientY < rect.top ||
+        event.clientY >= rect.bottom
+      ) {
+        hide();
+      } else {
+        move(event, frame, undefined);
+      }
+    };
+    doc.addEventListener('pointermove', onPointerMove);
+    return () => {
+      doc.removeEventListener('pointermove', onPointerMove);
+    };
+  }, [running, move, hide]);
+  return {
+    onPointerMove: (event: PointerEvent<HTMLElement>) => {
+      if (event.pointerType === 'touch') {
+        return;
+      }
+      const frame = event.currentTarget;
+      frameRef.current = frame;
+      const { target } = event;
+      move(
+        event,
+        frame,
+        // Transitions of the slide alone send events to the slide itself.
+        !(target instanceof Element) ||
+          (target === frame && transitions?.running === true)
+          ? undefined
+          : target,
+      );
+    },
+    onPointerLeave: () => {
+      // The pointer seems to leave when the browser shows the transition
+      // over the document instead.
+      if (transitions?.running !== true) {
+        hide();
+      }
+    },
   };
+}
+
+function noSubscription(): () => void {
+  return () => undefined;
 }
 
 /** Height of the mirrored pointer, in the coordinates of the slide. */

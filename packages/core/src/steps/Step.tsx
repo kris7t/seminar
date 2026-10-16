@@ -127,9 +127,6 @@ function appearancesOf(theme: Theme, behavior: StepBehavior): StepAppearances {
   );
 }
 
-/** How long steps take to appear, disappear, or dim, in milliseconds. */
-const TRANSITION_DURATION = 150;
-
 /**
  * Shorthands for step behaviors, e.g., `<Step only>` or `:step{only}` for
  * `behavior="only"`.
@@ -262,14 +259,15 @@ const StepRoot = styled('div', {
   name: 'SliderStep',
   slot: 'Root',
 })<{ ownerState: StepOwnerState }>({
-  transition: `opacity ${String(TRANSITION_DURATION)}ms, visibility ${String(TRANSITION_DURATION)}ms`,
+  // Steps change at once: views that show them fade the whole slide instead
+  // (see `SlideTransitions`), since parents and nested steps fading at the
+  // same time would show the nested steps through.
   // Keep the space of hidden content, so that the layout doesn't shift.
   [`&.${stepClasses.hidden}`]: { visibility: 'hidden', opacity: 0 },
   [`&.${stepClasses.dimmed}`]: {
     opacity: 'var(--SliderStep-dim-opacity, 0.35)',
   },
   [`&.${stepClasses.collapsed}`]: { display: 'none' },
-  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
 });
 
 /**

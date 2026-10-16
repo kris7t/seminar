@@ -81,6 +81,11 @@ export {
   type SlideViewKind,
 } from './slide/SlideViewContext.ts';
 export {
+  getStepTransition,
+  useOwnAnimation,
+  type StepTransition,
+} from './slide/SlideTransitions.ts';
+export {
   SlideNumber,
   slideNumberClasses,
   type SlideNumberClassKey,

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 
+import type { SlideTransitions } from '../../slide/SlideTransitions.ts';
 import {
   isTextField,
   MIRRORED_CLASSES,
@@ -99,6 +100,7 @@ function capture(
 export function useInteractionCapture(
   frame: HTMLElement | null,
   store: InteractionStore,
+  transitions?: SlideTransitions,
 ): void {
   useEffect(() => {
     if (frame === null) {
@@ -109,9 +111,14 @@ export function useInteractionCapture(
     const schedule = () => {
       request ??= requestAnimationFrame(() => {
         request = undefined;
-        store.set(capture(frame, store.get().press));
+        // While the slide fades, the browser doesn't know what's hovered, so
+        // the audience keeps seeing what was, until the transition ends.
+        if (transitions?.running !== true) {
+          store.set(capture(frame, store.get().press));
+        }
       });
     };
+    const unsubscribe = transitions?.subscribe(schedule);
     for (const event of EVENTS) {
       frame.addEventListener(event, schedule, { capture: true });
     }
@@ -167,6 +174,7 @@ export function useInteractionCapture(
     });
     schedule();
     return () => {
+      unsubscribe?.();
       for (const event of EVENTS) {
         frame.removeEventListener(event, schedule, { capture: true });
       }
@@ -185,5 +193,5 @@ export function useInteractionCapture(
       }
       store.set(NO_INTERACTION);
     };
-  }, [frame, store]);
+  }, [frame, store, transitions]);
 }

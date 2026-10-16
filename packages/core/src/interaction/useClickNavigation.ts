@@ -6,6 +6,7 @@ import {
   type MouseEventHandler,
 } from 'react';
 
+import type { SlideTransitions } from '../slide/SlideTransitions.ts';
 import { getInteraction } from './interaction.ts';
 
 /** How far the mouse may move between press and release of a click. */
@@ -31,6 +32,11 @@ interface Press {
    * for taps.
    */
   touch: boolean;
+  /**
+   * Whether the slide was fading, which hides the element under the press
+   * from the browser.
+   */
+  duringTransition: boolean;
 }
 
 /**
@@ -53,10 +59,16 @@ interface Press {
 export function useClickNavigation(
   next: () => void,
   previous: () => void,
+  transitions?: SlideTransitions,
 ): MouseEventHandler<HTMLElement> {
   const pressRef = useRef<Press>(undefined);
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
+      const duringTransition = transitions?.running === true;
+      // Show the slide as it is now, so that the click reaches it.
+      if (duringTransition) {
+        transitions.skip();
+      }
       if (event.button === 0) {
         pressRef.current = {
           x: event.clientX,
@@ -69,16 +81,61 @@ export function useClickNavigation(
               ? document.activeElement
               : undefined,
           selected: hasSelection(),
+          duringTransition,
         };
       }
     };
+    // A press during a transition went to the transition rather than to the
+    // element under it, and so does the click, which is sent again to that
+    // element instead.
+    const onClick = (event: globalThis.MouseEvent) => {
+      const press = pressRef.current;
+      const { target } = event;
+      if (
+        press?.duringTransition !== true ||
+        !event.isTrusted ||
+        !(target instanceof Node)
+      ) {
+        return;
+      }
+      const element = document.elementFromPoint(event.clientX, event.clientY);
+      if (element === null || element === target || !target.contains(element)) {
+        return;
+      }
+      event.stopPropagation();
+      pressRef.current = {
+        ...press,
+        interactive: getInteraction(element) !== undefined,
+        duringTransition: false,
+      };
+      element.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          detail: event.detail,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          screenX: event.screenX,
+          screenY: event.screenY,
+          button: event.button,
+          buttons: event.buttons,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+        }),
+      );
+    };
     window.addEventListener('pointerdown', onPointerDown, { capture: true });
+    window.addEventListener('click', onClick, { capture: true });
     return () => {
       window.removeEventListener('pointerdown', onPointerDown, {
         capture: true,
       });
+      window.removeEventListener('click', onClick, { capture: true });
     };
-  }, []);
+  }, [transitions]);
   return useCallback(
     (event: MouseEvent<HTMLElement>) => {
       const press = pressRef.current;

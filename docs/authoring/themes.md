@@ -186,8 +186,31 @@ so style those in `SliderSteps` as well. Decks then use `:step{blur}` or
 `{steps=blur}`. A step nested in a blurred step is blurred with it, while a
 blurred step nested in a dimmed or hidden step stays dimmed or hidden.
 
+Appearances apply at once, without CSS transitions: the audience and
+presenter views fade the whole slide from one step to the next instead, see
+[Step transitions](#step-transitions). Transitions on appearance classes
+would fade a step and the steps nested in it at the same time, which shows
+the nested steps through while they should stay hidden.
+
 Style appearances rather than behaviors or phases: a style attached to
 `behavior: 'blur'` or to `SliderStep-past` applies to that step only, so
 steps nested in it don't inherit it, and it ignores whether a step around it
 already hides or dims it more. The dimming of `dimmed` can be adjusted with
 the `--SliderStep-dim-opacity` custom property.
+
+## Step transitions
+
+The audience and presenter views fade the whole slide from one step to the
+next with a view transition, where the browser supports it, and unless the
+viewer prefers reduced motion. `stepTransition` in the theme options sets
+how:
+
+```ts
+createSlideTheme({
+  stepTransition: { duration: 200, easing: 'ease-out' },
+});
+```
+
+The duration defaults to 250 milliseconds and the easing to `ease`, like
+view transitions of browsers. A duration of 0 changes steps at once, without
+view transitions.

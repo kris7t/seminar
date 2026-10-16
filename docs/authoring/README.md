@@ -42,6 +42,11 @@ In short, a well-behaved slide component:
   attributes are strings, and bare flags are empty strings.
 - **Can be themed.** Read props with `useThemeProps`, use styled slots with
   classes, and register the component name with the MUI theme.
+- **Animates from the step state.** The slide already fades between steps,
+  so components don't fade steps themselves. Other animations follow the
+  current step with CSS transitions, use the timing of the theme, are
+  skipped in thumbnails and for reduced motion, and stay out of the fade of
+  the slide with `useOwnAnimation`. See [Animations](steps.md#animations).
 - **Does heavy work in one view.** The interactive view owns expensive state,
   like a simulation, and shares its results through slide state, while the
   audience window still renders in full. Thumbnails can be lighter.

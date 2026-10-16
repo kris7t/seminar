@@ -93,6 +93,79 @@ and `in`. A handle returned by `useStep` can also be passed to the `with` of
 other steps, which then share its stepper, e.g., to reveal items of two
 lists in parallel.
 
+## Animations
+
+The audience and presenter views fade the whole slide from one step to the
+next, as the `stepTransition` of the theme says (see
+[Themes](themes.md#step-transitions)). Where the browser doesn't support
+view transitions, or the viewer prefers reduced motion, steps change at
+once.
+
+So content that appears, disappears, or dims with the steps needs no
+animation of its own. Components that animate in other ways when the step
+changes, e.g., moving a marker along a path, should follow these guidelines:
+
+- **Don't fade steps yourself.** A `Step` that fades with CSS fades twice
+  with the slide, and its nested steps show through while it fades. Leave
+  appearing and disappearing to the steps.
+- **Derive the animation from the step state.** Render what the current step
+  shows, e.g., the position of the marker for `stepIndex`, and let a CSS
+  transition animate between them, rather than starting animations in
+  effects. The presenter can jump to any step, e.g., from the overview, the
+  step tree, or a recap, where the component must show the end state right
+  away.
+- **Animate only where the slide is presented.** Thumbnails, previews, and
+  probes show a step as it ends: check `useSlideView().kind`, and skip
+  animations unless it's `audience` or `presenter`.
+- **Keep animations short and interruptible.** Presenters step quickly, e.g.,
+  by holding an arrow key. CSS transitions continue from where they are when
+  the step changes again, while timers and long animations fall behind.
+- **Use the timing of the theme.** Take durations and easings from the
+  theme, e.g., from its `stepTransition`, or from `theme.transitions`, e.g.,
+  `theme.transitions.create('transform')`, so that themes can change them.
+- **Respect reduced motion.** Turn animations off when
+  `(prefers-reduced-motion: reduce)` matches, as the fades of the slide do.
+- **Keep views in step.** The audience window and the presenter view render
+  the slide separately, so an animation must not depend on state of its own,
+  like a random start or the time it mounted, but only on the steps and the
+  slide state, so that both views show the same.
+
+### Animating outside of the fade
+
+A component that animates itself still fades in with the rest of the slide,
+which blurs a movement into a cross-fade of where the element was and where
+it moves. `useOwnAnimation` keeps an element out of the fade: the element
+shows how it is right away, and its own transitions play out in full.
+
+```tsx
+import { useOwnAnimation, useStep } from '@slider/core';
+
+export function Marker() {
+  const step = useStep({ group: 'parse' });
+  const ownAnimation = useOwnAnimation();
+  return (
+    <div ref={step.ref}>
+      <div
+        style={{
+          ...ownAnimation,
+          transform: step.isActive ? 'translateX(200px)' : 'none',
+          transition: 'transform 300ms',
+        }}
+      />
+    </div>
+  );
+}
+```
+
+Since the element doesn't fade with the slide, it has to animate appearing
+and disappearing itself, if it does, and it's drawn on top of the slide while
+the slide fades. Browsers without view transition classes fade it with the
+slide.
+
+The `Pipeline` component of the example deck shows this: its stages join the
+step groups of the list items on the slide, and light up with them, fading
+with the slide, while a marker moves from stage to stage on its own.
+
 ## Showing several steps together
 
 `<Together>` shows the `Step`s directly inside it in a single step, without

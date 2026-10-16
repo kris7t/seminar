@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 
+import type { SlideTransitions } from '../slide/SlideTransitions.ts';
 import type { SlideStateStore } from '../state/SlideStateStore.ts';
 import type { StepTarget } from '../steps/StepPosition.ts';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';
@@ -145,6 +146,7 @@ export function useDeckNavigation(
   aliases: ReadonlyMap<string, number>,
   spares: readonly boolean[],
   slideState: SlideStateStore,
+  transitions?: SlideTransitions,
 ): DeckNavigation {
   const slideCount = slideIds.length;
   const clamp = useCallback(
@@ -193,16 +195,38 @@ export function useDeckNavigation(
   );
   const nextSlideIndex = findNextSlide(spares, slideIndex);
   const previousSlideIndex = findPreviousSlide(spares, slideIndex);
+  /** Changes the steps of the slide, fading it if it's shown. */
+  const changeSteps = useCallback(
+    (update: () => void) => {
+      if (transitions === undefined) {
+        update();
+      } else {
+        transitions.run(update);
+      }
+    },
+    [transitions],
+  );
   const next = useCallback(() => {
-    if (!stepStore.next() && nextSlideIndex !== undefined) {
+    // Read the steps after the previous change.
+    transitions?.flush();
+    if (stepStore.hasNext()) {
+      changeSteps(() => {
+        stepStore.next();
+      });
+    } else if (nextSlideIndex !== undefined) {
       goTo(nextSlideIndex);
     }
-  }, [stepStore, nextSlideIndex, goTo]);
+  }, [transitions, stepStore, changeSteps, nextSlideIndex, goTo]);
   const previous = useCallback(() => {
-    if (!stepStore.previous() && previousSlideIndex !== undefined) {
+    transitions?.flush();
+    if (stepStore.hasPrevious()) {
+      changeSteps(() => {
+        stepStore.previous();
+      });
+    } else if (previousSlideIndex !== undefined) {
       goTo(previousSlideIndex, 'end');
     }
-  }, [stepStore, previousSlideIndex, goTo]);
+  }, [transitions, stepStore, changeSteps, previousSlideIndex, goTo]);
   const nextSlide = useCallback(() => {
     if (nextSlideIndex !== undefined) {
       goTo(nextSlideIndex, 'restore');
@@ -214,11 +238,15 @@ export function useDeckNavigation(
     }
   }, [goTo, previousSlideIndex]);
   const firstStep = useCallback(() => {
-    stepStore.first();
-  }, [stepStore]);
+    changeSteps(() => {
+      stepStore.first();
+    });
+  }, [stepStore, changeSteps]);
   const lastStep = useCallback(() => {
-    stepStore.last();
-  }, [stepStore]);
+    changeSteps(() => {
+      stepStore.last();
+    });
+  }, [stepStore, changeSteps]);
 
   // Fires when the user follows a link to a slide, edits the URL, or moves
   // through the browser history.

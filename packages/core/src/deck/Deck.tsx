@@ -52,6 +52,12 @@ import { usePresentation } from '../presentation/usePresentation.ts';
 import { usePresenterView } from '../presentation/usePresenterView.ts';
 import { correctRipples } from '../slide/rippleScale.ts';
 import { SlideMirror } from '../slide/SlideMirror.tsx';
+import {
+  getStepTransition,
+  SlideTransitions,
+  SlideTransitionsContext,
+} from '../slide/SlideTransitions.ts';
+import { SlideTransitionStyles } from '../slide/SlideTransitionStyles.tsx';
 import { SelectionFrame } from '../slide/SelectionFrame.tsx';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
 import { SwipeHint } from '../swipe/SwipeHint.tsx';
@@ -250,6 +256,7 @@ export function Deck({
   );
   const spares = useSpares(slides.map(isSpare));
   const [slideState] = useState(() => new SlideStateStore());
+  const [transitions] = useState(() => new SlideTransitions());
   const {
     slideIndex,
     stepStore,
@@ -266,7 +273,7 @@ export function Deck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slideIds, aliases, spares, slideState);
+  } = useDeckNavigation(slideIds, aliases, spares, slideState, transitions);
   const { probed, probe } = useSlideProbe(slides);
   // The current slide knows its steps even before it is probed, or after its
   // components gain steps, but not while it isn't shown, e.g., in the
@@ -345,7 +352,7 @@ export function Deck({
   const [pointerMode, setPointerMode] = useState<PointerMode>('mirror');
   // The mode to return to when the laser pointer is turned off.
   const [modeBeforeLaser, setModeBeforeLaser] = useState<PointerMode>('mirror');
-  const pointerHandlers = usePointerTracking(pointer, pointerMode);
+  const pointerHandlers = usePointerTracking(pointer, pointerMode, transitions);
   const [interaction] = useState(createInteractionStore);
   const [presenterFrame, setPresenterFrame] = useState<HTMLElement | null>(
     null,
@@ -361,6 +368,7 @@ export function Deck({
   useInteractionCapture(
     presenting && pointerMode === 'mirror' ? presenterFrame : null,
     interaction,
+    transitions,
   );
   const toggleMirrorPointer = useCallback(() => {
     setPointerMode(pointerMode === 'mirror' ? 'off' : 'mirror');
@@ -421,6 +429,15 @@ export function Deck({
   const [containerRef, scale, containerSize] = useFitScale(
     SLIDE_WIDTH,
     SLIDE_HEIGHT,
+  );
+  // Fade the slide from step to step, unless the overview shows it instead.
+  const fades = getStepTransition(theme).duration > 0;
+  useEffect(
+    () =>
+      presenterFrame === null || showOverview || !fades
+        ? undefined
+        : transitions.register(presenterFrame),
+    [presenterFrame, showOverview, fades, transitions],
   );
   const notes = getSlideNotes(slides[slideIndex]);
   // The notes are in the language of their slide.
@@ -556,7 +573,7 @@ export function Deck({
     onResetTimer,
     onEscape,
   });
-  const onClick = useClickNavigation(next, previous);
+  const onClick = useClickNavigation(next, previous, transitions);
   const onWheel = useWheelNavigation(next, previous);
   const swipe = useSwipeNavigation({
     hasMoreSteps: () => stepStore.hasNext(),
@@ -583,300 +600,305 @@ export function Deck({
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <SlideTransitionStyles />
       <UiLanguageContext value={uiLanguage}>
         <DeckContext value={deck}>
-          <SlideStateContext value={slideState}>
-            <StepStoreContext value={stepStore}>
-              <Box sx={{ position: 'fixed', inset: 0, display: 'flex' }}>
-                {sidebarSections.some(({ expanded }) => expanded) && (
-                  // Outside of the slides, so that clicks don't navigate. Dark
-                  // like the letterbox around the slides, the overview, and the
-                  // presenter view.
-                  <UiThemeProvider dark>
-                    <Sidebar sections={sidebarSections} />
-                  </UiThemeProvider>
-                )}
-                {/*
-                 * Always rendered, so that the slide isn't remounted when the
-                 * presenter view opens or closes.
-                 */}
-                <Box
-                  sx={{
-                    flex: 1,
-                    minWidth: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
+          <SlideTransitionsContext value={transitions}>
+            <SlideStateContext value={slideState}>
+              <StepStoreContext value={stepStore}>
+                <Box sx={{ position: 'fixed', inset: 0, display: 'flex' }}>
+                  {sidebarSections.some(({ expanded }) => expanded) && (
+                    // Outside of the slides, so that clicks don't navigate. Dark
+                    // like the letterbox around the slides, the overview, and the
+                    // presenter view.
+                    <UiThemeProvider dark>
+                      <Sidebar sections={sidebarSections} />
+                    </UiThemeProvider>
+                  )}
+                  {/*
+                   * Always rendered, so that the slide isn't remounted when the
+                   * presenter view opens or closes.
+                   */}
                   <Box
-                    ref={presenterAreaRef}
                     sx={{
                       flex: 1,
                       minWidth: 0,
-                      minHeight: 0,
                       display: 'flex',
-                      flexDirection: stacked ? 'column' : 'row',
+                      flexDirection: 'column',
                     }}
                   >
                     <Box
-                      ref={containerRef}
-                      onClick={mouseNavigation ? onClick : undefined}
-                      onWheel={mouseNavigation ? onWheel : undefined}
-                      {...composeHandlers(
-                        composeHandlers(menuHandlers, swipe.handlers),
-                        pinchHandlers,
-                      )}
-                      sx={[
-                        {
-                          position: 'relative',
-                          flex: 1,
-                          minWidth: 0,
-                          minHeight: 0,
-                          overflow: 'hidden',
-                          bgcolor: 'common.black',
-                          // Long presses open our context menu instead.
-                          WebkitTouchCallout: 'none',
-                          // Horizontal swipes change the slide.
-                          touchAction: 'pan-y pinch-zoom',
-                        },
-                        // As large as the slide, which takes the whole width.
-                        stacked && {
-                          flex: 'none',
-                          aspectRatio: `${String(SLIDE_WIDTH)} / ${String(SLIDE_HEIGHT)}`,
-                        },
-                        mouseNavigation && {
-                          userSelect: 'none',
-                          [SELECTABLE_SELECTOR]: { userSelect: 'text' },
-                        },
-                      ]}
+                      ref={presenterAreaRef}
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: stacked ? 'column' : 'row',
+                      }}
                     >
-                      {/* Moves the slides together while swiping. */}
                       <Box
-                        // Restarts the animation of sliding in on another slide.
-                        key={`slides-${String(slideIndex)}`}
-                        onTransitionEnd={(event) => {
-                          if (event.target === event.currentTarget) {
-                            swipe.onTransitionEnd();
-                          }
-                        }}
-                        onAnimationEnd={(event) => {
-                          if (event.target === event.currentTarget) {
-                            swipe.onAnimationEnd();
-                          }
-                        }}
+                        ref={containerRef}
+                        onClick={mouseNavigation ? onClick : undefined}
+                        onWheel={mouseNavigation ? onWheel : undefined}
+                        {...composeHandlers(
+                          composeHandlers(menuHandlers, swipe.handlers),
+                          pinchHandlers,
+                        )}
                         sx={[
-                          { position: 'absolute', inset: 0 },
-                          swipe.transition === 'settle' && {
-                            transition: `translate ${String(SETTLE_DURATION)}ms ease-out`,
+                          {
+                            position: 'relative',
+                            flex: 1,
+                            minWidth: 0,
+                            minHeight: 0,
+                            overflow: 'hidden',
+                            bgcolor: 'common.black',
+                            // Long presses open our context menu instead.
+                            WebkitTouchCallout: 'none',
+                            // Horizontal swipes change the slide.
+                            touchAction: 'pan-y pinch-zoom',
                           },
-                          swipe.enterFrom !== undefined && {
-                            animation: `${enter} ${String(ENTER_DURATION)}ms ease-out`,
+                          // As large as the slide, which takes the whole width.
+                          stacked && {
+                            flex: 'none',
+                            aspectRatio: `${String(SLIDE_WIDTH)} / ${String(SLIDE_HEIGHT)}`,
+                          },
+                          mouseNavigation && {
+                            userSelect: 'none',
+                            [SELECTABLE_SELECTOR]: { userSelect: 'text' },
                           },
                         ]}
-                        style={{
-                          translate: `${String(swipe.offset)}px 0`,
-                          ...(swipe.enterFrom === undefined
-                            ? {}
-                            : {
-                                '--slider-enter-from': `${String(swipe.enterFrom)}px`,
-                              }),
-                        }}
                       >
-                        {swipe.moving &&
-                          !showOverview &&
-                          (
-                            [
-                              [previousSlideIndex, -1],
-                              [nextSlideIndex, 1],
-                            ] as const
-                          )
-                            .flatMap(([index, side]) =>
-                              index === undefined
-                                ? []
-                                : [[index, side] as const],
-                            )
-                            .map(([index, side]) => (
-                              // Placed a whole area away, which needs no measuring.
-                              <Box
-                                key={index}
-                                inert
-                                sx={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  bottom: 0,
-                                  width: '100%',
-                                }}
-                                style={{
-                                  left: `${String(side * 100)}%`,
-                                }}
-                              >
-                                <Box
-                                  sx={SLIDE_FRAME_STYLES}
-                                  style={{
-                                    transform: `scale(${String(scale)})`,
-                                  }}
-                                  {...{ [SLIDE_VIEW_ATTRIBUTE]: 'preview' }}
-                                >
-                                  <SlideMirror
-                                    index={index}
-                                    slide={slides[index]}
-                                    kind="preview"
-                                  />
-                                </Box>
-                              </Box>
-                            ))}
-                        <SelectionFrame
-                          ref={setPresenterFrame}
-                          sx={SLIDE_FRAME_STYLES}
-                          style={{
-                            transform: `scale(${String(scale)})`,
-                            // The laser pointer replaces the mouse cursor.
-                            ...(presenting && pointerMode === 'laser'
-                              ? { cursor: 'none' }
-                              : {}),
+                        {/* Moves the slides together while swiping. */}
+                        <Box
+                          // Restarts the animation of sliding in on another slide.
+                          key={`slides-${String(slideIndex)}`}
+                          onTransitionEnd={(event) => {
+                            if (event.target === event.currentTarget) {
+                              swipe.onTransitionEnd();
+                            }
                           }}
-                          {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
-                          // Show the pointer of the presenter to the audience.
-                          {...(presenting ? pointerHandlers : {})}
+                          onAnimationEnd={(event) => {
+                            if (event.target === event.currentTarget) {
+                              swipe.onAnimationEnd();
+                            }
+                          }}
+                          sx={[
+                            { position: 'absolute', inset: 0 },
+                            swipe.transition === 'settle' && {
+                              transition: `translate ${String(SETTLE_DURATION)}ms ease-out`,
+                            },
+                            swipe.enterFrom !== undefined && {
+                              animation: `${enter} ${String(ENTER_DURATION)}ms ease-out`,
+                            },
+                          ]}
+                          style={{
+                            translate: `${String(swipe.offset)}px 0`,
+                            ...(swipe.enterFrom === undefined
+                              ? {}
+                              : {
+                                  '--slider-enter-from': `${String(swipe.enterFrom)}px`,
+                                }),
+                          }}
                         >
-                          {/* The overview shows the slide instead. */}
-                          {!showOverview && (
-                            <SlideViewProvider key={slideIndex} view={view}>
-                              {slides[slideIndex]}
-                            </SlideViewProvider>
+                          {swipe.moving &&
+                            !showOverview &&
+                            (
+                              [
+                                [previousSlideIndex, -1],
+                                [nextSlideIndex, 1],
+                              ] as const
+                            )
+                              .flatMap(([index, side]) =>
+                                index === undefined
+                                  ? []
+                                  : [[index, side] as const],
+                              )
+                              .map(([index, side]) => (
+                                // Placed a whole area away, which needs no measuring.
+                                <Box
+                                  key={index}
+                                  inert
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    bottom: 0,
+                                    width: '100%',
+                                  }}
+                                  style={{
+                                    left: `${String(side * 100)}%`,
+                                  }}
+                                >
+                                  <Box
+                                    sx={SLIDE_FRAME_STYLES}
+                                    style={{
+                                      transform: `scale(${String(scale)})`,
+                                    }}
+                                    {...{ [SLIDE_VIEW_ATTRIBUTE]: 'preview' }}
+                                  >
+                                    <SlideMirror
+                                      index={index}
+                                      slide={slides[index]}
+                                      kind="preview"
+                                    />
+                                  </Box>
+                                </Box>
+                              ))}
+                          <SelectionFrame
+                            ref={setPresenterFrame}
+                            sx={SLIDE_FRAME_STYLES}
+                            style={{
+                              transform: `scale(${String(scale)})`,
+                              // The laser pointer replaces the mouse cursor.
+                              ...(presenting && pointerMode === 'laser'
+                                ? { cursor: 'none' }
+                                : {}),
+                            }}
+                            {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+                            // Show the pointer of the presenter to the audience.
+                            {...(presenting ? pointerHandlers : {})}
+                          >
+                            {/* The overview shows the slide instead. */}
+                            {!showOverview && (
+                              <SlideViewProvider key={slideIndex} view={view}>
+                                {slides[slideIndex]}
+                              </SlideViewProvider>
+                            )}
+                            {/* The presenter sees the laser pointer, too. */}
+                            {presenting && pointerMode === 'laser' && (
+                              <MirroredPointer store={pointer} mode="laser" />
+                            )}
+                          </SelectionFrame>
+                        </Box>
+                        {/* Doesn't move with the slides. */}
+                        <ThemeProvider theme={uiTheme}>
+                          <SwipeHint open={swipe.showHint} />
+                        </ThemeProvider>
+                        {/* The presenter view shows the notes in its panel instead. */}
+                        {notes !== undefined &&
+                          !showOverview &&
+                          !presenting && (
+                            <NotesDisplay
+                              // Collapse the notes on another slide.
+                              key={`notes-${String(slideIndex)}`}
+                              notes={notes}
+                              notesLang={notesLang}
+                              size={containerSize}
+                              scale={scale}
+                            />
                           )}
-                          {/* The presenter sees the laser pointer, too. */}
-                          {presenting && pointerMode === 'laser' && (
-                            <MirroredPointer store={pointer} mode="laser" />
-                          )}
-                        </SelectionFrame>
                       </Box>
-                      {/* Doesn't move with the slides. */}
-                      <ThemeProvider theme={uiTheme}>
-                        <SwipeHint open={swipe.showHint} />
-                      </ThemeProvider>
-                      {/* The presenter view shows the notes in its panel instead. */}
-                      {notes !== undefined && !showOverview && !presenting && (
-                        <NotesDisplay
-                          // Collapse the notes on another slide.
-                          key={`notes-${String(slideIndex)}`}
-                          notes={notes}
-                          notesLang={notesLang}
-                          size={containerSize}
-                          scale={scale}
-                        />
+                      {presenting && (
+                        <UiThemeProvider dark>
+                          <Box
+                            // Clicking the panel navigates, too, so that the
+                            // presenter can advance without the mouse pointer
+                            // showing on the slide. Only the toolbar has controls.
+                            onClick={mouseNavigation ? onClick : undefined}
+                            onWheel={mouseNavigation ? onWheel : undefined}
+                            {...menuHandlers}
+                            sx={[
+                              { display: 'flex', minWidth: 0, minHeight: 0 },
+                              stacked
+                                ? { flex: 1 }
+                                : { flex: 'none', width: SIDE_PANEL_WIDTH },
+                              mouseNavigation && { userSelect: 'none' },
+                            ]}
+                          >
+                            <PresenterPanel
+                              slides={slides}
+                              notes={notes}
+                              notesLang={notesLang}
+                              slideTheme={theme}
+                              layout={presenterLayout}
+                              notesOnly={notesOnly}
+                            />
+                          </Box>
+                        </UiThemeProvider>
                       )}
                     </Box>
                     {presenting && (
                       <UiThemeProvider dark>
-                        <Box
-                          // Clicking the panel navigates, too, so that the
-                          // presenter can advance without the mouse pointer
-                          // showing on the slide. Only the toolbar has controls.
-                          onClick={mouseNavigation ? onClick : undefined}
-                          onWheel={mouseNavigation ? onWheel : undefined}
-                          {...menuHandlers}
-                          sx={[
-                            { display: 'flex', minWidth: 0, minHeight: 0 },
-                            stacked
-                              ? { flex: 1 }
-                              : { flex: 'none', width: SIDE_PANEL_WIDTH },
-                            mouseNavigation && { userSelect: 'none' },
-                          ]}
-                        >
-                          <PresenterPanel
-                            slides={slides}
-                            notes={notes}
-                            notesLang={notesLang}
-                            slideTheme={theme}
-                            layout={presenterLayout}
-                            notesOnly={notesOnly}
-                          />
-                        </Box>
+                        <PresenterToolbar
+                          width={presenterAreaSize.width}
+                          timerStart={timerStart}
+                          onResetTimer={resetTimer}
+                          onGoToSlide={openGoToSlide}
+                          notesOnly={notesOnly}
+                          setNotesOnly={setNotesOnly}
+                          pointerMode={pointerMode}
+                          onMirrorPointer={toggleMirrorPointer}
+                          onLaserPointer={toggleLaserPointer}
+                          menuOpen={menuPosition !== undefined}
+                          onOpenMenu={openMenu}
+                        />
                       </UiThemeProvider>
                     )}
                   </Box>
-                  {presenting && (
-                    <UiThemeProvider dark>
-                      <PresenterToolbar
-                        width={presenterAreaSize.width}
-                        timerStart={timerStart}
-                        onResetTimer={resetTimer}
-                        onGoToSlide={openGoToSlide}
-                        notesOnly={notesOnly}
-                        setNotesOnly={setNotesOnly}
-                        pointerMode={pointerMode}
-                        onMirrorPointer={toggleMirrorPointer}
-                        onLaserPointer={toggleLaserPointer}
-                        menuOpen={menuPosition !== undefined}
-                        onOpenMenu={openMenu}
-                      />
-                    </UiThemeProvider>
-                  )}
                 </Box>
-              </Box>
-              {probe}
-              {showOverview && (
-                <SlideOverview
-                  slides={slides}
-                  onClose={() => {
-                    setShowOverview(false);
-                  }}
-                  menuHandlers={menuHandlers}
-                />
-              )}
-              {/* Outside of the slides, so that events don't bubble to them. */}
-              <ThemeProvider theme={uiTheme}>
-                {/* The presenter view has a menu button in its toolbar. */}
-                {!presenting && (
-                  <MenuButton
-                    open={menuPosition !== undefined}
-                    onOpen={openMenu}
-                  />
-                )}
-                <DeckMenu
-                  anchorPosition={menuPosition}
-                  onClose={closeMenu}
-                  onGoToSlide={openGoToSlide}
-                  onPresent={presentation.toggle}
-                  presenterView={presenting}
-                  onPresenterView={presenterView.toggle}
-                  presenterSettings={
-                    presenting
-                      ? {
-                          notesOnly,
-                          onFocusNotes,
-                          pointerMode,
-                          onMirrorPointer: toggleMirrorPointer,
-                          onLaserPointer: toggleLaserPointer,
-                          onResetTimer: resetTimer,
-                        }
-                      : undefined
-                  }
-                />
-                <GoToSlideDialog
-                  open={goToSlideOpen}
-                  onClose={closeGoToSlide}
-                />
-                {presenterView.audience !== undefined && (
-                  <AudienceWindow
-                    audience={presenterView.audience}
+                {probe}
+                {showOverview && (
+                  <SlideOverview
                     slides={slides}
-                    theme={theme}
-                    onClose={presenterView.close}
-                    pointer={pointer}
-                    pointerMode={pointerMode}
-                    interaction={interaction}
+                    onClose={() => {
+                      setShowOverview(false);
+                    }}
+                    menuHandlers={menuHandlers}
                   />
                 )}
-                <ScreenDialog
-                  screens={presentation.screens}
-                  onChoose={presentation.choose}
-                  onClose={presentation.cancel}
-                />
-              </ThemeProvider>
-            </StepStoreContext>
-          </SlideStateContext>
+                {/* Outside of the slides, so that events don't bubble to them. */}
+                <ThemeProvider theme={uiTheme}>
+                  {/* The presenter view has a menu button in its toolbar. */}
+                  {!presenting && (
+                    <MenuButton
+                      open={menuPosition !== undefined}
+                      onOpen={openMenu}
+                    />
+                  )}
+                  <DeckMenu
+                    anchorPosition={menuPosition}
+                    onClose={closeMenu}
+                    onGoToSlide={openGoToSlide}
+                    onPresent={presentation.toggle}
+                    presenterView={presenting}
+                    onPresenterView={presenterView.toggle}
+                    presenterSettings={
+                      presenting
+                        ? {
+                            notesOnly,
+                            onFocusNotes,
+                            pointerMode,
+                            onMirrorPointer: toggleMirrorPointer,
+                            onLaserPointer: toggleLaserPointer,
+                            onResetTimer: resetTimer,
+                          }
+                        : undefined
+                    }
+                  />
+                  <GoToSlideDialog
+                    open={goToSlideOpen}
+                    onClose={closeGoToSlide}
+                  />
+                  {presenterView.audience !== undefined && (
+                    <AudienceWindow
+                      audience={presenterView.audience}
+                      slides={slides}
+                      theme={theme}
+                      onClose={presenterView.close}
+                      pointer={pointer}
+                      pointerMode={pointerMode}
+                      interaction={interaction}
+                    />
+                  )}
+                  <ScreenDialog
+                    screens={presentation.screens}
+                    onChoose={presentation.choose}
+                    onClose={presentation.cancel}
+                  />
+                </ThemeProvider>
+              </StepStoreContext>
+            </SlideStateContext>
+          </SlideTransitionsContext>
         </DeckContext>
       </UiLanguageContext>
     </ThemeProvider>
