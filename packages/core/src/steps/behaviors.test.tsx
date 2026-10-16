@@ -298,7 +298,7 @@ describe('step behaviors', () => {
   it('falls back to more general phases', () => {
     const ranked = rankAppearances(createSlideTheme(), {
       future: 'dimmed',
-      open: 'hidden',
+      current: 'hidden',
       distantPast: 'hidden',
     });
     expect(

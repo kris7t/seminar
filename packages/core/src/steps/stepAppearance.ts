@@ -39,10 +39,10 @@ export const BUILT_IN_APPEARANCE_RANKS: Readonly<
 };
 
 /**
- * How a step behavior looks in each {@link StepPhase}. Phases without an
- * appearance fall back to more general ones: `'current'` to `'open'`,
- * `'distantFuture'` to `'future'`, and `'distantPast'` to `'past'`, and the
- * rest are shown.
+ * How a step behavior looks in each {@link StepPhase}. The phases that only
+ * nesting brings about fall back to the ones they refine: `'open'` to
+ * `'current'`, `'distantFuture'` to `'future'`, and `'distantPast'` to
+ * `'past'`, and the rest are shown.
  */
 export type StepAppearances = Readonly<
   Partial<Record<StepPhase, StepAppearance>>
@@ -112,14 +112,14 @@ export function rankAppearances(
       name,
       rank: rankOf(theme, name),
     });
-    const open = appearances.open ?? 'shown';
+    const current = appearances.current ?? 'shown';
     const future = appearances.future ?? 'shown';
     const past = appearances.past ?? 'shown';
     ranked = {
       distantFuture: rank(appearances.distantFuture ?? future),
       future: rank(future),
-      current: rank(appearances.current ?? open),
-      open: rank(open),
+      current: rank(current),
+      open: rank(appearances.open ?? current),
       past: rank(past),
       distantPast: rank(appearances.distantPast ?? past),
     };
