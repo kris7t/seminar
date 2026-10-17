@@ -14,6 +14,7 @@ import { useStepTransition } from './useStepTransition.ts';
 
 import {
   DURATION_PROPERTY,
+  SETTLE_DEADLINE,
   SlideTransitions,
   TRANSITION_ATTRIBUTE,
   TRANSITION_FRAME_ATTRIBUTE,
@@ -25,6 +26,8 @@ interface FakeTransition {
   /** Ends the transition, as the browser does after the animation. */
   end: () => Promise<void>;
   skipped: boolean;
+  /** The duration of the fade when the transition started, e.g., `0ms`. */
+  duration: string;
 }
 
 /**
@@ -33,6 +36,10 @@ interface FakeTransition {
  */
 function fakeTransitions(target: object): FakeTransition[] {
   const started: FakeTransition[] = [];
+  const scope =
+    target instanceof Document
+      ? target.documentElement
+      : (target as HTMLElement);
   Object.assign(target, {
     startViewTransition: (update: () => Promise<void>) => {
       let finish: () => void = () => undefined;
@@ -47,6 +54,7 @@ function fakeTransitions(target: object): FakeTransition[] {
           await Promise.resolve();
         },
         skipped: false,
+        duration: scope.style.getPropertyValue(DURATION_PROPERTY),
       };
       started.push(fake);
       return {
@@ -60,6 +68,10 @@ function fakeTransitions(target: object): FakeTransition[] {
     },
   });
   return started;
+}
+
+function durations(started: readonly FakeTransition[]): string[] {
+  return started.map(({ duration }) => duration);
 }
 
 function createFrame(): HTMLElement {
@@ -197,6 +209,151 @@ describe('SlideTransitions', () => {
     expect(started).toHaveLength(0);
   });
 
+  describe('settling', () => {
+    /** Runs `update` in a transition, and resolves when it's shown. */
+    function runShown(transitions: SlideTransitions, update: () => void) {
+      const frame = createFrame();
+      const started = fakeTransitions(frame);
+      transitions.register(frame);
+      transitions.run(update);
+      const begin = performance.now();
+      let shownAfter: number | undefined;
+      const shown = started[0]?.capture().then(() => {
+        shownAfter = performance.now() - begin;
+      });
+      return { frame, shown, shownAfter: () => shownAfter };
+    }
+
+    const sleep = (ms: number) =>
+      new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
+
+    it('shows the change once nothing holds it', async () => {
+      const transitions = new SlideTransitions();
+      let release: () => void = () => undefined;
+      const { shown, shownAfter } = runShown(transitions, () => {
+        release = transitions.hold(1000);
+      });
+      await sleep(50);
+      expect(shownAfter()).toBeUndefined();
+      release();
+      await shown;
+      expect(shownAfter()).toBeDefined();
+    });
+
+    it('shows the change at the greatest deadline of the holds', async () => {
+      const transitions = new SlideTransitions();
+      const { shown, shownAfter } = runShown(transitions, () => {
+        transitions.hold(10);
+        transitions.hold(SETTLE_DEADLINE + 100);
+      });
+      await shown;
+      expect(shownAfter()).toBeGreaterThanOrEqual(SETTLE_DEADLINE + 90);
+    });
+
+    it('ignores holds outside of changes', async () => {
+      const transitions = new SlideTransitions();
+      transitions.hold(1000);
+      const { shown, shownAfter } = runShown(transitions, () => undefined);
+      await shown;
+      expect(shownAfter()).toBeLessThan(SETTLE_DEADLINE);
+    });
+
+    it('waits until the slide stops changing', async () => {
+      const transitions = new SlideTransitions();
+      let changes = 0;
+      // Like renders that set off other renders, one task after another.
+      const change = () => {
+        frame.textContent = String(changes);
+        changes += 1;
+        if (changes < 5) setTimeout(change);
+      };
+      const { frame, shown, shownAfter } = runShown(transitions, () => {
+        setTimeout(change);
+      });
+      await shown;
+      expect(changes).toBe(5);
+      expect(shownAfter()).toBeLessThan(SETTLE_DEADLINE);
+    });
+
+    it('measures again while settling', async () => {
+      const transitions = new SlideTransitions();
+      const measure = vi.fn();
+      transitions.subscribeToMeasure(measure);
+      const { shown } = runShown(transitions, () => undefined);
+      await shown;
+      expect(measure).toHaveBeenCalled();
+    });
+
+    it('shows the change when skipped', async () => {
+      const transitions = new SlideTransitions();
+      const { shown, shownAfter } = runShown(transitions, () => {
+        transitions.hold(1000);
+      });
+      await sleep(20);
+      transitions.skip();
+      await shown;
+      expect(shownAfter()).toBeLessThan(SETTLE_DEADLINE);
+    });
+
+    it('finishes the animations of a change when interrupted', async () => {
+      const transitions = new SlideTransitions();
+      const { frame, shown } = runShown(transitions, () => undefined);
+      await shown;
+      const animation = (endTime: number) => ({
+        startTime: 10,
+        effect: { getComputedTiming: () => ({ endTime }) },
+        finish: vi.fn(),
+      });
+      const finite = animation(300);
+      const endless = animation(Number.POSITIVE_INFINITY);
+      Object.assign(frame, { getAnimations: () => [finite, endless] });
+      // The transition is still running, e.g., fading.
+      transitions.run(() => undefined);
+      expect(finite.finish).toHaveBeenCalledOnce();
+      expect(endless.finish).not.toHaveBeenCalled();
+    });
+
+    it('tells that an interrupted change changed at once', async () => {
+      const transitions = new SlideTransitions();
+      const frame = createFrame();
+      const started = fakeTransitions(frame);
+      transitions.register(frame);
+      transitions.change(() => undefined, {
+        kind: 'step',
+        duration: 300,
+        forward: true,
+        slideIndex: 0,
+        path: [1],
+      });
+      await started[0]?.capture();
+      expect(transitions.getChange()?.duration).toBe(300);
+      transitions.skip();
+      expect(transitions.getChange()).toMatchObject({
+        duration: 0,
+        path: [1],
+      });
+    });
+
+    it('changes at once for immediate changes', () => {
+      const transitions = new SlideTransitions();
+      const frame = createFrame();
+      const started = fakeTransitions(frame);
+      transitions.register(frame);
+      const update = vi.fn();
+      transitions.change(update, {
+        kind: 'slide',
+        duration: 150,
+        forward: true,
+        slideIndex: 1,
+        immediate: true,
+      });
+      expect(update).toHaveBeenCalledOnce();
+      expect(started).toHaveLength(0);
+    });
+  });
+
   describe('in a deck', () => {
     afterEach(() => {
       cleanup();
@@ -254,33 +411,39 @@ describe('SlideTransitions', () => {
       const user = userEvent.setup();
       // Into the slide, and out of it.
       await user.keyboard('{PageDown}');
+      await started[0]?.capture();
+      await started[0]?.end();
       await user.keyboard('{PageUp}');
-      expect(started).toHaveLength(0);
+      expect(durations(started)).toEqual(['0ms', '0ms']);
     });
 
     it('cuts fades into a slide', async () => {
       const started = renderSlides({ cut: 'in' });
       const user = userEvent.setup();
       await user.keyboard('{PageDown}');
-      expect(started).toHaveLength(0);
+      expect(durations(started)).toEqual(['0ms']);
+      await started[0]?.capture();
+      await started[0]?.end();
       // Going back leaves it.
       await user.keyboard('{PageUp}');
-      expect(started).toHaveLength(1);
+      expect(durations(started)).toEqual(['0ms', '150ms']);
     });
 
     it('cuts fades with the slide before it, both ways', async () => {
       const started = renderSlides({ cut: 'before' });
       const user = userEvent.setup();
       await user.keyboard('{PageDown}');
+      await started[0]?.capture();
+      await started[0]?.end();
       await user.keyboard('{PageUp}');
-      expect(started).toHaveLength(0);
+      expect(durations(started)).toEqual(['0ms', '0ms']);
     });
 
     it('keeps fades with the slide before it when cutting after it', async () => {
       const started = renderSlides({ cut: 'after out' });
       const user = userEvent.setup();
       await user.keyboard('{PageDown}');
-      expect(started).toHaveLength(1);
+      expect(durations(started)).toEqual(['150ms']);
     });
 
     it('lets the master of the slide turn off the fade', async () => {
@@ -288,7 +451,7 @@ describe('SlideTransitions', () => {
       Cut.cut = true;
       const started = renderSlides({ master: Cut });
       await userEvent.setup().keyboard('{PageDown}');
-      expect(started).toHaveLength(0);
+      expect(durations(started)).toEqual(['0ms']);
     });
 
     it('fades between slides for as long as one of them says, both ways', async () => {
@@ -312,14 +475,14 @@ describe('SlideTransitions', () => {
       Instant.fade = 0;
       const started = renderSlides({ master: Instant });
       await userEvent.setup().keyboard('{PageDown}');
-      expect(started).toHaveLength(0);
+      expect(durations(started)).toEqual(['0ms']);
     });
 
-    it('changes slides at once without a duration', async () => {
+    it('cuts slides without a duration', async () => {
       const theme = createSlideTheme({ slideTransition: { duration: 0 } });
       const started = renderSlides({}, theme);
       await userEvent.setup().keyboard('{PageDown}');
-      expect(started).toHaveLength(0);
+      expect(durations(started)).toEqual(['0ms']);
     });
 
     async function stepDurations(
@@ -333,13 +496,9 @@ describe('SlideTransitions', () => {
       for (const key of keys) {
         const count = started.length;
         await user.keyboard(key);
-        durations.push(
-          started.length === count
-            ? 'cut'
-            : document.documentElement.style.getPropertyValue(
-                DURATION_PROPERTY,
-              ),
-        );
+        const duration =
+          started.length === count ? 'none' : started.at(-1)?.duration;
+        durations.push(duration === '0ms' ? 'cut' : String(duration));
         await started.at(-1)?.capture();
         await started.at(-1)?.end();
       }
@@ -440,8 +599,11 @@ describe('SlideTransitions', () => {
         await started.at(-1)?.end();
         // Cut.
         await user.keyboard('{ArrowRight}');
+        await started.at(-1)?.capture();
         expect(timing()).toBe('0 forward');
+        await started.at(-1)?.end();
         await user.keyboard('{ArrowLeft}');
+        await started.at(-1)?.capture();
         expect(timing()).toBe('0 back');
       });
 
@@ -452,9 +614,9 @@ describe('SlideTransitions', () => {
       });
     });
 
-    it('changes steps at once without a duration', async () => {
+    it('cuts steps without a duration', async () => {
       const theme = createSlideTheme({ stepTransition: { duration: 0 } });
-      expect(await stepWith(theme)).toHaveLength(0);
+      expect(durations(await stepWith(theme))).toEqual(['0ms']);
     });
   });
 });

@@ -122,13 +122,16 @@ Another paragraph.
 - :step{group=parse} Parsing turns Markdown into a syntax tree
 - :step{group=render fadeBefore=800} Rendering turns the tree into React elements,
   and `{fadeBefore=800}` makes this step slow, for the marker, too
-- :step{group=display} React shows them on the slide
+- :step{group=display} React shows them on the slide, after a pause that the
+  component asks for with `useTransitionHold`
+- :step And this step displays on its own, without the component having a corresponding animation
 
 :::notes
 The stages join the step groups of the items, and fade with the slide. The
 marker animates itself with `useOwnAnimation`, which keeps it out of the fade,
 but takes its timing from `useStepTransition`, so it moves as long as the
-step fades.
+step fades. Before the last stage, the component holds the change for half a
+second with `useTransitionHold`.
 :::
 
 ### Ranges of steps {after=1 before=4}

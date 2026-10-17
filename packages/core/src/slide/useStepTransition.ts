@@ -29,8 +29,9 @@ export interface StepTransition {
  * `transition: transform ${duration}ms ${easing}`. The duration follows the
  * fades of the steps, the slide, and the theme, and it's 0 where the slide
  * changes at once: for cuts, in views that don't animate (see `animated` of
- * `useSlideView`), in browsers without view transitions, and when the deck
- * jumps to a step, e.g., from the step tree.
+ * `useSlideView`), in browsers without view transitions, when the deck jumps
+ * to a step, e.g., from the step tree, and once the change is interrupted,
+ * e.g., because the presenter went on before the fade ended.
  */
 export function useStepTransition(): StepTransition {
   const transitions = use(SlideTransitionsContext);

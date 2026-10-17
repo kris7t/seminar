@@ -122,8 +122,12 @@ changes, e.g., moving a marker along a path, should follow these guidelines:
   thumbnails, previews, and probes, for reduced motion, and when the
   presenter jumps to a step, e.g., from the overview.
 - **Keep animations short and interruptible.** Presenters step quickly, e.g.,
-  by holding an arrow key. CSS transitions continue from where they are when
-  the step changes again, while timers and long animations fall behind.
+  by holding an arrow key. When the step changes again while the slide still
+  fades, the fade ends at once, and so do the CSS transitions and animations
+  on the slide that started with the step, unless they repeat forever. The
+  `duration` of `useStepTransition` becomes 0 then, so components that wait
+  or time something by it should follow it, too. Timers of your own don't
+  stop by themselves.
 - **Set the timing with the steps.** A component that needs more time sets
   the fade of its own steps, e.g., `useStep({ fades: { fade: 500 } })`,
   which slows the fade of the slide along with it.

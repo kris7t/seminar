@@ -35,6 +35,9 @@ In short, a well-behaved slide component:
 - **Measures in slide pixels.** Slides are 1280 × 720 logical pixels,
   scaled to fit the screen. Use `useSlideBox`, rather than
   `getBoundingClientRect`, to measure elements.
+- **Is ready when the slide changes.** Measure in layout effects or with
+  `useMeasure`, and hold the change with `useTransitionHold` while loading,
+  so that the slide doesn't flash in an unfinished state.
 - **Takes part in steps through `Step`.** Wrap content in `Step` with a
   `defaultAttachment`, rather than reimplementing placement, so that `:step`
   attributes work on it.

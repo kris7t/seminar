@@ -229,6 +229,7 @@ export function useDeckNavigation(
           duration,
           forward: index >= from,
           slideIndex: index,
+          immediate: !transition,
         });
       }
     },

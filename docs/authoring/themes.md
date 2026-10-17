@@ -215,6 +215,8 @@ createSlideTheme({
 ```
 
 Steps fade for 150 ms by default, and slides cut. A duration of 0 cuts.
+Cuts and fades both wait until the changed slide is ready, see
+[Waiting until the slide is ready](components.md#waiting-until-the-slide-is-ready).
 
 Masters can set `fade`, `fadeIn`, `fadeOut`, `fadeBefore`, `fadeAfter`, and
 `cut`, like slides (see

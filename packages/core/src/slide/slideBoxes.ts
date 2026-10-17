@@ -1,7 +1,8 @@
-import { useLayoutEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import { useSlideElement } from './SlideElements.tsx';
+import { useMeasure } from './settling.ts';
 import { SLIDE_VIEW_ATTRIBUTE } from './SlideViewContext.ts';
 
 /** A box in the logical pixels of a slide, from its top left corner. */
@@ -107,30 +108,14 @@ export function useSlideBox(
 ): SlideBox | undefined {
   const element = useSlideElement(target);
   const [box, setBox] = useState<SlideBox | undefined>();
-  useLayoutEffect(() => {
-    const measure = () => {
-      const next = element === undefined ? undefined : measureInSlide(element);
-      // Measuring the layout before painting is what layout effects are for.
-      // eslint-disable-next-line @eslint-react/set-state-in-effect
-      setBox((previous) =>
-        previous !== undefined && next !== undefined && sameBox(previous, next)
-          ? previous
-          : next,
-      );
-    };
-    measure();
-    if (element === undefined) return undefined;
-    const observer =
-      typeof ResizeObserver === 'undefined'
-        ? undefined
-        : new ResizeObserver(measure);
-    observer?.observe(element);
-    window.addEventListener('resize', measure);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [element]);
+  useMeasure(element, () => {
+    const next = element === undefined ? undefined : measureInSlide(element);
+    setBox((previous) =>
+      previous !== undefined && next !== undefined && sameBox(previous, next)
+        ? previous
+        : next,
+    );
+  });
   return box;
 }
 

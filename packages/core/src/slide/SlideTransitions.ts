@@ -130,10 +130,31 @@ export interface SlideChange {
   slideIndex: number;
   /** The step shown after a change of `kind` `'step'`. */
   path?: readonly number[] | undefined;
+  /**
+   * Whether to show the change right away, without waiting for the slide to
+   * settle, e.g., after a swipe, which already moved the slides.
+   */
+  immediate?: boolean | undefined;
 }
 
 /** Safety net for update callbacks that the browser doesn't call. */
 const UPDATE_TIMEOUT = 1000;
+
+/**
+ * How long a change waits for the slide to settle by default, in
+ * milliseconds, see {@link SlideTransitions.hold}.
+ */
+export const SETTLE_DEADLINE = 150;
+
+/**
+ * The longest a change waits for the slide to settle, in milliseconds,
+ * whatever the holds say. Browsers give up on view transitions whose update
+ * takes a few seconds.
+ */
+const MAX_SETTLE_DEADLINE = 3000;
+
+/** How often a change checks whether images and fonts have loaded. */
+const SETTLE_POLL = 10;
 
 /** An element that may support view transitions scoped to itself. */
 interface ScopableElement extends HTMLElement {
@@ -183,6 +204,63 @@ function prefersReducedMotion(frame: HTMLElement): boolean {
   );
 }
 
+/** Whether `frame` shows content that is still loading, e.g., images. */
+function isLoading(frame: HTMLElement): boolean {
+  const doc = frame.ownerDocument;
+  // Not every environment loads fonts, e.g., jsdom.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (doc.fonts?.status === 'loading') {
+    return true;
+  }
+  // Images that aren't rendered, e.g., in collapsed steps, may never load.
+  return [...frame.querySelectorAll('img')].some(
+    (image) => !image.complete && image.getClientRects().length > 0,
+  );
+}
+
+/** Waits for the tasks queued so far, e.g., renders scheduled by React. */
+function nextTask(frame: HTMLElement, delay = 0): Promise<void> {
+  const view = frame.ownerDocument.defaultView ?? window;
+  return new Promise((resolve) => {
+    view.setTimeout(resolve, delay);
+  });
+}
+
+/**
+ * Finishes the animations in `frame` that started at `start` of the timeline
+ * of its document or later, e.g., CSS transitions set off by a change, but
+ * not endless ones, e.g., spinners.
+ */
+function finishAnimations(frame: HTMLElement, start: number): void {
+  // Not every environment has animations, e.g., jsdom.
+  if (typeof frame.getAnimations !== 'function') {
+    return;
+  }
+  for (const animation of frame.getAnimations({ subtree: true })) {
+    const startTime = animation.startTime;
+    const endTime = animation.effect?.getComputedTiming().endTime;
+    if (
+      (startTime === null || Number(startTime) >= start) &&
+      Number.isFinite(Number(endTime))
+    ) {
+      try {
+        animation.finish();
+      } catch {
+        // E.g., an animation that was just canceled.
+      }
+    }
+  }
+}
+
+/** A change waiting for the slide to settle before it's shown. */
+interface Settling {
+  readonly start: number;
+  /** The deadlines of the holds that haven't been released yet. */
+  readonly holds: Set<{ deadline: number }>;
+  /** Shows the change, whether or not the slide has settled. */
+  end: () => void;
+}
+
 /**
  * Fades the slides shown in some views, like the audience and the presenter
  * view, from one step to another with view transitions, at the same time in
@@ -192,6 +270,11 @@ function prefersReducedMotion(frame: HTMLElement): boolean {
  * keeps nested steps from showing through while their parents fade, and
  * works with any change of the slide, e.g., by components that follow the
  * steps. Where view transitions aren't supported, steps change right away.
+ *
+ * Changes that cut, rather than fade, use view transitions, too: the views
+ * keep showing the slide as it was until the changed slide settles, e.g.,
+ * its components are measured and its images are loaded, so that it doesn't
+ * flash in an unfinished layout (see {@link hold}).
  */
 export class SlideTransitions {
   readonly #frames = new Set<HTMLElement>();
@@ -202,6 +285,13 @@ export class SlideTransitions {
   #pending: (() => void) | undefined;
   #change: SlideChange | undefined;
   readonly #changeListeners = new Set<() => void>();
+  #settling: Settling | undefined;
+  readonly #measureListeners = new Set<() => void>();
+  /**
+   * When the last change was rendered, on the timeline of the document of
+   * each frame, so that its animations can be told apart.
+   */
+  #changeTimes = new Map<Document, number>();
 
   /**
    * Fades `frame`, an element that shows a slide, when steps change. The
@@ -251,15 +341,59 @@ export class SlideTransitions {
   };
 
   /**
+   * Keeps showing the slide as it was before the change being rendered, if
+   * any, until the returned function is called, e.g., while a component of
+   * the changed slide loads or measures something, which would otherwise
+   * show in an unfinished state. Holds taken outside of a change do nothing,
+   * so a component should hold while it's not ready, e.g., in a layout
+   * effect, rather than for as long as it's mounted.
+   *
+   * The change is shown anyway once the deadline of every hold passes, so
+   * that the talk isn't held up.
+   *
+   * @param deadline How long the change may wait for this hold, in
+   *   milliseconds from the change, instead of {@link SETTLE_DEADLINE}. The
+   *   greatest deadline among the holds counts, up to a few seconds.
+   */
+  hold(deadline: number = SETTLE_DEADLINE): () => void {
+    const settling = this.#settling;
+    if (settling === undefined) {
+      return () => undefined;
+    }
+    const entry = { deadline };
+    settling.holds.add(entry);
+    return () => {
+      settling.holds.delete(entry);
+    };
+  }
+
+  /**
+   * Calls `listener` while a change waits for the slide to settle, so that
+   * components measure themselves again, since browsers don't notify resize
+   * observers while they hold a view transition of the whole document.
+   */
+  subscribeToMeasure = (listener: () => void): (() => void) => {
+    this.#measureListeners.add(listener);
+    return () => {
+      this.#measureListeners.delete(listener);
+    };
+  };
+
+  /**
    * Changes the slides with `update`, e.g., to go to the next step, fading
-   * them for the `duration` of `change`, if it's positive and the frames can
-   * fade, and changing them at once otherwise. Components follow the change
-   * with {@link getChange} as it renders, e.g., to animate along, where the
-   * duration is 0 if the slides change at once.
+   * them for the `duration` of `change`, if it's positive, and cutting to
+   * the changed slides once they settle otherwise. Without view transitions,
+   * or for `immediate` changes, the slides change at once. Components follow
+   * the change with {@link getChange} as it renders, e.g., to animate along,
+   * where the duration is 0 if the slides don't fade.
    */
   change(update: () => void, change: SlideChange): void {
     this.flush();
-    const fades = change.duration > 0 && this.#fadingFrames().length > 0;
+    this.#interrupt();
+    const frames = change.immediate === true ? [] : this.#transitionFrames();
+    const fades =
+      change.duration > 0 &&
+      frames.some((frame) => !prefersReducedMotion(frame));
     const apply = () => {
       this.#change = fades ? change : { ...change, duration: 0 };
       for (const listener of this.#changeListeners) {
@@ -267,20 +401,20 @@ export class SlideTransitions {
       }
       update();
     };
-    if (fades) {
-      this.run(apply, change.kind, change.duration);
-    } else {
+    if (frames.length === 0) {
+      this.#endSettling();
       apply();
+    } else {
+      this.run(apply, change.kind, change.duration);
     }
   }
 
-  /** The frames that can fade now. */
-  #fadingFrames(): HTMLElement[] {
+  /** The frames that view transitions can run on now. */
+  #transitionFrames(): HTMLElement[] {
     return [...this.#frames].filter((frame) => {
       const scopable = frame as ScopableElement;
       return (
         frame.isConnected &&
-        !prefersReducedMotion(frame) &&
         (typeof scopable.startViewTransition === 'function' ||
           typeof frame.ownerDocument.startViewTransition === 'function')
       );
@@ -290,15 +424,52 @@ export class SlideTransitions {
   /** Ends the running transitions right away, e.g., for a click. */
   skip(): void {
     this.flush();
+    this.#interrupt();
     for (const transition of this.#transitions.keys()) {
       transition.skipTransition();
     }
   }
 
   /**
+   * Ends the last change right away, if it's still waiting or fading, e.g.,
+   * when the presenter goes on before it ends: shows it, finishes the
+   * animations that it set off, and tells components that follow it that
+   * it changed at once, e.g., to stop waiting.
+   */
+  #interrupt(): void {
+    if (!this.running && this.#settling === undefined) {
+      return;
+    }
+    this.#endSettling();
+    for (const frame of this.#frames) {
+      const start = this.#changeTimes.get(frame.ownerDocument);
+      if (start !== undefined) {
+        finishAnimations(frame, start);
+      }
+    }
+    if (this.#change !== undefined && this.#change.duration > 0) {
+      this.#change = { ...this.#change, duration: 0 };
+      // Before the next transition captures the slide.
+      // eslint-disable-next-line @eslint-react/dom-no-flush-sync
+      flushSync(() => {
+        for (const listener of this.#changeListeners) {
+          listener();
+        }
+      });
+    }
+  }
+
+  #endSettling(): void {
+    this.#settling?.end();
+    this.#settling = undefined;
+  }
+
+  /**
    * Changes the slides with `update`, e.g., to go to the next step, fading
-   * the registered frames from how they looked before to how they look after.
-   * `update` may run later, but before any later update.
+   * the registered frames from how they looked before to how they look after
+   * for `duration` milliseconds, or the duration of the theme. Frames whose
+   * viewers prefer reduced motion cut instead. The changed slides are shown
+   * once they settle. `update` may run later, but before any later update.
    */
   run(
     update: () => void,
@@ -307,7 +478,9 @@ export class SlideTransitions {
   ): void {
     // Keep the order of the updates, if the previous one is still waiting.
     this.flush();
-    const frames = this.#fadingFrames();
+    // Show the previous change as it is, and capture it as the old slide.
+    this.#interrupt();
+    const frames = this.#transitionFrames();
     if (frames.length === 0) {
       update();
       return;
@@ -326,10 +499,25 @@ export class SlideTransitions {
       if (this.#pending === apply) {
         this.#pending = undefined;
       }
+      const settling: Settling = {
+        start: performance.now(),
+        holds: new Set(),
+        end: release,
+      };
+      // Components of the changed slide may hold it while they render.
+      this.#settling = settling;
+      this.#changeTimes = new Map(
+        frames.map((frame) => [
+          frame.ownerDocument,
+          // Not every environment has timelines, e.g., jsdom.
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          Number(frame.ownerDocument.timeline?.currentTime ?? 0),
+        ]),
+      );
       // Render the update before the browser takes the new snapshots.
       // eslint-disable-next-line @eslint-react/dom-no-flush-sync
       flushSync(update);
-      release();
+      void this.#settle(frames, settling);
     };
     const timeout = setTimeout(apply, UPDATE_TIMEOUT);
     this.#pending = apply;
@@ -343,7 +531,13 @@ export class SlideTransitions {
       return ready;
     };
     for (const frame of frames) {
-      const started = startTransition(frame, kind, duration, onCaptured);
+      const cut = duration === 0 || prefersReducedMotion(frame);
+      const started = startTransition(
+        frame,
+        kind,
+        cut ? 0 : duration,
+        onCaptured,
+      );
       if (started === undefined) {
         waiting -= 1;
         continue;
@@ -363,12 +557,88 @@ export class SlideTransitions {
       // Skipped transitions reject, which isn't an error here.
       transition.finished.then(finish, finish);
       transition.ready.catch(() => undefined);
-      transition.updateCallbackDone.catch(() => undefined);
+      transition.updateCallbackDone.then(
+        () => {
+          // Nothing to animate, and the snapshots would cover what's
+          // painted over the slide, e.g., the menu button, for a frame.
+          if (cut) {
+            transition.skipTransition();
+          }
+        },
+        () => undefined,
+      );
     }
     if (waiting <= 0) {
       apply();
     }
     this.#notify();
+  }
+
+  /**
+   * Waits until `frames` settle after a change, i.e., nothing in them changes
+   * for a task, no component holds them, and their images and fonts have
+   * loaded, or until the deadline, and then shows the change.
+   */
+  async #settle(frames: HTMLElement[], settling: Settling): Promise<void> {
+    // Counts the changes of the frames, which observers see asynchronously.
+    const mutations = { count: 0 };
+    const observers = frames.flatMap((frame) => {
+      const View = frame.ownerDocument.defaultView?.MutationObserver;
+      if (View === undefined) {
+        return [];
+      }
+      const observer = new View(() => {
+        mutations.count += 1;
+      });
+      observer.observe(frame, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        characterData: true,
+      });
+      return [observer];
+    });
+    const [first] = frames;
+    const deadline = () =>
+      settling.start +
+      Math.min(
+        Math.max(
+          SETTLE_DEADLINE,
+          ...[...settling.holds].map((hold) => hold.deadline),
+        ),
+        MAX_SETTLE_DEADLINE,
+      );
+    try {
+      while (this.#settling === settling && first !== undefined) {
+        const before = mutations.count;
+        // Let React render what the change set off, e.g., in effects.
+        await nextTask(first);
+        for (const listener of this.#measureListeners) {
+          listener();
+        }
+        // And what measuring again set off.
+        await nextTask(first);
+        const mutated = mutations.count !== before;
+        const loading = frames.some(isLoading);
+        if (
+          this.#settling !== settling ||
+          (!mutated && !loading && settling.holds.size === 0) ||
+          performance.now() >= deadline()
+        ) {
+          break;
+        }
+        if (!mutated) {
+          await nextTask(first, SETTLE_POLL);
+        }
+      }
+    } finally {
+      for (const observer of observers) {
+        observer.disconnect();
+      }
+      if (this.#settling === settling) {
+        this.#endSettling();
+      }
+    }
   }
 
   #notify(): void {

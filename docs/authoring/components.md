@@ -110,12 +110,60 @@ In MDX, components get the name of `#name` or `id=name` as their `id` prop,
 so they should pass it on to `useSlideElementRef`, `SlideElement`, or a
 `Step`, which names its element.
 
+## Waiting until the slide is ready
+
+When the slide or its step changes, the audience and presenter views keep
+showing the old slide until the new one is ready. Then they cut or fade to
+it. This way, viewers don't see a half-finished layout.
+
+The new slide is ready when:
+
+- React has finished rendering, including renders started by effects,
+- its images and fonts have loaded, and
+- no component holds the change.
+
+The views wait at most 150 ms (`SETTLE_DEADLINE`), and show the change in
+both views at the same time. Browsers without view transitions change the
+slide at once.
+
+### Holding the change
+
+Call `useTransitionHold(pending)` while a component isn't ready, e.g., while
+it loads data:
+
+```tsx
+import { useTransitionHold } from '@slider/core';
+
+export function Plot({ src }: { src: string }) {
+  const data = useData(src);
+  useTransitionHold(data === undefined, { deadline: 500 });
+  return data === undefined ? null : <Chart data={data} />;
+}
+```
+
+- `deadline` is how long the change may wait, in milliseconds. Without it,
+  the change waits at most 150 ms. If several components hold the change,
+  the longest deadline wins, up to a few seconds.
+- A hold only delays changes that happen while it's pending. A component
+  that never finishes loading delays one change, not every step after it.
+
+### Measuring
+
+Measure in layout effects, not in effects: layout effects run before the
+change is shown.
+
+To measure again when an element resizes, use `useMeasure(element, measure)`
+instead of a `ResizeObserver` of your own. Some browsers don't run resize
+observers while the views wait, but `useMeasure` measures then, too. In
+`measure`, only set state if the value changed.
+
 ## Positioning
 
 `useSlideBox(target)` measures an element, or the element with a name, in
 logical slide pixels from the top left corner of the slide, whatever the
 scale of the view. It measures again when the element or the window is
-resized, and returns `undefined` until the element is measured.
+resized, like `useMeasure`, and returns `undefined` until the element is
+measured.
 
 `useSlidePoint(target, { at, shift })` returns a point in the box of an
 element, or of the slide without a target, e.g., for an arrow pointing at a

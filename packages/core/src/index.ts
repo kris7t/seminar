@@ -59,6 +59,11 @@ export {
   type SlidePointPosition,
 } from './slide/slideBoxes.ts';
 export {
+  useMeasure,
+  useTransitionHold,
+  type TransitionHoldOptions,
+} from './slide/settling.ts';
+export {
   SlideElement,
   useSlideElement,
   useSlideElementId,
@@ -88,6 +93,7 @@ export {
 } from './slide/useStepTransition.ts';
 export {
   getFadeTransition,
+  SETTLE_DEADLINE,
   useOwnAnimation,
   type FadeTransition,
   type SlideTransitionKind,

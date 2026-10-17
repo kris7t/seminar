@@ -18,19 +18,14 @@ import {
   resolveSlidePoint,
   SLIDE_BOX,
   useSlideBox,
+  useMeasure,
   useSlideElement,
   useSlidePoint,
   type SlidePoint,
   type StepProps,
   type StepState,
 } from '@slider/core';
-import {
-  useLayoutEffect,
-  useRef,
-  useState,
-  type JSX,
-  type ReactNode,
-} from 'react';
+import { useState, type JSX, type ReactNode } from 'react';
 
 import {
   CALLOUT_SLIDE_MARGIN,
@@ -512,30 +507,20 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     elevation,
   };
   const [origin, setOrigin] = useState<HTMLElement | null>(null);
-  const positionerRef = useRef<HTMLSpanElement>(null);
+  const [positioner, setPositioner] = useState<HTMLSpanElement | null>(null);
   const originBox = useSlideBox(origin ?? undefined);
   const anchored = useSlidePoint(targetElement, { at, shift });
   const [size, setSize] = useState<[number, number] | undefined>();
-  useLayoutEffect(() => {
-    const positioner = positionerRef.current;
-    if (positioner === null) return undefined;
-    // In logical pixels, since the scale of the slide is a transform.
-    const measure = () => {
-      setSize((previous) =>
-        previous?.[0] === positioner.offsetWidth &&
-        previous[1] === positioner.offsetHeight
-          ? previous
-          : [positioner.offsetWidth, positioner.offsetHeight],
-      );
-    };
-    measure();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(measure);
-    observer.observe(positioner);
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
+  // In logical pixels, since the scale of the slide is a transform.
+  useMeasure(positioner, () => {
+    if (positioner === null) return;
+    setSize((previous) =>
+      previous?.[0] === positioner.offsetWidth &&
+      previous[1] === positioner.offsetHeight
+        ? previous
+        : [positioner.offsetWidth, positioner.offsetHeight],
+    );
+  });
   const geometry =
     anchored === undefined || originBox === undefined
       ? initialGeometry(ownerState)
@@ -611,7 +596,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
     >
       <CalloutPositioner
         as={element}
-        ref={positionerRef}
+        ref={setPositioner}
         className={calloutClasses.positioner}
         ownerState={ownerState}
         style={{
