@@ -9,6 +9,10 @@ describe('steps', () => {
     return (await slides(source)).map(({ children }) => children);
   }
 
+  async function notesOf(source: string): Promise<unknown> {
+    return (await slides(source)).map(({ notes }) => notes);
+  }
+
   it('shows list items together with the previous step', async () => {
     expect(await content('- One\n- Two\n\n1. Three')).toEqual([
       '<ul>\n<ListItem>One</ListItem>\n' +
@@ -47,6 +51,71 @@ describe('steps', () => {
         '<ListItem step=true>Nested</ListItem>\n</ul>\n</ListItem>\n' +
         '<ListItem step=true>\n<p>Loose</p>\n<Paragraph step=true>More</Paragraph>\n</ListItem>\n</ul>',
     ]);
+  });
+
+  it('renders the content of :step[…] in a span', async () => {
+    expect(
+      await content(
+        'Up front :step[later]{group=a} and :step[*custom*]{component=strong}',
+      ),
+    ).toEqual([
+      '<Paragraph>Up front <Step component="span" group="a">later</Step> and ' +
+        '<Step component="strong"><em>custom</em></Step></Paragraph>',
+    ]);
+  });
+
+  it('keeps bare :step next to :step[…]', async () => {
+    expect(await content(':step Later, with :step[a span]')).toEqual([
+      '<Paragraph step=true>Later, with <Step component="span">a span</Step></Paragraph>',
+    ]);
+    expect(
+      await content('- :step[Span] in an item :step{with=initial}'),
+    ).toEqual([
+      '<ul>\n<ListItem step=true with="initial"><Step component="span">Span</Step> in an item</ListItem>\n</ul>',
+    ]);
+  });
+
+  it('renders ::step[…] as a paragraph in a step', async () => {
+    expect(
+      await content('::step[Later]{.a}\n\n::step[Heading]{component=h4}'),
+    ).toEqual([
+      '<Paragraph step=true className="a">Later</Paragraph>' +
+        '<Step component="h4">Heading</Step>',
+    ]);
+  });
+
+  it('renders the content of :::step in a div', async () => {
+    expect(
+      await content(`
+:::step{#box}
+One
+
+- Two
+:::
+
+:::step{component=section only}
+Three :step
+:::
+`),
+    ).toEqual([
+      '<Step component="div" id="box"><Paragraph>One</Paragraph><ul>\n' +
+        '<ListItem>Two</ListItem>\n</ul></Step>' +
+        '<Step component="section" only=""><Paragraph step=true>Three</Paragraph></Step>',
+    ]);
+  });
+
+  it('shows the content of step directives in notes', async () => {
+    expect(
+      await notesOf(`
+:::notes
+Say :step[this] later.
+
+:::step
+Then that.
+:::
+:::
+`),
+    ).toEqual(['<p>Say this later.</p><p>Then that.</p>']);
   });
 
   it('turns other paragraphs with :step into steps', async () => {

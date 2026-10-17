@@ -28,6 +28,35 @@ Images take `step` and the other attributes of `:step` in their attributes,
 e.g., `![Results](./results.png){step}`. Other elements take them the same
 way, e.g., `:::column{step}`.
 
+## Steps around content
+
+`:step[…]` reveals part of a paragraph in a step of its own, and the rest of
+the paragraph follows the steps as usual:
+
+```mdx
+Markdown is :step[easy to write], :step[easy to diff], and :step[easy to keep].
+```
+
+`::step[…]` on a line of its own is a paragraph in a new step, like a
+paragraph with `:step`. `:::step` reveals several blocks together:
+
+```mdx
+:::step
+A paragraph and
+
+- a list
+
+appear together.
+:::
+```
+
+They render a `span`, a paragraph, and a `div`. `component=…` renders
+another element instead, e.g., `:::step{component=section}`. They take the
+other attributes of `:step`, too, e.g., `:step[later]{group=con}`.
+
+Content inside `:::step` follows its step, and `:step` inside it makes
+nested steps, as in a list item.
+
 ## Nested steps
 
 Steps in a nested list are steps of their list item, and come right after

@@ -44,4 +44,5 @@ export {
   rewriteHeadingAttributes,
 } from './directives/remarkHeadingAttributes.ts';
 export { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
+export { remarkStepDirectives } from './steps/remarkStepDirectives.ts';
 export { remarkSteps } from './steps/remarkSteps.ts';

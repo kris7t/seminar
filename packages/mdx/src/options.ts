@@ -17,6 +17,7 @@ import { directiveHandlers } from './directives/directiveHandlers.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
 import { rehypeSlideElements } from './content/rehypeSlideElements.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
+import { remarkStepDirectives } from './steps/remarkStepDirectives.ts';
 import { remarkSteps } from './steps/remarkSteps.ts';
 import {
   remarkDirectiveComponents,
@@ -46,7 +47,7 @@ export interface SliderMdxOptions
  *
  * Decks use directives (with `remark-directive`): `:::notes` for presenter
  * notes (see {@link remarkNotes}), `:step` for steps (see
- * {@link remarkSteps}), and `:slide` and `::slide` for slides (see
+ * {@link remarkSteps} and {@link remarkStepDirectives}), and `:slide` and `::slide` for slides (see
  * {@link remarkSlides}). Other directives are left to other remark plugins,
  * and kept as text if none handles them (see {@link directiveHandlers}),
  * since a colon followed by a word, like in `10:30`, is parsed as a
@@ -71,6 +72,7 @@ export function sliderMdxOptions({
       ...(math === false ? [] : [remarkMath]),
       remarkDirective,
       remarkNotes,
+      remarkStepDirectives,
       remarkImages,
       remarkSteps,
       [remarkSlides, { ...options, onDependency }],
