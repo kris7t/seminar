@@ -1,10 +1,11 @@
 import { compile } from '@mdx-js/mdx';
 import type { Nodes, Root } from 'mdast';
 import type {} from 'mdast-util-directive';
+import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { sliderMdxOptions } from '../options.ts';
-import { slides } from '../test/compileDeck.ts';
+import { compileDeck, renderDeck, slides, text } from '../test/compileDeck.ts';
 
 describe('remarkNotes', () => {
   it('adds notes to the slide', async () => {
@@ -23,10 +24,36 @@ Say *this*
         master: 'content',
         id: 'slide',
         title: 'Slide',
-        children:
-          '<Paragraph>Text</Paragraph><Notes><p>Say <em>this</em></p></Notes>',
+        notes: '<p>Say <em>this</em></p>',
+        children: '<Paragraph>Text</Paragraph>',
       },
     ]);
+  });
+
+  it('passes the notes to the deck as a prop of the slide', async () => {
+    const module = await compileDeck(`
+## Slide
+
+Text
+
+:::notes
+Say *this*
+:::
+
+## Other
+`);
+    const [slide, other] = [renderDeck(module).props.children].flat() as {
+      props: { notes?: ReactNode };
+    }[];
+    expect(text(slide?.props.notes)).toBe('<p>Say <em>this</em></p>');
+    expect(other?.props.notes).toBeUndefined();
+    expect(
+      text(
+        (module as unknown as Record<string, (props: object) => ReactNode>)[
+          '__sliderNotes0'
+        ]?.({}),
+      ),
+    ).toBe('<p>Say <em>this</em></p>');
   });
 
   it('reports notes inside other content', async () => {

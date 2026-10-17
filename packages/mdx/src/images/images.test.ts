@@ -47,15 +47,17 @@ See ![icon](${ARCH}){.small} here, and ![ref][logo]
 
   it('keeps images in notes plain', async () => {
     expect(
-      await content(`
+      (
+        await slides(`
 ## Slide
 
 :::notes
 ![Hint](${ARCH})
 :::
-`),
+`)
+      ).map(({ notes }) => notes),
       // The summary leaves out the attributes of HTML elements.
-    ).toEqual(['<Notes><img></img></Notes>']);
+    ).toEqual(['<img></img>']);
   });
 
   it('imports images next to the deck', async () => {

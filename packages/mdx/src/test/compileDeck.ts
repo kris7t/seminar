@@ -59,10 +59,12 @@ export function text(node: ReactNode): string {
     if (typeof node.type === 'string') {
       return `<${node.type}>${text(node.props.children)}</${node.type}>`;
     }
-    // Titles of slides included from other decks are rendered by them.
+    // Titles and notes of slides included from other decks are rendered by
+    // them.
     if (
       typeof node.type === 'function' &&
-      node.type.name.startsWith('__sliderTitle')
+      (node.type.name.startsWith('__sliderTitle') ||
+        node.type.name.startsWith('__sliderNotes'))
     ) {
       return text((node.type as (props: object) => ReactNode)(node.props));
     }
@@ -102,12 +104,13 @@ export async function slides(source: string): Promise<SlideSummary[]> {
     if (!isComponent<Record<string, unknown>>(slide, 'Slide')) {
       throw new Error('Expected a Slide');
     }
-    const { children, title, master, ...props } = slide.props;
+    const { children, title, master, notes, ...props } = slide.props;
     return {
       // Show component masters by the name of the component.
       master: typeof master === 'function' ? `<${master.name}>` : master,
       ...props,
       ...(title === undefined ? {} : { title: text(title as ReactNode) }),
+      ...(notes === undefined ? {} : { notes: text(notes as ReactNode) }),
       children: text(children as ReactNode),
     };
   });

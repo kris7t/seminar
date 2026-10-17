@@ -10,9 +10,14 @@ import type { VFile } from 'vfile';
 
 import { getAttributes } from '../directives/directives.ts';
 import { createEsm } from '../utils/estree.ts';
+import { EXPLICIT_JSX, NOTES } from '../utils/jsx.ts';
 import { getDeckFrontmatter, parseDeck } from './frontmatter.ts';
 import { getDeckLang } from './uiLocales.ts';
-import { slideExportName, titleExportName } from './recmaSlideExports.ts';
+import {
+  notesExportName,
+  slideExportName,
+  titleExportName,
+} from './recmaSlideExports.ts';
 import {
   buildSlides,
   createSlide,
@@ -229,6 +234,18 @@ function setRecapStart(
   }
 }
 
+/**
+ * Whether `slide` has presenter notes, written with `:::notes`, or included
+ * with the slide from another deck.
+ */
+function hasNotes(slide: SlideDraft): boolean {
+  return slide.children.some(
+    (child) =>
+      (child.type === 'containerDirective' && child.name === 'notes') ||
+      (child.type === 'mdxJsxFlowElement' && child.name === NOTES),
+  );
+}
+
 /** Returns the title of `slide` as text, for the table of contents. */
 function titleText(slide: SlideDraft): string | undefined {
   if (slide.tocTitle !== undefined || slide.tocText !== undefined) {
@@ -372,6 +389,21 @@ export function includeSlides(
     );
     return name;
   };
+  /** Imports the component of the notes of `slide`, if it has any. */
+  const importNotes = (slide: SlideDraft): string | undefined => {
+    const index = exports.get(slide);
+    if (index === undefined || !hasNotes(slide)) {
+      return undefined;
+    }
+    const name = `_SliderIncludeNotes${String(context.imports.count)}`;
+    context.imports.count += 1;
+    context.esm.push(
+      createEsm(
+        `import { ${notesExportName(index)} as ${name} } from ${JSON.stringify(specifier)};`,
+      ),
+    );
+    return name;
+  };
   // Divisions keep their levels, e.g., sections stay sections, whatever the
   // depth of this deck, while other slides are content slides of this deck.
   const levelOf = (slide: SlideDraft) =>
@@ -418,6 +450,27 @@ export function includeSlides(
           name: title,
           attributes: [],
           children: [],
+        },
+      ];
+    }
+    // The notes of the slide, rendered by the other deck.
+    const notes = importNotes(rendered);
+    if (notes !== undefined) {
+      draft.children = [
+        {
+          type: 'mdxJsxFlowElement',
+          name: NOTES,
+          attributes: [],
+          data: EXPLICIT_JSX,
+          children: [
+            {
+              type: 'mdxJsxFlowElement',
+              name: notes,
+              attributes: [],
+              data: EXPLICIT_JSX,
+              children: [],
+            },
+          ],
         },
       ];
     }

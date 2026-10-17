@@ -17,13 +17,14 @@ export function Notes(_props: NotesProps): JSX.Element | null {
 }
 
 /**
- * Returns the presenter notes of `slide`: the children of its {@link Notes}
- * children, or `undefined` if it has none.
+ * Returns the presenter notes of `slide`: its `notes` prop and the children
+ * of its {@link Notes} children, or `undefined` if it has none.
  */
 export function getSlideNotes(slide: ReactNode): ReactNode {
-  if (!isValidElement<{ children?: ReactNode }>(slide)) {
+  if (!isValidElement<{ notes?: ReactNode; children?: ReactNode }>(slide)) {
     return undefined;
   }
+  const { notes: notesProp } = slide.props;
   // Notes are positional children of the slide.
   // eslint-disable-next-line @eslint-react/no-children-to-array
   const notes = Children.toArray(slide.props.children).flatMap((child) =>
@@ -31,5 +32,8 @@ export function getSlideNotes(slide: ReactNode): ReactNode {
       ? [child.props.children]
       : [],
   );
+  if (notesProp !== undefined && notesProp !== null) {
+    notes.unshift(notesProp);
+  }
   return notes.length === 0 ? undefined : notes;
 }

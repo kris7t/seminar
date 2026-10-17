@@ -45,6 +45,17 @@ describe('Notes', () => {
     expect(getSlideNotes(<Slide>a</Slide>)).toBeUndefined();
   });
 
+  it('is taken from the notes prop of slides', () => {
+    expect(getSlideNotes(<Slide notes="b">a</Slide>)).toEqual(['b']);
+    expect(
+      getSlideNotes(
+        <Slide notes="b">
+          <Notes>c</Notes>
+        </Slide>,
+      ),
+    ).toEqual(['b', 'c']);
+  });
+
   it('shows the notes of the current slide instead of on the slide', async () => {
     const user = userEvent.setup();
     renderDeck();

@@ -10,7 +10,7 @@ import type {
   Statement,
 } from 'estree';
 
-import { DECK } from '../utils/jsx.ts';
+import { DECK, NOTES } from '../utils/jsx.ts';
 
 /** Prefix of the names of the components that decks export for their slides. */
 export const SLIDE_EXPORT_PREFIX = '__sliderSlide';
@@ -28,6 +28,14 @@ export function titleExportName(index: number): string {
   return `__sliderTitle${String(index)}`;
 }
 
+/**
+ * Returns the name of the component of the presenter notes of the slide at
+ * `index` of a deck, which slides with notes have.
+ */
+export function notesExportName(index: number): string {
+  return `__sliderNotes${String(index)}`;
+}
+
 function identifier(name: string): Expression {
   return { type: 'Identifier', name };
 }
@@ -43,6 +51,48 @@ function isChildren(property: ObjectExpression['properties'][number]): boolean {
     ((property.key.type === 'Identifier' && property.key.name === 'children') ||
       (property.key.type === 'Literal' && property.key.value === 'children'))
   );
+}
+
+/** Whether `node` is a call that renders the `Notes` of a slide. */
+function isNotesCall(node: Expression | SpreadElement | null): boolean {
+  if (node?.type !== 'CallExpression') {
+    return false;
+  }
+  const [component] = node.arguments;
+  return component?.type === 'Identifier' && component.name === NOTES;
+}
+
+/**
+ * Takes the `Notes` out of the `children` in `props`, removing `children`
+ * if nothing else is left, and returns the content of the notes.
+ */
+function takeNotes(props: ObjectExpression): Expression[] {
+  const index = props.properties.findIndex(isChildren);
+  const children = props.properties[index];
+  if (children?.type !== 'Property') {
+    return [];
+  }
+  const value = children.value as Expression;
+  const elements = value.type === 'ArrayExpression' ? value.elements : [value];
+  const notes = elements.filter(isNotesCall) as CallExpression[];
+  if (notes.length === 0) {
+    return [];
+  }
+  const rest = elements.filter((element) => !isNotesCall(element));
+  if (rest.length === 0) {
+    props.properties.splice(index, 1);
+  } else if (value.type === 'ArrayExpression') {
+    value.elements = rest;
+  } else {
+    children.value = rest[0] as Expression;
+  }
+  return notes.flatMap((call) => {
+    const [, notesProps] = call.arguments;
+    const content = isPropsObject(notesProps)
+      ? notesProps.properties.find(isChildren)
+      : undefined;
+    return content?.type === 'Property' ? [content.value as Expression] : [];
+  });
 }
 
 /** Finds the `children` of the call of the `Deck` in `_createMdxContent`. */
@@ -95,7 +145,10 @@ function findDeck(
  * the slide, e.g., its `id` or range of steps, and with the components of the
  * document, which can be overridden with the `components` prop like for the
  * whole document. The deck renders the components of its slides, with the
- * props of the slides, so that the `Deck` can read them.
+ * props of the slides, so that the `Deck` can read them. The presenter notes
+ * of the slides become their `notes` prop, which the `Deck` reads instead of
+ * the `Notes` among their children, and are exported, too, e.g.,
+ * `__sliderNotes0`.
  *
  * Requires the JSX to be compiled to function calls, i.e., the `jsx` option of
  * MDX to be `false`, and should run after {@link recmaSlideTitles}.
@@ -122,6 +175,16 @@ export function recmaSlideExports(): (tree: Program) => void {
         continue;
       }
       const name = slideExportName(index);
+      // The deck reads the notes from the props of the slide, which also
+      // keeps them from replacing the content of included slides, whose
+      // component gets the props of the slide.
+      const notes = takeNotes(props);
+      const notesValue: Expression | undefined =
+        notes.length === 0
+          ? undefined
+          : notes.length === 1
+            ? notes[0]
+            : { type: 'ArrayExpression', elements: notes };
       // The slide, with the props of the component overriding its own.
       const rendered = structuredClone(slide);
       (rendered.arguments[1] as ObjectExpression).properties.push({
@@ -181,6 +244,30 @@ export function recmaSlideExports(): (tree: Program) => void {
           attributes: [],
         });
       }
+      if (notesValue !== undefined) {
+        exports.push({
+          type: 'ExportNamedDeclaration',
+          declaration: {
+            type: 'FunctionDeclaration',
+            id: { type: 'Identifier', name: notesExportName(index) },
+            params: [{ type: 'Identifier', name: 'props' }],
+            body: {
+              type: 'BlockStatement',
+              body: [
+                ...structuredClone(deck.preamble),
+                {
+                  type: 'ReturnStatement',
+                  argument: structuredClone(notesValue),
+                },
+              ],
+            },
+            generator: false,
+            async: false,
+          },
+          specifiers: [],
+          attributes: [],
+        });
+      }
       // The deck reads the props of its slides, except their content.
       const reference: CallExpression = {
         type: 'CallExpression',
@@ -191,6 +278,19 @@ export function recmaSlideExports(): (tree: Program) => void {
             type: 'ObjectExpression',
             properties: [
               ...props.properties.filter((property) => !isChildren(property)),
+              ...(notesValue === undefined
+                ? []
+                : [
+                    {
+                      type: 'Property' as const,
+                      key: { type: 'Identifier' as const, name: 'notes' },
+                      value: notesValue,
+                      kind: 'init' as const,
+                      method: false,
+                      shorthand: false,
+                      computed: false,
+                    },
+                  ]),
               {
                 type: 'Property',
                 key: { type: 'Identifier', name: 'components' },

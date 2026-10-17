@@ -52,7 +52,7 @@ async function includedSlides(source: string): Promise<SlideSummary[]> {
     const slide = renderSlideExport(child) as ReactElement<
       Record<string, unknown>
     >;
-    const { children, title, ...rest } = slide.props;
+    const { children, title, notes, ...rest } = slide.props;
     // The components of the document are passed to the slide, too.
     const props = Object.fromEntries(
       Object.entries(rest).filter(([key]) => key !== 'components'),
@@ -60,6 +60,7 @@ async function includedSlides(source: string): Promise<SlideSummary[]> {
     return {
       ...props,
       ...(title === undefined ? {} : { title: text(title as ReactNode) }),
+      ...(notes === undefined ? {} : { notes: text(notes as ReactNode) }),
       ...(children === undefined
         ? {}
         : { children: text(children as ReactNode) }),
@@ -94,12 +95,25 @@ describe('::include', () => {
         spare: true,
         to: '1',
         title: 'Details',
+        notes: '<p>Say <em>more</em></p>',
         children: '<Paragraph>Text</Paragraph>',
       },
     ]);
     expect(
       await tocOf('## Mine\n\n::include[./talk.deck.mdx#details]{title=Short}'),
     ).toEqual([{ slide: 0 }, { slide: 1, title: 'Short' }]);
+  });
+
+  it('includes the notes of slides', async () => {
+    const module = await compileHost(
+      '::include[./talk.deck.mdx#details]\n\n::include[./talk.deck.mdx#intro]',
+    );
+    const deck = module.default({}) as ReactElement<{ children: ReactNode }>;
+    const [details, intro] = [deck.props.children].flat() as ReactElement<{
+      notes?: ReactNode;
+    }>[];
+    expect(text(details?.props.notes)).toBe('<p>Say <em>more</em></p>');
+    expect(intro?.props.notes).toBeUndefined();
   });
 
   it('keeps the languages of included slides', async () => {

@@ -95,6 +95,11 @@ export interface SlideProps extends FadeProps {
    * language.
    */
   lang?: string | undefined;
+  /**
+   * Presenter notes of the slide, like the children of `Notes`
+   * children, e.g., for slides whose content comes from another component.
+   */
+  notes?: ReactNode;
   children?: ReactNode;
 }
 
