@@ -13,6 +13,7 @@ import type { SlideTransitions } from '../slide/SlideTransitions.ts';
 import type { SlideStateStore } from '../state/SlideStateStore.ts';
 import type { StepTarget } from '../steps/StepPosition.ts';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';
+import { compareStepPaths } from '../steps/stepRange.ts';
 import {
   formatLocation,
   parseLocation,
@@ -220,10 +221,15 @@ export function useDeckNavigation(
       const from = shownIndexRef.current;
       const duration =
         transition && index !== from ? (fades?.slideFade(from, index) ?? 0) : 0;
-      if (transitions !== undefined && duration > 0) {
-        transitions.run(update, 'slide', duration);
-      } else {
+      if (transitions === undefined) {
         update();
+      } else {
+        transitions.change(update, {
+          kind: 'slide',
+          duration,
+          forward: index >= from,
+          slideIndex: index,
+        });
       }
     },
     [transitions, fades],
@@ -262,10 +268,18 @@ export function useDeckNavigation(
         (target === undefined ? undefined : stepStore.getFade(target)) ??
         fades?.stepFade(shownIndexRef.current) ??
         0;
-      if (transitions !== undefined && duration > 0) {
-        transitions.run(update, 'step', duration);
-      } else {
+      if (transitions === undefined) {
         update();
+      } else {
+        transitions.change(update, {
+          kind: 'step',
+          duration,
+          forward:
+            target === undefined ||
+            compareStepPaths(target, stepStore.getPath()) >= 0,
+          slideIndex: shownIndexRef.current,
+          path: target,
+        });
       }
     },
     [transitions, fades, stepStore],

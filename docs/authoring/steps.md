@@ -114,17 +114,21 @@ changes, e.g., moving a marker along a path, should follow these guidelines:
   effects. The presenter can jump to any step, e.g., from the overview, the
   step tree, or a recap, where the component must show the end state right
   away.
-- **Animate only where the slide is presented.** Thumbnails, previews, and
-  probes show a step as it ends: animate only when `useSlideView().animated`
-  is true, which also respects reduced motion.
+- **Time animations by the step change.** `useStepTransition()` returns the
+  `duration` and `easing` of the fade to the current step, e.g., for
+  `transition: transform ${duration}ms ${easing}`. It follows the fades that
+  the steps, the slide, and the theme set, so a slow step slows the animation,
+  too. The duration is 0 where the slide changes at once: for cuts, in
+  thumbnails, previews, and probes, for reduced motion, and when the
+  presenter jumps to a step, e.g., from the overview.
 - **Keep animations short and interruptible.** Presenters step quickly, e.g.,
   by holding an arrow key. CSS transitions continue from where they are when
   the step changes again, while timers and long animations fall behind.
-- **Use the timing of the theme.** Take durations and easings from the
-  theme, e.g., from its `stepTransition`, or from `theme.transitions`, e.g.,
-  `theme.transitions.create('transform')`, so that themes can change them.
-- **Respect reduced motion.** `animated` is false when the viewer prefers
-  reduced motion, as the fades of the slide are.
+- **Set the timing with the steps.** A component that needs more time sets
+  the fade of its own steps, e.g., `useStep({ fades: { fade: 500 } })`,
+  which slows the fade of the slide along with it.
+- **Respect reduced motion.** `useStepTransition` already does. Other
+  animations, e.g., ones that loop, should check `useSlideView().animated`.
 - **Keep views in step.** The audience window and the presenter view render
   the slide separately, so an animation must not depend on state of its own,
   like a random start or the time it mounted, but only on the steps and the
@@ -139,18 +143,19 @@ element shows how it is right away, and its own transitions play out in
 full. It still fades with the slide when the slide changes.
 
 ```tsx
-import { useOwnAnimation, useStep } from '@slider/core';
+import { useOwnAnimation, useStep, useStepTransition } from '@slider/core';
 
 export function Marker() {
   const step = useStep({ group: 'parse' });
   const ownAnimation = useOwnAnimation();
+  const { duration, easing } = useStepTransition();
   return (
     <div ref={step.ref}>
       <div
         style={{
           ...ownAnimation,
           transform: step.isActive ? 'translateX(200px)' : 'none',
-          transition: 'transform 300ms',
+          transition: `transform ${duration}ms ${easing}`,
         }}
       />
     </div>
@@ -165,7 +170,9 @@ slide.
 
 The `Pipeline` component of the example deck shows this: its stages join the
 step groups of the list items on the slide, and light up with them, fading
-with the slide, while a marker moves from stage to stage on its own.
+with the slide, while a marker moves from stage to stage on its own. One of
+the items has `fadeBefore=800`, which slows both the fade and the marker
+between it and the step before it.
 
 ## Showing several steps together
 

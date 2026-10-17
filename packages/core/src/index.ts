@@ -83,6 +83,10 @@ export {
   type SlideViewState,
 } from './slide/SlideViewContext.ts';
 export {
+  useStepTransition,
+  type StepTransition,
+} from './slide/useStepTransition.ts';
+export {
   getFadeTransition,
   useOwnAnimation,
   type FadeTransition,

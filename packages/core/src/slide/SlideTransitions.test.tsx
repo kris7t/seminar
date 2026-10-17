@@ -1,4 +1,4 @@
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,6 +10,7 @@ import { Step } from '../steps/Step.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import type { CutProp } from './fades.ts';
 import { Slide } from './Slide.tsx';
+import { useStepTransition } from './useStepTransition.ts';
 
 import {
   DURATION_PROPERTY,
@@ -405,6 +406,50 @@ describe('SlideTransitions', () => {
           </Slide>,
         ),
       ).toEqual(['400ms']);
+    });
+
+    describe('useStepTransition', () => {
+      function Timing() {
+        const { duration, forward } = useStepTransition();
+        return (
+          <output data-testid="timing">{`${String(duration)} ${forward ? 'forward' : 'back'}`}</output>
+        );
+      }
+
+      function renderTiming() {
+        render(
+          <Deck>
+            <Slide title="Steps">
+              <Timing />
+              <Step fade={300}>A</Step>
+              <Step cut>B</Step>
+            </Slide>
+          </Deck>,
+        );
+        return () => screen.getByTestId('timing').textContent;
+      }
+
+      it('follows the fades of the steps', async () => {
+        const started = fakeTransitions(document);
+        const timing = renderTiming();
+        const user = userEvent.setup();
+        expect(timing()).toBe('0 forward');
+        await user.keyboard('{ArrowRight}');
+        await started.at(-1)?.capture();
+        expect(timing()).toBe('300 forward');
+        await started.at(-1)?.end();
+        // Cut.
+        await user.keyboard('{ArrowRight}');
+        expect(timing()).toBe('0 forward');
+        await user.keyboard('{ArrowLeft}');
+        expect(timing()).toBe('0 back');
+      });
+
+      it('is 0 without view transitions', async () => {
+        const timing = renderTiming();
+        await userEvent.setup().keyboard('{ArrowRight}');
+        expect(timing()).toBe('0 forward');
+      });
     });
 
     it('changes steps at once without a duration', async () => {

@@ -119,6 +119,19 @@ export function useOwnAnimation(): CSSProperties {
   };
 }
 
+/** A change of the slide or its steps, see {@link SlideTransitions.change}. */
+export interface SlideChange {
+  kind: SlideTransitionKind;
+  /** How long the slide fades, in milliseconds, or 0 if it changes at once. */
+  duration: number;
+  /** Whether the change goes to a later slide or step. */
+  forward: boolean;
+  /** Index of the slide shown after the change. */
+  slideIndex: number;
+  /** The step shown after a change of `kind` `'step'`. */
+  path?: readonly number[] | undefined;
+}
+
 /** Safety net for update callbacks that the browser doesn't call. */
 const UPDATE_TIMEOUT = 1000;
 
@@ -187,6 +200,8 @@ export class SlideTransitions {
   readonly #listeners = new Set<() => void>();
   /** Applies the update of the last transition, if it hasn't been yet. */
   #pending: (() => void) | undefined;
+  #change: SlideChange | undefined;
+  readonly #changeListeners = new Set<() => void>();
 
   /**
    * Fades `frame`, an element that shows a slide, when steps change. The
@@ -224,6 +239,54 @@ export class SlideTransitions {
     this.#pending?.();
   }
 
+  /** The last change made with {@link change}, once it's rendered. */
+  getChange = (): SlideChange | undefined => this.#change;
+
+  /** Calls `listener` when the last change made with {@link change} renders. */
+  subscribeToChanges = (listener: () => void): (() => void) => {
+    this.#changeListeners.add(listener);
+    return () => {
+      this.#changeListeners.delete(listener);
+    };
+  };
+
+  /**
+   * Changes the slides with `update`, e.g., to go to the next step, fading
+   * them for the `duration` of `change`, if it's positive and the frames can
+   * fade, and changing them at once otherwise. Components follow the change
+   * with {@link getChange} as it renders, e.g., to animate along, where the
+   * duration is 0 if the slides change at once.
+   */
+  change(update: () => void, change: SlideChange): void {
+    this.flush();
+    const fades = change.duration > 0 && this.#fadingFrames().length > 0;
+    const apply = () => {
+      this.#change = fades ? change : { ...change, duration: 0 };
+      for (const listener of this.#changeListeners) {
+        listener();
+      }
+      update();
+    };
+    if (fades) {
+      this.run(apply, change.kind, change.duration);
+    } else {
+      apply();
+    }
+  }
+
+  /** The frames that can fade now. */
+  #fadingFrames(): HTMLElement[] {
+    return [...this.#frames].filter((frame) => {
+      const scopable = frame as ScopableElement;
+      return (
+        frame.isConnected &&
+        !prefersReducedMotion(frame) &&
+        (typeof scopable.startViewTransition === 'function' ||
+          typeof frame.ownerDocument.startViewTransition === 'function')
+      );
+    });
+  }
+
   /** Ends the running transitions right away, e.g., for a click. */
   skip(): void {
     this.flush();
@@ -244,9 +307,7 @@ export class SlideTransitions {
   ): void {
     // Keep the order of the updates, if the previous one is still waiting.
     this.flush();
-    const frames = [...this.#frames].filter(
-      (frame) => frame.isConnected && !prefersReducedMotion(frame),
-    );
+    const frames = this.#fadingFrames();
     if (frames.length === 0) {
       update();
       return;
