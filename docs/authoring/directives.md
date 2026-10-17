@@ -89,10 +89,10 @@ explicitly to set them.
 
 ## Guidelines
 
-- Keep directive components thin: map the directive to a React component
-  with a clean JSX API, like `CalloutDirective` does for `Callout`, rather
-  than putting Markdown concerns in the component used from JSX.
-- Pass on the remaining props to a `Step`, so that `:step` attributes work on
-  the directive, see [Steps in components](steps.md).
-- Use a lowercase, short name, like the HTML element it stands for, e.g.,
-  `column`, and the plural for its wrapper, e.g., `columns`.
+- **Keep directive components thin.** Map the directive to a component with
+  a clean JSX API, like `CalloutDirective` does for `Callout`. Keep Markdown
+  details out of the component itself.
+- **Pass the other props on to a `Step`.** Then `:step` attributes work on
+  the directive. See [Steps in components](steps.md).
+- **Use short, lowercase names.** Name it like the HTML element it stands
+  for, like `column`, and its wrapper in the plural, like `columns`.

@@ -25,31 +25,25 @@ The pages:
 
 ## Guidelines
 
-In short, a well-behaved slide component:
+A good slide component follows these rules:
 
-- **Renders the same in every view.** A slide is rendered several times at
-  once, e.g., for the audience, in the presenter view, and in thumbnails.
-  Keep state that should be shared in `useSlideState`, not `useState`.
-- **Doesn't use global ids.** Use the names of the slide, e.g.,
-  `useSlideElementId`, so that several renderings of a slide don't clash.
-- **Measures in slide pixels.** Slides are 1280 × 720 logical pixels,
-  scaled to fit the screen. Use `useSlideBox`, rather than
-  `getBoundingClientRect`, to measure elements.
-- **Is ready when the slide changes.** Measure in layout effects or with
-  `useMeasure`, and hold the change with `useTransitionHold` while loading,
-  so that the slide doesn't flash in an unfinished state.
-- **Takes part in steps through `Step`.** Wrap content in `Step` with a
-  `defaultAttachment`, rather than reimplementing placement, so that `:step`
-  attributes work on it.
-- **Accepts strings for every prop that a directive may set.** Directive
-  attributes are strings, and bare flags are empty strings.
-- **Can be themed.** Read props with `useThemeProps`, use styled slots with
-  classes, and register the component name with the MUI theme.
-- **Animates from the step state.** The slide already fades between steps,
-  so components don't fade steps themselves. Other animations follow the
-  current step with CSS transitions, timed by `useStepTransition`, and stay
-  out of the fade of the slide with `useOwnAnimation`. See
-  [Animations](steps.md#animations).
-- **Does heavy work in one view.** The interactive view owns expensive state,
-  like a simulation, and shares its results through slide state, while the
-  audience window still renders in full. Thumbnails can be lighter.
+- **Keep shared state in `useSlideState`.** Each slide is rendered several
+  times at once: for the audience, in the presenter view, and as thumbnails.
+  With `useState`, each copy would have its own state.
+- **Don't use global ids.** Several copies of a slide can be on the page at
+  once. Get ids from `useSlideElementId`.
+- **Measure in slide pixels.** Slides are 1280 × 720 pixels, scaled to fit
+  the screen. Use `useSlideBox` instead of `getBoundingClientRect`.
+- **Be ready before the slide is shown.** Measure in layout effects or with
+  `useMeasure`. While loading, hold the change with `useTransitionHold`. See
+  [Waiting until the slide is ready](components.md#waiting-until-the-slide-is-ready).
+- **Use `Step` for steps.** Wrap the component in a `Step`, and set where it
+  goes with `defaultAttachment`. Then `:step` attributes work on it.
+- **Accept strings for props that a directive may set.** Directive
+  attributes are always strings, and a bare flag is an empty string.
+- **Make it themeable.** Read props with `useThemeProps`, and build its
+  parts with `styled`. See [Theming components](themes.md#theming-components).
+- **Animate from the current step.** Don't fade steps yourself, since the
+  slide already fades. See [Animations](steps.md#animations).
+- **Do heavy work in one view.** Run expensive work, like a simulation, only
+  in the interactive view, and share the results through slide state.
