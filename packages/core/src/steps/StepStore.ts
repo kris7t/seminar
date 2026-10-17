@@ -540,8 +540,9 @@ export class StepStore {
   /**
    * Returns how long the slide fades from the current step to `target`, as
    * the steppers whose turn starts or ends say (see the `fade` of `Step`):
-   * the most explicit of the fades they set for the sides crossed, or the
-   * shortest of those, or `undefined` if they set none.
+   * of the most explicit of the fades they set for the sides crossed, 0 if
+   * one of those cuts, or else the longest one, or `undefined` if they set
+   * none.
    */
   getFade(target: StepPath): number | undefined {
     const from = this.getPath();

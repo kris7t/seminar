@@ -168,8 +168,9 @@ A step change crosses the same sides as a slide change. Going forward:
 - the steps whose turn ends cross their `out` and `after` sides,
 - the steps whose turn starts cross their `in` and `before` sides.
 
-Nested steps and every step of a group count. As for slides, the most
-specific duration wins, then the shorter one.
+Nested steps and every step of a group count. As for slides, only the most
+specific durations and cuts count. Of those, a cut wins, or else the longest
+duration, so that every step gets at least the time it asks for.
 
 If no step sets a duration, `fade` on the slide decides, then its master's,
 then the theme's. A slide's `cut` and side fades don't affect its steps.

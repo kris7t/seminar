@@ -113,8 +113,15 @@ rules:
   `easing`, like `transition: transform ${duration}ms ${easing}`. The
   duration is 0 whenever the step should change at once, so you don't have
   to check for that yourself.
-- **Set the fade of your step to take more time.** For example,
-  `useStep({ fades: { fade: 500 } })`. The slide then fades slower, too.
+- **Ask for the time your animation needs.** Set the fade of your step to
+  the shortest time in which the animation still explains what changes,
+  e.g., `useStep({ fades: { fade: 500 } })`. Steps that change at the same
+  time can only make it longer, and the slide fades as long, too.
+- **Expect a duration of 0 anyway.** The author can cut the step, and the
+  presenter can skip it, so the component must also work without its
+  animation. Don't cut steps yourself to make them fast: leave out the fade
+  to take the time of the theme, or ask for 0, which other steps can
+  outweigh.
 - **Keep animations in JavaScript in step.** CSS transitions and animations
   do this by themselves. Animations in JavaScript, like drawing on a canvas,
   should:

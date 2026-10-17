@@ -27,7 +27,9 @@ import { SlideViewContext } from './SlideViewContext.ts';
  * `slideTransition` of the theme. Going from one slide to another, the most
  * explicit of the durations that the slides set for the sides crossed wins:
  * one side of a slide, all of its sides, one side of its master, and all
- * sides of its master, in this order, or the shortest one of those.
+ * sides of its master, in this order. Of equally explicit ones, a cut wins,
+ * or else the longest one, so that every slide gets at least the time it
+ * asks for.
  */
 export interface SlideProps extends FadeProps {
   /**

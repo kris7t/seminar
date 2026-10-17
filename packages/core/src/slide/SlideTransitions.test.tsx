@@ -612,7 +612,22 @@ describe('SlideTransitions', () => {
           </Slide>,
           ['{ArrowRight}', '{ArrowRight}', '{ArrowRight}'],
         ),
-      ).toEqual(['150ms', '150ms', '200ms']);
+      ).toEqual(['150ms', '150ms', '400ms']);
+    });
+
+    it('cuts whatever other steps say, unlike fades of no time', async () => {
+      expect(
+        await stepDurations(
+          <Slide title="Steps">
+            <Step fadeOut={400}>A</Step>
+            <Step fadeIn={0} fadeOut={400}>
+              B
+            </Step>
+            <Step cut>C</Step>
+          </Slide>,
+          ['{ArrowRight}', '{ArrowRight}', '{ArrowRight}'],
+        ),
+      ).toEqual(['150ms', '400ms', 'cut']);
     });
 
     it('falls back to the fade of the slide', async () => {

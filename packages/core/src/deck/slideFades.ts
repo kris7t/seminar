@@ -70,8 +70,8 @@ export function getStepFade(
 /**
  * Returns how long the slide `from` fades into the slide `to`, which comes
  * after it in the deck if `forward`: the most explicit of the fades that
- * either of them sets for the sides crossed, or the shortest of those, or
- * `undefined` for that of the theme. 0 cuts.
+ * either of them sets for the sides crossed, 0 if one of those cuts, or else
+ * the longest of those, or `undefined` for that of the theme.
  */
 export function getFadeBetween(
   from: ReactNode,

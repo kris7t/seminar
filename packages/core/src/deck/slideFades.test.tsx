@@ -27,8 +27,15 @@ describe('getFadeBetween', () => {
     expect(between({}, { fade: '300' })).toBe(300);
   });
 
-  it('takes the shorter of equally explicit fades', () => {
-    expect(between({ fade: 300 }, { fade: 100 })).toBe(100);
+  it('takes the longer of equally explicit fades', () => {
+    expect(between({ fade: 300 }, { fade: 100 })).toBe(300);
+  });
+
+  it("doesn't cut with fades of no time", () => {
+    expect(between({ fade: 300 }, { fade: 0 })).toBe(300);
+    expect(between({}, { fadeIn: 0 })).toBe(0);
+    // Less explicit than the side of the other slide.
+    expect(between({ fadeAfter: 300 }, { fade: 0 })).toBe(300);
   });
 
   it('prefers the fades of the sides crossed', () => {
@@ -44,11 +51,12 @@ describe('getFadeBetween', () => {
     expect(between({ fade: 300 }, { master: Master })).toBe(300);
   });
 
-  it('cuts with fades of no time', () => {
+  it('cuts whatever equally explicit fades say', () => {
     expect(between({}, { cut: true })).toBe(0);
     expect(between({ cut: 'after' }, {})).toBe(0);
     expect(between({ cut: 'after' }, {}, false)).toBeUndefined();
     expect(between({ fadeOut: 300 }, { cut: 'before' })).toBe(0);
+    expect(between({ fadeAfter: 600 }, { cut: true })).toBe(0);
   });
 
   it('lets slides override the cuts of their master', () => {

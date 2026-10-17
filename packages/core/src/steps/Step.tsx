@@ -291,7 +291,9 @@ const StepRoot = styled('div', {
  * one step to another, e.g., to a later one, ends the turn of the steps
  * shown after them, and starts the turn of the steps shown before them. Of
  * the fades that these steps set for the sides crossed, the most explicit
- * one wins, or the shortest of those, and otherwise the `fade` of the slide.
+ * ones count: a cut wins, or else the longest one, so that every step gets
+ * at least the time it asks for, e.g., for an animation. Otherwise, the
+ * `fade` of the slide counts.
  *
  * Can be themed as `SliderStep` in the `components` of the MUI theme. The step
  * has a class for its phase (`SliderStep-distantFuture`, `-future`,

@@ -97,7 +97,7 @@ bare words. So `## Total {count}` uses the master `count`, while
 ## Fades between slides
 
 By default, slides cut to the next one, and steps fade in. Themes can change
-this. Slides can override it with these attributes, in milliseconds:
+this. Slides can ask for fades of at least these durations, in milliseconds:
 
 | Attribute      | Duration of                              |
 | -------------- | ---------------------------------------- |
@@ -107,15 +107,17 @@ this. Slides can override it with these attributes, in milliseconds:
 | `fadeBefore=…` | fading to or from the slide before it    |
 | `fadeAfter=…`  | fading to or from the slide after it     |
 
-`cut` stands for a fade of 0 ms. It doesn't affect the steps of the slide.
+`cut` changes the slide at once instead, whatever the other slide asks for,
+e.g., for a slide with a background of its own. It doesn't affect the steps
+of the slide.
 
-| Attribute    | Same as            |
-| ------------ | ------------------ |
-| `cut`        | 0 ms on every side |
-| `cut=in`     | `fadeIn=0`         |
-| `cut=out`    | `fadeOut=0`        |
-| `cut=before` | `fadeBefore=0`     |
-| `cut=after`  | `fadeAfter=0`      |
+| Attribute    | Changes at once                |
+| ------------ | ------------------------------ |
+| `cut`        | on every side                  |
+| `cut=in`     | into the slide                 |
+| `cut=out`    | out of the slide               |
+| `cut=before` | to or from the slide before it |
+| `cut=after`  | to or from the slide after it  |
 
 Sides can be combined, e.g., `{cut="in after"}`.
 
@@ -133,15 +135,17 @@ Going forward, the deck leaves a slide through its `out` and `after` sides,
 and enters the next one through its `in` and `before` sides. Going back, it
 uses `before` and `after` the other way around.
 
-Both slides may set a duration for these sides. The most specific one wins:
+Both slides may set a duration or a cut for these sides. Only the most
+specific ones count:
 
-1. a side of the slide, like `fadeIn` or `cut=in`,
-2. the whole slide, like `fade` or `cut`,
+1. a side of the slide, like `fadeIn` or `cut=in`, and a bare `cut`,
+2. the whole slide, like `fade`,
 3. a side of its master,
 4. the whole master.
 
-If two durations are equally specific, the shorter one wins. So a cut wins
-over a fade at the same level.
+Of those, a cut wins. Otherwise, the longest duration wins, so that both
+slides get at least the time they ask for. A duration of 0 asks for no
+time, but doesn't cut: `fade=0` and `fade=300` fade for 300 ms.
 
 A slide's own `cut`, even `cut=false`, replaces the cut of its master.
 

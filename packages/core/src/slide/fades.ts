@@ -7,13 +7,13 @@
  * - `'in'` and `'out'`: into or out of it, from or to either side.
  *
  * Going from one slide or step to another, e.g., a later one, leaves the
- * first one after it, and enters the other one before it. A cut of a side is
- * a fade of no time on that side, e.g., `cut=in` is `fadeIn=0`.
+ * first one after it, and enters the other one before it.
  */
 export type FadeSide = 'before' | 'after' | 'in' | 'out';
 
 /**
- * Which fades of a slide or step to cut: all of them with `true`, or the
+ * Which fades of a slide or step to cut, i.e., to change at once, whatever
+ * other slides or steps ask for: all of them with `true`, or the
  * empty string of a bare `cut` in MDX, e.g., for a slide with a background of
  * its own, none with `false`, or some sides (see {@link FadeSide}), e.g.,
  * `'in'`, `['in', 'after']`, or `'in after'` in an attribute of MDX.
@@ -22,11 +22,12 @@ export type CutProp =
   boolean | '' | FadeSide | readonly FadeSide[] | `${FadeSide} ${string}`;
 
 /**
- * Props that set how long the fades of a slide or step take, in
- * milliseconds, e.g., `300`, or `'300'` from MDX.
+ * Props that set how long the fades of a slide or step take at least, in
+ * milliseconds, e.g., `300`, or `'300'` from MDX. A duration of 0 asks for
+ * no time, unlike a cut.
  */
 export interface FadeProps {
-  /** Which fades to cut, i.e., to take no time (see {@link CutProp}). */
+  /** Which fades to cut, i.e., to change at once (see {@link CutProp}). */
   cut?: CutProp | undefined;
   /** Duration of the fades on all sides. */
   fade?: number | string | undefined;
@@ -109,18 +110,19 @@ export function sidesOf(leaving: boolean, forward: boolean): FadeSide[] {
 }
 
 /**
- * A duration of fades in milliseconds that applies to a change, and how
- * explicitly it's set: the higher the rank, the more explicit.
+ * A duration of fades in milliseconds that applies to a change, or a cut,
+ * and how explicitly it's set: the higher the rank, the more explicit.
  */
 export interface Fade {
   duration: number;
   rank: number;
+  cut?: boolean | undefined;
 }
 
 /**
  * Returns the fades that `props` set for `sides`: those of the sides with
- * `rank + 1`, and `fade` with `rank`. Cuts are fades of no time on their
- * sides, and `cuts` replaces the `cut` of `props`, if given.
+ * `rank + 1`, and `fade` with `rank`. Cuts are on their sides, even those of
+ * a bare `cut`, and `cuts` replaces the `cut` of `props`, if given.
  */
 export function fadesOf(
   props: FadeValues,
@@ -128,28 +130,30 @@ export function fadesOf(
   rank: number,
   cuts: Cuts = parseCuts(props.cut) ?? NO_CUTS,
 ): Fade[] {
+  const fade = (duration: number | undefined, fadeRank: number) =>
+    duration === undefined ? [] : [{ duration, rank: fadeRank }];
   return [
-    ...sides.map((side) => ({
-      duration:
-        cuts.has('all') || cuts.has(side)
-          ? 0
-          : parseDuration(props[SIDE_FADES[side]]),
-      rank: rank + 1,
-    })),
-    { duration: parseDuration(props.fade), rank },
-  ].flatMap(({ duration, rank: fadeRank }) =>
-    duration === undefined ? [] : [{ duration, rank: fadeRank }],
-  );
+    ...sides.flatMap((side) =>
+      cuts.has('all') || cuts.has(side)
+        ? [{ duration: 0, rank: rank + 1, cut: true }]
+        : fade(parseDuration(props[SIDE_FADES[side]]), rank + 1),
+    ),
+    ...fade(parseDuration(props.fade), rank),
+  ];
 }
 
 /**
- * Returns the most explicit of `fades`, or the shortest of the most explicit
- * ones, or `undefined` if there are none.
+ * Returns the duration of the most explicit of `fades`: 0 if one of them
+ * cuts, or else the longest of them, so that every slide or step gets at
+ * least the time it asks for, or `undefined` if there are none.
  */
 export function pickFade(fades: readonly Fade[]): number | undefined {
   const rank = Math.max(...fades.map((fade) => fade.rank));
-  const durations = fades
-    .filter((fade) => fade.rank === rank)
-    .map((fade) => fade.duration);
-  return durations.length === 0 ? undefined : Math.min(...durations);
+  const explicit = fades.filter((fade) => fade.rank === rank);
+  if (explicit.length === 0) {
+    return undefined;
+  }
+  return explicit.some((fade) => fade.cut === true)
+    ? 0
+    : Math.max(...explicit.map((fade) => fade.duration));
 }
