@@ -154,19 +154,23 @@ export function useWheelNavigation(
     },
     [next, previous],
   );
-  // While the slide fades, the browser sends the wheel to the transition
-  // rather than to the element under the pointer, so wheels over the box of
-  // the element that last got one go to it.
+  // While the slide fades, the browser sends the wheel to the transition,
+  // i.e., to an element enclosing the slide, rather than to the element under
+  // the pointer. Browsers keep sending a scroll to where it started until the
+  // mouse moves, even after the transition ends. So wheels sent to an element
+  // enclosing the element that last got one, over its box, go to it.
   useEffect(() => {
     if (transitions === undefined) {
       return undefined;
     }
     const onWindowWheel = (event: globalThis.WheelEvent) => {
       const container = containerRef.current;
+      const { target } = event;
       if (
-        !transitions.running ||
         container === undefined ||
-        (event.target instanceof Node && container.contains(event.target))
+        !(target instanceof Node) ||
+        target === container ||
+        !target.contains(container)
       ) {
         return;
       }
