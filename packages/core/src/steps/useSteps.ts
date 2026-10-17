@@ -13,7 +13,7 @@ import {
   type RankedAppearances,
 } from './stepAppearance.ts';
 import { StepNode, type StepPhase, type StepStatus } from './StepStore.ts';
-import type { FadeProps, FadeValues } from '../slide/fades.ts';
+import type { FadeProps, FadeValues } from '../transitions/fades.ts';
 import { StepStoreContext } from './StepStoreContext.ts';
 
 /** State of a stepper. */

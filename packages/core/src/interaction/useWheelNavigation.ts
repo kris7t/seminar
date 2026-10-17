@@ -6,7 +6,7 @@ import {
   type WheelEventHandler,
 } from 'react';
 
-import type { SlideTransitions } from '../slide/SlideTransitions.ts';
+import type { SlideTransitions } from '../transitions/SlideTransitions.ts';
 import { getInteraction } from './interaction.ts';
 
 /** How far to scroll to go to another step, in pixels. */

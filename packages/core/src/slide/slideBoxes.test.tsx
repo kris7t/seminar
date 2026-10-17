@@ -2,7 +2,7 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SLIDE_VIEW_ATTRIBUTE } from './SlideViewContext.ts';
+import { SLIDE_VIEW_ATTRIBUTE } from '../view/SlideViewContext.ts';
 import { parseSlidePoint, useSlideBox, useSlidePoint } from './slideBoxes.ts';
 
 function rect(x: number, y: number, width: number, height: number): DOMRect {

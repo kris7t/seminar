@@ -14,7 +14,7 @@ import {
 } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
-import { classNames } from '../utils/classNames.ts';
+import { classNames } from '../theme/classNames.ts';
 import {
   ALWAYS_SHOWN,
   appearanceClass,

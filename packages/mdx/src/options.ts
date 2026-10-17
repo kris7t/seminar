@@ -11,11 +11,11 @@ import {
 import { recmaSlideExports } from './deck/recmaSlideExports.ts';
 import { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
 import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts';
-import { remarkImages } from './images/remarkImages.ts';
-import { remarkNotes } from './notes/remarkNotes.ts';
+import { remarkImages } from './content/remarkImages.ts';
+import { remarkNotes } from './deck/remarkNotes.ts';
 import { directiveHandlers } from './directives/directiveHandlers.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
-import { rehypeSlideElements } from './elements/rehypeSlideElements.ts';
+import { rehypeSlideElements } from './content/rehypeSlideElements.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
 import { remarkSteps } from './steps/remarkSteps.ts';
 import {

@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
-import { Step } from './Step.tsx';
-import { Steps } from './Steps.tsx';
+import { Step } from '../steps/Step.tsx';
+import { Steps } from '../steps/Steps.tsx';
 
 function renderDeck(props: { defaultShowToc?: boolean } = {}) {
   return render(

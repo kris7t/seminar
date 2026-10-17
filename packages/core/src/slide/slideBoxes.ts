@@ -2,8 +2,8 @@ import { useState } from 'react';
 
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import { useSlideElement } from './SlideElements.tsx';
-import { useMeasure } from './settling.ts';
-import { SLIDE_VIEW_ATTRIBUTE } from './SlideViewContext.ts';
+import { useMeasure } from '../transitions/settling.ts';
+import { SLIDE_VIEW_ATTRIBUTE } from '../view/SlideViewContext.ts';
 
 /** A box in the logical pixels of a slide, from its top left corner. */
 export interface SlideBox {

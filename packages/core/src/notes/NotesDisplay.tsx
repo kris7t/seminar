@@ -2,15 +2,15 @@ import { Box, ButtonBase } from '@mui/material';
 import { useState, type JSX, type ReactNode, type RefCallback } from 'react';
 
 import { useT } from '../i18n/UiLanguageContext.ts';
-import type { Size } from '../deck/useFitScale.ts';
+import type { Size } from '../view/useFitScale.ts';
 import {
   INTERACTIVE_ATTRIBUTE,
   SELECTABLE_ATTRIBUTE,
 } from '../interaction/interaction.ts';
 import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
-import { useMeasure } from '../slide/settling.ts';
+import { useMeasure } from '../transitions/settling.ts';
 import { SLIDE_HEIGHT } from '../theme/createSlideTheme.ts';
-import { useFullscreen } from './useFullscreen.ts';
+import { useFullscreen } from '../presentation/useFullscreen.ts';
 
 /** Styles of the contents of notes, which may be Markdown. */
 const NOTES_STYLES = {

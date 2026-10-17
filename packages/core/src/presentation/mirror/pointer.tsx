@@ -11,10 +11,10 @@ import {
 import { generateUtilityClasses } from '@mui/material';
 import { styled, useThemeProps } from '@mui/material/styles';
 
-import type { SlideTransitions } from '../slide/SlideTransitions.ts';
-import type { ComponentTheme } from '../theme/ComponentTheme.ts';
-import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
-import { isTextField } from './mirror/interactionState.ts';
+import type { SlideTransitions } from '../../transitions/SlideTransitions.ts';
+import type { ComponentTheme } from '../../theme/ComponentTheme.ts';
+import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../../theme/createSlideTheme.ts';
+import { isTextField } from './interactionState.ts';
 
 /**
  * Shapes of the mouse cursor that the mirrored pointer can show. Others are

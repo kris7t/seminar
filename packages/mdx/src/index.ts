@@ -31,7 +31,7 @@ export {
   type LoadedSliderConfig,
   type LoadedThemeConfig,
   type ModuleImporter,
-} from './math/themeConfig.ts';
+} from './config/themeConfig.ts';
 export { sliderMdxOptions, type SliderMdxOptions } from './options.ts';
 export {
   recmaSlideExports,

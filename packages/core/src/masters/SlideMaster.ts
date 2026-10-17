@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
 
-import type { CutProp } from '../slide/fades.ts';
+import type { CutProp } from '../transitions/fades.ts';
 
 /** Props passed from a {@link Slide} to its slide master. */
 export interface SlideMasterProps {

@@ -1,4 +1,4 @@
-import type { Size } from '../deck/useFitScale.ts';
+import type { Size } from '../view/useFitScale.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 
 /**

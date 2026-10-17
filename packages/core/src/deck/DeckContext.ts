@@ -1,6 +1,6 @@
 import { createContext, use, type Context } from 'react';
 
-import type { ResolvedTocEntry } from '../toc/tableOfContents.ts';
+import type { ResolvedTocEntry } from './tableOfContents.ts';
 import type { GoToOptions, GoToSteps } from './useDeckNavigation.ts';
 
 export interface DeckState {

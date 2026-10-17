@@ -3,7 +3,7 @@ export type {
   DirectiveForm,
   MathConfig,
   SliderConfig,
-} from './config/SliderConfig.ts';
+} from './SliderConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
 export type { GoToOptions, GoToSteps } from './deck/useDeckNavigation.ts';
@@ -13,7 +13,7 @@ export type {
   SlideMasterProps,
   SlideMasters,
 } from './masters/SlideMaster.ts';
-export type { CutProp, FadeProps, FadeSide } from './slide/fades.ts';
+export type { CutProp, FadeProps, FadeSide } from './transitions/fades.ts';
 export {
   ContentMaster,
   contentMasterClasses,
@@ -43,7 +43,7 @@ export {
   formulaClasses,
   type FormulaClassKey,
   type FormulaProps,
-} from './formula/Formula.tsx';
+} from './content/Formula.tsx';
 export { Notes, type NotesProps } from './notes/Notes.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
 export {
@@ -62,7 +62,7 @@ export {
   useMeasure,
   useTransitionHold,
   type TransitionHoldOptions,
-} from './slide/settling.ts';
+} from './transitions/settling.ts';
 export {
   SlideElement,
   useSlideElement,
@@ -86,18 +86,18 @@ export {
   type SlideView,
   type SlideViewKind,
   type SlideViewState,
-} from './slide/SlideViewContext.ts';
+} from './view/SlideViewContext.ts';
 export {
   useStepTransition,
   type StepTransition,
-} from './slide/useStepTransition.ts';
+} from './transitions/useStepTransition.ts';
 export {
   getFadeTransition,
   SETTLE_DEADLINE,
   useOwnAnimation,
   type FadeTransition,
   type SlideTransitionKind,
-} from './slide/SlideTransitions.ts';
+} from './transitions/SlideTransitions.ts';
 export {
   SlideNumber,
   slideNumberClasses,
@@ -150,7 +150,7 @@ export {
   type UseStepsOptions,
 } from './steps/useSteps.ts';
 export type { ComponentTheme } from './theme/ComponentTheme.ts';
-export type { TocEntry } from './toc/tableOfContents.ts';
+export type { TocEntry } from './deck/tableOfContents.ts';
 export {
   createSlideTheme,
   defaultSlideTheme,

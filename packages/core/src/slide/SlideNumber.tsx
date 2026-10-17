@@ -8,9 +8,9 @@ import {
 import type { JSX } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
-import { classNames } from '../utils/classNames.ts';
+import { classNames } from '../theme/classNames.ts';
 import { useDeck } from '../deck/DeckContext.ts';
-import { useSlideView } from './SlideViewContext.ts';
+import { useSlideView } from '../view/SlideViewContext.ts';
 
 export interface SlideNumberProps {
   className?: string;

@@ -8,7 +8,7 @@ import {
   type SetStateAction,
 } from 'react';
 
-import { useSlideView } from '../slide/SlideViewContext.ts';
+import { useSlideView } from '../view/SlideViewContext.ts';
 import { SlideStateContext } from './SlideStateContext.ts';
 import { StateScope, StateScopeContext } from './StateScope.ts';
 

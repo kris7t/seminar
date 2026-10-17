@@ -20,24 +20,24 @@ import { createPortal } from 'react-dom';
 import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import { useDeck } from '../deck/DeckContext.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
-import { correctRipples } from '../slide/rippleScale.ts';
-import { SlideMirror } from '../slide/SlideMirror.tsx';
-import { SlideTransitionsContext } from '../slide/SlideTransitions.ts';
-import { SlideTransitionStyles } from '../slide/SlideTransitionStyles.tsx';
-import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
-import { SelectionFrame } from '../slide/SelectionFrame.tsx';
-import { useFitScale } from '../deck/useFitScale.ts';
+import { correctRipples } from '../view/rippleScale.ts';
+import { SlideMirror } from '../view/SlideMirror.tsx';
+import { SlideTransitionsContext } from '../transitions/SlideTransitions.ts';
+import { SlideTransitionStyles } from '../transitions/SlideTransitionStyles.tsx';
+import { SLIDE_VIEW_ATTRIBUTE } from '../view/SlideViewContext.ts';
+import { SelectionFrame } from '../view/SelectionFrame.tsx';
+import { useFitScale } from '../view/useFitScale.ts';
 import {
   FITTED_SLIDE_FRAME_STYLES,
   pixelBoxStyles,
-} from '../slide/slideFrame.ts';
+} from '../view/slideFrame.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import type { AudienceWindow as AudienceWindowState } from './usePresenterView.ts';
 import {
   MirroredPointer,
   type PointerMode,
   type PointerStore,
-} from './pointer.tsx';
+} from './mirror/pointer.tsx';
 import { InteractionMirror } from './mirror/InteractionMirror.tsx';
 import type { InteractionStore } from './mirror/interactionState.ts';
 import { enterFullscreen } from './screens.ts';

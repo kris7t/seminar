@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { fitArea, type AreaFit } from '../slide/slideFrame.ts';
+import { fitArea, type AreaFit } from './slideFrame.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 
 /** Size of an element in CSS pixels. */

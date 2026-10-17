@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ResolvedTocEntry } from '../toc/tableOfContents.ts';
+import type { ResolvedTocEntry } from '../deck/tableOfContents.ts';
 import { findAdjacentGroup, groupSlides } from './groupSlides.ts';
 
 function entry(

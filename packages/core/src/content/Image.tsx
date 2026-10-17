@@ -3,7 +3,7 @@ import { styled, useThemeProps } from '@mui/material/styles';
 import type { JSX, ReactNode } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
-import { classNames } from '../utils/classNames.ts';
+import { classNames } from '../theme/classNames.ts';
 import { Step, WITH_PREVIOUS, type StepProps } from '../steps/Step.tsx';
 
 /** Props of an {@link Image}. */

@@ -3,7 +3,7 @@ import { styled, type SxProps, type Theme } from '@mui/material/styles';
 import type { ComponentProps, JSX } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
-import { classNames } from '../utils/classNames.ts';
+import { classNames } from '../theme/classNames.ts';
 
 /**
  * Name of the custom highlight that shows the text selected by the presenter

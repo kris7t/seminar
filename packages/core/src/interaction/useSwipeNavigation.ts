@@ -10,7 +10,7 @@ import {
   type PointerEventHandler,
 } from 'react';
 
-import { getInteraction, TOUCH_SLOP } from '../interaction/interaction.ts';
+import { getInteraction, TOUCH_SLOP } from './interaction.ts';
 
 /**
  * Fraction of the width of the slide a slow swipe has to cover to change the

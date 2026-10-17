@@ -8,7 +8,7 @@ import {
 import type { JSX, ReactNode } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
-import { classNames } from '../utils/classNames.ts';
+import { classNames } from '../theme/classNames.ts';
 
 export interface FormulaProps {
   /** Whether the formula is shown on its own line, like `$$…$$` in TeX. */

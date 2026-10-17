@@ -1,4 +1,9 @@
-import { fadesOf, pickFade, sidesOf, type FadeValues } from '../slide/fades.ts';
+import {
+  fadesOf,
+  pickFade,
+  sidesOf,
+  type FadeValues,
+} from '../transitions/fades.ts';
 import { createStepPosition, type StepPosition } from './StepPosition.ts';
 import {
   compareStepPaths,

@@ -3,10 +3,10 @@ import { use, useSyncExternalStore, type JSX, type ReactNode } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import { useT } from '../i18n/UiLanguageContext.ts';
-import { useFitScale, type Size } from '../deck/useFitScale.ts';
+import { useFitScale, type Size } from '../view/useFitScale.ts';
 import { SELECTABLE_ATTRIBUTE } from '../interaction/interaction.ts';
-import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
-import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
+import { SLIDE_VIEW_ATTRIBUTE } from '../view/SlideViewContext.ts';
+import { SLIDE_FRAME_STYLES } from '../view/slideFrame.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import {

@@ -10,7 +10,7 @@ import {
   findCurrentEntry,
   resolveToc,
   type TocEntry,
-} from './tableOfContents.ts';
+} from '../deck/tableOfContents.ts';
 
 const TOC: TocEntry[] = [
   {

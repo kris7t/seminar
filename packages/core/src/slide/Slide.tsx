@@ -8,13 +8,13 @@ import {
 } from 'react';
 
 import { DeckContext } from '../deck/DeckContext.ts';
-import type { FadeProps } from './fades.ts';
+import type { FadeProps } from '../transitions/fades.ts';
 import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
 import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepBehaviorContext } from '../steps/StepBehaviorContext.ts';
 import { SlideElementScope } from './SlideElements.tsx';
-import { SlideViewContext } from './SlideViewContext.ts';
+import { SlideViewContext } from '../view/SlideViewContext.ts';
 
 /**
  * Props of a {@link Slide}.

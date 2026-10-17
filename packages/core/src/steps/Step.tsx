@@ -20,7 +20,7 @@ import {
   useSlideElementRef,
 } from '../slide/SlideElements.tsx';
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
-import { classNames } from '../utils/classNames.ts';
+import { classNames } from '../theme/classNames.ts';
 import {
   appearanceClass,
   BUILT_IN_STEP_BEHAVIORS,
@@ -32,7 +32,7 @@ import {
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepStore.ts';
 import { StepBehaviorContext } from './StepBehaviorContext.ts';
-import type { FadeProps } from '../slide/fades.ts';
+import type { FadeProps } from '../transitions/fades.ts';
 import { TogetherContext } from './TogetherContext.ts';
 import { useStep, type StepState, type StepWith } from './useSteps.ts';
 

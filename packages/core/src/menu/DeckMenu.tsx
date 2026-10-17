@@ -45,8 +45,8 @@ import { useDeck } from '../deck/DeckContext.ts';
 import { formatShortcut, languageName } from '../i18n/messages.ts';
 import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
-import { useFullscreen } from '../notes/useFullscreen.ts';
-import type { PointerMode } from '../presentation/pointer.tsx';
+import { useFullscreen } from '../presentation/useFullscreen.ts';
+import type { PointerMode } from '../presentation/mirror/pointer.tsx';
 
 /** Settings of the presenter view, shown in the menu while it's open. */
 export interface PresenterSettings {

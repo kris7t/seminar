@@ -21,7 +21,7 @@ import {
   importWithNode,
   loadSliderConfig,
   type ModuleImporter,
-} from './themeConfig.ts';
+} from '../config/themeConfig.ts';
 import { getSliderConfigs } from '../config/remarkSliderConfig.ts';
 
 /**

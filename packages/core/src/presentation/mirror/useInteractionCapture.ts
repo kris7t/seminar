@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import type { SlideTransitions } from '../../slide/SlideTransitions.ts';
+import type { SlideTransitions } from '../../transitions/SlideTransitions.ts';
 import {
   isTextField,
   MIRRORED_CLASSES,

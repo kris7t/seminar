@@ -6,7 +6,7 @@ import {
   importWithNode,
   loadSliderConfig,
   type ModuleImporter,
-} from '../math/themeConfig.ts';
+} from './themeConfig.ts';
 
 export interface RemarkSliderConfigOptions {
   /** Configs loaded by the MDX integration, in increasing precedence. */

@@ -4,7 +4,7 @@ import { useEffect, useState, type JSX } from 'react';
 import {
   SELECTION_BACKGROUND_PROPERTY,
   SELECTION_HIGHLIGHT,
-} from '../../slide/SelectionFrame.tsx';
+} from '../../view/SelectionFrame.tsx';
 import { SLIDE_WIDTH } from '../../theme/createSlideTheme.ts';
 import { textFieldOverlay, type TextRect } from './caret.ts';
 import {

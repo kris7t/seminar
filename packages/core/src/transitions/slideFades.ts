@@ -10,7 +10,7 @@ import {
   type Fade,
   type FadeValues,
   type FadeSide,
-} from '../slide/fades.ts';
+} from './fades.ts';
 
 type FadeSource = FadeValues;
 

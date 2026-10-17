@@ -38,8 +38,8 @@ import {
   clampElevation,
   ShadowFilter,
   shadowFilterUrl,
-} from '../utils/shadow.tsx';
-import { useSvgId } from '../utils/useSvgId.ts';
+} from '../svg/shadow.tsx';
+import { useSvgId } from '../svg/useSvgId.ts';
 
 export const DEFAULT_CALLOUT_MAX_WIDTH = 360;
 export const DEFAULT_CALLOUT_STEM_SIZE = 36;

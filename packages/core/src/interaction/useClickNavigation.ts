@@ -6,7 +6,7 @@ import {
   type MouseEventHandler,
 } from 'react';
 
-import type { SlideTransitions } from '../slide/SlideTransitions.ts';
+import type { SlideTransitions } from '../transitions/SlideTransitions.ts';
 import { getInteraction, isSelectable } from './interaction.ts';
 
 /** How far the mouse may move between press and release of a click. */

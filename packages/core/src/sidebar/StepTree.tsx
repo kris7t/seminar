@@ -4,8 +4,8 @@ import { useSyncExternalStore, type JSX } from 'react';
 import { useDeck } from '../deck/DeckContext.ts';
 import type { Translate } from '../i18n/messages.ts';
 import { useT } from '../i18n/UiLanguageContext.ts';
-import { scrollIntoView } from '../sidebar/Sidebar.tsx';
-import type { StepPath, StepStore, StepTreeEntry } from './StepStore.ts';
+import { scrollIntoView } from './Sidebar.tsx';
+import type { StepPath, StepStore, StepTreeEntry } from '../steps/StepStore.ts';
 
 /** Where a step is relative to the current one. */
 type EntryPhase = 'past' | 'open' | 'current' | 'future';

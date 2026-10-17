@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
-import { useSlideView } from '../slide/SlideViewContext.ts';
+import { useSlideView } from '../view/SlideViewContext.ts';
 import { Step, stepClasses } from '../steps/Step.tsx';
 
 function ViewKind() {

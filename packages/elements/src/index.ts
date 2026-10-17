@@ -43,5 +43,5 @@ export {
   type ShadowFilterProps,
   type ShadowLayer,
   type SvgBounds,
-} from './utils/shadow.tsx';
-export { useSvgId } from './utils/useSvgId.ts';
+} from './svg/shadow.tsx';
+export { useSvgId } from './svg/useSvgId.ts';

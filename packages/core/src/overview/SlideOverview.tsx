@@ -18,23 +18,23 @@ import {
 
 import { useDeck } from '../deck/DeckContext.ts';
 import { useT, useUiLanguage } from '../i18n/UiLanguageContext.ts';
-import { RecapIcon } from '../slide/RecapIcon.tsx';
-import { RecappedIcon } from '../slide/RecappedIcon.tsx';
-import { SpareIcon } from '../slide/SpareIcon.tsx';
-import { StateIcon } from '../slide/StateIcon.tsx';
-import { StepsIcon } from '../slide/StepsIcon.tsx';
+import { RecapIcon } from '../icons/RecapIcon.tsx';
+import { RecappedIcon } from '../icons/RecappedIcon.tsx';
+import { SpareIcon } from '../icons/SpareIcon.tsx';
+import { StateIcon } from '../icons/StateIcon.tsx';
+import { StepsIcon } from '../icons/StepsIcon.tsx';
 import type { ContextMenuHandlers } from '../interaction/useContextMenu.ts';
 import { darkUiTheme } from '../menu/uiTheme.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import {
   SLIDE_VIEW_ATTRIBUTE,
   type SlideView,
-} from '../slide/SlideViewContext.ts';
-import { SlideViewProvider } from '../slide/SlideViewProvider.tsx';
+} from '../view/SlideViewContext.ts';
+import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
 import { StepStore } from '../steps/StepStore.ts';
 import { groupSlides } from './groupSlides.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
-import { slideTitles } from '../toc/tableOfContents.ts';
+import { slideTitles } from '../deck/tableOfContents.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 
 /** Typography of the headings of divisions by their level. */

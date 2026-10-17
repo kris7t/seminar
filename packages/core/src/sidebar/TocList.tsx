@@ -11,13 +11,16 @@ import type { JSX } from 'react';
 import { useDeck } from '../deck/DeckContext.ts';
 import type { Translate } from '../i18n/messages.ts';
 import { useT } from '../i18n/UiLanguageContext.ts';
-import { scrollIntoView } from '../sidebar/Sidebar.tsx';
-import { RecapIcon } from '../slide/RecapIcon.tsx';
-import { RecappedIcon } from '../slide/RecappedIcon.tsx';
-import { SpareIcon } from '../slide/SpareIcon.tsx';
-import { StateIcon } from '../slide/StateIcon.tsx';
-import { StepsIcon } from '../slide/StepsIcon.tsx';
-import { findCurrentEntry, type ResolvedTocEntry } from './tableOfContents.ts';
+import { scrollIntoView } from './Sidebar.tsx';
+import { RecapIcon } from '../icons/RecapIcon.tsx';
+import { RecappedIcon } from '../icons/RecappedIcon.tsx';
+import { SpareIcon } from '../icons/SpareIcon.tsx';
+import { StateIcon } from '../icons/StateIcon.tsx';
+import { StepsIcon } from '../icons/StepsIcon.tsx';
+import {
+  findCurrentEntry,
+  type ResolvedTocEntry,
+} from '../deck/tableOfContents.ts';
 
 interface RenderEntriesOptions {
   entries: readonly ResolvedTocEntry[];

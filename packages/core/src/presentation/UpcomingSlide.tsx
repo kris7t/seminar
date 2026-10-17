@@ -7,8 +7,8 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { SlideView } from '../slide/SlideViewContext.ts';
-import { SlideViewProvider } from '../slide/SlideViewProvider.tsx';
+import type { SlideView } from '../view/SlideViewContext.ts';
+import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 

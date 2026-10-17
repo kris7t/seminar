@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 
 import { useT } from '../i18n/UiLanguageContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
-import { useFullscreen } from '../notes/useFullscreen.ts';
+import { useFullscreen } from '../presentation/useFullscreen.ts';
 
 export interface MenuButtonProps {
   /** Whether the menu is open. */

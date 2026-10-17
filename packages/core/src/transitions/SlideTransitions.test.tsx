@@ -15,7 +15,7 @@ import { Step } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import type { CutProp } from './fades.ts';
-import { Slide } from './Slide.tsx';
+import { Slide } from '../slide/Slide.tsx';
 import { useStepTransition } from './useStepTransition.ts';
 
 import {

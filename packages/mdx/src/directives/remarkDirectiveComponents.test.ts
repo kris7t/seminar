@@ -14,7 +14,7 @@ import {
   THEME_URL,
   text,
 } from '../test/compileDeck.ts';
-import type { ImportedModule } from '../math/themeConfig.ts';
+import type { ImportedModule } from '../config/themeConfig.ts';
 
 async function compile(
   source: string,

@@ -9,7 +9,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 
-import type { SlideTransitions } from '../slide/SlideTransitions.ts';
+import type { SlideTransitions } from '../transitions/SlideTransitions.ts';
 import type { SlideStateStore } from '../state/SlideStateStore.ts';
 import type { StepTarget } from '../steps/StepPosition.ts';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';

@@ -10,8 +10,8 @@ import {
   createPointerStore,
   MirroredPointer,
   mirroredPointerClasses,
-} from '../presentation/pointer.tsx';
-import { selectionFrameClasses } from '../slide/SelectionFrame.tsx';
+} from '../presentation/mirror/pointer.tsx';
+import { selectionFrameClasses } from '../view/SelectionFrame.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { slideNumberClasses } from '../slide/SlideNumber.tsx';
 import { createSlideTheme } from './createSlideTheme.ts';

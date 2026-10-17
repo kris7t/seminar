@@ -24,8 +24,8 @@ import {
   SLIDE_WIDTH,
 } from '../theme/createSlideTheme.ts';
 import { resolveRecaps } from './recaps.ts';
-import { getFadeBetween, getStepFade } from './slideFades.ts';
-import { useFitScale } from './useFitScale.ts';
+import { getFadeBetween, getStepFade } from '../transitions/slideFades.ts';
+import { useFitScale } from '../view/useFitScale.ts';
 import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
 import {
   INTERACTIVE_ATTRIBUTE,
@@ -43,7 +43,7 @@ import {
   MirroredPointer,
   usePointerTracking,
   type PointerMode,
-} from '../presentation/pointer.tsx';
+} from '../presentation/mirror/pointer.tsx';
 import { createInteractionStore } from '../presentation/mirror/interactionState.ts';
 import { useInteractionCapture } from '../presentation/mirror/useInteractionCapture.ts';
 import { PresenterPanel } from '../presentation/PresenterPanel.tsx';
@@ -54,25 +54,25 @@ import {
 } from '../presentation/presenterLayout.ts';
 import { usePresentation } from '../presentation/usePresentation.ts';
 import { usePresenterView } from '../presentation/usePresenterView.ts';
-import { correctRipples } from '../slide/rippleScale.ts';
-import { SlideMirror } from '../slide/SlideMirror.tsx';
+import { correctRipples } from '../view/rippleScale.ts';
+import { SlideMirror } from '../view/SlideMirror.tsx';
 import {
   getFadeTransition,
   SlideTransitions,
   SlideTransitionsContext,
-} from '../slide/SlideTransitions.ts';
-import { SlideTransitionStyles } from '../slide/SlideTransitionStyles.tsx';
-import { SelectionFrame } from '../slide/SelectionFrame.tsx';
+} from '../transitions/SlideTransitions.ts';
+import { SlideTransitionStyles } from '../transitions/SlideTransitionStyles.tsx';
+import { SelectionFrame } from '../view/SelectionFrame.tsx';
 import {
   FITTED_SLIDE_FRAME_STYLES,
   pixelBoxStyles,
-} from '../slide/slideFrame.ts';
-import { SwipeHint } from '../swipe/SwipeHint.tsx';
+} from '../view/slideFrame.ts';
+import { SwipeHint } from '../interaction/SwipeHint.tsx';
 import {
   ENTER_DURATION,
   SETTLE_DURATION,
   useSwipeNavigation,
-} from '../swipe/useSwipeNavigation.ts';
+} from '../interaction/useSwipeNavigation.ts';
 import { DeckMenu } from '../menu/DeckMenu.tsx';
 import { MenuButton } from '../menu/MenuButton.tsx';
 import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
@@ -82,22 +82,22 @@ import { useDeckNavigation } from './useDeckNavigation.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
-import { resolveToc, type TocEntry } from '../toc/tableOfContents.ts';
+import { resolveToc, type TocEntry } from './tableOfContents.ts';
 import type { UiLocale } from '../i18n/messages.ts';
 import { UiLanguageContext } from '../i18n/UiLanguageContext.ts';
 import { useUiLanguageState } from '../i18n/useUiLanguageState.ts';
 import { Sidebar, type SidebarSection } from '../sidebar/Sidebar.tsx';
-import { StepTree } from '../steps/StepTree.tsx';
-import { useSlideProbe } from '../slide/SlideProbe.tsx';
-import { TocList } from '../toc/TocList.tsx';
+import { StepTree } from '../sidebar/StepTree.tsx';
+import { useSlideProbe } from '../view/SlideProbe.tsx';
+import { TocList } from '../sidebar/TocList.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
 import { getSlideNotes } from '../notes/Notes.tsx';
 import { NotesDisplay } from '../notes/NotesDisplay.tsx';
 import {
   SLIDE_VIEW_ATTRIBUTE,
   type SlideView,
-} from '../slide/SlideViewContext.ts';
-import { SlideViewProvider } from '../slide/SlideViewProvider.tsx';
+} from '../view/SlideViewContext.ts';
+import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
 
 export interface DeckProps {
   /**

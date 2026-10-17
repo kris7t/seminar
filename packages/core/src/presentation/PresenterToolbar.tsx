@@ -32,7 +32,7 @@ import { useDeck } from '../deck/DeckContext.ts';
 import { formatShortcut } from '../i18n/messages.ts';
 import { useT, useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
-import type { PointerMode } from './pointer.tsx';
+import type { PointerMode } from './mirror/pointer.tsx';
 
 /** Height of the toolbar, in pixels. */
 export const TOOLBAR_HEIGHT = 48;

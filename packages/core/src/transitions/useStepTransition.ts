@@ -7,7 +7,7 @@ import {
   getFadeTransition,
   SlideTransitionsContext,
 } from './SlideTransitions.ts';
-import { useSlideView } from './SlideViewContext.ts';
+import { useSlideView } from '../view/SlideViewContext.ts';
 
 /** How the slide changes to its current step, see {@link useStepTransition}. */
 export interface StepTransition {

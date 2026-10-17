@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import type { ResolvedTocEntry } from '../toc/tableOfContents.ts';
+import type { ResolvedTocEntry } from '../deck/tableOfContents.ts';
 
 /** The deepest level of divisions, e.g., subsections. */
 const MAX_LEVEL = 2;

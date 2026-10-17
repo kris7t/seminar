@@ -15,7 +15,7 @@ import { Notes } from '../notes/Notes.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
-import { cursorShape, POINTER_IDLE_TIMEOUT } from './pointer.tsx';
+import { cursorShape, POINTER_IDLE_TIMEOUT } from './mirror/pointer.tsx';
 import { formatElapsed } from './PresenterToolbar.tsx';
 
 function fakeScreen(label: string, isInternal: boolean) {
