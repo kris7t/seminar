@@ -12,9 +12,8 @@ export type {
   SlideMaster,
   SlideMasterProps,
   SlideMasters,
-  SlideCut,
-  SlideCutProp,
 } from './masters/SlideMaster.ts';
+export type { CutProp, FadeProps, FadeSide } from './slide/fades.ts';
 export {
   ContentMaster,
   contentMasterClasses,

@@ -256,33 +256,39 @@ export function useDeckNavigation(
   const previousSlideIndex = findPreviousSlide(spares, slideIndex);
   /** Changes the steps of the slide, fading it if it's shown. */
   const changeSteps = useCallback(
-    (update: () => void) => {
-      const duration = fades?.stepFade(shownIndexRef.current) ?? 0;
+    (update: () => void, target: StepPath | undefined) => {
+      // The steps say how long they fade, then the slide.
+      const duration =
+        (target === undefined ? undefined : stepStore.getFade(target)) ??
+        fades?.stepFade(shownIndexRef.current) ??
+        0;
       if (transitions !== undefined && duration > 0) {
         transitions.run(update, 'step', duration);
       } else {
         update();
       }
     },
-    [transitions, fades],
+    [transitions, fades, stepStore],
   );
   const next = useCallback(() => {
     // Read the steps after the previous change.
     transitions?.flush();
-    if (stepStore.hasNext()) {
+    const target = stepStore.getNext();
+    if (target !== undefined) {
       changeSteps(() => {
         stepStore.next();
-      });
+      }, target);
     } else if (nextSlideIndex !== undefined) {
       goTo(nextSlideIndex);
     }
   }, [transitions, stepStore, changeSteps, nextSlideIndex, goTo]);
   const previous = useCallback(() => {
     transitions?.flush();
-    if (stepStore.hasPrevious()) {
+    const target = stepStore.getPrevious();
+    if (target !== undefined) {
       changeSteps(() => {
         stepStore.previous();
-      });
+      }, target);
     } else if (previousSlideIndex !== undefined) {
       goTo(previousSlideIndex, 'end');
     }
@@ -306,12 +312,12 @@ export function useDeckNavigation(
   const firstStep = useCallback(() => {
     changeSteps(() => {
       stepStore.first();
-    });
+    }, stepStore.getFirst());
   }, [stepStore, changeSteps]);
   const lastStep = useCallback(() => {
     changeSteps(() => {
       stepStore.last();
-    });
+    }, stepStore.getLast());
   }, [stepStore, changeSteps]);
 
   // Fires when the user follows a link to a slide, edits the URL, or moves

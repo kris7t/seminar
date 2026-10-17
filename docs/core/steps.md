@@ -153,6 +153,27 @@ steps, e.g., to dim past steps, so that the audience follows the current one:
 Content shown with a step looks like it. Themes can change how behaviors look
 and add new ones.
 
+## Fades
+
+Steps fade in and out, for as long as the theme says. Steps take the same
+attributes as [slides](decks.md#fades-between-slides):
+
+```mdx
+- :step{fade=400} Fades in slowly
+- :step{cut} Appears at once
+```
+
+A step change crosses the same sides as a slide change. Going forward:
+
+- the steps whose turn ends cross their `out` and `after` sides,
+- the steps whose turn starts cross their `in` and `before` sides.
+
+Nested steps and every step of a group count. As for slides, the most
+specific duration wins, then the shorter one.
+
+If no step sets a duration, `fade` on the slide decides, then its master's,
+then the theme's. A slide's `cut` and side fades don't affect its steps.
+
 ## Ranges of steps
 
 `from`, `after`, `to`, and `before` on a slide limit the steps shown when

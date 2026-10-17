@@ -2,10 +2,13 @@ import { cleanup, render } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { ReactNode } from 'react';
+
 import { Deck } from '../deck/Deck.tsx';
-import type { SlideMaster, SlideCutProp } from '../masters/SlideMaster.ts';
+import type { SlideMaster } from '../masters/SlideMaster.ts';
 import { Step } from '../steps/Step.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
+import type { CutProp } from './fades.ts';
 import { Slide } from './Slide.tsx';
 
 import {
@@ -219,12 +222,13 @@ describe('SlideTransitions', () => {
     });
 
     function renderSlides(
-      second: { cut?: SlideCutProp; fade?: number; master?: SlideMaster } = {},
-      theme?: ReturnType<typeof createSlideTheme>,
+      second: { cut?: CutProp; fade?: number; master?: SlideMaster } = {},
+      // Slides cut by default.
+      theme = createSlideTheme({ slideTransition: { duration: 150 } }),
     ) {
       const started = fakeTransitions(document);
       render(
-        <Deck {...(theme === undefined ? {} : { theme })}>
+        <Deck theme={theme}>
           <Slide title="First">A</Slide>
           <Slide title="Second" {...second}>
             B
@@ -315,6 +319,92 @@ describe('SlideTransitions', () => {
       const started = renderSlides({}, theme);
       await userEvent.setup().keyboard('{PageDown}');
       expect(started).toHaveLength(0);
+    });
+
+    async function stepDurations(
+      slide: ReactNode,
+      keys: readonly string[] = ['{ArrowRight}'],
+    ): Promise<string[]> {
+      const started = fakeTransitions(document);
+      const user = userEvent.setup();
+      render(<Deck>{slide}</Deck>);
+      const durations: string[] = [];
+      for (const key of keys) {
+        const count = started.length;
+        await user.keyboard(key);
+        durations.push(
+          started.length === count
+            ? 'cut'
+            : document.documentElement.style.getPropertyValue(
+                DURATION_PROPERTY,
+              ),
+        );
+        await started.at(-1)?.capture();
+        await started.at(-1)?.end();
+      }
+      return durations;
+    }
+
+    it('fades steps for as long as the steps say', async () => {
+      expect(
+        await stepDurations(
+          <Slide title="Steps">
+            <Step fadeIn={300}>A</Step>
+          </Slide>,
+        ),
+      ).toEqual(['300ms']);
+    });
+
+    it('prefers the fades of the sides of steps', async () => {
+      expect(
+        await stepDurations(
+          <Slide title="Steps">
+            <Step fade={300}>A</Step>
+            <Step fadeBefore={100}>B</Step>
+          </Slide>,
+          ['{ArrowRight}', '{ArrowRight}', '{ArrowLeft}'],
+        ),
+      ).toEqual(['300ms', '100ms', '100ms']);
+    });
+
+    it('cuts steps', async () => {
+      expect(
+        await stepDurations(
+          <Slide title="Steps">
+            <Step cut>A</Step>
+            <Step cut="in">B</Step>
+            <Step>C</Step>
+          </Slide>,
+          ['{ArrowRight}', '{ArrowRight}', '{ArrowRight}'],
+        ),
+      ).toEqual(['cut', 'cut', '150ms']);
+    });
+
+    it('merges the fades of nested steps and groups', async () => {
+      expect(
+        await stepDurations(
+          <Slide title="Steps">
+            <Step fadeOut={400}>
+              A<Step fadeOut={200}>B</Step>
+            </Step>
+            <Step group="c">C</Step>
+            <Step group="c" fadeIn={300}>
+              D
+            </Step>
+          </Slide>,
+          ['{ArrowRight}', '{ArrowRight}', '{ArrowRight}'],
+        ),
+      ).toEqual(['150ms', '150ms', '200ms']);
+    });
+
+    it('falls back to the fade of the slide', async () => {
+      expect(
+        await stepDurations(
+          <Slide title="Steps" fade={400}>
+            <Step>A</Step>
+          </Slide>,
+        ),
+      ).toEqual(['400ms']);
     });
 
     it('changes steps at once without a duration', async () => {

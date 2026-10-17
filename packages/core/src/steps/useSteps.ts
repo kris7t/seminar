@@ -13,6 +13,7 @@ import {
   type RankedAppearances,
 } from './stepAppearance.ts';
 import { StepNode, type StepPhase, type StepStatus } from './StepStore.ts';
+import type { FadeProps, FadeValues } from '../slide/fades.ts';
 import { StepStoreContext } from './StepStoreContext.ts';
 
 /** State of a stepper. */
@@ -126,6 +127,11 @@ export interface UseStepsOptions {
    * inherit. Shown in all phases by default.
    */
   appearances?: RankedAppearances | undefined;
+  /**
+   * How long the slide fades when the turn of the stepper starts or ends
+   * (see the `fade` of `Step`). Ignored if `with` is a handle.
+   */
+  fades?: FadeProps | undefined;
 }
 
 const UNLINKED: StepStatus = {
@@ -162,8 +168,24 @@ export function useSteps(
     after,
     title,
     appearances,
+    fades: fadeProps,
   }: UseStepsOptions = {},
 ): StepHandle {
+  // Only the values matter, which are often given as a new object.
+  const { cut, fade, fadeIn, fadeOut, fadeBefore, fadeAfter } = fadeProps ?? {};
+  const cutKey = Array.isArray(cut) ? cut.join(' ') : cut;
+  const fades = useMemo<FadeValues | undefined>(
+    () =>
+      cutKey === undefined &&
+      fade === undefined &&
+      fadeIn === undefined &&
+      fadeOut === undefined &&
+      fadeBefore === undefined &&
+      fadeAfter === undefined
+        ? undefined
+        : { cut: cutKey, fade, fadeIn, fadeOut, fadeBefore, fadeAfter },
+    [cutKey, fade, fadeIn, fadeOut, fadeBefore, fadeAfter],
+  );
   const store = use(StepStoreContext);
   const [ownNode] = useState(() => new StepNode());
   const node = group === undefined ? ownNode : store.getGroup(group);
@@ -185,6 +207,7 @@ export function useSteps(
             after,
             title,
             appearances,
+            fades,
           }),
     [
       store,
@@ -197,6 +220,7 @@ export function useSteps(
       after,
       title,
       appearances,
+      fades,
     ],
   );
   const { stepIndex, phase, inherited } = useSyncExternalStore(

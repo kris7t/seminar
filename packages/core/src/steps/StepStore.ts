@@ -1,3 +1,4 @@
+import { fadesOf, pickFade, sidesOf, type FadeValues } from '../slide/fades.ts';
 import { createStepPosition, type StepPosition } from './StepPosition.ts';
 import {
   compareStepPaths,
@@ -104,6 +105,11 @@ export interface StepOptions {
   title?: string | undefined;
   /** How the stepper looks in each phase. Shown in all phases by default. */
   appearances?: RankedAppearances | undefined;
+  /**
+   * How long the slide fades when the turn of the stepper starts or ends,
+   * which applies along with those of the other elements of the stepper.
+   */
+  fades?: FadeValues | undefined;
 }
 
 /** A stepper registered in a {@link StepStore}. */
@@ -511,6 +517,62 @@ export class StepStore {
   }
 
   /** Finds the next step after the current one that is in the range. */
+  /** The step that {@link next} goes to, if any. */
+  getNext(): StepPath | undefined {
+    return this.#findNextInRange();
+  }
+
+  /** The step that {@link previous} goes to, if any. */
+  getPrevious(): StepPath | undefined {
+    return this.#findPreviousInRange();
+  }
+
+  /** The step that {@link first} goes to, if any. */
+  getFirst(): StepPath | undefined {
+    return this.#positionsInRange()[0];
+  }
+
+  /** The step that {@link last} goes to, if any. */
+  getLast(): StepPath | undefined {
+    return this.#positionsInRange().at(-1);
+  }
+
+  /**
+   * Returns how long the slide fades from the current step to `target`, as
+   * the steppers whose turn starts or ends say (see the `fade` of `Step`):
+   * the most explicit of the fades they set for the sides crossed, or the
+   * shortest of those, or `undefined` if they set none.
+   */
+  getFade(target: StepPath): number | undefined {
+    const from = this.getPath();
+    const order = compareStepPaths(target, from);
+    if (order === 0) {
+      return undefined;
+    }
+    const forward = order > 0;
+    const isTurn = ({ phase }: StepPlace) =>
+      phase === 'current' || phase === 'open';
+    const fades = [...this.#nodes].flatMap((node) => {
+      const before = this.#computePlace(node, from);
+      const after = this.#computePlace(node, target);
+      const moved = before.stepIndex !== after.stepIndex;
+      const sides = [
+        ...(isTurn(before) && (!isTurn(after) || moved)
+          ? sidesOf(true, forward)
+          : []),
+        ...(isTurn(after) && (!isTurn(before) || moved)
+          ? sidesOf(false, forward)
+          : []),
+      ];
+      return sides.length === 0
+        ? []
+        : [...node.elements.values()].flatMap(({ fades: props }) =>
+            props === undefined ? [] : fadesOf(props, sides, 0),
+          );
+    });
+    return pickFade(fades);
+  }
+
   #findNextInRange(): StepPath | undefined {
     let position = this.#findNext(this.getPath());
     while (position !== undefined && !this.isInRange(position)) {
@@ -993,13 +1055,12 @@ export class StepStore {
       : moreHidden(own, this.#computeAppearance(parent, visited));
   }
 
-  #computePlace(node: StepNode): StepPlace {
+  #computePlace(node: StepNode, path = this.getPath()): StepPlace {
     const placement = this.#getLayout().placements.get(node);
     if (placement === undefined) {
       return FUTURE;
     }
     const { level, first, last } = placement;
-    const path = this.getPath();
     for (const [depth, step] of level.entries()) {
       const position = path[depth] ?? 0;
       if (position !== step) {

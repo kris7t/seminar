@@ -78,8 +78,8 @@ Attributes in braces at the end of a heading set the props of its slide:
 - `title=…` is the title of the slide in the table of contents, e.g., a
   shorter one.
 - `lang=…` sets the language of the slide, e.g., for a quote.
-- `fade=…` and `cut` set how long the fades of the slide take, or cut
-  them, see [Fades between slides](#fades-between-slides).
+- `fade=…` and `cut` set how the slide fades, see
+  [Fades between slides](#fades-between-slides).
 - `steps=…` sets the default behavior of the steps on the slide, see
   [Steps](steps.md#behaviors).
 - `from`, `after`, `to`, and `before` limit the steps shown when going
@@ -95,36 +95,54 @@ bare words. So `## Total {count}` uses the master `count`, while
 
 ## Fades between slides
 
-The slides fade into each other, and from one step to the next, unless the
-theme says otherwise. Attributes of a slide set how long its fades take, in
-milliseconds:
+By default, slides cut to the next one, and steps fade in. Themes can change
+this. Slides can override it with these attributes, in milliseconds:
 
-| Attribute      | Sets the fade                                   |
-| -------------- | ----------------------------------------------- |
-| `fade=…`       | between its steps, and with other slides        |
-| `fadeIn=…`     | into it, from either side                       |
-| `fadeOut=…`    | out of it, to either side                       |
-| `fadeBefore=…` | with the slide before it, whichever way it goes |
-| `fadeAfter=…`  | with the slide after it                         |
+| Attribute      | Duration of                              |
+| -------------- | ---------------------------------------- |
+| `fade=…`       | all fades of the slide, and of its steps |
+| `fadeIn=…`     | fading into the slide                    |
+| `fadeOut=…`    | fading out of the slide                  |
+| `fadeBefore=…` | fading to or from the slide before it    |
+| `fadeAfter=…`  | fading to or from the slide after it     |
 
-`cut` is a fade of no time with other slides, e.g., for a slide with a
-background of its own, and `cut=in`, `cut=out`, `cut=before`, and
-`cut=after` are fades of no time on one side, e.g., `cut=in` is `fadeIn=0`.
-Sides may be combined with spaces, e.g., `{cut="in after"}`.
+`cut` stands for a fade of 0 ms. It doesn't affect the steps of the slide.
 
-Going from one slide to another, e.g., to a later one, leaves the first one
-after it, and enters the other one before it. When the deck jumps between
-slides, e.g., from the table of contents, the slide it leaves counts as
-before or after the one it enters. Of the fades that the two slides set for
-these sides, the most explicit one wins, or the shortest of the most
-explicit ones:
+| Attribute    | Same as            |
+| ------------ | ------------------ |
+| `cut`        | 0 ms on every side |
+| `cut=in`     | `fadeIn=0`         |
+| `cut=out`    | `fadeOut=0`        |
+| `cut=before` | `fadeBefore=0`     |
+| `cut=after`  | `fadeAfter=0`      |
 
-1. a fade or cut of one side of a slide, e.g., `fadeIn` or `cut=in`,
-2. a fade or cut of all of its sides, i.e., `fade` or `cut`,
-3. the same of its master, e.g., of section slides.
+Sides can be combined, e.g., `{cut="in after"}`.
 
-A slide with its own `cut`, e.g., `cut=false`, replaces the cuts of its
-master.
+For example:
+
+```mdx
+### Results {fadeIn=600}
+
+### Full-screen photo {cut}
+```
+
+### When two slides disagree
+
+Going forward, the deck leaves a slide through its `out` and `after` sides,
+and enters the next one through its `in` and `before` sides. Going back, it
+uses `before` and `after` the other way around.
+
+Both slides may set a duration for these sides. The most specific one wins:
+
+1. a side of the slide, like `fadeIn` or `cut=in`,
+2. the whole slide, like `fade` or `cut`,
+3. a side of its master,
+4. the whole master.
+
+If two durations are equally specific, the shorter one wins. So a cut wins
+over a fade at the same level.
+
+A slide's own `cut`, even `cut=false`, replaces the cut of its master.
 
 ## Spare slides and divisions
 

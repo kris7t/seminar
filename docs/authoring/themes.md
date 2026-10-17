@@ -200,33 +200,32 @@ the `--SliderStep-dim-opacity` custom property.
 
 ## Transitions
 
-The audience and presenter views fade the whole slide from one step to the
-next, and from one slide to the next, with view transitions, where the
-browser supports them, and unless the viewer prefers reduced motion. Swiping
-moves the slides instead. `stepTransition` and `slideTransition` in the
-theme options set how:
+The audience and presenter views fade the slide with view transitions, if
+the browser supports them. Viewers who prefer reduced motion see no fades.
+Swiping moves the slides instead.
+
+`stepTransition` and `slideTransition` set the fades between steps and
+between slides:
 
 ```ts
 createSlideTheme({
   stepTransition: { duration: 200, easing: 'ease-out' },
-  slideTransition: { duration: 0 },
+  slideTransition: { duration: 300 },
 });
 ```
 
-Both default to 150 milliseconds with the `ease` easing. A duration of 0 changes steps or slides at once,
-without view transitions, e.g., to cut between slides, as in many talks.
+Steps fade for 150 ms by default, and slides cut. A duration of 0 cuts.
 
-Masters can set how long their slides fade with `fade`, `fadeIn`,
-`fadeOut`, `fadeBefore`, and `fadeAfter`, and cut them with `cut`, which the
-fades and cuts of slides override, e.g., for title slides with a background
-of their own:
+Masters can set `fade`, `fadeIn`, `fadeOut`, `fadeBefore`, `fadeAfter`, and
+`cut`, like slides (see
+[Fades between slides](../core/decks.md#fades-between-slides)). The
+attributes of a slide take precedence.
 
 ```ts
+// Section slides have a background of their own.
 SectionMaster.cut = true;
 
 createSlideTheme({ master: { section: SectionMaster } });
 ```
 
-`cut` takes the values of the `cut` of slides (see
-[Fades between slides](../core/decks.md#fades-between-slides)), e.g., `'in'`,
-or several in an array, e.g., `['in', 'after']`.
+In code, `cut` can also be an array of sides, e.g., `['in', 'after']`.

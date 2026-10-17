@@ -32,6 +32,7 @@ import {
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepStore.ts';
 import { StepBehaviorContext } from './StepBehaviorContext.ts';
+import type { FadeProps } from '../slide/fades.ts';
 import { TogetherContext } from './TogetherContext.ts';
 import { useStep, type StepState, type StepWith } from './useSteps.ts';
 
@@ -138,7 +139,8 @@ export type StepBehaviorShorthands = Partial<
 export interface StepProps
   extends
     Omit<HTMLAttributes<HTMLElement>, 'children'>,
-    StepBehaviorShorthands {
+    StepBehaviorShorthands,
+    FadeProps {
   /**
    * See {@link StepWith}. Ignored directly inside a {@link Together}, which
    * determines the step instead.
@@ -283,6 +285,14 @@ const StepRoot = styled('div', {
  * DOM or with `in`. Steps don't repeat the look they inherit from enclosing
  * elements, so that they aren't dimmed twice.
  *
+ * The fade props, i.e., `fade`, `fadeIn`, `fadeOut`, `fadeBefore`,
+ * `fadeAfter`, and `cut`, set how long the slide fades when the turn of the
+ * step starts or ends, like those of slides, but between steps. Going from
+ * one step to another, e.g., to a later one, ends the turn of the steps
+ * shown after them, and starts the turn of the steps shown before them. Of
+ * the fades that these steps set for the sides crossed, the most explicit
+ * one wins, or the shortest of those, and otherwise the `fade` of the slide.
+ *
  * Can be themed as `SliderStep` in the `components` of the MUI theme. The step
  * has a class for its phase (`SliderStep-distantFuture`, `-future`,
  * `-current`, `-open`, `-past`, or `-distantPast`, see {@link StepPhase}),
@@ -312,6 +322,12 @@ export function Step(inProps: StepProps): JSX.Element {
     title,
     behavior: themeBehavior,
     defaultBehavior,
+    cut,
+    fade,
+    fadeIn,
+    fadeOut,
+    fadeBefore,
+    fadeAfter,
     className,
     children,
     ...rest
@@ -358,6 +374,7 @@ export function Step(inProps: StepProps): JSX.Element {
     after,
     title,
     appearances,
+    fades: { cut, fade, fadeIn, fadeOut, fadeBefore, fadeAfter },
   });
   const { phase, inherited } = step;
   const elementId = useSlideElementId(id ?? '');
