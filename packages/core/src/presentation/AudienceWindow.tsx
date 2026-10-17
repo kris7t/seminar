@@ -9,11 +9,9 @@ import {
 } from '@mui/material';
 import {
   use,
-  useCallback,
   useEffect,
   useEffectEvent,
   useState,
-  useSyncExternalStore,
   type JSX,
   type ReactNode,
 } from 'react';
@@ -28,7 +26,11 @@ import { SlideTransitionsContext } from '../slide/SlideTransitions.ts';
 import { SlideTransitionStyles } from '../slide/SlideTransitionStyles.tsx';
 import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
 import { SelectionFrame } from '../slide/SelectionFrame.tsx';
-import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
+import { useFitScale } from '../deck/useFitScale.ts';
+import {
+  FITTED_SLIDE_FRAME_STYLES,
+  pixelBoxStyles,
+} from '../slide/slideFrame.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import type { AudienceWindow as AudienceWindowState } from './usePresenterView.ts';
 import {
@@ -39,24 +41,6 @@ import {
 import { InteractionMirror } from './mirror/InteractionMirror.tsx';
 import type { InteractionStore } from './mirror/interactionState.ts';
 import { enterFullscreen } from './screens.ts';
-
-function useFitScale(target: Window): number {
-  const subscribe = useCallback(
-    (listener: () => void) => {
-      target.addEventListener('resize', listener);
-      return () => {
-        target.removeEventListener('resize', listener);
-      };
-    },
-    [target],
-  );
-  return useSyncExternalStore(subscribe, () =>
-    Math.min(
-      target.innerWidth / SLIDE_WIDTH,
-      target.innerHeight / SLIDE_HEIGHT,
-    ),
-  );
-}
 
 function isFullscreen(doc: Document): boolean {
   // Missing in environments without the Fullscreen API.
@@ -110,11 +94,14 @@ export function AudienceWindow({
     () => (frame === null ? undefined : correctRipples(frame)),
     [frame],
   );
-  // Fade the slide at the same time as the presenter view.
+  // Fade the slide at the same time as the presenter view. The transition
+  // is scoped to the unscaled area of the slide, like in the deck window,
+  // since Chrome clips the snapshots of scaled scopes.
+  const [slideArea, setSlideArea] = useState<HTMLElement | null>(null);
   const transitions = use(SlideTransitionsContext);
   useEffect(
-    () => (frame === null ? undefined : transitions.register(frame)),
-    [frame, transitions],
+    () => (slideArea === null ? undefined : transitions.register(slideArea)),
+    [slideArea, transitions],
   );
   const { slideIndex, lang } = useDeck();
   const { lang: uiLang, t } = useUiLanguage();
@@ -125,7 +112,8 @@ export function AudienceWindow({
     }
   }, [target, lang]);
   const [needsClick, setNeedsClick] = useState(false);
-  const scale = useFitScale(target);
+  const [areaRef, , , areaFit] = useFitScale(SLIDE_WIDTH, SLIDE_HEIGHT);
+  const slideFit = areaFit.slide;
 
   const close = useEffectEvent(onClose);
 
@@ -196,6 +184,7 @@ export function AudienceWindow({
           // which the mirror shows from the presenter view instead with
           // attributes, synthetic events, and highlights.
           inert
+          ref={areaRef}
           sx={{
             position: 'fixed',
             inset: 0,
@@ -203,35 +192,49 @@ export function AudienceWindow({
             bgcolor: 'common.black',
           }}
         >
-          <SelectionFrame
-            ref={setFrame}
-            sx={SLIDE_FRAME_STYLES}
-            style={{ transform: `scale(${String(scale)})` }}
-            {...{ [SLIDE_VIEW_ATTRIBUTE]: 'audience' }}
-          >
-            <SlideMirror
-              key={slideIndex}
-              index={slideIndex}
-              slide={slides[slideIndex]}
-              kind="audience"
-            />
-            {interaction !== undefined && (
-              <InteractionMirror store={interaction} frame={frame} />
-            )}
-          </SelectionFrame>
+          {/* On whole device pixels, see fitArea. */}
+          <div ref={setSlideArea} style={pixelBoxStyles(areaFit.area)}>
+            <div style={pixelBoxStyles(slideFit)}>
+              <SelectionFrame
+                ref={setFrame}
+                sx={FITTED_SLIDE_FRAME_STYLES}
+                style={{ transform: `scale(${String(slideFit.scale)})` }}
+                {...{ [SLIDE_VIEW_ATTRIBUTE]: 'audience' }}
+              >
+                <SlideMirror
+                  key={slideIndex}
+                  index={slideIndex}
+                  slide={slides[slideIndex]}
+                  kind="audience"
+                />
+                {interaction !== undefined && (
+                  <InteractionMirror store={interaction} frame={frame} />
+                )}
+              </SelectionFrame>
+            </div>
+          </div>
           {pointer !== undefined && (
-            // Over the slide, but outside of its frame, so that the pointer
-            // keeps following the mouse while the slide fades.
-            <Box
-              sx={SLIDE_FRAME_STYLES}
+            // Over the slide, but outside of the scope of its transitions, so
+            // that the pointer keeps following the mouse while the slide
+            // fades, and isn't redrawn from a snapshot.
+            <div
               style={{
-                transform: `scale(${String(scale)})`,
-                backgroundColor: 'transparent',
+                ...pixelBoxStyles(areaFit.area),
                 pointerEvents: 'none',
               }}
             >
-              <MirroredPointer store={pointer} mode={pointerMode} />
-            </Box>
+              <div style={pixelBoxStyles(slideFit)}>
+                <Box
+                  sx={FITTED_SLIDE_FRAME_STYLES}
+                  style={{
+                    transform: `scale(${String(slideFit.scale)})`,
+                    backgroundColor: 'transparent',
+                  }}
+                >
+                  <MirroredPointer store={pointer} mode={pointerMode} />
+                </Box>
+              </div>
+            </div>
           )}
         </Box>
         {needsClick && screen !== undefined && (

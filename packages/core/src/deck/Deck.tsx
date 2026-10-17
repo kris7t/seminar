@@ -63,7 +63,10 @@ import {
 } from '../slide/SlideTransitions.ts';
 import { SlideTransitionStyles } from '../slide/SlideTransitionStyles.tsx';
 import { SelectionFrame } from '../slide/SelectionFrame.tsx';
-import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
+import {
+  FITTED_SLIDE_FRAME_STYLES,
+  pixelBoxStyles,
+} from '../slide/slideFrame.ts';
 import { SwipeHint } from '../swipe/SwipeHint.tsx';
 import {
   ENTER_DURATION,
@@ -459,21 +462,15 @@ export function Deck({
     }),
     [slideIndex, presenting],
   );
-  const [containerRef, scale, containerSize] = useFitScale(
+  const [slideAreaRef, , containerSize, areaFit] = useFitScale(
     SLIDE_WIDTH,
     SLIDE_HEIGHT,
   );
+  const slideFit = areaFit.slide;
   // Fade the slide when it changes, unless the overview shows it instead.
   // The area of the slide stays when the slide changes, unlike the frame of
   // the slide, which is part of the slides that move together while swiping.
   const [slideArea, setSlideArea] = useState<HTMLElement | null>(null);
-  const slideAreaRef = useCallback(
-    (element: HTMLElement | null) => {
-      setSlideArea(element);
-      return containerRef(element);
-    },
-    [containerRef],
-  );
   useEffect(
     () =>
       slideArea === null || showOverview
@@ -641,7 +638,7 @@ export function Deck({
       previousSlide({ transition: false });
     },
     width: containerSize.width,
-    slideWidth: SLIDE_WIDTH * scale,
+    slideWidth: SLIDE_WIDTH * slideFit.scale,
     disabled:
       menuPosition !== undefined ||
       showOverview ||
@@ -728,124 +725,158 @@ export function Deck({
                           },
                         ]}
                       >
-                        {/* Moves the slides together while swiping. */}
+                        {/* On whole device pixels, see fitArea. */}
                         <Box
-                          // Restarts the animation of sliding in on another slide.
-                          key={`slides-${String(slideIndex)}`}
-                          onTransitionEnd={(event) => {
-                            if (event.target === event.currentTarget) {
-                              swipe.onTransitionEnd();
-                            }
-                          }}
-                          onAnimationEnd={(event) => {
-                            if (event.target === event.currentTarget) {
-                              swipe.onAnimationEnd();
-                            }
-                          }}
-                          sx={[
-                            { position: 'absolute', inset: 0 },
-                            swipe.transition === 'settle' && {
-                              transition: `translate ${String(SETTLE_DURATION)}ms ease-out`,
-                            },
-                            swipe.enterFrom !== undefined && {
-                              animation: `${enter} ${String(ENTER_DURATION)}ms ease-out`,
-                            },
-                          ]}
-                          style={{
-                            translate: `${String(swipe.offset)}px 0`,
-                            ...(swipe.enterFrom === undefined
-                              ? {}
-                              : {
-                                  '--slider-enter-from': `${String(swipe.enterFrom)}px`,
-                                }),
-                          }}
+                          ref={setSlideArea}
+                          style={pixelBoxStyles(areaFit.area)}
                         >
-                          {swipe.moving &&
-                            !showOverview &&
-                            (
-                              [
-                                [previousSlideIndex, -1],
-                                [nextSlideIndex, 1],
-                              ] as const
-                            )
-                              .flatMap(([index, side]) =>
-                                index === undefined
-                                  ? []
-                                  : [[index, side] as const],
-                              )
-                              .map(([index, side]) => (
-                                // Placed a whole area away, which needs no measuring.
-                                <Box
-                                  key={index}
-                                  inert
-                                  sx={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    bottom: 0,
-                                    width: '100%',
-                                  }}
-                                  style={{
-                                    left: `${String(side * 100)}%`,
-                                  }}
-                                >
-                                  <Box
-                                    sx={SLIDE_FRAME_STYLES}
-                                    style={{
-                                      transform: `scale(${String(scale)})`,
-                                    }}
-                                    {...{ [SLIDE_VIEW_ATTRIBUTE]: 'preview' }}
-                                  >
-                                    <SlideMirror
-                                      index={index}
-                                      slide={slides[index]}
-                                      kind="preview"
-                                    />
-                                  </Box>
-                                </Box>
-                              ))}
-                          <SelectionFrame
-                            ref={setPresenterFrame}
-                            sx={SLIDE_FRAME_STYLES}
-                            style={{
-                              transform: `scale(${String(scale)})`,
-                              // The laser pointer replaces the mouse cursor.
-                              ...(presenting && pointerMode === 'laser'
-                                ? { cursor: 'none' }
-                                : {}),
+                          {/* Moves the slides together while swiping. */}
+                          <Box
+                            // Restarts the animation of sliding in on another slide.
+                            key={`slides-${String(slideIndex)}`}
+                            onTransitionEnd={(event) => {
+                              if (event.target === event.currentTarget) {
+                                swipe.onTransitionEnd();
+                              }
                             }}
-                            {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
-                            // Show the pointer of the presenter to the audience.
-                            {...(presenting ? pointerHandlers : {})}
+                            onAnimationEnd={(event) => {
+                              if (event.target === event.currentTarget) {
+                                swipe.onAnimationEnd();
+                              }
+                            }}
+                            sx={[
+                              { position: 'absolute', inset: 0 },
+                              swipe.transition === 'settle' && {
+                                transition: `translate ${String(SETTLE_DURATION)}ms ease-out`,
+                              },
+                              swipe.enterFrom !== undefined && {
+                                animation: `${enter} ${String(ENTER_DURATION)}ms ease-out`,
+                              },
+                            ]}
+                            style={{
+                              translate: `${String(swipe.offset)}px 0`,
+                              ...(swipe.enterFrom === undefined
+                                ? {}
+                                : {
+                                    '--slider-enter-from': `${String(swipe.enterFrom)}px`,
+                                  }),
+                            }}
                           >
-                            {/* The overview shows the slide instead. */}
-                            {!showOverview && (
-                              <SlideViewProvider key={slideIndex} view={view}>
-                                {slides[slideIndex]}
-                              </SlideViewProvider>
+                            {swipe.moving &&
+                              !showOverview &&
+                              (
+                                [
+                                  [previousSlideIndex, -1],
+                                  [nextSlideIndex, 1],
+                                ] as const
+                              )
+                                .flatMap(([index, side]) =>
+                                  index === undefined
+                                    ? []
+                                    : [[index, side] as const],
+                                )
+                                .map(([index, side]) => (
+                                  // Placed a whole area away, which needs no measuring.
+                                  <Box
+                                    key={index}
+                                    inert
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 0,
+                                      bottom: 0,
+                                      width: '100%',
+                                    }}
+                                    style={{
+                                      left: `${String(side * 100)}%`,
+                                    }}
+                                  >
+                                    <div style={pixelBoxStyles(slideFit)}>
+                                      <Box
+                                        sx={FITTED_SLIDE_FRAME_STYLES}
+                                        style={{
+                                          transform: `scale(${String(slideFit.scale)})`,
+                                        }}
+                                        {...{
+                                          [SLIDE_VIEW_ATTRIBUTE]: 'preview',
+                                        }}
+                                      >
+                                        <SlideMirror
+                                          index={index}
+                                          slide={slides[index]}
+                                          kind="preview"
+                                        />
+                                      </Box>
+                                    </div>
+                                  </Box>
+                                ))}
+                            <div style={pixelBoxStyles(slideFit)}>
+                              <SelectionFrame
+                                ref={setPresenterFrame}
+                                sx={FITTED_SLIDE_FRAME_STYLES}
+                                style={{
+                                  transform: `scale(${String(slideFit.scale)})`,
+                                  // The laser pointer replaces the mouse cursor.
+                                  ...(presenting && pointerMode === 'laser'
+                                    ? { cursor: 'none' }
+                                    : {}),
+                                }}
+                                {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+                                // Show the pointer of the presenter to the audience.
+                                {...(presenting ? pointerHandlers : {})}
+                              >
+                                {/* The overview shows the slide instead. */}
+                                {!showOverview && (
+                                  <SlideViewProvider
+                                    key={slideIndex}
+                                    view={view}
+                                  >
+                                    {slides[slideIndex]}
+                                  </SlideViewProvider>
+                                )}
+                              </SelectionFrame>
+                            </div>
+                          </Box>
+                          {/* Doesn't move with the slides. */}
+                          <ThemeProvider theme={uiTheme}>
+                            <SwipeHint open={swipe.showHint} />
+                          </ThemeProvider>
+                          {/* The presenter view shows the notes in its panel instead. */}
+                          {notes !== undefined &&
+                            !showOverview &&
+                            !presenting && (
+                              <NotesDisplay
+                                // Collapse the notes on another slide.
+                                key={`notes-${String(slideIndex)}`}
+                                notes={notes}
+                                notesLang={notesLang}
+                                size={containerSize}
+                                scale={slideFit.scale}
+                              />
                             )}
-                            {/* The presenter sees the laser pointer, too. */}
-                            {presenting && pointerMode === 'laser' && (
-                              <MirroredPointer store={pointer} mode="laser" />
-                            )}
-                          </SelectionFrame>
                         </Box>
-                        {/* Doesn't move with the slides. */}
-                        <ThemeProvider theme={uiTheme}>
-                          <SwipeHint open={swipe.showHint} />
-                        </ThemeProvider>
-                        {/* The presenter view shows the notes in its panel instead. */}
-                        {notes !== undefined &&
-                          !showOverview &&
-                          !presenting && (
-                            <NotesDisplay
-                              // Collapse the notes on another slide.
-                              key={`notes-${String(slideIndex)}`}
-                              notes={notes}
-                              notesLang={notesLang}
-                              size={containerSize}
-                              scale={scale}
-                            />
-                          )}
+                        {presenting && pointerMode === 'laser' && (
+                          // The presenter sees the laser pointer, too, outside of
+                          // the scope of the transitions, like in the audience
+                          // window.
+                          <div
+                            style={{
+                              ...pixelBoxStyles(areaFit.area),
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            <div style={pixelBoxStyles(slideFit)}>
+                              <Box
+                                sx={FITTED_SLIDE_FRAME_STYLES}
+                                style={{
+                                  transform: `scale(${String(slideFit.scale)})`,
+                                  backgroundColor: 'transparent',
+                                }}
+                              >
+                                <MirroredPointer store={pointer} mode="laser" />
+                              </Box>
+                            </div>
+                          </div>
+                        )}
                       </Box>
                       {presenting && (
                         <UiThemeProvider dark>

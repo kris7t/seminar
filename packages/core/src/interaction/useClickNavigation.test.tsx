@@ -190,11 +190,12 @@ describe('click navigation', () => {
         </Slide>
       </Deck>,
     );
-    // The area of the slides, which holds the frame of the slide in the track
-    // that moves the slides while swiping.
+    // The area of the slides, which holds the box on whole device pixels with
+    // the track that moves the slides while swiping, with the box of the
+    // frame of the slide.
     const root =
       container.querySelector('[data-slider-view]')?.parentElement
-        ?.parentElement ?? null;
+        ?.parentElement?.parentElement?.parentElement ?? null;
     expect(root).not.toBeNull();
     if (root !== null) {
       expect(getComputedStyle(root).userSelect).toBe('none');
