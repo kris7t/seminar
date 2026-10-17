@@ -21,6 +21,21 @@ export interface StepTransition {
   easing: string;
   /** Whether the slide went to a later step. */
   forward: boolean;
+  /**
+   * Whether the views show the current step, so that animations of the
+   * component's own can start. It's `false` while the views still show the
+   * slide as it was, until the changed slide is ready, e.g., while a
+   * component holds the change. CSS transitions and animations that the
+   * change starts wait for it by themselves.
+   */
+  shown: boolean;
+  /**
+   * Whether the change to the current step was cut short, e.g., because the
+   * presenter went on before it ended, so animations of the component's own
+   * should jump to their end. CSS transitions and animations that the change
+   * started end by themselves.
+   */
+  skipped: boolean;
 }
 
 /**
@@ -29,9 +44,9 @@ export interface StepTransition {
  * `transition: transform ${duration}ms ${easing}`. The duration follows the
  * fades of the steps, the slide, and the theme, even in browsers where the
  * slide cuts instead of fading. It's 0 where the step changes at once: for
- * cuts, in views that don't animate (see `animated` of `useSlideView`), when
- * the deck jumps to a step, e.g., from the step tree, and once the change is
- * interrupted, e.g., because the presenter went on before the fade ended.
+ * cuts, in views that don't animate (see `animated` of `useSlideView`), and
+ * when the deck jumps to a step, e.g., from the step tree. It doesn't change
+ * while the step is shown: see `shown` and `skipped` for that.
  */
 export function useStepTransition(): StepTransition {
   const transitions = use(SlideTransitionsContext);
@@ -60,5 +75,7 @@ export function useStepTransition(): StepTransition {
     duration: animated && current !== undefined ? current.duration : 0,
     easing: getFadeTransition(theme, 'step').easing,
     forward: current?.forward ?? true,
+    shown: !animated || current?.shown !== false,
+    skipped: current?.skipped === true,
   };
 }

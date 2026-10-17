@@ -1,12 +1,18 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ReactNode } from 'react';
+import {
+  use,
+  useLayoutEffect,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 
 import { Deck } from '../deck/Deck.tsx';
 import type { SlideMaster } from '../masters/SlideMaster.ts';
 import { Step } from '../steps/Step.tsx';
+import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import type { CutProp } from './fades.ts';
 import { Slide } from './Slide.tsx';
@@ -16,6 +22,7 @@ import {
   DURATION_PROPERTY,
   SETTLE_DEADLINE,
   SlideTransitions,
+  SlideTransitionsContext,
   TRANSITION_ATTRIBUTE,
   TRANSITION_FRAME_ATTRIBUTE,
 } from './SlideTransitions.ts';
@@ -319,6 +326,32 @@ describe('SlideTransitions', () => {
       expect(endless.finish).not.toHaveBeenCalled();
     });
 
+    it('starts the animations of a change over once it is shown', async () => {
+      const transitions = new SlideTransitions();
+      const animation = {
+        startTime: 10,
+        currentTime: 120,
+        playState: 'running',
+        effect: { getComputedTiming: () => ({ endTime: 300 }) },
+        pause() {
+          this.playState = 'paused';
+        },
+        play() {
+          this.playState = 'running';
+        },
+      };
+      const { shown } = runShown(transitions, () => {
+        // The change sets off an animation of the frame.
+        Object.assign(document.body.lastElementChild ?? {}, {
+          getAnimations: () => [animation],
+        });
+      });
+      expect(animation.playState).toBe('paused');
+      await shown;
+      expect(animation.currentTime).toBe(0);
+      expect(animation.playState).toBe('running');
+    });
+
     it('tells that an interrupted change changed at once', async () => {
       const transitions = new SlideTransitions();
       const frame = createFrame();
@@ -335,8 +368,10 @@ describe('SlideTransitions', () => {
       expect(transitions.getChange()?.duration).toBe(300);
       transitions.skip();
       expect(transitions.getChange()).toMatchObject({
-        duration: 0,
+        duration: 300,
         path: [1],
+        shown: true,
+        skipped: true,
       });
     });
 
@@ -605,6 +640,45 @@ describe('SlideTransitions', () => {
         await user.keyboard('{ArrowLeft}');
         await started.at(-1)?.capture();
         expect(timing()).toBe('0 back');
+      });
+
+      it('tells when the views show the step', async () => {
+        const started = fakeScoped();
+        let release: () => void = () => undefined;
+        function Shown() {
+          const { shown } = useStepTransition();
+          const store = use(StepStoreContext);
+          const path = useSyncExternalStore(store.subscribe, store.getPath);
+          const transitions = use(SlideTransitionsContext);
+          // Holds the change to the first step until the test releases it.
+          useLayoutEffect(() => {
+            if (path.length > 0) release = transitions.hold(1000);
+          }, [path, transitions]);
+          return <output data-testid="shown">{String(shown)}</output>;
+        }
+        render(
+          <Deck>
+            <Slide title="Steps">
+              <Shown />
+              <Step>A</Step>
+            </Slide>
+          </Deck>,
+        );
+        const shown = () => screen.getByTestId('shown').textContent;
+        expect(shown()).toBe('true');
+        await userEvent.setup().keyboard('{ArrowRight}');
+        const captured = started.at(-1)?.capture();
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        });
+        expect(shown()).toBe('false');
+        act(() => {
+          release();
+        });
+        await act(async () => {
+          await captured;
+        });
+        expect(shown()).toBe('true');
       });
 
       it('follows the fades of the steps where the slide cuts', async () => {

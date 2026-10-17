@@ -28,7 +28,8 @@ const DISPLAY_DELAY = 500;
  *
  * Going forward to the last stage, the slide pauses for a moment first: the
  * component holds the change with `useTransitionHold`, so the rest of the
- * slide waits, too, and the marker starts moving once the hold ends.
+ * slide waits, too. The marker starts moving once the slide is shown, since
+ * the views start the animations of a change over then.
  */
 export function Pipeline(): JSX.Element {
   // Each stage is in the group of its step, so it's placed in the steps where
@@ -41,11 +42,12 @@ export function Pipeline(): JSX.Element {
   const reached = stages.findLastIndex(([, step]) => step.isActive);
   // Move along with the fade of the slide, for as long as the steps say, and
   // jump where the slide changes at once, e.g., in thumbnails, or for cuts.
-  const { duration, easing, forward } = useStepTransition();
+  const { duration, easing, forward, skipped } = useStepTransition();
   const ownAnimation = useOwnAnimation();
   // Pause before the last stage, but not when jumping to it, where the
-  // slide changes at once.
-  const pauses = forward && duration > 0 && reached === stages.length - 1;
+  // slide changes at once, or when the presenter goes on meanwhile.
+  const pauses =
+    forward && duration > 0 && !skipped && reached === stages.length - 1;
   const [paused, setPaused] = useState(false);
   if (!pauses && paused) {
     setPaused(false);
@@ -59,11 +61,8 @@ export function Pipeline(): JSX.Element {
       clearTimeout(timeout);
     };
   }, [pauses]);
-  const waiting = pauses && !paused;
-  useTransitionHold(waiting, { deadline: DISPLAY_DELAY + 100 });
-  // The marker stays at the previous stage while the slide waits, since it
-  // would move under the snapshot of the old slide otherwise.
-  const marked = waiting ? reached - 1 : reached;
+  // The marker starts moving once the slide is shown.
+  useTransitionHold(pauses && !paused, { deadline: DISPLAY_DELAY + 100 });
   return (
     <Box
       sx={{
@@ -111,8 +110,8 @@ export function Pipeline(): JSX.Element {
           bgcolor: 'secondary.main',
           // The marker appears and moves by itself, since it doesn't fade
           // with the slide.
-          opacity: marked < 0 ? 0 : 1,
-          transform: `translateX(${String(Math.max(marked, 0) * (STAGE_WIDTH + STAGE_GAP))}px)`,
+          opacity: reached < 0 ? 0 : 1,
+          transform: `translateX(${String(Math.max(reached, 0) * (STAGE_WIDTH + STAGE_GAP))}px)`,
           transition: ['transform', 'opacity']
             .map((property) => `${property} ${String(duration)}ms ${easing}`)
             .join(', '),

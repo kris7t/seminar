@@ -135,6 +135,17 @@ export interface SlideChange {
    * settle, e.g., after a swipe, which already moved the slides.
    */
   immediate?: boolean | undefined;
+  /**
+   * Whether the views show the change, rather than still showing the slide
+   * as it was while the changed slide settles, as
+   * {@link SlideTransitions.getChange} reports it.
+   */
+  shown?: boolean | undefined;
+  /**
+   * Whether the change was cut short, e.g., because another change came
+   * before it ended, as {@link SlideTransitions.getChange} reports it.
+   */
+  skipped?: boolean | undefined;
 }
 
 /** Safety net for update callbacks that the browser doesn't call. */
@@ -227,11 +238,15 @@ function nextTask(frame: HTMLElement, delay = 0): Promise<void> {
 }
 
 /**
- * Finishes the animations in `frame` that started at `start` of the timeline
- * of its document or later, e.g., CSS transitions set off by a change, but
- * not endless ones, e.g., spinners.
+ * Calls `action` with the animations in `frame` that started at `start` of
+ * the timeline of its document or later, e.g., CSS transitions set off by a
+ * change, but not with endless ones, e.g., spinners.
  */
-function finishAnimations(frame: HTMLElement, start: number): void {
+function forAnimationsSince(
+  frame: HTMLElement,
+  start: number,
+  action: (animation: Animation) => void,
+): void {
   // Not every environment has animations, e.g., jsdom.
   if (typeof frame.getAnimations !== 'function') {
     return;
@@ -244,7 +259,7 @@ function finishAnimations(frame: HTMLElement, start: number): void {
       Number.isFinite(Number(endTime))
     ) {
       try {
-        animation.finish();
+        action(animation);
       } catch {
         // E.g., an animation that was just canceled.
       }
@@ -257,7 +272,15 @@ interface Settling {
   readonly start: number;
   /** The deadlines of the holds that haven't been released yet. */
   readonly holds: Set<{ deadline: number }>;
-  /** Shows the change, whether or not the slide has settled. */
+  /**
+   * The animations that the change set off, which are paused while the
+   * views wait, so that they don't play out unseen.
+   */
+  readonly animations: Set<Animation>;
+  /**
+   * Shows the change, whether or not the slide has settled, and lets the
+   * paused animations go on.
+   */
   end: () => void;
 }
 
@@ -278,7 +301,8 @@ interface Settling {
  * Changes that cut, rather than fade, use view transitions, too: the views
  * keep showing the slide as it was until the changed slide settles, e.g.,
  * its components are measured and its images are loaded, so that it doesn't
- * flash in an unfinished layout (see {@link hold}).
+ * flash in an unfinished layout (see {@link hold}). The animations that the
+ * change set off on the slide start over once it's shown.
  */
 export class SlideTransitions {
   readonly #frames = new Set<HTMLElement>();
@@ -402,7 +426,11 @@ export class SlideTransitions {
         (frame) => frame.isConnected && !prefersReducedMotion(frame),
       );
     const apply = () => {
-      this.#change = animated ? change : { ...change, duration: 0 };
+      this.#change = {
+        ...change,
+        duration: animated ? change.duration : 0,
+        shown: frames.length === 0,
+      };
       for (const listener of this.#changeListeners) {
         listener();
       }
@@ -441,7 +469,7 @@ export class SlideTransitions {
    * Ends the last change right away, if it's still waiting or fading, e.g.,
    * when the presenter goes on before it ends: shows it, finishes the
    * animations that it set off, and tells components that follow it that
-   * it changed at once, e.g., to stop waiting.
+   * it was skipped, e.g., to stop waiting.
    */
   #interrupt(): void {
     if (!this.running && this.#settling === undefined) {
@@ -451,11 +479,13 @@ export class SlideTransitions {
     for (const frame of this.#frames) {
       const start = this.#changeTimes.get(frame.ownerDocument);
       if (start !== undefined) {
-        finishAnimations(frame, start);
+        forAnimationsSince(frame, start, (animation) => {
+          animation.finish();
+        });
       }
     }
-    if (this.#change !== undefined && this.#change.duration > 0) {
-      this.#change = { ...this.#change, duration: 0 };
+    if (this.#change !== undefined && this.#change.skipped !== true) {
+      this.#change = { ...this.#change, skipped: true };
       // Before the next transition captures the slide.
       // eslint-disable-next-line @eslint-react/dom-no-flush-sync
       flushSync(() => {
@@ -467,8 +497,18 @@ export class SlideTransitions {
   }
 
   #endSettling(): void {
-    this.#settling?.end();
+    const settling = this.#settling;
+    if (settling === undefined) {
+      return;
+    }
     this.#settling = undefined;
+    settling.end();
+    if (this.#change?.shown === false) {
+      this.#change = { ...this.#change, shown: true };
+      for (const listener of this.#changeListeners) {
+        listener();
+      }
+    }
   }
 
   /**
@@ -506,10 +546,19 @@ export class SlideTransitions {
       if (this.#pending === apply) {
         this.#pending = undefined;
       }
+      const animations = new Set<Animation>();
       const settling: Settling = {
         start: performance.now(),
         holds: new Set(),
-        end: release,
+        animations,
+        end: () => {
+          for (const animation of animations) {
+            if (animation.playState === 'paused') {
+              animation.play();
+            }
+          }
+          release();
+        },
       };
       // Components of the changed slide may hold it while they render.
       this.#settling = settling;
@@ -524,6 +573,7 @@ export class SlideTransitions {
       // Render the update before the browser takes the new snapshots.
       // eslint-disable-next-line @eslint-react/dom-no-flush-sync
       flushSync(update);
+      this.#pauseAnimations(frames, settling);
       void this.#settle(frames, settling);
     };
     const timeout = setTimeout(apply, UPDATE_TIMEOUT);
@@ -602,6 +652,7 @@ export class SlideTransitions {
       }
       const observer = new View(() => {
         mutations.count += 1;
+        this.#pauseAnimations(frames, settling);
       });
       observer.observe(frame, {
         subtree: true,
@@ -631,6 +682,7 @@ export class SlideTransitions {
         }
         // And what measuring again set off.
         await nextTask(first);
+        this.#pauseAnimations(frames, settling);
         const mutated = mutations.count !== before;
         const loading = frames.some(isLoading);
         if (
@@ -649,8 +701,37 @@ export class SlideTransitions {
         observer.disconnect();
       }
       if (this.#settling === settling) {
+        // Play the animations that the change set off from the start, along
+        // with the fade.
+        this.#pauseAnimations(frames, settling);
+        for (const animation of settling.animations) {
+          try {
+            animation.currentTime = 0;
+          } catch {
+            // E.g., an animation that was just canceled.
+          }
+        }
         this.#endSettling();
       }
+    }
+  }
+
+  /** Pauses the animations that the change set off since the last call. */
+  #pauseAnimations(frames: readonly HTMLElement[], settling: Settling): void {
+    if (this.#settling !== settling) {
+      return;
+    }
+    for (const frame of frames) {
+      const start = this.#changeTimes.get(frame.ownerDocument);
+      if (start === undefined) {
+        continue;
+      }
+      forAnimationsSince(frame, start, (animation) => {
+        if (!settling.animations.has(animation)) {
+          settling.animations.add(animation);
+          animation.pause();
+        }
+      });
     }
   }
 

@@ -123,7 +123,9 @@ The new slide is ready when:
 - no component holds the change.
 
 The views wait at most 150 ms (`SETTLE_DEADLINE`), and show the change in
-both views at the same time. Browsers without view transitions change the
+both views at the same time. CSS transitions and animations that the change
+started run from the start once it's shown, so they don't play out unseen
+while the views wait. Browsers without view transitions change the
 slide at once.
 
 ### Holding the change
