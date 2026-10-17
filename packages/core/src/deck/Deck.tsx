@@ -27,7 +27,10 @@ import { resolveRecaps } from './recaps.ts';
 import { getFadeBetween, getStepFade } from './slideFades.ts';
 import { useFitScale } from './useFitScale.ts';
 import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
-import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
+import {
+  INTERACTIVE_ATTRIBUTE,
+  SELECTABLE_ATTRIBUTE,
+} from '../interaction/interaction.ts';
 import { useClickNavigation } from '../interaction/useClickNavigation.ts';
 import { useWheelNavigation } from '../interaction/useWheelNavigation.ts';
 import { useContextMenu } from '../interaction/useContextMenu.ts';
@@ -144,6 +147,7 @@ export interface DeckProps {
 
 const SELECTABLE_SELECTOR = [
   `[${INTERACTIVE_ATTRIBUTE}]`,
+  `[${SELECTABLE_ATTRIBUTE}]`,
   'input',
   'textarea',
   '[contenteditable]',
@@ -846,7 +850,10 @@ export function Deck({
                               stacked
                                 ? { flex: 1 }
                                 : { flex: 'none', width: SIDE_PANEL_WIDTH },
-                              mouseNavigation && { userSelect: 'none' },
+                              mouseNavigation && {
+                                userSelect: 'none',
+                                [SELECTABLE_SELECTOR]: { userSelect: 'text' },
+                              },
                             ]}
                           >
                             <PresenterPanel

@@ -18,6 +18,21 @@ export type Interaction = 'text' | 'composite' | 'activatable' | 'custom';
 /** Attribute that marks elements that handle all input themselves. */
 export const INTERACTIVE_ATTRIBUTE = 'data-slider-interactive';
 
+/**
+ * Attribute that marks text that can be selected, e.g., the presenter notes,
+ * where clicks don't go to the next step, so that double clicks select words
+ * without advancing, while the wheel still changes steps.
+ */
+export const SELECTABLE_ATTRIBUTE = 'data-slider-selectable';
+
+/** Whether `target` is in text marked with {@link SELECTABLE_ATTRIBUTE}. */
+export function isSelectable(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest(`[${SELECTABLE_ATTRIBUTE}]`) !== null
+  );
+}
+
 const ACTIVATABLE_INPUT_TYPES = new Set([
   'button',
   'checkbox',

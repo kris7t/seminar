@@ -4,6 +4,7 @@ import { use, useSyncExternalStore, type JSX, type ReactNode } from 'react';
 import { useDeck } from '../deck/DeckContext.ts';
 import { useT } from '../i18n/UiLanguageContext.ts';
 import { useFitScale, type Size } from '../deck/useFitScale.ts';
+import { SELECTABLE_ATTRIBUTE } from '../interaction/interaction.ts';
 import { SLIDE_VIEW_ATTRIBUTE } from '../slide/SlideViewContext.ts';
 import { SLIDE_FRAME_STYLES } from '../slide/slideFrame.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
@@ -223,6 +224,8 @@ export function PresenterPanel({
       >
         <Heading>{t('notes')}</Heading>
         <Box
+          // Clicks select the notes, rather than going to the next step.
+          {...{ [SELECTABLE_ATTRIBUTE]: true }}
           lang={notes === undefined ? undefined : notesLang}
           sx={[
             NOTES_STYLES,

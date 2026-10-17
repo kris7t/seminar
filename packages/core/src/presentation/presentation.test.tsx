@@ -546,12 +546,15 @@ describe('the presenter toolbar', () => {
       </Deck>,
     );
     await user.keyboard('{Shift>}P{/Shift}');
-    await user.click(screen.getByText('Some notes'));
+    await user.click(screen.getByText('Notes'));
     expect(window.location.hash).toBe('#slide=1&step=1');
     await user.click(screen.getByLabelText('Time elapsed'));
     expect(window.location.hash).toBe('#slide=1&step=1');
-    await user.keyboard('s');
+    // Clicks on the notes select them instead.
     await user.click(screen.getByText('Some notes'));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    await user.keyboard('s');
+    await user.click(screen.getByText('Notes'));
     expect(window.location.hash).toBe('#slide=1&step=1');
     remove();
   });

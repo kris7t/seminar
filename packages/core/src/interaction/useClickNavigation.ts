@@ -7,7 +7,7 @@ import {
 } from 'react';
 
 import type { SlideTransitions } from '../slide/SlideTransitions.ts';
-import { getInteraction } from './interaction.ts';
+import { getInteraction, isSelectable } from './interaction.ts';
 
 /** How far the mouse may move between press and release of a click. */
 const CLICK_SLOP = 5;
@@ -48,7 +48,8 @@ interface Press {
  *
  * Clicks on interactive elements, such as links, buttons, form controls, and
  * elements with the `data-slider-interactive` attribute, are ignored (see
- * {@link getInteraction}), and so are clicks that started on them, or that
+ * {@link getInteraction}), and so are clicks on selectable text (see
+ * {@link isSelectable}), and so are clicks that started on them, or that
  * moved too much between press and release to be clicks, e.g., when
  * selecting text in a field by dragging out of it, since the browser sends
  * these to an element that contains both ends. Click handlers can also opt
@@ -73,7 +74,10 @@ export function useClickNavigation(
         pressRef.current = {
           x: event.clientX,
           y: event.clientY,
-          interactive: getInteraction(event.target) !== undefined,
+          interactive:
+            getInteraction(event.target) !== undefined ||
+            isSelectable(event.target) ||
+            isSelectable(event.target),
           touch: event.pointerType === 'touch',
           focused:
             document.activeElement instanceof HTMLElement &&
@@ -105,7 +109,8 @@ export function useClickNavigation(
       event.stopPropagation();
       pressRef.current = {
         ...press,
-        interactive: getInteraction(element) !== undefined,
+        interactive:
+          getInteraction(element) !== undefined || isSelectable(element),
         duringTransition: false,
       };
       element.dispatchEvent(

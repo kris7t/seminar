@@ -112,9 +112,9 @@ to open the overview.
 
 The presenter view opens a separate window for the audience, while the deck
 window shows the current slide, previews of the next step and slide, the
-notes, and a toolbar with a timer and the clock. Clicking the previews or the
-notes also goes to the next step, so the mouse pointer doesn't have to be over
-the slide, where the audience sees it. With several screens in a
+notes, and a toolbar with a timer and the clock. Clicking the previews also
+goes to the next step, so the mouse pointer doesn't have to be over the slide,
+where the audience sees it. Clicks on the notes select their text instead. With several screens in a
 Chromium-based browser, Start presentation asks which screen to show the
 slides on.
 

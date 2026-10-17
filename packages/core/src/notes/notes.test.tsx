@@ -71,6 +71,17 @@ describe('Notes', () => {
     expect(notes()).toEqual([]);
   });
 
+  it('selects the notes in the bar below the slide on click', async () => {
+    // Short enough to fit the black bar.
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(0);
+    const user = userEvent.setup();
+    renderDeck();
+    const [shown] = notes();
+    expect(shown?.querySelector('button')).toBeNull();
+    await user.click(within(shown ?? document.body).getByText('Remember this'));
+    expect(window.location.hash).toBe('#slide=1');
+  });
+
   it('lets clicks through to the slide until expanded', async () => {
     const user = userEvent.setup();
     renderDeck();

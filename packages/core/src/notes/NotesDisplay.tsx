@@ -3,7 +3,10 @@ import { useState, type JSX, type ReactNode, type RefCallback } from 'react';
 
 import { useT } from '../i18n/UiLanguageContext.ts';
 import type { Size } from '../deck/useFitScale.ts';
-import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
+import {
+  INTERACTIVE_ATTRIBUTE,
+  SELECTABLE_ATTRIBUTE,
+} from '../interaction/interaction.ts';
 import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
 import { useMeasure } from '../slide/settling.ts';
 import { SLIDE_HEIGHT } from '../theme/createSlideTheme.ts';
@@ -78,6 +81,8 @@ export function NotesDisplay({
       {/* Also measures the notes when they don't fit. */}
       <Box
         ref={measureRef}
+        // Clicks select the notes, rather than going to the next step.
+        {...(fits ? { [SELECTABLE_ATTRIBUTE]: true } : {})}
         lang={notesLang}
         aria-label={t('presenterNotes')}
         aria-hidden={!fits}
