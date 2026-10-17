@@ -215,13 +215,24 @@ export function AudienceWindow({
               slide={slides[slideIndex]}
               kind="audience"
             />
-            {pointer !== undefined && (
-              <MirroredPointer store={pointer} mode={pointerMode} />
-            )}
             {interaction !== undefined && (
               <InteractionMirror store={interaction} frame={frame} />
             )}
           </SelectionFrame>
+          {pointer !== undefined && (
+            // Over the slide, but outside of its frame, so that the pointer
+            // keeps following the mouse while the slide fades.
+            <Box
+              sx={SLIDE_FRAME_STYLES}
+              style={{
+                transform: `scale(${String(scale)})`,
+                backgroundColor: 'transparent',
+                pointerEvents: 'none',
+              }}
+            >
+              <MirroredPointer store={pointer} mode={pointerMode} />
+            </Box>
+          )}
         </Box>
         {needsClick && screen !== undefined && (
           <ThemeProvider theme={uiTheme}>
