@@ -1,9 +1,8 @@
 import { Box, Typography } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import {
   useOwnAnimation,
-  useSlideView,
   useStep,
+  useStepTransition,
   type StepHandle,
 } from '@slider/core';
 import type { JSX } from 'react';
@@ -19,11 +18,11 @@ const STAGE_GAP = 80;
  * The stages light up with their groups, which fades with the slide like
  * the list items. The marker below them moves to the last stage reached with
  * an animation of its own instead, which it keeps out of the fade of the
- * slide with `useOwnAnimation`. Like any step, it shows the end state right
- * away when the presenter jumps to a step, and in thumbnails.
+ * slide with `useOwnAnimation`. It moves for as long as the slide fades,
+ * which `useStepTransition` tells, e.g., slowly for a step with `fadeBefore=800`,
+ * and jumps where the slide changes at once, e.g., in thumbnails.
  */
 export function Pipeline(): JSX.Element {
-  const theme = useTheme();
   // Each stage is in the group of its step, so it's placed in the steps where
   // it's in the document, before the list items of the group.
   const stages: [string, StepHandle][] = [
@@ -32,9 +31,9 @@ export function Pipeline(): JSX.Element {
     ['React elements', useStep({ group: 'display' })],
   ];
   const reached = stages.findLastIndex(([, step]) => step.isActive);
-  // Animate where the slide is presented, but not in thumbnails or previews,
-  // which show how a step ends, nor for viewers who prefer less motion.
-  const { animated } = useSlideView();
+  // Move along with the fade of the slide, for as long as the steps say, and
+  // jump where the slide changes at once, e.g., in thumbnails, or for cuts.
+  const { duration, easing } = useStepTransition();
   const ownAnimation = useOwnAnimation();
   return (
     <Box
@@ -85,11 +84,9 @@ export function Pipeline(): JSX.Element {
           // with the slide.
           opacity: reached < 0 ? 0 : 1,
           transform: `translateX(${String(Math.max(reached, 0) * (STAGE_WIDTH + STAGE_GAP))}px)`,
-          transition: animated
-            ? theme.transitions.create(['transform', 'opacity'], {
-                duration: theme.transitions.duration.complex,
-              })
-            : 'none',
+          transition: ['transform', 'opacity']
+            .map((property) => `${property} ${String(duration)}ms ${easing}`)
+            .join(', '),
         }}
       />
     </Box>
