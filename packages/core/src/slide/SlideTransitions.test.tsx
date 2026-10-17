@@ -28,20 +28,23 @@ interface FakeTransition {
   skipped: boolean;
   /** The duration of the fade when the transition started, e.g., `0ms`. */
   duration: string;
+  /** The kind of the transition, e.g., `slide`. */
+  kind: string | null;
 }
 
 /**
  * Lets `target` start view transitions, which run their update callback and
- * end when the test says so.
+ * end when the test says so. `HTMLElement.prototype` lets every element start
+ * transitions scoped to itself.
  */
 function fakeTransitions(target: object): FakeTransition[] {
   const started: FakeTransition[] = [];
-  const scope =
-    target instanceof Document
-      ? target.documentElement
-      : (target as HTMLElement);
   Object.assign(target, {
-    startViewTransition: (update: () => Promise<void>) => {
+    startViewTransition(
+      this: Document | HTMLElement,
+      update: () => Promise<void>,
+    ) {
+      const scope = this instanceof Document ? this.documentElement : this;
       let finish: () => void = () => undefined;
       const finished = new Promise<void>((resolve) => {
         finish = resolve;
@@ -55,6 +58,7 @@ function fakeTransitions(target: object): FakeTransition[] {
         },
         skipped: false,
         duration: scope.style.getPropertyValue(DURATION_PROPERTY),
+        kind: scope.getAttribute(TRANSITION_ATTRIBUTE),
       };
       started.push(fake);
       return {
@@ -358,10 +362,15 @@ describe('SlideTransitions', () => {
     afterEach(() => {
       cleanup();
       window.history.replaceState(null, '', '#');
+      delete (HTMLElement.prototype as { startViewTransition?: unknown })
+        .startViewTransition;
     });
 
+    /** Lets the deck start view transitions scoped to the slide. */
+    const fakeScoped = () => fakeTransitions(HTMLElement.prototype);
+
     async function stepWith(theme?: ReturnType<typeof createSlideTheme>) {
-      const started = fakeTransitions(document);
+      const started = fakeScoped();
       const user = userEvent.setup();
       render(
         <Deck {...(theme === undefined ? {} : { theme })}>
@@ -384,7 +393,7 @@ describe('SlideTransitions', () => {
       // Slides cut by default.
       theme = createSlideTheme({ slideTransition: { duration: 150 } }),
     ) {
-      const started = fakeTransitions(document);
+      const started = fakeScoped();
       render(
         <Deck theme={theme}>
           <Slide title="First">A</Slide>
@@ -400,10 +409,7 @@ describe('SlideTransitions', () => {
       const started = renderSlides();
       const user = userEvent.setup();
       await user.keyboard('{PageDown}');
-      expect(started).toHaveLength(1);
-      expect(document.documentElement.getAttribute(TRANSITION_ATTRIBUTE)).toBe(
-        'slide',
-      );
+      expect(started.map(({ kind }) => kind)).toEqual(['slide']);
     });
 
     it('lets either slide turn off the fade', async () => {
@@ -458,16 +464,10 @@ describe('SlideTransitions', () => {
       const started = renderSlides({ fade: 300 });
       const user = userEvent.setup();
       await user.keyboard('{PageDown}');
-      expect(
-        document.documentElement.style.getPropertyValue(DURATION_PROPERTY),
-      ).toBe('300ms');
       await started[0]?.capture();
       await started[0]?.end();
       await user.keyboard('{PageUp}');
-      expect(started).toHaveLength(2);
-      expect(
-        document.documentElement.style.getPropertyValue(DURATION_PROPERTY),
-      ).toBe('300ms');
+      expect(durations(started)).toEqual(['300ms', '300ms']);
     });
 
     it('takes the duration of fades from the master', async () => {
@@ -489,7 +489,7 @@ describe('SlideTransitions', () => {
       slide: ReactNode,
       keys: readonly string[] = ['{ArrowRight}'],
     ): Promise<string[]> {
-      const started = fakeTransitions(document);
+      const started = fakeScoped();
       const user = userEvent.setup();
       render(<Deck>{slide}</Deck>);
       const durations: string[] = [];
@@ -589,7 +589,7 @@ describe('SlideTransitions', () => {
       }
 
       it('follows the fades of the steps', async () => {
-        const started = fakeTransitions(document);
+        const started = fakeScoped();
         const timing = renderTiming();
         const user = userEvent.setup();
         expect(timing()).toBe('0 forward');
@@ -607,11 +607,26 @@ describe('SlideTransitions', () => {
         expect(timing()).toBe('0 back');
       });
 
-      it('is 0 without view transitions', async () => {
+      it('follows the fades of the steps where the slide cuts', async () => {
+        // Without view transitions.
         const timing = renderTiming();
         await userEvent.setup().keyboard('{ArrowRight}');
-        expect(timing()).toBe('0 forward');
+        expect(timing()).toBe('300 forward');
       });
+    });
+
+    it('cuts with transitions of the whole document', async () => {
+      const started = fakeTransitions(document);
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide title="Steps">
+            <Step fade={300}>A</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(durations(started)).toEqual(['0ms']);
     });
 
     it('cuts steps without a duration', async () => {

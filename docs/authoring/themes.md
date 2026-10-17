@@ -200,9 +200,12 @@ the `--SliderStep-dim-opacity` custom property.
 
 ## Transitions
 
-The audience and presenter views fade the slide with view transitions, if
-the browser supports them. Viewers who prefer reduced motion see no fades.
-Swiping moves the slides instead.
+The audience and presenter views fade the slide with view transitions
+scoped to the slide, e.g., in Chrome. Browsers without them, e.g., Firefox
+and Safari, cut instead, since their transitions of the whole page would
+cover the menu button and stutter the components that animate themselves.
+Viewers who prefer reduced motion see no fades. Swiping moves the slides
+instead.
 
 `stepTransition` and `slideTransition` set the fades between steps and
 between slides:

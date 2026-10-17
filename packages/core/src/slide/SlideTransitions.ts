@@ -269,7 +269,11 @@ interface Settling {
  * Fading snapshots of the whole slide, rather than each step on its own,
  * keeps nested steps from showing through while their parents fade, and
  * works with any change of the slide, e.g., by components that follow the
- * steps. Where view transitions aren't supported, steps change right away.
+ * steps. Only view transitions scoped to the frame fade, since those of the
+ * whole document cover what's painted over the slide, and some browsers
+ * don't keep the elements that animate themselves live in them. Elsewhere,
+ * the slide cuts, but {@link getChange} still tells the timing of the
+ * change, so that components animate along.
  *
  * Changes that cut, rather than fade, use view transitions, too: the views
  * keep showing the slide as it was until the changed slide settles, e.g.,
@@ -391,11 +395,14 @@ export class SlideTransitions {
     this.flush();
     this.#interrupt();
     const frames = change.immediate === true ? [] : this.#transitionFrames();
-    const fades =
+    // Components animate along, even where the slide cuts instead of fading.
+    const animated =
       change.duration > 0 &&
-      frames.some((frame) => !prefersReducedMotion(frame));
+      [...this.#frames].some(
+        (frame) => frame.isConnected && !prefersReducedMotion(frame),
+      );
     const apply = () => {
-      this.#change = fades ? change : { ...change, duration: 0 };
+      this.#change = animated ? change : { ...change, duration: 0 };
       for (const listener of this.#changeListeners) {
         listener();
       }
@@ -531,7 +538,13 @@ export class SlideTransitions {
       return ready;
     };
     for (const frame of frames) {
-      const cut = duration === 0 || prefersReducedMotion(frame);
+      // Transitions of the whole document cover what's painted over the slide,
+      // e.g., the menu button, and some browsers don't keep the elements that
+      // animate themselves live, so only scoped transitions fade.
+      const cut =
+        duration === 0 ||
+        prefersReducedMotion(frame) ||
+        typeof (frame as ScopableElement).startViewTransition !== 'function';
       const started = startTransition(
         frame,
         kind,

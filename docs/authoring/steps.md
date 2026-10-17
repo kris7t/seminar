@@ -97,9 +97,10 @@ lists in parallel.
 
 The audience and presenter views fade the whole slide from one step to the
 next, as the `stepTransition` of the theme says (see
-[Themes](themes.md#transitions)). Where the browser doesn't support
-view transitions, or the viewer prefers reduced motion, steps change at
-once.
+[Themes](themes.md#transitions)). In browsers without view transitions
+scoped to the slide, e.g., Firefox and Safari, the slide cuts instead, but
+components still get the timing of the step to animate along. For viewers
+who prefer reduced motion, steps change at once.
 
 So content that appears, disappears, or dims with the steps needs no
 animation of its own. Components that animate in other ways when the step
