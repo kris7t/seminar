@@ -95,6 +95,11 @@ export interface DeckDefaults {
    * Defaults to `true`.
    */
   defaultMouseNavigation?: boolean | undefined;
+  /**
+   * Whether the presenter view starts mirroring the mouse pointer to the
+   * audience, unless decks set `mirrorPointer`. Defaults to `false`.
+   */
+  defaultMirrorPointer?: boolean | undefined;
 }
 
 /**
@@ -105,12 +110,17 @@ export interface DeckDefaults {
  *   deepest level of the headings of the deck, but at most 4.
  * - `title` defaults to the text of the first heading that starts a slide.
  * - `mouseNavigation` defaults to `defaultMouseNavigation`, or `true`.
+ * - `mirrorPointer` defaults to `defaultMirrorPointer`, or `false`.
  * - `theme` defaults to `defaultTheme`, if given.
  */
 export function getDeckFrontmatter(
   tree: Root,
   file: VFile,
-  { defaultTheme, defaultMouseNavigation = true }: DeckDefaults = {},
+  {
+    defaultTheme,
+    defaultMouseNavigation = true,
+    defaultMirrorPointer = false,
+  }: DeckDefaults = {},
 ): Record<string, unknown> {
   let frontmatter: Record<string, unknown> = {};
   for (const node of tree.children) {
@@ -124,6 +134,7 @@ export function getDeckFrontmatter(
   return {
     ...(title === undefined ? {} : { title }),
     mouseNavigation: defaultMouseNavigation,
+    mirrorPointer: defaultMirrorPointer,
     ...(defaultTheme === undefined ? {} : { theme: defaultTheme }),
     ...frontmatter,
     depth,

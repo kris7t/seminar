@@ -51,6 +51,7 @@ describe('.deck.mdx', () => {
     expect(frontmatter).toEqual({
       title: 'A talk about slides',
       mouseNavigation: false,
+      mirrorPointer: false,
       theme: './theme.tsx',
       depth: 2,
     });
@@ -83,6 +84,7 @@ describe('.deck.mdx', () => {
     expect(plainFrontmatter).toEqual({
       title: 'Plain deck',
       mouseNavigation: true,
+      mirrorPointer: false,
       theme: '@slider/theme-default',
       depth: 1,
     });

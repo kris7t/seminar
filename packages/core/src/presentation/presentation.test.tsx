@@ -92,7 +92,7 @@ describe('starting the presentation', () => {
 
   function renderDeck() {
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First" />
       </Deck>,
     );
@@ -196,7 +196,7 @@ describe('the presenter view', () => {
 
   function renderDeck() {
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First">
           <Notes>Some notes</Notes>
         </Slide>
@@ -236,7 +236,7 @@ describe('the presenter view', () => {
     const { remove } = fakeAudienceWindow();
     const user = userEvent.setup();
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First">
           <Step>Revealed</Step>
           <Notes>Some notes</Notes>
@@ -325,6 +325,33 @@ describe('the presenter view', () => {
     });
     expect(pointer()).toBeNull();
     vi.useRealTimers();
+    remove();
+  });
+
+  it('only mirrors the pointer when the deck says so', async () => {
+    const { audience, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First" />
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    const frame = document.querySelector('[data-slider-view="presenter"]');
+    if (!(frame instanceof HTMLElement)) {
+      throw new Error('No presenter view');
+    }
+    fireEvent.pointerMove(frame, {
+      pointerType: 'mouse',
+      clientX: 10,
+      clientY: 10,
+    });
+    expect(audience.document.querySelector('[data-slider-pointer]')).toBeNull();
+    expect(
+      screen
+        .getByRole('button', { name: 'Show pointer to the audience' })
+        .getAttribute('aria-pressed'),
+    ).toBe('false');
     remove();
   });
 
@@ -425,7 +452,7 @@ describe('the presenter view', () => {
     const { close, remove } = fakeAudienceWindow();
     const user = userEvent.setup();
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First">
           <input aria-label="Field" />
         </Slide>
@@ -473,7 +500,7 @@ describe('the presenter toolbar', () => {
     const { remove } = fakeAudienceWindow();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First">
           <Step>a</Step>
         </Slide>
@@ -537,7 +564,7 @@ describe('the presenter toolbar', () => {
     const { remove } = fakeAudienceWindow();
     const user = userEvent.setup();
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First">
           <Step>a</Step>
           <Notes>Some notes</Notes>
@@ -563,7 +590,7 @@ describe('the presenter toolbar', () => {
     const { remove } = fakeAudienceWindow();
     const user = userEvent.setup();
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First" />
       </Deck>,
     );
@@ -599,7 +626,7 @@ describe('the presenter toolbar', () => {
     const { remove } = fakeAudienceWindow();
     const user = userEvent.setup();
     render(
-      <Deck toc={[{ slide: 0, title: 'First' }]}>
+      <Deck defaultMirrorPointer toc={[{ slide: 0, title: 'First' }]}>
         <Slide title="First" />
       </Deck>,
     );
@@ -640,7 +667,7 @@ describe('the presenter toolbar', () => {
     try {
       const user = userEvent.setup();
       render(
-        <Deck>
+        <Deck defaultMirrorPointer>
           <Slide title="First" />
         </Deck>,
       );
@@ -727,7 +754,7 @@ describe('mirroring the interaction', () => {
     const onClick = vi.fn<() => void>();
     const user = userEvent.setup();
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First">
           <Button onClick={onClick}>Press</Button>
         </Slide>
@@ -754,7 +781,7 @@ describe('mirroring the interaction', () => {
     const { audience, remove } = fakeAudienceWindow();
     const user = userEvent.setup();
     render(
-      <Deck>
+      <Deck defaultMirrorPointer>
         <Slide title="First">
           <input aria-label="Field" />
         </Slide>

@@ -116,6 +116,13 @@ export interface DeckProps {
    */
   defaultMouseNavigation?: boolean;
   /**
+   * Whether the presenter view starts mirroring the mouse pointer of the
+   * presenter to the audience. Defaults to `false`, since the pointer is
+   * often over the slide in the presenter view without meaning to point at
+   * anything. The presenter can toggle it in the toolbar.
+   */
+  defaultMirrorPointer?: boolean;
+  /**
    * The table of contents of the deck, which the presenter can show in a
    * sidebar from the context menu. Decks written in MDX get it from their
    * headings.
@@ -233,6 +240,7 @@ export function Deck({
   children,
   theme = defaultSlideTheme,
   defaultMouseNavigation = true,
+  defaultMirrorPointer = false,
   toc: tocEntries,
   defaultShowToc = false,
   defaultShowSteps = false,
@@ -370,9 +378,13 @@ export function Deck({
   const presenterLayout = choosePresenterLayout(presenterAreaSize);
   const [notesOnly, setNotesOnly] = useState(false);
   const [pointer] = useState(createPointerStore);
-  const [pointerMode, setPointerMode] = useState<PointerMode>('mirror');
+  const [pointerMode, setPointerMode] = useState<PointerMode>(
+    defaultMirrorPointer ? 'mirror' : 'off',
+  );
   // The mode to return to when the laser pointer is turned off.
-  const [modeBeforeLaser, setModeBeforeLaser] = useState<PointerMode>('mirror');
+  const [modeBeforeLaser, setModeBeforeLaser] = useState<PointerMode>(
+    defaultMirrorPointer ? 'mirror' : 'off',
+  );
   const pointerHandlers = usePointerTracking(pointer, pointerMode, transitions);
   const [interaction] = useState(createInteractionStore);
   const [presenterFrame, setPresenterFrame] = useState<HTMLElement | null>(

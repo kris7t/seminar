@@ -36,6 +36,7 @@ optional.
 | `uiLanguages`     | Further languages of the user interface, see [Languages](#languages)            |
 | `depth`           | Deepest heading level that starts a slide, see [Headings](#headings-and-slides) |
 | `mouseNavigation` | `false` starts with text selection (S) instead of clicks changing steps         |
+| `mirrorPointer`   | `true` starts the presenter view showing the mouse pointer to the audience      |
 | `math`            | Options of math typesetting, see [Math](content.md#math)                        |
 
 ## Headings and slides

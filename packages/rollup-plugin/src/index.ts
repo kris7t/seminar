@@ -65,6 +65,7 @@ export type SliderPlugin = ReturnType<typeof mdx> & {
 export default function slider({
   defaultTheme = '@slider/theme-default',
   defaultMouseNavigation = true,
+  defaultMirrorPointer = false,
   include = /\.deck\.mdx$/,
   importSource,
   math,
@@ -99,6 +100,7 @@ export default function slider({
             ? path.resolve(root, defaultTheme)
             : defaultTheme,
       defaultMouseNavigation,
+      defaultMirrorPointer,
       math,
       importModule,
       sliderConfigs,

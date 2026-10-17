@@ -113,14 +113,14 @@ to open the overview.
 The presenter view opens a separate window for the audience, while the deck
 window shows the current slide, previews of the next step and slide, the
 notes, and a toolbar with a timer and the clock. Clicking the previews also
-goes to the next step, so the mouse pointer doesn't have to be over the slide,
-where the audience sees it. Clicks on the notes select their text instead. With several screens in a
-Chromium-based browser, Start presentation asks which screen to show the
-slides on.
+goes to the next step, while clicks on the notes select their text. With
+several screens in a Chromium-based browser, Start presentation asks which
+screen to show the slides on.
 
 Both windows render the same slide with shared state, so interactive slides
-work in front of the audience. While the mirrored pointer is on, the audience
-also sees the mouse pointer and its shape, hover and focus styles, the caret
+work in front of the audience. The mouse pointer can be shown to the
+audience, too (M, or `mirrorPointer: true` in the frontmatter to start with
+it). The audience then also sees its shape, hover and focus styles, the caret
 and selection of text fields, selected text, and the ripples of buttons.
 
 ## Packages

@@ -250,18 +250,16 @@ function createDeckAttributes(
         .join(', ')}]`,
     ),
   ];
-  const { mouseNavigation } = frontmatter;
-  if (mouseNavigation !== undefined) {
-    if (typeof mouseNavigation === 'boolean') {
-      attributes.push(
-        createExpressionAttribute(
-          'defaultMouseNavigation',
-          String(mouseNavigation),
-        ),
-      );
-    } else {
+  for (const [key, prop] of [
+    ['mouseNavigation', 'defaultMouseNavigation'],
+    ['mirrorPointer', 'defaultMirrorPointer'],
+  ] as const) {
+    const value = frontmatter[key];
+    if (typeof value === 'boolean') {
+      attributes.push(createExpressionAttribute(prop, String(value)));
+    } else if (value !== undefined) {
       file.message(
-        'Expected `mouseNavigation` in the frontmatter to be true or false',
+        `Expected \`${key}\` in the frontmatter to be true or false`,
       );
     }
   }

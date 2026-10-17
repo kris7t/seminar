@@ -172,6 +172,7 @@ Done
   it('passes props to the deck, with defaults from the frontmatter', async () => {
     const module = await compileDeck(`---
 mouseNavigation: false
+mirrorPointer: true
 author: Someone
 ---
 
@@ -180,11 +181,13 @@ author: Someone
     expect(module.frontmatter).toEqual({
       title: 'Slide',
       mouseNavigation: false,
+      mirrorPointer: true,
       author: 'Someone',
       depth: 2,
     });
     expect(renderDeck(module).props).toMatchObject({
       defaultMouseNavigation: false,
+      defaultMirrorPointer: true,
     });
     expect(
       renderDeck(module, { defaultMouseNavigation: true, theme: 'x' }).props,
@@ -198,10 +201,12 @@ author: Someone
     expect(module.frontmatter).toEqual({
       title: 'First',
       mouseNavigation: true,
+      mirrorPointer: false,
       depth: 2,
     });
     expect(renderDeck(module).props).toMatchObject({
       defaultMouseNavigation: true,
+      defaultMirrorPointer: false,
     });
   });
 
@@ -230,6 +235,7 @@ author: Someone
       importSource: STUB_URL,
       defaultTheme: THEME_URL,
       defaultMouseNavigation: false,
+      defaultMirrorPointer: true,
     });
     const module = (await evaluate('# Slide', {
       ...runtime,
@@ -239,11 +245,13 @@ author: Someone
     expect(module.frontmatter).toEqual({
       title: 'Slide',
       mouseNavigation: false,
+      mirrorPointer: true,
       theme: THEME_URL,
       depth: 1,
     });
     expect(renderDeck(module).props).toMatchObject({
       defaultMouseNavigation: false,
+      defaultMirrorPointer: true,
       theme: { name: 'test theme' },
     });
   });

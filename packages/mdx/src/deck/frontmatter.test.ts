@@ -6,7 +6,13 @@ describe('readDeckFrontmatter', () => {
   it('reads the frontmatter', () => {
     expect(
       readDeckFrontmatter('---\ntitle: Talk\nlang: hu\n---\n\n# Slide'),
-    ).toEqual({ title: 'Talk', lang: 'hu', mouseNavigation: true, depth: 1 });
+    ).toEqual({
+      title: 'Talk',
+      lang: 'hu',
+      mouseNavigation: true,
+      mirrorPointer: false,
+      depth: 1,
+    });
   });
 
   it('takes the title from the first heading that starts a slide', () => {
@@ -14,7 +20,12 @@ describe('readDeckFrontmatter', () => {
       readDeckFrontmatter(
         '---\ndepth: 2\n---\n\nIntro\n\n### Not a slide\n\n## First :slide{#first}',
       ),
-    ).toEqual({ title: 'First', mouseNavigation: true, depth: 2 });
+    ).toEqual({
+      title: 'First',
+      mouseNavigation: true,
+      mirrorPointer: false,
+      depth: 2,
+    });
   });
 
   it('takes the title from the first heading if no heading starts a slide', () => {
@@ -36,6 +47,7 @@ describe('readDeckFrontmatter', () => {
     expect(readDeckFrontmatter('## Slide\n\n$e^{i\\pi}$')).toEqual({
       title: 'Slide',
       mouseNavigation: true,
+      mirrorPointer: false,
       depth: 2,
     });
   });
@@ -43,6 +55,7 @@ describe('readDeckFrontmatter', () => {
   it('works without a title', () => {
     expect(readDeckFrontmatter('Text')).toEqual({
       mouseNavigation: true,
+      mirrorPointer: false,
       depth: 0,
     });
   });
