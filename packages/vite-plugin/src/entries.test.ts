@@ -1,4 +1,8 @@
-import { createServer as createHttpServer, type Server } from 'node:http';
+import {
+  createServer as createHttpServer,
+  request as httpRequest,
+  type Server,
+} from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -26,6 +30,28 @@ const config: InlineConfig = {
     conditions: ['@slider/source', ...defaultClientConditions],
   },
 };
+
+/** Gets `path` from `server` as it is, unlike `fetch`, which normalizes it. */
+function get(
+  server: Server,
+  path: string,
+): Promise<{ status: number | undefined; body: string }> {
+  const { port } = server.address() as AddressInfo;
+  return new Promise((resolve, reject) => {
+    httpRequest({ host: '127.0.0.1', port, path }, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk: string) => {
+        body += chunk;
+      });
+      response.on('end', () => {
+        resolve({ status: response.statusCode, body });
+      });
+    })
+      .on('error', reject)
+      .end();
+  });
+}
 
 describe('sliderEntries', () => {
   describe('build', () => {
@@ -104,6 +130,21 @@ describe('sliderEntries', () => {
     it('does not serve pages for other files', async () => {
       const response = await fetch(`${baseUrl}/missing.html`);
       expect(response.status).toBe(404);
+    });
+
+    it('does not serve pages outside of the root', async () => {
+      // A sibling whose name starts with that of the root.
+      const { status, body } = await get(
+        httpServer,
+        '/..%2ffixtures-sibling/outside.html',
+      );
+      expect(status).not.toBe(200);
+      expect(body).not.toContain('Outside of the root');
+    });
+
+    it('answers malformed paths', async () => {
+      const { status } = await get(httpServer, '/%E0.html');
+      expect(status).toBe(404);
     });
   });
 });

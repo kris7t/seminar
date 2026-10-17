@@ -20,6 +20,17 @@ const ENTRY_QUERY = '?slider-entry';
 /** Prefix of the virtual modules that render decks. */
 const ENTRY_PREFIX = '\0slider-entry:';
 
+/** Whether `file` is inside of the directory `root`, not in a sibling. */
+function isInside(root: string, file: string): boolean {
+  const relative = path.relative(root, file);
+  return (
+    relative !== '' &&
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
 /** Whether `htmlPath` is not a real file, but generated for a deck. */
 function isGenerated(htmlPath: string): boolean {
   return (
@@ -175,14 +186,16 @@ export function sliderEntries(): Plugin {
           next();
           return;
         }
+        // Malformed escapes throw, which the server answers with an error.
         let pathname = decodeURIComponent(
           new URL(request.url, 'http://localhost').pathname,
         );
         if (pathname.endsWith('/')) {
           pathname += 'index.html';
         }
+        // Encoded slashes, like `..%2f`, may lead out of the root.
         const htmlPath = path.join(root, pathname);
-        if (!htmlPath.startsWith(root) || !isGenerated(htmlPath)) {
+        if (!isInside(root, htmlPath) || !isGenerated(htmlPath)) {
           next();
           return;
         }
