@@ -465,6 +465,18 @@ export function Deck({
         : transitions.register(slideArea),
     [slideArea, showOverview, transitions],
   );
+  // The presenter panel keeps showing the notes and previews of the step
+  // before until the slide shows the change, too.
+  const [presenterPanel, setPresenterPanel] = useState<HTMLElement | null>(
+    null,
+  );
+  useEffect(
+    () =>
+      presenterPanel === null || showOverview
+        ? undefined
+        : transitions.register(presenterPanel, { holdOnly: true }),
+    [presenterPanel, showOverview, transitions],
+  );
   const notes = getSlideNotes(slides[slideIndex]);
   // The notes are in the language of their slide.
   const notesLang = getSlideLang(slides[slideIndex]) ?? lang;
@@ -822,6 +834,7 @@ export function Deck({
                       {presenting && (
                         <UiThemeProvider dark>
                           <Box
+                            ref={setPresenterPanel}
                             // Clicking the panel navigates, too, so that the
                             // presenter can advance without the mouse pointer
                             // showing on the slide. Only the toolbar has controls.

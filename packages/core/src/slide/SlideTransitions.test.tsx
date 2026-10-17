@@ -211,6 +211,29 @@ describe('SlideTransitions', () => {
     expect(update).toHaveBeenCalledOnce();
   });
 
+  it('holds frames that only hold, and cuts them', () => {
+    const transitions = new SlideTransitions();
+    const frame = createFrame();
+    const panel = createFrame();
+    const started = fakeTransitions(frame);
+    const held = fakeTransitions(panel);
+    transitions.register(frame);
+    transitions.register(panel, { holdOnly: true });
+    transitions.run(() => undefined, 'step', 300);
+    expect(durations(started)).toEqual(['300ms']);
+    expect(durations(held)).toEqual(['0ms']);
+  });
+
+  it('leaves frames that only hold to transitions of the document', () => {
+    const started = fakeTransitions(document);
+    const transitions = new SlideTransitions();
+    const frame = createFrame();
+    transitions.register(frame);
+    transitions.register(createFrame(), { holdOnly: true });
+    transitions.run(() => undefined);
+    expect(started).toHaveLength(1);
+  });
+
   it('stops fading unregistered frames', () => {
     const transitions = new SlideTransitions();
     const frame = createFrame();

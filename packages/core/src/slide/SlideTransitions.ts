@@ -306,6 +306,11 @@ interface Settling {
  */
 export class SlideTransitions {
   readonly #frames = new Set<HTMLElement>();
+  /**
+   * Frames that only keep showing what they showed until the change is
+   * shown, see {@link register}.
+   */
+  readonly #holdOnly = new Set<HTMLElement>();
   /** The running transitions, and the elements they run on. */
   readonly #transitions = new Map<ViewTransition, HTMLElement>();
   readonly #listeners = new Set<() => void>();
@@ -324,14 +329,26 @@ export class SlideTransitions {
   /**
    * Fades `frame`, an element that shows a slide, when steps change. The
    * frame must be the only element with a slide in its document that's
-   * registered.
+   * registered, except for `holdOnly` frames.
    *
+   * @param options.holdOnly Whether the frame shows something else that
+   *   follows the slide, e.g., the notes of the presenter view, which should
+   *   keep showing what it showed until the change is shown, and then cut.
+   *   Only browsers with transitions scoped to an element hold these, since
+   *   transitions of the whole document hold all of it anyway.
    * @returns A function that stops fading the frame.
    */
-  register(frame: HTMLElement): () => void {
+  register(
+    frame: HTMLElement,
+    { holdOnly = false }: { holdOnly?: boolean } = {},
+  ): () => void {
     this.#frames.add(frame);
+    if (holdOnly) {
+      this.#holdOnly.add(frame);
+    }
     return () => {
       this.#frames.delete(frame);
+      this.#holdOnly.delete(frame);
     };
   }
 
@@ -423,7 +440,10 @@ export class SlideTransitions {
     const animated =
       change.duration > 0 &&
       [...this.#frames].some(
-        (frame) => frame.isConnected && !prefersReducedMotion(frame),
+        (frame) =>
+          !this.#holdOnly.has(frame) &&
+          frame.isConnected &&
+          !prefersReducedMotion(frame),
       );
     const apply = () => {
       this.#change = {
@@ -451,7 +471,8 @@ export class SlideTransitions {
       return (
         frame.isConnected &&
         (typeof scopable.startViewTransition === 'function' ||
-          typeof frame.ownerDocument.startViewTransition === 'function')
+          (!this.#holdOnly.has(frame) &&
+            typeof frame.ownerDocument.startViewTransition === 'function'))
       );
     });
   }
@@ -593,6 +614,7 @@ export class SlideTransitions {
       // animate themselves live, so only scoped transitions fade.
       const cut =
         duration === 0 ||
+        this.#holdOnly.has(frame) ||
         prefersReducedMotion(frame) ||
         typeof (frame as ScopableElement).startViewTransition !== 'function';
       const started = startTransition(

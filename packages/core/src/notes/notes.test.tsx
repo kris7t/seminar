@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
@@ -27,11 +27,15 @@ const notes = () =>
 describe('Notes', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
+    // jsdom has no layout, so the notes are taller than the black bar, which
+    // has no height either, and show over the slide.
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(100);
   });
 
   afterEach(() => {
     cleanup();
     Reflect.deleteProperty(document, 'fullscreenElement');
+    vi.restoreAllMocks();
   });
 
   it('is taken from the children of slides', () => {
@@ -65,6 +69,15 @@ describe('Notes', () => {
     expect(screen.getAllByText('Remember this')).toHaveLength(2);
     await user.keyboard('{PageDown}');
     expect(notes()).toEqual([]);
+  });
+
+  it('lets clicks through to the slide until expanded', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    const [shown] = notes();
+    expect(shown?.hasAttribute('data-slider-interactive')).toBe(false);
+    await user.click(within(shown ?? document.body).getByRole('button'));
+    expect(shown?.hasAttribute('data-slider-interactive')).toBe(true);
   });
 
   it('expands the notes without navigating', async () => {

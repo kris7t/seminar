@@ -1,16 +1,11 @@
 import { Box, ButtonBase } from '@mui/material';
-import {
-  useCallback,
-  useState,
-  type JSX,
-  type ReactNode,
-  type RefCallback,
-} from 'react';
+import { useState, type JSX, type ReactNode, type RefCallback } from 'react';
 
 import { useT } from '../i18n/UiLanguageContext.ts';
 import type { Size } from '../deck/useFitScale.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
 import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
+import { useMeasure } from '../slide/settling.ts';
 import { SLIDE_HEIGHT } from '../theme/createSlideTheme.ts';
 import { useFullscreen } from './useFullscreen.ts';
 
@@ -26,21 +21,16 @@ const NOTES_STYLES = {
 /** Height of the notes in the collapsed overlay. */
 const COLLAPSED_HEIGHT = '3em';
 
+/** Measures the height of an element before it's painted. */
 function useHeight(): [RefCallback<HTMLElement>, number] {
+  const [element, setElement] = useState<HTMLElement | null>(null);
   const [height, setHeight] = useState(Number.POSITIVE_INFINITY);
-  const ref = useCallback<RefCallback<HTMLElement>>((element) => {
-    if (element === null) {
-      return undefined;
-    }
-    const observer = new ResizeObserver(() => {
+  useMeasure(element, () => {
+    if (element !== null) {
       setHeight(element.offsetHeight);
-    });
-    observer.observe(element);
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-  return [ref, height];
+    }
+  });
+  return [setElement, height];
 }
 
 export interface NotesDisplayProps {
@@ -112,7 +102,9 @@ export function NotesDisplay({
       </Box>
       {!fits && (
         <Box
-          {...{ [INTERACTIVE_ATTRIBUTE]: true }}
+          // Collapsed, the notes let clicks through to the slide, except on
+          // the button that expands them.
+          {...(expanded ? { [INTERACTIVE_ATTRIBUTE]: true } : {})}
           lang={notesLang}
           aria-label={t('presenterNotes')}
           sx={[
@@ -138,6 +130,7 @@ export function NotesDisplay({
                   pt: 4,
                   background:
                     'linear-gradient(to bottom, transparent, rgb(0 0 0 / 70%))',
+                  pointerEvents: 'none',
                 },
           ]}
         >
@@ -172,6 +165,7 @@ export function NotesDisplay({
               fontWeight: 500,
               borderRadius: 1,
               px: 0.5,
+              pointerEvents: 'auto',
             }}
           >
             {expanded ? 'less' : 'more'}
