@@ -33,6 +33,8 @@ Presentation elements from the `@slider/elements` plugin:
 
 1. [Math](mathjax/README.md) with `@slider/plugin-mathjax`: writing math,
    fonts, and macros.
+   - [Dynamic math](mathjax/dynamic.md): math that changes while you
+     present.
 2. [Highlighting code](shiki/README.md) with `@slider/plugin-shiki`: themes,
    and other languages.
 

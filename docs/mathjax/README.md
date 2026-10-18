@@ -6,6 +6,8 @@ Math is typeset when the deck is compiled. The deck contains the result as
 SVG, with MathML for screen readers. It needs no scripts or fonts to show
 it.
 
+For math that changes while you present, see [Dynamic math](dynamic.md).
+
 ## Enabling the plugin
 
 Add `@slider/plugin-mathjax` to the dependencies of your project. Then list
@@ -62,6 +64,7 @@ math:
   definition and the number of its arguments.
 - `tags` says which equations are numbered: `ams` (the default), `all`, or
   `none`.
+- `dynamic` lets the deck show [dynamic math](dynamic.md).
 
 To set options for every deck, set them in the config of your presentation
 theme:

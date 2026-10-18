@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -11,60 +11,8 @@ import { mathjax } from '@mathjax/src/js/mathjax.js';
 import { SVG } from '@mathjax/src/js/output/svg.js';
 import '@mathjax/src/js/util/asyncLoad/esm.js';
 
-import '@mathjax/src/js/input/tex/base/BaseConfiguration.js';
-import '@mathjax/src/js/input/tex/ams/AmsConfiguration.js';
-import '@mathjax/src/js/input/tex/amscd/AmsCdConfiguration.js';
-import '@mathjax/src/js/input/tex/boldsymbol/BoldsymbolConfiguration.js';
-import '@mathjax/src/js/input/tex/braket/BraketConfiguration.js';
-import '@mathjax/src/js/input/tex/bbox/BboxConfiguration.js';
-import '@mathjax/src/js/input/tex/cancel/CancelConfiguration.js';
-import '@mathjax/src/js/input/tex/cases/CasesConfiguration.js';
-import '@mathjax/src/js/input/tex/centernot/CenternotConfiguration.js';
-import '@mathjax/src/js/input/tex/color/ColorConfiguration.js';
-import '@mathjax/src/js/input/tex/configmacros/ConfigMacrosConfiguration.js';
-import '@mathjax/src/js/input/tex/empheq/EmpheqConfiguration.js';
-import '@mathjax/src/js/input/tex/enclose/EncloseConfiguration.js';
-import '@mathjax/src/js/input/tex/extpfeil/ExtpfeilConfiguration.js';
-import '@mathjax/src/js/input/tex/gensymb/GensymbConfiguration.js';
-import '@mathjax/src/js/input/tex/mathtools/MathtoolsConfiguration.js';
-import '@mathjax/src/js/input/tex/mhchem/MhchemConfiguration.js';
-import '@mathjax/src/js/input/tex/newcommand/NewcommandConfiguration.js';
-import '@mathjax/src/js/input/tex/physics/PhysicsConfiguration.js';
-import '@mathjax/src/js/input/tex/textcomp/TextcompConfiguration.js';
-import '@mathjax/src/js/input/tex/textmacros/TextMacrosConfiguration.js';
-import '@mathjax/src/js/input/tex/unicode/UnicodeConfiguration.js';
-import '@mathjax/src/js/input/tex/units/UnitsConfiguration.js';
-import '@mathjax/src/js/input/tex/upgreek/UpgreekConfiguration.js';
-
 import { findPackage } from './packages.ts';
-
-/** TeX packages available in decks. */
-const PACKAGES = [
-  'base',
-  'ams',
-  'amscd',
-  'boldsymbol',
-  'braket',
-  'bbox',
-  'cancel',
-  'cases',
-  'centernot',
-  'color',
-  'configmacros',
-  'empheq',
-  'enclose',
-  'extpfeil',
-  'gensymb',
-  'mathtools',
-  'mhchem',
-  'newcommand',
-  'physics',
-  'textcomp',
-  'textmacros',
-  'unicode',
-  'units',
-  'upgreek',
-];
+import { PACKAGES } from './texPackages.ts';
 
 /** Font of math without a `font` option, which this package depends on. */
 export const DEFAULT_FONT = 'fira';
@@ -121,19 +69,36 @@ async function importFont(directory: string): Promise<Font> {
 }
 
 /**
- * Loads a MathJax font package, looking for it from each of `bases` and then
- * from this package.
+ * Finds the directory of a MathJax font package, looking for it from each of
+ * `bases` and then from this package.
  */
-function loadFont(font: string, bases: string[]): Promise<Font> {
+export function findFontPackage(font: string, bases: string[]): string {
   const name = getFontPackage(font);
   const directory = [...bases, fileURLToPath(import.meta.url)]
     .map((base) => findPackage(name, base))
     .find((found) => found !== undefined);
   if (directory === undefined) {
+    throw new Error(
+      `Cannot find the MathJax font package ${name}, which should be installed along with the theme`,
+    );
+  }
+  return directory;
+}
+
+/** Lists the files of glyphs that a font package loads when needed. */
+export async function listDynamicFiles(directory: string): Promise<string[]> {
+  const files = await readdir(path.join(directory, 'mjs', 'svg', 'dynamic'));
+  return files.filter((file) => file.endsWith('.js')).sort();
+}
+
+/** Loads a MathJax font package (see {@link findFontPackage}). */
+function loadFont(font: string, bases: string[]): Promise<Font> {
+  let directory;
+  try {
+    directory = findFontPackage(font, bases);
+  } catch (error) {
     return Promise.reject(
-      new Error(
-        `Cannot find the MathJax font package ${name}, which should be installed along with the theme`,
-      ),
+      error instanceof Error ? error : new Error(String(error)),
     );
   }
   let loaded = fonts.get(directory);

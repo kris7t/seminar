@@ -3,4 +3,5 @@
  * of decks, see its config.
  */
 export { default as remarkMath } from 'remark-math';
-export { rehypeMathJax, type MathConfig } from './rehypeMathJax.ts';
+export type { MathConfig } from './mathConfig.ts';
+export { rehypeMathJax } from './rehypeMathJax.ts';

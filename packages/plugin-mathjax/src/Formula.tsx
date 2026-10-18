@@ -30,6 +30,11 @@ export interface FormulaProps {
    */
   children?: ReactNode;
   /**
+   * The rendered formula as the HTML of an `svg` element, instead of the
+   * children, like `DynamicFormula` renders it.
+   */
+  svg?: string | undefined;
+  /**
    * The formula as a MathML `math` element in HTML, which is only visible to
    * assistive technology.
    *
@@ -41,13 +46,14 @@ export interface FormulaProps {
   sx?: SxProps<Theme>;
 }
 
-export type FormulaClassKey = 'root' | 'display' | 'inline' | 'mathml';
+export type FormulaClassKey = 'root' | 'display' | 'inline' | 'svg' | 'mathml';
 
 export const formulaClasses: Record<FormulaClassKey, string> =
   generateUtilityClasses('SliderFormula', [
     'root',
     'display',
     'inline',
+    'svg',
     'mathml',
   ]);
 
@@ -73,7 +79,7 @@ const FormulaRoot = styled('span', {
   position: 'relative',
   direction: 'ltr',
   whiteSpace: 'nowrap',
-  '& > svg': {
+  [`& > svg, & > .${formulaClasses.svg} > svg`]: {
     overflow: 'visible',
     minHeight: 1,
     minWidth: 1,
@@ -96,6 +102,12 @@ const FormulaRoot = styled('span', {
     },
   ],
 });
+
+// Holds the SVG given as HTML, without a box of its own.
+const FormulaSvg = styled('span', {
+  name: 'SliderFormula',
+  slot: 'Svg',
+})({ display: 'contents' });
 
 // Shows the MathML to assistive technology only.
 const FormulaMathml = styled('span', {
@@ -127,6 +139,7 @@ export function Formula(inProps: FormulaProps): JSX.Element {
     minWidth,
     className,
     children,
+    svg,
     mathml,
     ...other
   } = props;
@@ -142,7 +155,16 @@ export function Formula(inProps: FormulaProps): JSX.Element {
       style={fullWidth && minWidth !== undefined ? { minWidth } : undefined}
       {...other}
     >
-      {children}
+      {svg === undefined ? (
+        children
+      ) : (
+        <FormulaSvg
+          className={formulaClasses.svg}
+          // Rendered by MathJax from TeX.
+          // eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      )}
       {mathml !== undefined && (
         <FormulaMathml
           className={formulaClasses.mathml}

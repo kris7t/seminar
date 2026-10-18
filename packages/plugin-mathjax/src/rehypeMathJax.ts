@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import type { Element, ElementContent, Root, RootContent } from 'hast';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
@@ -12,42 +14,21 @@ import {
   createEsm,
   createStringAttribute,
   EXPLICIT_JSX_HAST,
-  getSliderOptionLayers,
+  setRuntimeSliderOptions,
 } from '@slider/mdx';
 
+import { readMathOptions, type DeckMathOptions } from './mathConfig.ts';
 import {
   createMathRenderer,
-  DEFAULT_FONT,
-  type MathOptions,
+  findFontPackage,
+  getFontPackage,
+  listDynamicFiles,
   type MathRenderer,
 } from './mathjax.ts';
+import { findPackage } from './packages.ts';
 
 /** Name that decks import the `Formula` component as. */
 const FORMULA = '_SliderMathFormula';
-
-/**
- * Options for rendering math, which the `math` options of the Slider configs
- * and the `math` key of the frontmatter set.
- */
-export interface MathConfig {
-  /**
-   * MathJax font to render math with, e.g., `newcm` for New Computer Modern
-   * of the `@mathjax/mathjax-newcm-font` package, or the name of a MathJax
-   * font package. Defaults to `fira`, which this plugin depends on. Font
-   * packages are found from the config or the deck that sets the font.
-   */
-  font?: string | undefined;
-  /**
-   * TeX macros, e.g., `{ R: '\\mathbb{R}', norm: ['\\lVert #1 \\rVert', 1] }`,
-   * which are merged.
-   */
-  macros?: Record<string, string | [string, number]> | undefined;
-  /**
-   * Which equations are numbered: `ams` numbers the environments that are
-   * numbered in LaTeX with `amsmath`, like `equation`. Defaults to `ams`.
-   */
-  tags?: 'none' | 'ams' | 'all' | undefined;
-}
 
 interface MathNode {
   parent: { children: (RootContent | ElementContent)[] };
@@ -112,76 +93,6 @@ function findMath(
       findMath(child, found);
     }
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isMacro(value: unknown): value is string | [string, number] {
-  return (
-    typeof value === 'string' ||
-    (Array.isArray(value) &&
-      value.length === 2 &&
-      typeof value[0] === 'string' &&
-      typeof value[1] === 'number')
-  );
-}
-
-/**
- * Validates math options given by `source`, reporting invalid ones.
- */
-function parseMathConfig(
-  value: unknown,
-  source: string,
-  file: VFile,
-): MathConfig {
-  if (value === undefined || value === null) {
-    return {};
-  }
-  if (!isRecord(value)) {
-    file.message(`Expected ${source} to be a mapping`);
-    return {};
-  }
-  const config: MathConfig = {};
-  const { font, macros, tags } = value;
-  if (typeof font === 'string') {
-    config.font = font;
-  } else if (font !== undefined) {
-    file.message(`Expected \`font\` of ${source} to be a string`);
-  }
-  if (isRecord(macros)) {
-    config.macros = {};
-    for (const [name, macro] of Object.entries(macros)) {
-      if (isMacro(macro)) {
-        config.macros[name] = macro;
-      } else {
-        file.message(
-          `Expected the macro \`${name}\` in ${source} to be a string or a [definition, arguments] pair`,
-        );
-      }
-    }
-  } else if (macros !== undefined) {
-    file.message(`Expected \`macros\` of ${source} to be a mapping`);
-  }
-  if (tags === 'none' || tags === 'ams' || tags === 'all') {
-    config.tags = tags;
-  } else if (tags !== undefined) {
-    file.message(
-      `Expected \`tags\` of ${source} to be \`none\`, \`ams\`, or \`all\``,
-    );
-  }
-  return config;
-}
-
-function mergeConfigs(configs: MathConfig[]): MathOptions {
-  const options: MathOptions = { font: DEFAULT_FONT, macros: {}, tags: 'ams' };
-  for (const { font, macros, tags } of configs) {
-    options.font = font ?? options.font;
-    options.macros = { ...options.macros, ...macros };
-    options.tags = tags ?? options.tags;
-  }
-  return options;
 }
 
 /** Removes attributes that MathJax only needs for interactive features. */
@@ -295,18 +206,78 @@ function createFormula(
   };
 }
 
-async function createRenderer(file: VFile): Promise<MathRenderer | undefined> {
-  const layers = getSliderOptionLayers(file, 'math');
-  const configs = layers.map(({ options, source }) =>
-    parseMathConfig(options, source, file),
-  );
-  // Fonts are found from the configs that set them, the latest first.
-  const bases = layers.map(({ base }) => base).reverse();
+async function createRenderer(
+  options: DeckMathOptions,
+  file: VFile,
+): Promise<MathRenderer | undefined> {
   try {
-    return await createMathRenderer(mergeConfigs(configs), bases);
+    return await createMathRenderer(options, options.bases);
   } catch (error) {
     file.fail(`Cannot render math: ${String(error)}`);
   }
+}
+
+/**
+ * Returns a function that turns paths in the font package in `directory` to
+ * module specifiers for the deck: by the name of the package if the deck
+ * finds the same package, so that bundlers handle it like other packages,
+ * otherwise by their absolute paths.
+ */
+function fontSpecifiers(
+  font: string,
+  directory: string,
+  file: VFile,
+): (...segments: string[]) => string {
+  const name = getFontPackage(font);
+  const fromDeck = file.path === '' ? undefined : findPackage(name, file.path);
+  return (...segments) =>
+    JSON.stringify(
+      fromDeck !== undefined &&
+        path.resolve(fromDeck) === path.resolve(directory)
+        ? [name, ...segments].join('/')
+        : path
+            .join(directory, ...segments)
+            .split(path.sep)
+            .join('/'),
+    );
+}
+
+/**
+ * Returns the code of the `math` options of the deck in the browser, for
+ * `DynamicFormula`s, with the font of the deck if they're enabled, see
+ * `RuntimeMathOptions`.
+ */
+async function createRuntimeOptions(
+  options: DeckMathOptions,
+  file: VFile,
+): Promise<string> {
+  const { font, macros, tags, dynamic } = options;
+  let fontCode = 'undefined';
+  if (dynamic !== undefined) {
+    const directory = findFontPackage(font, options.bases);
+    const specifier = fontSpecifiers(font, directory, file);
+    const available = await listDynamicFiles(directory);
+    let files = available;
+    if (dynamic.glyphs !== undefined) {
+      const names = available.map((name) => name.replace(/\.js$/, ''));
+      for (const glyph of dynamic.glyphs) {
+        if (!names.includes(glyph)) {
+          file.message(
+            `The font ${font} has no glyphs \`${glyph}\` for dynamic math, only ${names.map((name) => `\`${name}\``).join(', ')}`,
+          );
+        }
+      }
+      files = available.filter((name) =>
+        dynamic.glyphs?.includes(name.replace(/\.js$/, '')),
+      );
+    }
+    const loaders = files.map(
+      (name) =>
+        `${JSON.stringify(name)}: () => import(${specifier('mjs', 'svg', 'dynamic', name)})`,
+    );
+    fontCode = `{ loadRenderer: () => import("@slider/plugin-mathjax/render"), font: _sliderDefineMathFont(() => import(${specifier('mjs', 'svg.js')}), {${loaders.join(', ')}}) }`;
+  }
+  return `{ font: ${JSON.stringify(font)}, macros: ${JSON.stringify(macros)}, tags: ${JSON.stringify(tags)}, dynamic: ${fontCode} }`;
 }
 
 /**
@@ -315,7 +286,8 @@ async function createRenderer(file: VFile): Promise<MathRenderer | undefined> {
  * technology, with MathJax.
  *
  * Takes the `math` options of the Slider configs and the frontmatter, in
- * order of increasing precedence, see {@link MathConfig}.
+ * order of increasing precedence, see {@link MathConfig}, and sets them for
+ * the `DynamicFormula`s of the deck in the browser.
  *
  * All glyphs of the font are loaded before rendering, since MathJax would
  * otherwise restart formulas that need more glyphs, defining their labels
@@ -324,12 +296,29 @@ async function createRenderer(file: VFile): Promise<MathRenderer | undefined> {
  */
 export function rehypeMathJax(): (tree: Root, file: VFile) => Promise<void> {
   return async (tree, file) => {
+    const options = readMathOptions(file);
+    try {
+      setRuntimeSliderOptions(
+        file,
+        'math',
+        await createRuntimeOptions(options, file),
+      );
+      if (options.dynamic !== undefined) {
+        tree.children.unshift(
+          createEsm(
+            'import { defineMathFont as _sliderDefineMathFont } from "@slider/plugin-mathjax";',
+          ),
+        );
+      }
+    } catch (error) {
+      file.fail(`Cannot set up dynamic math: ${String(error)}`);
+    }
     const found: MathNode[] = [];
     findMath(tree, found);
     if (found.length === 0) {
       return;
     }
-    const render = await createRenderer(file);
+    const render = await createRenderer(options, file);
     if (render === undefined) {
       return;
     }

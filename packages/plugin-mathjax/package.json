@@ -2,7 +2,7 @@
   "name": "@slider/plugin-mathjax",
   "version": "0.0.0",
   "private": true,
-  "description": "Math in slider decks, typeset with MathJax when decks are compiled",
+  "description": "Math in slider decks, typeset with MathJax when decks are compiled or in the browser",
   "license": "Apache-2.0",
   "type": "module",
   "slider": {
@@ -35,6 +35,16 @@
       "@slider/source": "./src/compile.ts",
       "types": "./dist/compile.d.ts",
       "default": "./dist/compile.js"
+    },
+    "./dynamic": {
+      "@slider/source": "./src/dynamic/index.ts",
+      "types": "./dist/dynamic/index.d.ts",
+      "default": "./dist/dynamic/index.js"
+    },
+    "./render": {
+      "@slider/source": "./src/dynamic/render.ts",
+      "types": "./dist/dynamic/render.d.ts",
+      "default": "./dist/dynamic/render.js"
     }
   },
   "files": [

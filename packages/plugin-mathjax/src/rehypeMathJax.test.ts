@@ -200,6 +200,58 @@ describe('rehypeMathJax', () => {
     );
   });
 
+  /** Returns the options of the deck in the browser, as code on one line. */
+  function runtimeOptions(code: string): string {
+    return (
+      /const _sliderOptions = (\{[\s\S]*?\n\});/.exec(code)?.[1] ?? ''
+    ).replaceAll(/\s+/g, ' ');
+  }
+
+  it('gives the options to the deck in the browser', async () => {
+    const { code, messages } = await compileDeck(
+      '---\ntheme: ./theme.ts\nmath:\n  tags: none\n---\n\nNo math',
+    );
+    expect(messages).toEqual([]);
+    expect(code).toContain('options: _sliderOptions');
+    const math = runtimeOptions(code);
+    expect(math).toContain('font: "newcm"');
+    expect(math).toContain('macros: { "R": "\\\\mathbb{R}", "T": "theme" }');
+    expect(math).toContain('tags: "none"');
+    // Dynamic math is off, so that decks don't contain the font.
+    expect(math).toContain('dynamic: undefined');
+    expect(code).not.toContain('import(');
+  });
+
+  it('imports the glyphs of the font of the deck for dynamic math', async () => {
+    const { code, messages } = await compileDeck(
+      '---\ntheme: ./theme.ts\nmath:\n  dynamic: true\n---\n\nNo math',
+    );
+    expect(messages).toEqual([]);
+    const math = runtimeOptions(code);
+    expect(math).toContain(
+      'loadRenderer: () => import("@slider/plugin-mathjax/render")',
+    );
+    expect(math).toContain('font: _sliderDefineMathFont(');
+    expect(math).toMatch(
+      /import\("@mathjax\/mathjax-newcm-font\/mjs\/svg\.js"\)/,
+    );
+    expect(math).toMatch(/"arrows\.js": \(\) => import\(/);
+  });
+
+  it('imports only the glyphs that the deck asks for', async () => {
+    const { code, messages } = await compileDeck(
+      '---\nmath:\n  dynamic:\n    glyphs: [greek, nope]\n---\n\n$x$',
+    );
+    expect(messages).toEqual([
+      expect.stringContaining('The font fira has no glyphs `nope`'),
+    ]);
+    const math = runtimeOptions(code);
+    expect(math).toContain('mathjax-fira-font');
+    expect(
+      [...math.matchAll(/"([\w-]+\.js)": /g)].map(([, name]) => name),
+    ).toEqual(['greek.js']);
+  });
+
   it('leaves dollar signs alone without the plugin', async () => {
     const { code } = await compileDeck('Costs $5 or $6', DECK_PATH, []);
     expect(code).not.toContain('_SliderMathFormula');
