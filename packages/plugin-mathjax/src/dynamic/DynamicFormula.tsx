@@ -1,7 +1,7 @@
 import type { SxProps, Theme } from '@mui/material/styles';
 import { useEffect, useEffectEvent, useState, type JSX } from 'react';
 
-import { useSliderOptions } from '@slider/core';
+import { useSliderOptions, useTransitionHold } from '@slider/core';
 
 import { Formula } from '../Formula.tsx';
 import { isRuntimeMathOptions } from './runtimeOptions.ts';
@@ -26,7 +26,16 @@ export interface DynamicFormulaProps {
 }
 
 /** The result of rendering, or why the formula can't be rendered. */
-type Rendered = RenderedFormula | { error: string };
+type Rendered = (RenderedFormula | { error: string }) & {
+  /** What was rendered, to tell whether it's the current formula. */
+  key: string;
+};
+
+/**
+ * How long a change of the slide may wait for the formula, in milliseconds,
+ * which may need to load MathJax and its font first.
+ */
+const RENDER_DEADLINE = 1000;
 
 /**
  * A formula rendered by MathJax in the browser, for math that changes while
@@ -35,6 +44,8 @@ type Rendered = RenderedFormula | { error: string };
  * Takes the `math` options of the deck, which must enable `dynamic` math.
  * MathJax is only loaded when a `DynamicFormula` is first shown. Until then,
  * and while the formula changes, it shows the formula it rendered before.
+ * Changes of the slide wait for the formula to be rendered, so that the
+ * slide doesn't shift when it appears.
  *
  * Can be themed as `SliderFormula`, like the math of decks.
  */
@@ -62,6 +73,12 @@ export function DynamicFormula({
       : deck === undefined
         ? 'DynamicFormula only works in decks with @slider/plugin-mathjax'
         : 'Enable `dynamic` in the `math` options of the deck to show a DynamicFormula';
+  const key = JSON.stringify([tex, display, macrosKey, effectiveTags]);
+  // Hold the change of the slide until the formula is rendered, so that the
+  // slide doesn't shift when it appears.
+  useTransitionHold(unavailable === undefined && rendered?.key !== key, {
+    deadline: RENDER_DEADLINE,
+  });
   useEffect(() => {
     if (dynamic === undefined) {
       if (unavailable !== undefined) {
@@ -92,13 +109,13 @@ export function DynamicFormula({
       .then(
         (formula) => {
           if (current) {
-            setRendered(formula);
+            setRendered({ ...formula, key });
           }
         },
         (error: unknown) => {
           if (current) {
             const message = `Cannot render math: ${String(error)}`;
-            setRendered({ error: message });
+            setRendered({ error: message, key });
             reportError(message);
           }
         },
@@ -106,7 +123,7 @@ export function DynamicFormula({
     return () => {
       current = false;
     };
-  }, [tex, display, dynamic, unavailable, macrosKey, effectiveTags]);
+  }, [tex, display, dynamic, unavailable, macrosKey, effectiveTags, key]);
   const error =
     unavailable ??
     (rendered !== undefined && 'error' in rendered

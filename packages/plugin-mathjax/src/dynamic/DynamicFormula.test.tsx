@@ -15,9 +15,12 @@ const sliderOptions = vi.hoisted((): { math: unknown } => ({
   math: undefined,
 }));
 
+const transitionHold = vi.hoisted(() => vi.fn());
+
 vi.mock('@slider/core', () => ({
   useSliderOptions: (name: string) =>
     name === 'math' ? sliderOptions.math : undefined,
+  useTransitionHold: transitionHold,
 }));
 
 const FIRA = path.dirname(
@@ -120,6 +123,7 @@ describe('DynamicFormula', () => {
 
   beforeEach(() => {
     sliderOptions.math = deckOptions;
+    transitionHold.mockClear();
   });
 
   afterEach(cleanup);
@@ -161,6 +165,27 @@ describe('DynamicFormula', () => {
         'y',
       );
     });
+  });
+
+  it('holds the change of the slide until the formula is rendered', async () => {
+    const pending = () => transitionHold.mock.lastCall?.[0] as boolean;
+    const { container, rerender } = render(<DynamicFormula tex="x" />);
+    expect(pending()).toBe(true);
+    await waitFor(() => {
+      expect(container.querySelector('svg')).not.toBeNull();
+    });
+    expect(pending()).toBe(false);
+    rerender(<DynamicFormula tex="y" />);
+    expect(pending()).toBe(true);
+    await waitFor(() => {
+      expect(pending()).toBe(false);
+    });
+  });
+
+  it('does not hold the change if it cannot render', () => {
+    sliderOptions.math = { ...deckOptions, dynamic: undefined };
+    render(<DynamicFormula tex="x" />);
+    expect(transitionHold.mock.lastCall?.[0]).toBe(false);
   });
 
   it('reports errors', async () => {

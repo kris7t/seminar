@@ -23,6 +23,10 @@ Only decks that enable `dynamic` contain MathJax. They load it when the
 first `DynamicFormula` is shown. Until then, the formula is empty. When
 `tex` changes, the previous formula stays until the new one is ready.
 
+Changes of the slide wait up to a second for dynamic formulas to render, so
+the slide doesn't shift when they appear. See
+[Holding the change](../authoring/components.md#holding-the-change).
+
 In other decks, `DynamicFormula` shows its TeX in red.
 
 ## Glyphs
