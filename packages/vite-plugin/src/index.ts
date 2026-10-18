@@ -1,4 +1,5 @@
 import rollupSlider, {
+  type SliderPlugin as RollupSliderPlugin,
   type SliderPluginOptions as RollupSliderPluginOptions,
 } from '@slider/rollup-plugin';
 
@@ -45,11 +46,12 @@ export default function slider({
   ...options
 }: SliderPluginOptions = {}): Plugin[] {
   let root = process.cwd();
-  const mdx = rollupSlider({
+  const rollupPlugin: RollupSliderPlugin = rollupSlider({
     // Theme modules may be written in TypeScript and import style sheets.
     importModule: createViteImporter(() => root),
     ...options,
-  }) as Plugin;
+  });
+  const mdx = rollupPlugin as unknown as Plugin;
   const setRoot: Plugin = {
     name: 'slider:root',
     configResolved(config) {
@@ -62,7 +64,10 @@ export default function slider({
   return [
     mdx,
     setRoot,
-    sliderEntries(),
+    sliderEntries({
+      syntaxPlugins: (source, deckPath) =>
+        rollupPlugin.syntaxPlugins(source, deckPath),
+    }),
     ...(selfContained === false
       ? []
       : [sliderSelfContained(selfContained === true ? {} : selfContained)]),

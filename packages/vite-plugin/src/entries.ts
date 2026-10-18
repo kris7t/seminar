@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { readDeckFrontmatter } from '@slider/mdx';
+import type { PluggableList } from 'unified';
 import type { Plugin } from 'vite';
 
 import {
@@ -48,10 +49,26 @@ function escapeHtml(text: string): string {
     .replaceAll('"', '&quot;');
 }
 
+/**
+ * Returns the remark plugins that extend the syntax of the deck at
+ * `deckPath` with `source`, which are needed to parse it.
+ */
+export type SyntaxPlugins = (
+  source: string,
+  deckPath: string,
+) => Promise<PluggableList>;
+
 /** Generates the HTML page for a deck. */
-async function renderHtml(deckPath: string): Promise<string> {
+async function renderHtml(
+  deckPath: string,
+  syntaxPlugins: SyntaxPlugins | undefined,
+): Promise<string> {
   const source = await readFile(deckPath, 'utf8');
-  const { title, lang } = readDeckFrontmatter(source, deckPath);
+  const { title, lang } = readDeckFrontmatter(
+    source,
+    deckPath,
+    (await syntaxPlugins?.(source, deckPath)) ?? [],
+  );
   const name = path.basename(deckPath);
   return `<!doctype html>
 <html lang="${escapeHtml(typeof lang === 'string' ? lang : 'en')}">
@@ -121,7 +138,9 @@ function addInputs(
  *
  * Only works with Vite.
  */
-export function sliderEntries(): Plugin {
+export function sliderEntries({
+  syntaxPlugins,
+}: { syntaxPlugins?: SyntaxPlugins | undefined } = {}): Plugin {
   let root = process.cwd();
   return {
     name: 'slider:entries',
@@ -174,7 +193,9 @@ export function sliderEntries(): Plugin {
       if (id.startsWith(ENTRY_PREFIX)) {
         return renderEntry(id.slice(ENTRY_PREFIX.length));
       }
-      return isGenerated(id) ? renderHtml(getDeckPath(id)) : undefined;
+      return isGenerated(id)
+        ? renderHtml(getDeckPath(id), syntaxPlugins)
+        : undefined;
     },
 
     configureServer(server) {
@@ -199,7 +220,7 @@ export function sliderEntries(): Plugin {
           next();
           return;
         }
-        renderHtml(getDeckPath(htmlPath))
+        renderHtml(getDeckPath(htmlPath), syntaxPlugins)
           .then((html) =>
             server.transformIndexHtml(
               request.url ?? pathname,

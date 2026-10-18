@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@mdx-js/rollup": "^3.1.1",
+    "@rollup/pluginutils": "^5.4.0",
     "@slider/mdx": "0.0.0",
     "@slider/theme-default": "0.0.0"
   },

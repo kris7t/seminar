@@ -1,13 +1,16 @@
 import path from 'node:path';
 
 import mdx, { type Options as MdxOptions } from '@mdx-js/rollup';
+import { createFilter } from '@rollup/pluginutils';
 import {
-  importWithNode,
-  loadSliderConfig,
+  loadDeckSetup,
+  readDeckTheme,
+  resolveThemeKey,
   sliderMdxOptions,
-  type LoadedSliderConfigEntry,
+  type DeckSetup,
   type SliderMdxOptions,
 } from '@slider/mdx';
+import type { PluggableList } from 'unified';
 
 /** A warning of compiling a deck. */
 interface CompileWarning {
@@ -52,8 +55,19 @@ export interface SliderPluginOptions
 /** The plugin, which works with both Rollup and Vite. */
 export type SliderPlugin = ReturnType<typeof mdx> & {
   enforce: 'pre';
-  watchChange(id: string): void;
+  watchChange(id: string): Promise<void>;
+  /**
+   * Returns the remark plugins that extend the syntax of the deck at
+   * `deckPath` with `source`, e.g., to parse it without compiling it.
+   */
+  syntaxPlugins(source: string, deckPath: string): Promise<PluggableList>;
 };
+
+/** Compiles the decks of a theme. */
+interface Compiler {
+  mdx: ReturnType<typeof mdx>;
+  setup: DeckSetup;
+}
 
 /**
  * Compiles `.deck.mdx` files into `Deck` components with MDX (see
@@ -96,7 +110,6 @@ export default function slider({
   // Files that decks depend on at compile time, e.g., the configs of their
   // themes, by the path of the deck.
   const dependencies = new Map<string, Set<string>>();
-  const pluginDependencies = new Set<string>();
   // Warnings of compiling decks, by the path of the deck, which the MDX
   // plugin doesn't report.
   const warnings = new Map<string, CompileWarning[]>();
@@ -110,40 +123,39 @@ export default function slider({
       })),
     );
   };
-  const createMdx = async (root: string) => {
-    const sliderConfigs: LoadedSliderConfigEntry[] = [];
-    const importer = importModule ?? importWithNode;
-    const importerPath = path.join(root, 'deck.mdx');
-    for (const source of plugins) {
-      const loaded = await loadSliderConfig(source, importerPath, importer);
-      sliderConfigs.push({ source, ...loaded });
-      for (const dependency of loaded.dependencies) {
-        pluginDependencies.add(dependency);
-      }
-    }
+  const isDeck = createFilter(include);
+  /** Compiles decks with the theme `theme`, or without one. */
+  const createCompiler = async (
+    root: string,
+    theme: string | undefined,
+    deckPath: string,
+  ): Promise<Compiler> => {
+    const setup = await loadDeckSetup({
+      plugins,
+      theme,
+      pluginsImporter: path.join(root, 'deck.mdx'),
+      themeImporter: deckPath,
+      importModule,
+    });
     const sliderOptions = sliderMdxOptions({
       importSource,
-      defaultTheme:
-        defaultTheme === false
-          ? undefined
-          : defaultTheme.startsWith('.')
-            ? path.resolve(root, defaultTheme)
-            : defaultTheme,
+      defaultTheme: resolvedDefaultTheme(root),
       defaultMouseNavigation,
       defaultMirrorPointer,
       math,
       importModule,
-      sliderConfigs,
-      onDependency(deckPath, dependency) {
-        let deckDependencies = dependencies.get(deckPath);
+      sliderConfigs: setup.sliderConfigs,
+      mdxPlugins: setup.mdxPlugins,
+      onDependency(path, dependency) {
+        let deckDependencies = dependencies.get(path);
         if (deckDependencies === undefined) {
           deckDependencies = new Set();
-          dependencies.set(deckPath, deckDependencies);
+          dependencies.set(path, deckDependencies);
         }
         deckDependencies.add(dependency);
       },
     });
-    return mdx({
+    const compiler = mdx({
       ...options,
       include,
       remarkRehypeOptions: {
@@ -168,30 +180,41 @@ export default function slider({
         collectWarnings,
       ],
     });
+    if (configured !== undefined) {
+      compiler.config(configured.config, configured.env);
+    }
+    return { mdx: compiler, setup };
   };
 
   // Relative paths are resolved against the root of the project, which Vite
   // only tells us in the `config` hook. Rollup doesn't call it, so we fall
   // back to the working directory there.
   let rootPath = process.cwd();
-  let inner: ReturnType<typeof mdx> | undefined;
-  let pendingInner: Promise<ReturnType<typeof mdx>> | undefined;
+  const resolvedDefaultTheme = (root: string): string | undefined =>
+    defaultTheme === false
+      ? undefined
+      : defaultTheme.startsWith('.')
+        ? path.resolve(root, defaultTheme)
+        : defaultTheme;
   let configured:
     | {
         config: Parameters<SliderPlugin['config']>[0];
         env: Parameters<SliderPlugin['config']>[1];
       }
     | undefined;
-  const getInner = async (root: string): Promise<ReturnType<typeof mdx>> => {
-    if (inner !== undefined) {
-      return inner;
+  // Compilers by the theme of the decks they compile, since the theme and
+  // the plugins it refers to may extend the compiler.
+  const compilers = new Map<string, Promise<Compiler>>();
+  /** Returns the compiler of the deck at `deckPath` with `source`. */
+  const getCompiler = (source: string, deckPath: string): Promise<Compiler> => {
+    const theme = readDeckTheme(source) ?? resolvedDefaultTheme(rootPath);
+    const key = theme === undefined ? '' : resolveThemeKey(theme, deckPath);
+    let compiler = compilers.get(key);
+    if (compiler === undefined) {
+      compiler = createCompiler(rootPath, theme, deckPath);
+      compilers.set(key, compiler);
     }
-    pendingInner ??= createMdx(root);
-    inner = await pendingInner;
-    if (configured !== undefined) {
-      inner.config(configured.config, configured.env);
-    }
-    return inner;
+    return compiler;
   };
   const plugin: SliderPlugin = {
     name: 'slider',
@@ -214,10 +237,16 @@ export default function slider({
       value: string,
       id: string,
     ) {
-      const mdxPlugin = await getInner(rootPath);
+      if (!isDeck(id)) {
+        return undefined;
+      }
+      const { mdx: compiler, setup } = await getCompiler(value, id);
       dependencies.delete(id);
       warnings.delete(id);
-      const result = await mdxPlugin.transform(value, id);
+      const result = await compiler.transform(value, id);
+      for (const message of setup.warnings) {
+        this.warn({ message });
+      }
       for (const { message, line, column } of warnings.get(id) ?? []) {
         this.warn({
           message,
@@ -226,20 +255,25 @@ export default function slider({
             : { loc: { file: id, line, column: column ?? 1 } }),
         });
       }
-      for (const dependency of pluginDependencies) {
-        this.addWatchFile(dependency);
-      }
-      for (const dependency of dependencies.get(id) ?? []) {
+      for (const dependency of [
+        ...setup.dependencies,
+        ...(dependencies.get(id) ?? []),
+      ]) {
         this.addWatchFile(dependency);
       }
       return result;
     },
-    watchChange(id) {
-      if (pluginDependencies.has(id)) {
-        inner = undefined;
-        pendingInner = undefined;
-        pluginDependencies.clear();
+    async watchChange(id) {
+      for (const [key, compiler] of compilers) {
+        if ((await compiler).setup.dependencies.includes(id)) {
+          compilers.delete(key);
+        }
       }
+    },
+    /** Returns the plugins that extend the syntax of the deck. */
+    async syntaxPlugins(source: string, deckPath: string) {
+      return (await getCompiler(source, deckPath)).setup.mdxPlugins
+        .remarkPlugins.before;
     },
   };
   return plugin;

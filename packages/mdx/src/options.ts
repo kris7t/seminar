@@ -14,7 +14,13 @@ import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts
 import { remarkImages } from './content/remarkImages.ts';
 import { remarkNotes } from './deck/remarkNotes.ts';
 import { directiveHandlers } from './directives/directiveHandlers.ts';
-import { configuredPlugins } from './config/configuredPlugins.ts';
+import {
+  emptyMdxPlugins,
+  loadDeckSetup,
+  readDeckTheme,
+  type DeckSetup,
+  type MdxPlugins,
+} from './config/deckSetup.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
 import { rehypeSlideElements } from './content/rehypeSlideElements.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
@@ -38,8 +44,13 @@ export interface SliderMdxOptions
   math?: MathConfig | false | undefined;
   /** React components that render named Remark directives. */
   directives?: DirectiveComponents | undefined;
-  /** Compile-time configs supplied by the MDX integration. */
+  /**
+   * Compile-time configs of the plugins and the theme of the deck, in
+   * increasing precedence, see `loadDeckSetup`.
+   */
   sliderConfigs?: readonly LoadedSliderConfigEntry[] | undefined;
+  /** Plugins of unified that the configs add, see `loadDeckSetup`. */
+  mdxPlugins?: MdxPlugins | undefined;
 }
 
 /**
@@ -60,6 +71,7 @@ export function sliderMdxOptions({
   onDependency,
   directives,
   sliderConfigs,
+  mdxPlugins = emptyMdxPlugins(),
   ...options
 }: SliderMdxOptions = {}): Pick<
   CompileOptions,
@@ -71,20 +83,26 @@ export function sliderMdxOptions({
       remarkHeadingAttributes,
       remarkFrontmatter,
       ...(math === false ? [] : [remarkMath]),
+      ...mdxPlugins.remarkPlugins.before,
       remarkDirective,
       remarkNotes,
       remarkStepDirectives,
       remarkImages,
       remarkSteps,
-      [remarkSlides, { ...options, onDependency }],
       [
-        remarkSliderConfig,
-        { configs: sliderConfigs, importModule, onDependency },
+        remarkSlides,
+        {
+          ...options,
+          onDependency,
+          syntaxPlugins: mdxPlugins.remarkPlugins.before,
+        },
       ],
+      [remarkSliderConfig, { configs: sliderConfigs }],
       [remarkDirectiveComponents, { directives }],
-      configuredPlugins('remarkPlugins', { importModule, onDependency }),
+      ...mdxPlugins.remarkPlugins.after,
     ],
     rehypePlugins: [
+      ...mdxPlugins.rehypePlugins.before,
       rehypeListSteps,
       rehypeSlideElements,
       ...(math === false
@@ -95,12 +113,59 @@ export function sliderMdxOptions({
               RehypeMathOptions,
             ],
           ]),
-      configuredPlugins('rehypePlugins', { importModule, onDependency }),
+      ...mdxPlugins.rehypePlugins.after,
     ],
     recmaPlugins: [
+      ...mdxPlugins.recmaPlugins.before,
       recmaSlideTitles,
       recmaSlideExports,
-      configuredPlugins('recmaPlugins', { importModule, onDependency }),
+      ...mdxPlugins.recmaPlugins.after,
     ],
+  };
+}
+
+export interface DeckMdxOptions extends Omit<
+  SliderMdxOptions,
+  'sliderConfigs' | 'mdxPlugins'
+> {
+  /** Slider plugins of the integration, e.g., `['@slider/elements']`. */
+  plugins?: readonly string[] | undefined;
+  /** Path to resolve `plugins` from. Defaults to the deck. */
+  pluginsImporter?: string | undefined;
+}
+
+/**
+ * Returns the options for compiling the deck at `deckPath` with `source`:
+ * loads the configs of `plugins` and of the theme of the deck, which its
+ * frontmatter or `defaultTheme` names, and the plugins they refer to (see
+ * {@link loadDeckSetup}).
+ *
+ * Integrations that compile many decks should load the setup once for each
+ * theme instead, like `@slider/rollup-plugin`.
+ *
+ * @returns The options, and the problems with the configs.
+ */
+export async function deckMdxOptions(
+  source: string,
+  deckPath: string,
+  { plugins, pluginsImporter = deckPath, ...options }: DeckMdxOptions = {},
+): Promise<{
+  options: ReturnType<typeof sliderMdxOptions>;
+  setup: DeckSetup;
+}> {
+  const setup = await loadDeckSetup({
+    plugins,
+    theme: readDeckTheme(source) ?? options.defaultTheme,
+    pluginsImporter,
+    themeImporter: deckPath,
+    importModule: options.importModule,
+  });
+  return {
+    options: sliderMdxOptions({
+      ...options,
+      sliderConfigs: setup.sliderConfigs,
+      mdxPlugins: setup.mdxPlugins,
+    }),
+    setup,
   };
 }

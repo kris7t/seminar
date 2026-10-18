@@ -32,7 +32,12 @@ export {
   type LoadedThemeConfig,
   type ModuleImporter,
 } from './config/themeConfig.ts';
-export { sliderMdxOptions, type SliderMdxOptions } from './options.ts';
+export {
+  deckMdxOptions,
+  sliderMdxOptions,
+  type DeckMdxOptions,
+  type SliderMdxOptions,
+} from './options.ts';
 export {
   recmaSlideExports,
   slideExportName,
@@ -47,10 +52,16 @@ export { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
 export { remarkStepDirectives } from './steps/remarkStepDirectives.ts';
 export { remarkSteps } from './steps/remarkSteps.ts';
 export {
-  configuredPlugins,
-  type ConfiguredPluginsOptions,
+  emptyMdxPlugins,
+  loadDeckSetup,
+  readDeckTheme,
+  resolveThemeKey,
+  type DeckSetup,
+  type DeckSetupOptions,
+  type MdxPlugins,
   type MdxPluginStage,
-} from './config/configuredPlugins.ts';
+  type StagePlugins,
+} from './config/deckSetup.ts';
 export {
   getFrontmatter,
   getSliderOptionLayers,

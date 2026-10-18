@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { compile as mdxCompile, evaluate } from '@mdx-js/mdx';
 import * as runtime from 'react/jsx-runtime';
 import { describe, expect, it, vi } from 'vitest';
@@ -13,6 +14,7 @@ import {
   STUB_URL,
   THEME_URL,
   text,
+  withThemeConfig,
 } from '../test/compileDeck.ts';
 import type { ImportedModule } from '../config/themeConfig.ts';
 
@@ -20,7 +22,12 @@ async function compile(
   source: string,
   options: Parameters<typeof sliderMdxOptions>[0] = {},
 ) {
-  const mdxOptions = sliderMdxOptions({ importSource: STUB_URL, ...options });
+  const mdxOptions = sliderMdxOptions(
+    await withThemeConfig(source, fileURLToPath(import.meta.url), {
+      importSource: STUB_URL,
+      ...options,
+    }),
+  );
   const module = await evaluate(source, {
     ...runtime,
     ...mdxOptions,

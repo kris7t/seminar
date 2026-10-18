@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { compile } from '@mdx-js/mdx';
-import { sliderMdxOptions, type ModuleImporter } from '@slider/mdx';
+import {
+  emptyMdxPlugins,
+  sliderMdxOptions,
+  type ModuleImporter,
+} from '@slider/mdx';
 import { describe, expect, it } from 'vitest';
 
 import { rehypeShiki } from './rehypeShiki.ts';
@@ -26,6 +30,10 @@ async function compileDeck(source: string, theme: unknown = {}) {
         defaultTheme: undefined,
         math: false,
         importModule,
+        mdxPlugins: {
+          ...emptyMdxPlugins(),
+          rehypePlugins: { before: [], after: [rehypeShiki] },
+        },
         sliderConfigs: [
           {
             source: '@slider/plugin-shiki',

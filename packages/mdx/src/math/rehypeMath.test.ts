@@ -3,14 +3,14 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { sliderMdxOptions, type SliderMdxOptions } from '../options.ts';
+import { withThemeConfig } from '../test/compileDeck.ts';
 
 const DECK_PATH = fileURLToPath(
   new URL('../test/test.deck.mdx', import.meta.url),
 );
-const THEME_PATH = fileURLToPath(new URL('../test/theme.ts', import.meta.url));
 
 async function compileDeck(
   source: string,
@@ -19,7 +19,7 @@ async function compileDeck(
 ) {
   const file = await compile(
     { value: source, path: deckPath },
-    sliderMdxOptions(options),
+    sliderMdxOptions(await withThemeConfig(source, deckPath, options)),
   );
   return { code: String(file), messages: file.messages.map(String) };
 }
@@ -140,32 +140,24 @@ describe('rehypeMath', () => {
     it.each(['condition-theme', 'key-theme', '@slider/theme-default'])(
       'reads the config of %s without importing it',
       async (theme) => {
-        const onDependency = vi.fn();
         const { code, messages } = await compileDeck(
           `---\ntheme: "${theme}"\n---\n\n$x$`,
-          { onDependency },
+          {},
           theme.startsWith('@') ? DECK_PATH : deckPath,
         );
         expect(messages).toEqual([]);
         expect(fonts(code)).toEqual(['FIRA']);
-        expect(onDependency).toHaveBeenCalledWith(
-          expect.any(String),
-          expect.stringMatching(/(slider|package)\.json$/),
-        );
       },
     );
   });
 
   it('uses the slider export of other themes', async () => {
-    const onDependency = vi.fn();
     const { code, messages } = await compileDeck(
       '---\ntheme: ./theme.ts\n---\n\n$\\R \\T$',
-      { onDependency },
     );
     expect(messages).toEqual([]);
     expect(fonts(code)).toEqual(['FIRA']);
     expect(mathml(code)[0]).toContain('data-latex="\\R \\T"');
-    expect(onDependency).toHaveBeenCalledWith(DECK_PATH, THEME_PATH);
   });
 
   it('overrides the theme with the frontmatter', async () => {

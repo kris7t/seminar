@@ -12,6 +12,7 @@ import { getAttributes } from '../directives/directives.ts';
 import { createEsm } from '../utils/estree.ts';
 import { EXPLICIT_JSX, NOTES } from '../utils/jsx.ts';
 import { getDeckFrontmatter, parseDeck } from './frontmatter.ts';
+import type { PluggableList } from 'unified';
 import { getDeckLang } from './uiLocales.ts';
 import {
   notesExportName,
@@ -49,6 +50,8 @@ export interface IncludeContext {
    * `SlideDraft`), which later includes of the slide recap.
    */
   shown: Map<string, SlideDraft>;
+  /** Plugins that extend the syntax of decks, to parse included decks. */
+  syntaxPlugins?: PluggableList | undefined;
 }
 
 /** The slides of an included deck, as {@link buildSlides} creates them. */
@@ -124,7 +127,11 @@ function readStructure(
   context: IncludeContext,
 ): DeckStructure {
   context.onDependency?.(deckPath);
-  const { tree, file } = parseDeck(readFileSync(deckPath, 'utf8'), deckPath);
+  const { tree, file } = parseDeck(
+    readFileSync(deckPath, 'utf8'),
+    deckPath,
+    context.syntaxPlugins,
+  );
   const frontmatter = getDeckFrontmatter(tree, file);
   const depth = frontmatter['depth'] as number;
   const lang = getDeckLang(frontmatter, file);
@@ -138,6 +145,7 @@ function readStructure(
     stack: [...context.stack, deckPath],
     onDependency: context.onDependency,
     shown: new Map(),
+    syntaxPlugins: context.syntaxPlugins,
   };
   const slugger = new GithubSlugger();
   // Like `remarkSlides`, so that the slides are those of the compiled deck.

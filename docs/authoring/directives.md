@@ -99,32 +99,50 @@ explicitly to set them.
 
 ## Compiler plugins
 
-A plugin, or a theme, can also extend how decks are compiled, with plugins
-of [unified](https://unifiedjs.com), in the `mdx` key of its config:
+A plugin or a theme can add plugins of [unified](https://unifiedjs.com) to
+the compiler. List them in the `mdx` key of its config:
 
 ```json
 {
   "slider": {
     "mdx": {
-      "rehypePlugins": [
-        { "source": "my-code/rehype", "exportName": "rehypeMyCode" }
-      ]
+      "rehypePlugins": {
+        "after": [{ "source": "my-code/rehype", "exportName": "rehypeMyCode" }]
+      }
     }
   }
 }
 ```
 
-`remarkPlugins` work on the Markdown syntax tree, `rehypePlugins` on the
-HTML syntax tree, and `recmaPlugins` on the JavaScript of the compiled deck.
-The plugins of each stage run after those of Slider, in the order of the
-configs. They're imported when decks are compiled, in Node, so they may use
-packages that decks shouldn't contain, like a highlighter and its grammars.
-Like the config itself, their modules must be built to JavaScript, and
-`source` is resolved from the plugin. A plugin that can't be loaded is
-reported, and the deck is compiled without it.
+There are three stages:
 
-`@slider/plugin-shiki` is such a plugin: its rehype plugin highlights code blocks,
-and replaces them with its `Code` component.
+- `remarkPlugins` work on the Markdown syntax tree.
+- `rehypePlugins` work on the HTML syntax tree.
+- `recmaPlugins` work on the JavaScript of the compiled deck.
+
+Each stage takes plugins that run `before` or `after` the plugins of Slider.
+Remark plugins in `before` can add syntax to Markdown, like math.
+
+The plugins are loaded in Node when decks are compiled. They may use
+packages that decks shouldn't contain, like a highlighter. Their modules
+must be built to JavaScript.
+
+If a plugin can't be loaded, you get a warning, and the deck is compiled
+without it.
+
+`@slider/plugin-shiki` is such a plugin. Its rehype plugin highlights code
+blocks.
+
+### Using other plugins
+
+A plugin or a theme can use other plugins. List them in its `plugins` key:
+
+```json
+{ "slider": { "plugins": ["@slider/plugin-shiki"] } }
+```
+
+They are loaded before it, so it can override their options. Each plugin is
+loaded once, even if several configs list it.
 
 ### Options
 

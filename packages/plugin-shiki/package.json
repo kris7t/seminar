@@ -7,12 +7,14 @@
   "type": "module",
   "slider": {
     "mdx": {
-      "rehypePlugins": [
-        {
-          "source": "@slider/plugin-shiki/rehype",
-          "exportName": "rehypeShiki"
-        }
-      ]
+      "rehypePlugins": {
+        "after": [
+          {
+            "source": "@slider/plugin-shiki/rehype",
+            "exportName": "rehypeShiki"
+          }
+        ]
+      }
     }
   },
   "exports": {

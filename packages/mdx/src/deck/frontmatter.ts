@@ -5,7 +5,7 @@ import remarkFrontmatter from 'remark-frontmatter';
 import remarkMath from 'remark-math';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
-import { unified } from 'unified';
+import { unified, type PluggableList } from 'unified';
 import { VFile } from 'vfile';
 import { parse as parseYaml } from 'yaml';
 
@@ -148,18 +148,21 @@ export function getDeckFrontmatter(
 export function readDeckFrontmatter(
   source: string,
   path?: string,
+  syntaxPlugins: PluggableList = [],
 ): Record<string, unknown> {
-  const { tree, file } = parseDeck(source, path);
+  const { tree, file } = parseDeck(source, path, syntaxPlugins);
   return getDeckFrontmatter(tree, file);
 }
 
 /**
  * Parses the MDX source of a deck without compiling it, e.g., to read its
- * frontmatter or the structure of its slides.
+ * frontmatter or the structure of its slides. `syntaxPlugins` extend the
+ * syntax, like the `before` remark plugins of the configs of the deck.
  */
 export function parseDeck(
   source: string,
   path?: string,
+  syntaxPlugins: PluggableList = [],
 ): { tree: Root; file: VFile } {
   const file = new VFile(path === undefined ? source : { value: source, path });
   const tree = unified()
@@ -169,6 +172,7 @@ export function parseDeck(
     .use(remarkFrontmatter)
     // Braces in math are not JavaScript expressions.
     .use(remarkMath)
+    .use(syntaxPlugins)
     .use(remarkDirective)
     .parse(file);
   return { tree, file };

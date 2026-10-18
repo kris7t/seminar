@@ -2,6 +2,7 @@ import type { Declaration, Program } from 'estree';
 import GithubSlugger from 'github-slugger';
 import type { Root, RootContent } from 'mdast';
 import type { MdxJsxFlowElement } from 'mdast-util-mdx';
+import type { PluggableList } from 'unified';
 import type { VFile } from 'vfile';
 
 import {
@@ -56,6 +57,11 @@ export interface RemarkSlidesOptions extends DeckDefaults {
    * time, e.g., a deck it includes slides from, so that it can be watched.
    */
   onDependency?: ((deckPath: string, dependency: string) => void) | undefined;
+  /**
+   * Plugins that extend the syntax of decks, e.g., with math, to parse the
+   * decks that slides are included from.
+   */
+  syntaxPlugins?: PluggableList | undefined;
 }
 
 /**
@@ -328,6 +334,7 @@ function createDeckAttributes(
 export function remarkSlides({
   importSource = '@slider/core',
   onDependency,
+  syntaxPlugins,
   ...defaults
 }: RemarkSlidesOptions = {}): (tree: Root, file: VFile) => void {
   return (tree, file) => {
@@ -348,6 +355,7 @@ export function remarkSlides({
       imports: { count: 0 },
       stack: [],
       shown: new Map(),
+      syntaxPlugins,
       onDependency:
         onDependency === undefined || file.history.length === 0
           ? undefined

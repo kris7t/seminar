@@ -66,6 +66,12 @@ export interface MathConfig {
  *   can't import style sheets or use JSX.
  */
 export interface SliderConfig {
+  /**
+   * Other plugins that this plugin or theme uses, e.g.,
+   * `['@slider/plugin-shiki']`, which are loaded before it, so that it can
+   * override their options. Relative paths are resolved from this config.
+   */
+  plugins?: readonly string[] | undefined;
   math?: MathConfig | undefined;
   /**
    * Plugins of unified that compile MDX decks, see {@link MdxPluginsConfig}.
@@ -135,14 +141,23 @@ export interface ModuleExportConfig {
  * syntax tree (remark), the HTML syntax tree (rehype), or the JavaScript
  * syntax tree (recma).
  *
- * The plugins of each stage run after the plugins of Slider, in the order of
- * the configs. They're imported when compiling decks, in Node, so they may
- * use packages that decks shouldn't contain, but they must be built to
- * JavaScript. They take no options, but read those of {@link SliderConfig}
- * with `getSliderOptions` of `@slider/mdx`.
+ * The plugins of each stage run `before` or `after` the plugins of Slider,
+ * in the order of the configs. Remark plugins may extend the syntax of
+ * Markdown, e.g., with math. The plugins are imported when compiling decks,
+ * in Node, so they may use packages that decks shouldn't contain, but they
+ * must be built to JavaScript. They take no options, but read those of
+ * {@link SliderConfig} with `getSliderOptions` of `@slider/mdx`.
  */
 export interface MdxPluginsConfig {
-  remarkPlugins?: readonly ModuleExportConfig[] | undefined;
-  rehypePlugins?: readonly ModuleExportConfig[] | undefined;
-  recmaPlugins?: readonly ModuleExportConfig[] | undefined;
+  remarkPlugins?: MdxStagePluginsConfig | undefined;
+  rehypePlugins?: MdxStagePluginsConfig | undefined;
+  recmaPlugins?: MdxStagePluginsConfig | undefined;
+}
+
+/** Plugins of a stage of {@link MdxPluginsConfig}. */
+export interface MdxStagePluginsConfig {
+  /** Plugins that run before those of Slider. */
+  before?: readonly ModuleExportConfig[] | undefined;
+  /** Plugins that run after those of Slider. */
+  after?: readonly ModuleExportConfig[] | undefined;
 }

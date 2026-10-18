@@ -3,7 +3,8 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import * as runtime from 'react/jsx-runtime';
 
 import { SLIDE_EXPORT_PREFIX } from '../deck/recmaSlideExports.ts';
-import { sliderMdxOptions } from '../options.ts';
+import { loadDeckSetup, readDeckTheme } from '../config/deckSetup.ts';
+import { sliderMdxOptions, type SliderMdxOptions } from '../options.ts';
 
 export type SlideSummary = Record<string, unknown>;
 
@@ -114,4 +115,30 @@ export async function slides(source: string): Promise<SlideSummary[]> {
       children: text(children as ReactNode),
     };
   });
+}
+
+/**
+ * Adds the config of the theme of the deck with `source`, if any, to
+ * `options`, like integrations do before compiling decks.
+ */
+export async function withThemeConfig(
+  source: string,
+  deckPath: string,
+  options: SliderMdxOptions = {},
+): Promise<SliderMdxOptions> {
+  const theme = readDeckTheme(source) ?? options.defaultTheme;
+  if (theme === undefined) {
+    return options;
+  }
+  const setup = await loadDeckSetup({
+    theme,
+    pluginsImporter: deckPath,
+    themeImporter: deckPath,
+    importModule: options.importModule,
+  });
+  return {
+    ...options,
+    sliderConfigs: [...(options.sliderConfigs ?? []), ...setup.sliderConfigs],
+    mdxPlugins: setup.mdxPlugins,
+  };
 }
