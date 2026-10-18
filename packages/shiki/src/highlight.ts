@@ -62,7 +62,13 @@ export const highlight: CodeHighlighter = async ({ code, lang }, options) => {
   ) {
     await loaded.loadLanguage(language);
   }
-  const root = loaded.codeToHast(code, { lang: language ?? 'text', theme });
+  const root = loaded.codeToHast(code, {
+    lang: language ?? 'text',
+    theme,
+    // Focusable elements count as interactive, so clicking the code wouldn't
+    // go to the next step.
+    tabindex: false,
+  });
   const [pre] = root.children;
   return pre?.type === 'element' ? pre : undefined;
 };

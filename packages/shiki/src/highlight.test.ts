@@ -42,6 +42,11 @@ describe('highlight', () => {
     expect(new Set(colorsOf(pre)).size).toBeGreaterThan(2);
   });
 
+  it("doesn't make the code focusable", async () => {
+    const pre = await highlighted('x', 'ts');
+    expect(pre.properties).not.toHaveProperty('tabindex');
+  });
+
   it('takes the theme from the options', async () => {
     const light = await highlighted('x = 1', 'python');
     const dark = await highlighted('x = 1', 'python', {
