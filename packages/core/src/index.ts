@@ -8,6 +8,10 @@ export type {
 } from './SliderConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
+export {
+  useSliderOptions,
+  type SliderOptions,
+} from './deck/SliderOptionsContext.ts';
 export type { GoToOptions, GoToSteps } from './deck/useDeckNavigation.ts';
 export { INTERACTIVE_ATTRIBUTE } from './interaction/interaction.ts';
 export type {

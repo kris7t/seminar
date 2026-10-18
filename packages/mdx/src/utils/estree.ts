@@ -10,7 +10,7 @@ import type {
  * Parses JavaScript code into an ESTree program, as stored in the `estree`
  * data of MDX nodes.
  */
-function parseProgram(code: string): Program {
+export function parseProgram(code: string): Program {
   return parse(code, {
     ecmaVersion: 'latest',
     sourceType: 'module',

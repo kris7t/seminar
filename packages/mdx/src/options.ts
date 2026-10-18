@@ -2,6 +2,7 @@ import type { CompileOptions } from '@mdx-js/mdx';
 import remarkDirective from 'remark-directive';
 import remarkFrontmatter from 'remark-frontmatter';
 
+import { recmaSliderOptions } from './config/sliderOptions.ts';
 import { recmaSlideExports } from './deck/recmaSlideExports.ts';
 import { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
 import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts';
@@ -95,6 +96,7 @@ export function sliderMdxOptions({
     ],
     recmaPlugins: [
       ...mdxPlugins.recmaPlugins.before,
+      recmaSliderOptions,
       recmaSlideTitles,
       recmaSlideExports,
       ...mdxPlugins.recmaPlugins.after,

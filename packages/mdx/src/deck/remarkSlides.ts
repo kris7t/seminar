@@ -10,6 +10,7 @@ import {
   EXPLICIT_JSX,
   NOTES,
   SLIDE,
+  SLIDER_OPTIONS,
   STEP,
   LIST_ITEM,
   PARAGRAPH,
@@ -254,6 +255,7 @@ function createDeckAttributes(
         )
         .join(', ')}]`,
     ),
+    createExpressionAttribute('options', SLIDER_OPTIONS),
   ];
   for (const [key, prop] of [
     ['mouseNavigation', 'defaultMouseNavigation'],

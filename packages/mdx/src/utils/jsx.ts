@@ -7,6 +7,9 @@ import type { MdxJsxFlowElementHast } from 'mdast-util-mdx-jsx';
  */
 
 export const DECK = '_SliderDeck';
+
+/** Name of the options of the deck in the browser, see `recmaSliderOptions`. */
+export const SLIDER_OPTIONS = '_sliderOptions';
 export const SLIDE = '_SliderSlide';
 export const STEP = '_SliderStep';
 export const LIST_ITEM = '_SliderListItem';

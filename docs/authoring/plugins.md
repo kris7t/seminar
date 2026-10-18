@@ -89,6 +89,9 @@ code:
   theme: min-light
 ```
 
+Components read the options of the deck with `useSliderOptions(name)` of
+`@slider/core`. The `Deck` gets them as its `options` prop.
+
 ## Compiler plugins
 
 A plugin can add plugins of unified to the compiler. List them in the `mdx`
@@ -133,6 +136,15 @@ with the file to resolve paths from.
 
 Pick a name that isn't a key of the frontmatter of decks, like `title` or
 `theme`.
+
+Decks get the options of every name that a config sets. They are merged the
+same way. To give components other values, call
+`setRuntimeSliderOptions(file, name, code)` in a remark or rehype plugin.
+`code` is a JavaScript expression. It can use the imports that the plugin
+adds to the deck.
+
+`@slider/plugin-mathjax` does this, since it merges macros, and gives
+components functions that import the font of the deck.
 
 ### Utilities
 

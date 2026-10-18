@@ -61,6 +61,7 @@ export {
   getFrontmatter,
   getSliderOptionLayers,
   getSliderOptions,
+  setRuntimeSliderOptions,
   type SliderOptionsLayer,
 } from './config/sliderOptions.ts';
 export { parseAttributeWords } from './directives/attributeWords.ts';

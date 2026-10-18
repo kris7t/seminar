@@ -39,7 +39,8 @@ export interface SliderConfig {
    * for the `code` options of `@slider/plugin-shiki`. Plugins, the theme, and the key
    * of the same name in the frontmatter of decks set them, in order of
    * increasing precedence. Plugins read them when compiling decks, with
-   * `getSliderOptions` of `@slider/mdx`.
+   * `getSliderOptions` of `@slider/mdx`, and components read them in the
+   * browser, with `useSliderOptions`.
    */
   options?: Record<string, Record<string, unknown>> | undefined;
   /**

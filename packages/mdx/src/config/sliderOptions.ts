@@ -1,7 +1,10 @@
 import path from 'node:path';
 
+import type { Program } from 'estree';
 import type { VFile } from 'vfile';
 
+import { parseProgram } from '../utils/estree.ts';
+import { SLIDER_OPTIONS } from '../utils/jsx.ts';
 import { getSliderConfigs } from './remarkSliderConfig.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -85,4 +88,71 @@ export function getSliderOptions(
     {},
     ...getSliderOptionLayers(file, name).map(({ options }) => options),
   ) as Record<string, unknown>;
+}
+
+/** Code of options in the browser that plugins set, by their name. */
+function getRuntimeOptions(file: VFile): Map<string, string> {
+  const data = file.data as { sliderRuntimeOptions?: Map<string, string> };
+  data.sliderRuntimeOptions ??= new Map();
+  return data.sliderRuntimeOptions;
+}
+
+/**
+ * Sets the options called `name` of the deck that `file` compiles in the
+ * browser, where components read them with `useSliderOptions` of
+ * `@slider/core`, to the value of the JavaScript expression `code`, e.g., to
+ * merge them differently, or to add functions that import modules. The code
+ * can use the imports that the plugin adds to the deck.
+ *
+ * Otherwise, the deck has the options as {@link getSliderOptions} returns
+ * them. Must be called before the plugins of recma run, e.g., in plugins of
+ * rehype.
+ */
+export function setRuntimeSliderOptions(
+  file: VFile,
+  name: string,
+  code: string,
+): void {
+  getRuntimeOptions(file).set(name, code);
+}
+
+/**
+ * Declares the options of the deck that `file` compiles for the browser,
+ * which the `Deck` gets: those that the configs set, and those that plugins
+ * set with {@link setRuntimeSliderOptions}.
+ */
+export function recmaSliderOptions(): (tree: Program, file: VFile) => void {
+  return (tree, file) => {
+    const names = new Set<string>();
+    for (const { config } of getSliderConfigs(file) ?? []) {
+      if (isRecord(config) && isRecord(config['options'])) {
+        for (const name of Object.keys(config['options'])) {
+          names.add(name);
+        }
+      }
+    }
+    const runtime = getRuntimeOptions(file);
+    const entries = [...names]
+      .filter((name) => !runtime.has(name))
+      .map(
+        (name) =>
+          `${JSON.stringify(name)}: ${JSON.stringify(getSliderOptions(file, name))}`,
+      );
+    for (const [name, code] of runtime) {
+      entries.push(`${JSON.stringify(name)}: (${code})`);
+    }
+    // Before the content, which uses them, and after the imports, which
+    // the options may use, even when the imports are compiled to statements.
+    const index = tree.body.findIndex(
+      (statement) =>
+        statement.type === 'FunctionDeclaration' &&
+        statement.id.name === '_createMdxContent',
+    );
+    tree.body.splice(
+      index === -1 ? tree.body.length : index,
+      0,
+      ...parseProgram(`const ${SLIDER_OPTIONS} = { ${entries.join(', ')} };`)
+        .body,
+    );
+  };
 }

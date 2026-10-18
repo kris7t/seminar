@@ -3,6 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from './Deck.tsx';
+import { useSliderOptions } from './SliderOptionsContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
 
@@ -41,6 +42,22 @@ describe('Deck', () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('provides its options to the slides', () => {
+    function Options() {
+      return (
+        <>{JSON.stringify([useSliderOptions('a'), useSliderOptions('b')])}</>
+      );
+    }
+    render(
+      <Deck options={{ a: { x: 1 } }}>
+        <Slide>
+          <Options />
+        </Slide>
+      </Deck>,
+    );
+    expect(screen.getByText('[{"x":1},null]')).toBeDefined();
   });
 
   it('shows the first slide initially', () => {
