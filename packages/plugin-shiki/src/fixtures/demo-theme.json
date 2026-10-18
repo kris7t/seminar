@@ -1,0 +1,11 @@
+{
+  "name": "Demo Theme",
+  "type": "light",
+  "colors": {
+    "editor.background": "#fefefe",
+    "editor.foreground": "#111111"
+  },
+  "tokenColors": [
+    { "scope": "keyword", "settings": { "foreground": "#ff0000" } }
+  ]
+}

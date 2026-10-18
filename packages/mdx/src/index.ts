@@ -38,12 +38,6 @@ export {
   slideExportName,
 } from './deck/recmaSlideExports.ts';
 export { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
-export {
-  rehypeCode,
-  type CodeBlock,
-  type CodeHighlighter,
-  type RehypeCodeOptions,
-} from './content/rehypeCode.ts';
 export { rehypeListSteps } from './steps/rehypeListSteps.ts';
 export {
   remarkHeadingAttributes,
@@ -52,3 +46,19 @@ export {
 export { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
 export { remarkStepDirectives } from './steps/remarkStepDirectives.ts';
 export { remarkSteps } from './steps/remarkSteps.ts';
+export {
+  configuredPlugins,
+  type ConfiguredPluginsOptions,
+  type MdxPluginStage,
+} from './config/configuredPlugins.ts';
+export {
+  getFrontmatter,
+  getSliderOptionLayers,
+  getSliderOptions,
+  type SliderOptionsLayer,
+} from './config/sliderOptions.ts';
+export { parseAttributeWords } from './directives/attributeWords.ts';
+export { getAttributes, type Attributes } from './directives/directives.ts';
+export { getStepProps } from './steps/remarkSteps.ts';
+export { createEsm, createStringAttribute } from './utils/estree.ts';
+export { EXPLICIT_JSX, EXPLICIT_JSX_HAST } from './utils/jsx.ts';

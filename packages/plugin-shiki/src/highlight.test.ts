@@ -26,7 +26,7 @@ async function highlighted(
   lang: string | undefined,
   options: Record<string, unknown> = {},
 ): Promise<Element> {
-  const pre = await highlight({ code, lang, meta: undefined }, options);
+  const pre = await highlight({ code, lang }, options);
   if (pre === undefined) {
     throw new Error('Expected a highlighted block');
   }

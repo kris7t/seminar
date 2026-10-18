@@ -1,8 +1,8 @@
 export type {
-  CodeConfig,
   DirectiveComponentConfig,
   DirectiveForm,
   MathConfig,
+  MdxPluginsConfig,
   ModuleExportConfig,
   SliderConfig,
 } from './SliderConfig.ts';

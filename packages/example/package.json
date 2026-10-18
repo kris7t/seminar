@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@slider/mdx": "0.0.0",
-    "@slider/shiki": "0.0.0",
+    "@slider/plugin-shiki": "0.0.0",
     "@slider/vite-plugin": "0.0.0",
     "@vitejs/plugin-react": "^6.1.2",
     "vite": "^8.3.4"

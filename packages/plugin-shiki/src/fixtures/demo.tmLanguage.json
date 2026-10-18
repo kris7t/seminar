@@ -1,0 +1,6 @@
+{
+  "name": "demo",
+  "scopeName": "source.demo",
+  "patterns": [{ "match": "\\bshout\\b", "name": "keyword.control.demo" }],
+  "repository": {}
+}

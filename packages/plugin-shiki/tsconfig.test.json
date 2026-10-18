@@ -5,7 +5,7 @@
     "isolatedDeclarations": false,
     "rewriteRelativeImportExtensions": false,
     "allowImportingTsExtensions": true,
-    "tsBuildInfoFile": "../../node_modules/.cache/tsc/shiki-test.tsbuildinfo",
+    "tsBuildInfoFile": "../../node_modules/.cache/tsc/plugin-shiki-test.tsbuildinfo",
     "lib": ["es2024", "dom", "dom.iterable"],
     "jsx": "react-jsx",
     "customConditions": ["@slider/source"]

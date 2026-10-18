@@ -97,39 +97,63 @@ explicitly to set them.
 - **Use short, lowercase names.** Name it like the HTML element it stands
   for, like `column`, and its wrapper in the plural, like `columns`.
 
-## Code blocks
+## Compiler plugins
 
-A plugin, or a theme, can also say how decks render code blocks, in the
-`code` key of its config:
+A plugin, or a theme, can also extend how decks are compiled, with plugins
+of [unified](https://unifiedjs.com), in the `mdx` key of its config:
 
 ```json
 {
   "slider": {
-    "code": {
-      "component": { "source": "my-code", "exportName": "Code" },
-      "highlighter": {
-        "source": "my-code/highlight",
-        "exportName": "highlight"
-      },
-      "options": { "theme": "github-light" }
+    "mdx": {
+      "rehypePlugins": [
+        { "source": "my-code/rehype", "exportName": "rehypeMyCode" }
+      ]
     }
   }
 }
 ```
 
-- `component` renders each code block. It gets the language as `lang`, the
-  rest of the opening fence as `meta`, the text of the block as `code`, and
-  the highlighted block, or a plain `pre` element, as its children.
-- `highlighter` is a `CodeHighlighter` of `@slider/mdx`, a function that
-  gets the code block and the `options`, and returns the element to render,
-  as [hast](https://github.com/syntax-tree/hast). It runs when decks are
-  compiled, in Node, so it may use packages that decks shouldn't contain,
-  like a highlighter and its grammars. Like the config itself, its module
-  must be built to JavaScript, and its `source` is resolved from the plugin.
-  If it throws, e.g., for an unknown language, decks report the error, and
-  show the block without highlighting.
-- `options` are passed to the highlighter. Those of later configs, and of
-  the `code` key of the frontmatter, override earlier ones.
+`remarkPlugins` work on the Markdown syntax tree, `rehypePlugins` on the
+HTML syntax tree, and `recmaPlugins` on the JavaScript of the compiled deck.
+The plugins of each stage run after those of Slider, in the order of the
+configs. They're imported when decks are compiled, in Node, so they may use
+packages that decks shouldn't contain, like a highlighter and its grammars.
+Like the config itself, their modules must be built to JavaScript, and
+`source` is resolved from the plugin. A plugin that can't be loaded is
+reported, and the deck is compiled without it.
 
-Later configs replace the component and the highlighter of earlier ones.
-`@slider/shiki` is such a plugin.
+`@slider/plugin-shiki` is such a plugin: its rehype plugin highlights code blocks,
+and replaces them with its `Code` component.
+
+### Options
+
+Compiler plugins take no options directly. Configs set them in their
+`options` key instead, by the name that the plugin reads, and decks override
+them in the frontmatter, e.g., for the `code` options of `@slider/plugin-shiki`:
+
+```ts
+export const slider: SliderConfig = {
+  options: { code: { theme: 'github-dark' } },
+};
+```
+
+```yaml
+code:
+  theme: min-light
+```
+
+Plugins read them with `getSliderOptions(file, 'code')` of `@slider/mdx`,
+which merges the options of the plugins, the theme, and the frontmatter, in
+order of increasing precedence. Pick a name that isn't a key of the
+frontmatter of decks, like `title` or `theme`.
+
+### Utilities
+
+`@slider/mdx` exports utilities for compiler plugins, e.g.:
+
+- `parseAttributeWords` reads attributes written like those of directives,
+  but without braces, e.g., in the first line of a code block,
+- `getStepProps` turns them into the props of a step, like those of `:step`,
+- `createStringAttribute`, `createEsm`, and `EXPLICIT_JSX_HAST` create JSX
+  elements and imports in the syntax trees of decks.

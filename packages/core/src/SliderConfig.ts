@@ -67,8 +67,18 @@ export interface MathConfig {
  */
 export interface SliderConfig {
   math?: MathConfig | undefined;
-  /** How MDX decks render code blocks, see {@link CodeConfig}. */
-  code?: CodeConfig | undefined;
+  /**
+   * Plugins of unified that compile MDX decks, see {@link MdxPluginsConfig}.
+   */
+  mdx?: MdxPluginsConfig | undefined;
+  /**
+   * Options of plugins by their name, e.g., `{ code: { theme: 'github-dark' } }`
+   * for the `code` options of `@slider/plugin-shiki`. Plugins, the theme, and the key
+   * of the same name in the frontmatter of decks set them, in order of
+   * increasing precedence. Plugins read them when compiling decks, with
+   * `getSliderOptions` of `@slider/mdx`.
+   */
+  options?: Record<string, Record<string, unknown>> | undefined;
   /**
    * React components that render named Remark directives in MDX decks.
    * `source` is the module to import from and `exportName` is its named
@@ -120,29 +130,19 @@ export interface ModuleExportConfig {
 }
 
 /**
- * How MDX decks render code blocks, i.e., fenced with three backticks, e.g.,
- * with syntax highlighting by a plugin like `@slider/shiki`.
+ * Plugins of [unified](https://unifiedjs.com) that compile MDX decks, e.g.,
+ * one that highlights code blocks, by the stage they run in: on the Markdown
+ * syntax tree (remark), the HTML syntax tree (rehype), or the JavaScript
+ * syntax tree (recma).
  *
- * Plugins and the theme set these in order of increasing precedence, and
- * decks can override the `options` in the `code` key of their frontmatter.
+ * The plugins of each stage run after the plugins of Slider, in the order of
+ * the configs. They're imported when compiling decks, in Node, so they may
+ * use packages that decks shouldn't contain, but they must be built to
+ * JavaScript. They take no options, but read those of {@link SliderConfig}
+ * with `getSliderOptions` of `@slider/mdx`.
  */
-export interface CodeConfig {
-  /**
-   * React component that renders code blocks. It gets the language of the
-   * block as `lang`, the rest of its first line as `meta`, its text as `code`,
-   * and the output of the highlighter, or a `pre` element without one, as its
-   * children. Without it, code blocks are `pre` elements.
-   */
-  component?: ModuleExportConfig | undefined;
-  /**
-   * Function that highlights code blocks when compiling the deck, see
-   * `CodeHighlighter` in `@slider/mdx`. Its module is imported at compile
-   * time, so it may use packages that the deck shouldn't contain.
-   */
-  highlighter?: ModuleExportConfig | undefined;
-  /**
-   * Options of the highlighter, e.g., `{ "theme": "github-light" }`, which
-   * are merged in order of precedence.
-   */
-  options?: Record<string, unknown> | undefined;
+export interface MdxPluginsConfig {
+  remarkPlugins?: readonly ModuleExportConfig[] | undefined;
+  rehypePlugins?: readonly ModuleExportConfig[] | undefined;
+  recmaPlugins?: readonly ModuleExportConfig[] | undefined;
 }

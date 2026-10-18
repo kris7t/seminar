@@ -59,7 +59,3 @@ export const HUNGARIAN = { lang: 'hu', catalog: {} };
 export const GERMAN = { lang: 'de', catalog: {} };
 
 export const FRENCH = { lang: 'fr', catalog: {} };
-
-export function CodeBlock(): null {
-  return null;
-}

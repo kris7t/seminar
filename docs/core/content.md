@@ -98,34 +98,8 @@ export const answer = 42;
 ```
 ````
 
-Without a plugin, they're shown as plain text. The `@slider/shiki` plugin
-highlights them when the deck is compiled, with [Shiki](https://shiki.style)
-and a theme of VS Code, so the deck contains only the highlighted code:
-
-```ts
-slider({ plugins: ['@slider/shiki'] });
-```
-
-The `code` key of the frontmatter selects another theme bundled with Shiki:
-
-```yaml
-code:
-  theme: github-dark # defaults to github-light
-```
-
-Code blocks are shown with the step before them, like paragraphs. Code in
-an unknown language is shown without highlighting, with a warning.
-
-The opening fence takes the attributes of `:step` after the language, e.g.,
-an id, classes, and `step` to show the block in a step of its own:
-
-````mdx
-```ts #fib .wide step group=impl
-fibonacci(10);
-```
-````
-
-Other words there, like `{1-3}`, are passed to the plugin as they are.
+They're shown as plain text, unless a plugin highlights them, like
+[`@slider/plugin-shiki`](../shiki/README.md).
 
 ## Presenter notes
 

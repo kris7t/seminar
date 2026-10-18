@@ -29,6 +29,13 @@ Presentation elements from the `@slider/elements` plugin:
    or other elements.
 3. [Columns](elements/columns.md): content side by side.
 
+## Code
+
+Highlighting code blocks with the `@slider/plugin-shiki` plugin:
+
+1. [Highlighting code](shiki/README.md): enabling the plugin, themes, and
+   other languages.
+
 ## Authoring
 
 Writing components, plugins, and themes for decks:
@@ -39,7 +46,7 @@ Writing components, plugins, and themes for decks:
 3. [Steps in components](authoring/steps.md): `Step`, default placement, and
    steppers.
 4. [Directives and plugins](authoring/directives.md): making components
-   available as directives, and rendering code blocks.
+   available as directives, and extending the compiler.
 5. [Themes](authoring/themes.md): masters, theming components, and step
    behaviors.
 
