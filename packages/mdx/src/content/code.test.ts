@@ -72,6 +72,18 @@ describe('rehypeCode', () => {
     );
   });
 
+  it('takes attributes in the first line, like :step', async () => {
+    expect(
+      await render(
+        '```ts #fib .wide .tall step group=impl {1|2} title="Two words"\nx\n```',
+        { component: COMPONENT },
+      ),
+    ).toContain(
+      '<CodeBlock lang="ts" meta="{1|2}" code="x" id="fib" ' +
+        'className="wide tall" step="" group="impl" title="Two words">',
+    );
+  });
+
   it('highlights code blocks with the highlighter of the config', async () => {
     const rendered = await render(
       `---\ncode:\n  theme: dark\n---\n\n${BLOCK}`,

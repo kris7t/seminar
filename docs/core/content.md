@@ -116,6 +116,17 @@ code:
 Code blocks are shown with the step before them, like paragraphs. Code in
 an unknown language is shown without highlighting, with a warning.
 
+The opening fence takes the attributes of `:step` after the language, e.g.,
+an id, classes, and `step` to show the block in a step of its own:
+
+````mdx
+```ts #fib .wide step group=impl
+fibonacci(10);
+```
+````
+
+Other words there, like `{1-3}`, are passed to the plugin as they are.
+
 ## Presenter notes
 
 A `:::notes` container holds notes for the presenter, shown below the slide

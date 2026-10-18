@@ -4,6 +4,8 @@ import path from 'node:path';
 import type { VFile } from 'vfile';
 
 import { getSliderConfigs } from '../config/remarkSliderConfig.ts';
+import type { Attributes } from '../directives/directives.ts';
+import { getStepProps } from '../steps/remarkSteps.ts';
 import { importWithNode, type ModuleImporter } from '../config/themeConfig.ts';
 import { createEsm, createStringAttribute } from '../utils/estree.ts';
 import { EXPLICIT_JSX_HAST } from '../utils/jsx.ts';
@@ -191,6 +193,55 @@ interface FoundBlock {
   index: number;
   pre: Element;
   block: CodeBlock;
+  /** Attributes in the first line of the block, e.g., `#id`. */
+  attributes: Attributes;
+}
+
+/**
+ * A word of the first line of a code block: an attribute, i.e., `#id`,
+ * `.class`, `key=value` or `key="quoted value"`, or a bare word, or something
+ * else, like `{1-3|5}`, kept as a whole.
+ */
+const META_WORD =
+  /\{[^}]*\}|[^\s"'=]+=(?:"[^"]*"|'[^']*'|[^\s"']*)|"[^"]*"|'[^']*'|\S+/g;
+
+const ATTRIBUTE_WORD =
+  /^(?:[#.][^\s"'=#.{}]+|[A-Za-z_][\w-]*(?:=(?:"[^"]*"|'[^']*'|[^\s"'{}]+))?)$/;
+
+function unquote(value: string): string {
+  return /^(?:"[^"]*"|'[^']*')$/.test(value) ? value.slice(1, -1) : value;
+}
+
+/**
+ * Splits the rest of the first line of a code block into its attributes,
+ * e.g., ` ```ts #fib .wide step group=impl `, and the rest, which stays the
+ * meta of the block for its component and highlighter.
+ */
+export function parseCodeMeta(meta: string | undefined): {
+  attributes: Attributes;
+  meta: string | undefined;
+} {
+  const attributes: Attributes = { classes: [], attributes: new Map() };
+  const rest: string[] = [];
+  for (const [word] of (meta ?? '').matchAll(META_WORD)) {
+    if (!ATTRIBUTE_WORD.test(word)) {
+      rest.push(word);
+    } else if (word.startsWith('#')) {
+      attributes.id = word.slice(1);
+    } else if (word.startsWith('.')) {
+      attributes.classes.push(word.slice(1));
+    } else {
+      const separator = word.indexOf('=');
+      attributes.attributes.set(
+        separator === -1 ? word : word.slice(0, separator),
+        separator === -1 ? '' : unquote(word.slice(separator + 1)),
+      );
+    }
+  }
+  return {
+    attributes,
+    meta: rest.length === 0 ? undefined : rest.join(' '),
+  };
 }
 
 /** Finds the code blocks of Markdown: `pre` elements with a `code` element. */
@@ -212,7 +263,10 @@ function findBlocks(
         const language = Array.isArray(className)
           ? className.map(String).find((name) => name.startsWith('language-'))
           : undefined;
-        const meta = (code.data as { meta?: string | null } | undefined)?.meta;
+        const { attributes, meta } = parseCodeMeta(
+          (code.data as { meta?: string | null } | undefined)?.meta ??
+            undefined,
+        );
         found.push({
           parent,
           index,
@@ -220,8 +274,9 @@ function findBlocks(
           block: {
             code: textOf(code).replace(/\n$/, ''),
             lang: language?.slice('language-'.length),
-            meta: meta ?? undefined,
+            meta,
           },
+          attributes,
         });
         return;
       }
@@ -241,6 +296,7 @@ function renderBlocks(
   found: readonly FoundBlock[],
   setup: CodeSetup,
   rendered: ReadonlyMap<FoundBlock, Element>,
+  file: VFile,
 ): void {
   for (const block of found) {
     const { parent, index, pre } = block;
@@ -260,6 +316,10 @@ function renderBlocks(
           ? []
           : [createStringAttribute('meta', block.block.meta)]),
         createStringAttribute('code', block.block.code),
+        // Like the attributes of `:step`, e.g., `#id .class step group=…`.
+        ...getStepProps(block.attributes, file).map(([name, value]) =>
+          createStringAttribute(name, value),
+        ),
       ],
       children: [element],
       data: EXPLICIT_JSX_HAST,
@@ -301,7 +361,7 @@ export function rehypeCode(
     if (highlighter === undefined) {
       // Synchronous, so that decks without highlighting compile with
       // `compileSync`.
-      renderBlocks(tree, found, setup, new Map());
+      renderBlocks(tree, found, setup, new Map(), file);
       return undefined;
     }
     return (async () => {
@@ -322,7 +382,7 @@ export function rehypeCode(
           });
         }
       }
-      renderBlocks(tree, found, setup, rendered);
+      renderBlocks(tree, found, setup, rendered, file);
     })();
   };
 }
