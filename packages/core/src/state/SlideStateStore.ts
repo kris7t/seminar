@@ -115,6 +115,23 @@ export class SlideStateStore {
     }
   }
 
+  /**
+   * Removes the state of every slide other than its position in its steps.
+   */
+  resetAll(): void {
+    const steps = `\u0000${STEP_KEY}`;
+    const ids = [...this.#values.keys()].filter((id) => !id.endsWith(steps));
+    for (const id of ids) {
+      this.#values.delete(id);
+    }
+    if (this.#changed.size > 0) {
+      this.#setChanged(new Set());
+    }
+    for (const id of ids) {
+      this.#notify(id);
+    }
+  }
+
   #keysOf(slideIndex: number): string[] {
     const prefix = this.#id(slideIndex, '');
     const steps = this.#id(slideIndex, STEP_KEY);

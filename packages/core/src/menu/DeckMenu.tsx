@@ -14,6 +14,7 @@ import MouseIcon from '@mui/icons-material/Mouse';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import RestorePageIcon from '@mui/icons-material/RestorePage';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import SlideshowIcon from '@mui/icons-material/Slideshow';
@@ -280,6 +281,12 @@ export function DeckMenu({
           deck.goTo(lastSlideIndex, 'end');
         },
         disabled: slideIndex === lastSlideIndex && atLastStep,
+      },
+      {
+        label: t('resetDeck'),
+        icon: RestorePageIcon,
+        action: deck.resetDeck,
+        disabled: !deck.deckChanged,
       },
     ],
     [

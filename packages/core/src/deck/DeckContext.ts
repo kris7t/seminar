@@ -54,6 +54,16 @@ export interface DeckState {
    */
   resetSlide: (slideIndex: number) => void;
   /**
+   * Whether the state of the deck (see `useDeckState`) or of any slide was
+   * changed since it was reset.
+   */
+  deckChanged: boolean;
+  /**
+   * Resets the state of the deck and of every slide, and goes to the first
+   * step of the current slide.
+   */
+  resetDeck: () => void;
+  /**
    * Goes to a slide. `steps` sets which of its steps are shown:
    *
    * - `'start'` (the default): none.

@@ -8,6 +8,7 @@ export type {
 } from './SliderConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
+export { useDeckState } from './state/useDeckState.ts';
 export {
   useSliderOptions,
   type SliderOptions,

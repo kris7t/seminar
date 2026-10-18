@@ -37,6 +37,29 @@ several times, or that mount after the slide.
 The state can be any value, including objects that only exist while the deck
 runs, like a media stream that one view creates for the others.
 
+## Deck state
+
+`useDeckState` keeps state that several slides share, like an answer that
+the audience gives on one slide and that a later slide shows:
+
+```tsx
+import { useDeckState } from '@slider/core';
+
+export function Vote() {
+  const [vote, setVote] = useDeckState<string>('vote');
+  return <button onClick={() => setVote('yes')}>{vote ?? 'No vote'}</button>;
+}
+```
+
+Every slide that uses the same key gets the same state. Use keys that other
+components won't use, like the name of your component.
+
+The state is `undefined` until it is set. There is no initial value, since
+the slides that share the state could give different ones. Setting it to
+`undefined` resets it.
+
+Reset deck in the menu resets the state of the deck and of every slide.
+
 ## Views
 
 `useSlideView` tells which rendering a component is in. Its `kind` is one of:
