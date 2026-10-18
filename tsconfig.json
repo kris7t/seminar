@@ -6,6 +6,7 @@
     { "path": "./packages/mdx" },
     { "path": "./packages/rollup-plugin" },
     { "path": "./packages/vite-plugin" },
+    { "path": "./packages/shiki" },
     { "path": "./packages/theme-default" },
     { "path": "./packages/example" }
   ]

@@ -96,3 +96,40 @@ explicitly to set them.
   the directive. See [Steps in components](steps.md).
 - **Use short, lowercase names.** Name it like the HTML element it stands
   for, like `column`, and its wrapper in the plural, like `columns`.
+
+## Code blocks
+
+A plugin, or a theme, can also say how decks render code blocks, in the
+`code` key of its config:
+
+```json
+{
+  "slider": {
+    "code": {
+      "component": { "source": "my-code", "exportName": "Code" },
+      "highlighter": {
+        "source": "my-code/highlight",
+        "exportName": "highlight"
+      },
+      "options": { "theme": "github-light" }
+    }
+  }
+}
+```
+
+- `component` renders each code block. It gets the language as `lang`, the
+  rest of the opening fence as `meta`, the text of the block as `code`, and
+  the highlighted block, or a plain `pre` element, as its children.
+- `highlighter` is a `CodeHighlighter` of `@slider/mdx`, a function that
+  gets the code block and the `options`, and returns the element to render,
+  as [hast](https://github.com/syntax-tree/hast). It runs when decks are
+  compiled, in Node, so it may use packages that decks shouldn't contain,
+  like a highlighter and its grammars. Like the config itself, its module
+  must be built to JavaScript, and its `source` is resolved from the plugin.
+  If it throws, e.g., for an unknown language, decks report the error, and
+  show the block without highlighting.
+- `options` are passed to the highlighter. Those of later configs, and of
+  the `code` key of the frontmatter, override earlier ones.
+
+Later configs replace the component and the highlighter of earlier ones.
+`@slider/shiki` is such a plugin.

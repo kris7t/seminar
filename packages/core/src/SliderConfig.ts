@@ -67,6 +67,8 @@ export interface MathConfig {
  */
 export interface SliderConfig {
   math?: MathConfig | undefined;
+  /** How MDX decks render code blocks, see {@link CodeConfig}. */
+  code?: CodeConfig | undefined;
   /**
    * React components that render named Remark directives in MDX decks.
    * `source` is the module to import from and `exportName` is its named
@@ -107,4 +109,40 @@ export interface DirectiveComponentConfig {
    * wrapper has no attributes, so it's written explicitly to set them.
    */
   wrapIn?: string | undefined;
+}
+
+/** A named export of a module, e.g., a component or a function. */
+export interface ModuleExportConfig {
+  /** Module that exports it. */
+  source: string;
+  /** Name of the export. */
+  exportName: string;
+}
+
+/**
+ * How MDX decks render code blocks, i.e., fenced with three backticks, e.g.,
+ * with syntax highlighting by a plugin like `@slider/shiki`.
+ *
+ * Plugins and the theme set these in order of increasing precedence, and
+ * decks can override the `options` in the `code` key of their frontmatter.
+ */
+export interface CodeConfig {
+  /**
+   * React component that renders code blocks. It gets the language of the
+   * block as `lang`, the rest of its first line as `meta`, its text as `code`,
+   * and the output of the highlighter, or a `pre` element without one, as its
+   * children. Without it, code blocks are `pre` elements.
+   */
+  component?: ModuleExportConfig | undefined;
+  /**
+   * Function that highlights code blocks when compiling the deck, see
+   * `CodeHighlighter` in `@slider/mdx`. Its module is imported at compile
+   * time, so it may use packages that the deck shouldn't contain.
+   */
+  highlighter?: ModuleExportConfig | undefined;
+  /**
+   * Options of the highlighter, e.g., `{ "theme": "github-light" }`, which
+   * are merged in order of precedence.
+   */
+  options?: Record<string, unknown> | undefined;
 }

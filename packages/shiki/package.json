@@ -1,0 +1,64 @@
+{
+  "name": "@slider/shiki",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Syntax highlighting of code blocks in slider decks with Shiki",
+  "license": "Apache-2.0",
+  "type": "module",
+  "slider": {
+    "code": {
+      "component": {
+        "source": "@slider/shiki",
+        "exportName": "Code"
+      },
+      "highlighter": {
+        "source": "@slider/shiki/highlight",
+        "exportName": "highlight"
+      },
+      "options": {
+        "theme": "github-light"
+      }
+    }
+  },
+  "exports": {
+    ".": {
+      "@slider/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./highlight": {
+      "@slider/source": "./src/highlight.ts",
+      "types": "./dist/highlight.d.ts",
+      "default": "./dist/highlight.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "shiki": "^4.5.0"
+  },
+  "peerDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^9.5.0",
+    "@slider/core": "0.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.5.0",
+    "@slider/core": "0.0.0",
+    "@slider/mdx": "0.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@types/hast": "^3.0.5",
+    "react": "^19.3.1",
+    "vitest": "^5.0.4"
+  }
+}

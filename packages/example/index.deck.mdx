@@ -183,6 +183,19 @@ $$
 
 ::recap[#recaps]
 
+### Code
+
+Code blocks are highlighted by `@slider/shiki` when the deck is compiled,
+with a theme of VS Code:
+
+```ts
+export function fibonacci(n: number): number {
+  return n < 2 ? n : fibonacci(n - 1) + fibonacci(n - 2);
+}
+```
+
+:step The deck contains only the highlighted code, not the highlighter.
+
 ## Interactive slides
 
 Widgets in the presenter view

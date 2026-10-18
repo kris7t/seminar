@@ -13,8 +13,8 @@ What every deck can use, provided by `@slider/core` and `@slider/mdx`:
 
 1. [Decks and slides](core/decks.md): the deck file, its frontmatter, and how
    headings turn into slides.
-2. [Content](core/content.md): lists, paragraphs, images, math, notes, and
-   React components on slides, and naming elements on a slide.
+2. [Content](core/content.md): lists, paragraphs, images, math, code, notes,
+   and React components on slides, and naming elements on a slide.
 3. [Steps](core/steps.md): revealing content step by step, and how steps look
    before and after their turn.
 4. [Recaps and includes](core/reuse.md): showing a slide again, and reusing
@@ -39,7 +39,7 @@ Writing components, plugins, and themes for decks:
 3. [Steps in components](authoring/steps.md): `Step`, default placement, and
    steppers.
 4. [Directives and plugins](authoring/directives.md): making components
-   available as directives.
+   available as directives, and rendering code blocks.
 5. [Themes](authoring/themes.md): masters, theming components, and step
    behaviors.
 

@@ -38,6 +38,12 @@ export {
   slideExportName,
 } from './deck/recmaSlideExports.ts';
 export { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
+export {
+  rehypeCode,
+  type CodeBlock,
+  type CodeHighlighter,
+  type RehypeCodeOptions,
+} from './content/rehypeCode.ts';
 export { rehypeListSteps } from './steps/rehypeListSteps.ts';
 export {
   remarkHeadingAttributes,

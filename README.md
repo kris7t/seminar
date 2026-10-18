@@ -67,7 +67,7 @@ interface language.
 See the [documentation](docs/README.md) for the syntax:
 
 - [Decks and slides](docs/core/decks.md)
-- [Content](docs/core/content.md): images, math, notes, and components
+- [Content](docs/core/content.md): images, math, code, notes, and components
 - [Steps](docs/core/steps.md)
 - [Recaps and includes](docs/core/reuse.md)
 - [Elements](docs/elements/README.md): callouts and columns
@@ -130,6 +130,7 @@ and selection of text fields, selected text, and the ripples of buttons.
 | [`@slider/core`](packages/core)                   | Deck, slides, steps, themes, and the presenter view   |
 | [`@slider/elements`](packages/elements)           | Reusable presentation elements and MDX directives     |
 | [`@slider/mdx`](packages/mdx)                     | Compiles decks written in MDX                         |
+| [`@slider/shiki`](packages/shiki)                 | Syntax highlighting of code blocks with Shiki         |
 | [`@slider/rollup-plugin`](packages/rollup-plugin) | Rollup and Vite plugin for `.deck.mdx` files          |
 | [`@slider/vite-plugin`](packages/vite-plugin)     | Vite plugin with HTML pages and self-contained builds |
 | [`@slider/theme-default`](packages/theme-default) | Default theme with Roboto and the Fira math font      |

@@ -1,7 +1,9 @@
 export type {
+  CodeConfig,
   DirectiveComponentConfig,
   DirectiveForm,
   MathConfig,
+  ModuleExportConfig,
   SliderConfig,
 } from './SliderConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';

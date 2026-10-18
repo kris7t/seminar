@@ -14,6 +14,7 @@ import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts
 import { remarkImages } from './content/remarkImages.ts';
 import { remarkNotes } from './deck/remarkNotes.ts';
 import { directiveHandlers } from './directives/directiveHandlers.ts';
+import { rehypeCode, type RehypeCodeOptions } from './content/rehypeCode.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
 import { rehypeSlideElements } from './content/rehypeSlideElements.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
@@ -93,6 +94,10 @@ export function sliderMdxOptions({
               RehypeMathOptions,
             ],
           ]),
+      [rehypeCode, { importModule, onDependency }] satisfies [
+        typeof rehypeCode,
+        RehypeCodeOptions,
+      ],
     ],
     recmaPlugins: [recmaSlideTitles, recmaSlideExports],
   };

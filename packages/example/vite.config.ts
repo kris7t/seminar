@@ -3,7 +3,10 @@ import react from '@vitejs/plugin-react';
 import { defaultClientConditions, defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [slider({ plugins: ['@slider/elements'] }), react()],
+  plugins: [
+    slider({ plugins: ['@slider/elements', '@slider/shiki'] }),
+    react(),
+  ],
   resolve: {
     // Use the TypeScript sources of workspace packages directly.
     conditions: ['@slider/source', ...defaultClientConditions],
