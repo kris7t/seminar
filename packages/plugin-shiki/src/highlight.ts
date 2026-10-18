@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { Element } from 'hast';
 import {
   bundledLanguages,
+  bundledLanguagesInfo,
   bundledThemes,
   createHighlighter,
   type BundledLanguage,
@@ -37,11 +38,60 @@ function isBundledTheme(theme: string): theme is BundledTheme {
   return Object.hasOwn(bundledThemes, theme);
 }
 
+let bundledScopes: Promise<ReadonlyMap<string, string>> | undefined;
+
 /**
- * Returns a highlighter with `languages` and `themes`. Shiki ignores grammars
- * and themes loaded again with the same name, so a highlighter is created
- * for every set of them, e.g., when one of their files changes, and only the
- * last few are kept.
+ * Returns the bundled languages of Shiki by the scopes of their grammars,
+ * e.g., `typescript` for `source.ts`, which takes a moment to load the first
+ * time.
+ */
+function getBundledScopes(): Promise<ReadonlyMap<string, string>> {
+  bundledScopes ??= (async () => {
+    const scopes = new Map<string, string>();
+    for (const info of bundledLanguagesInfo) {
+      for (const grammar of (await info.import()).default) {
+        scopes.set(grammar.scopeName, grammar.name);
+      }
+    }
+    return scopes;
+  })();
+  return bundledScopes;
+}
+
+/** Returns the scopes that `grammar` includes from other grammars. */
+function includedScopes(
+  grammar: unknown,
+  found = new Set<string>(),
+): Set<string> {
+  if (Array.isArray(grammar)) {
+    for (const item of grammar) {
+      includedScopes(item, found);
+    }
+  } else if (typeof grammar === 'object' && grammar !== null) {
+    for (const [key, value] of Object.entries(grammar)) {
+      if (
+        key === 'include' &&
+        typeof value === 'string' &&
+        !value.startsWith('#') &&
+        !value.startsWith('$')
+      ) {
+        found.add(value.split('#')[0] ?? value);
+      } else {
+        includedScopes(value, found);
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * Returns a highlighter with `languages` and `themes`, and the bundled
+ * languages whose grammars the grammars of `languages` include, e.g.,
+ * `typescript` for a template language that embeds `source.ts`.
+ *
+ * Shiki ignores grammars and themes loaded again with the same name, so a
+ * highlighter is created for every set of them, e.g., when one of their
+ * files changes, and only the last few are kept.
  */
 function getHighlighter(
   languages: readonly LanguageRegistration[],
@@ -52,10 +102,25 @@ function getHighlighter(
     .digest('hex');
   let highlighter = highlighters.get(key);
   if (highlighter === undefined) {
-    highlighter = createHighlighter({
-      langs: [...languages],
-      themes: [...themes],
-    });
+    highlighter = (async () => {
+      const ownScopes = new Set(languages.map(({ scopeName }) => scopeName));
+      const embedded = new Set<string>();
+      if (languages.length > 0) {
+        const scopes = await getBundledScopes();
+        for (const scope of includedScopes(languages)) {
+          const bundled = scopes.get(scope);
+          if (!ownScopes.has(scope) && bundled !== undefined) {
+            embedded.add(bundled);
+          }
+        }
+      }
+      return createHighlighter({
+        // Bundled languages first, so that grammars of the same name replace
+        // them.
+        langs: [...(embedded as Set<BundledLanguage>), ...languages],
+        themes: [...themes],
+      });
+    })();
   } else {
     highlighters.delete(key);
   }

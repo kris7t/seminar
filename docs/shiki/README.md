@@ -1,20 +1,21 @@
 # Highlighting code
 
-`@slider/plugin-shiki` highlights the code blocks of decks with
-[Shiki](https://shiki.style), which uses the grammars and the themes of VS
-Code. Code is highlighted when the deck is compiled, so the deck contains
-only the highlighted code, but no highlighter, grammars, or scripts.
+`@slider/plugin-shiki` highlights code blocks with
+[Shiki](https://shiki.style). Shiki uses the grammars and themes of VS Code.
+
+The code is highlighted when the deck is compiled. The deck only contains
+the result, not the highlighter.
 
 ## Enabling the plugin
 
-Add the package to the dependencies of the project, and enable it as a
-plugin of slider, e.g., in `vite.config.ts`:
+Add `@slider/plugin-shiki` to the dependencies of your project. Then list it
+in the plugins in `vite.config.ts`:
 
 ```ts
 slider({ plugins: ['@slider/plugin-shiki'] });
 ```
 
-## Code blocks
+## Writing code blocks
 
 Write the language after the opening fence:
 
@@ -26,15 +27,13 @@ export function fibonacci(n: number): number {
 ```
 ````
 
-Shiki knows [many languages](https://shiki.style/languages) by their names
-and aliases, e.g., `ts`, `python`, or `elixir`. Blocks without a language,
-or in `text`, are shown without highlighting. Blocks in a language that
-Shiki doesn't know are shown without highlighting, too, with a warning when
-compiling the deck.
+Shiki knows [many languages](https://shiki.style/languages).
 
-Code blocks are shown with the step before them, like paragraphs. The
-opening fence takes the attributes of `:step` after the language, e.g., an
-id, classes, and `step` to show the block in a step of its own:
+Code without a language is not highlighted. Neither is code in a language
+that Shiki doesn't know. You get a warning for those.
+
+A code block appears with the step before it, like a paragraph. To change
+that, write the attributes of `:step` after the language:
 
 ````mdx
 ```ts #fib .wide step group=impl
@@ -42,75 +41,83 @@ fibonacci(10);
 ```
 ````
 
-Clicking a code block goes to the next step, like clicking text.
+## Choosing a theme
 
-## Themes
-
-Code blocks are highlighted with the `github-light` theme by default. The
-`code` key of the frontmatter selects another
-[theme of Shiki](https://shiki.style/themes):
+The default theme is `github-light`. To choose another
+[theme of Shiki](https://shiki.style/themes) for a deck, set it in the
+frontmatter:
 
 ```yaml
 code:
   theme: github-dark
 ```
 
-The theme of the presentation can select one for all of its decks, in the
-`options` of its config:
+To choose a theme for every deck, set it in the config of your presentation
+theme:
 
 ```ts
-import type { SliderConfig } from '@slider/core';
-
 export const slider: SliderConfig = {
-  options: { code: { theme: 'github-light-high-contrast' } },
+  options: { code: { theme: 'github-dark' } },
 };
 ```
 
-The frontmatter of a deck takes precedence over the theme of the
-presentation.
+The frontmatter wins over the presentation theme.
 
-## Other languages and themes
+## Adding languages and themes
 
-`languages` and `themes` in the `code` options load more grammars and
-themes from JSON files, e.g., from extensions of VS Code:
+You can load more languages and themes from JSON files. List them in
+`languages` and `themes`:
 
 ```ts
 export const slider: SliderConfig = {
   options: {
     code: {
-      theme: 'Course Light',
       languages: ['./grammars/prolog.tmLanguage.json'],
       themes: ['./themes/course-light.json'],
+      theme: 'Course Light',
     },
   },
 };
 ```
 
-- Grammars are [TextMate grammars](https://macromates.com/manual/en/language_grammars)
-  in JSON, with a `scopeName`. The language is called by the `name` of the
-  grammar.
-- Themes are themes of VS Code in JSON. The theme is called by its `name`,
-  which `theme` selects.
+Languages are
+[TextMate grammars](https://macromates.com/manual/en/language_grammars).
+Themes are VS Code themes. Both are called by the `name` in their file.
 
-To call a language or a theme by another name, give the file as an object,
-e.g., `{ path: './prolog.json', name: 'prolog', aliases: ['pl'] }`, where
-`aliases` are further names of a language.
+To use another name, write an object instead of the path:
 
-Relative paths are resolved from the file that lists them: the module of
-the theme of the presentation, or the deck for the frontmatter. Other paths
-are resolved as files of packages, e.g., `some-grammars/prolog.json`.
+```ts
+languages: [{ path: './prolog.json', name: 'prolog', aliases: ['pl'] }];
+```
 
-Unlike `theme`, which the frontmatter overrides, the `languages` and
-`themes` of the plugins, the theme of the presentation, and the frontmatter
-add up. Files that can't be read are reported when compiling the deck.
+Paths starting with `.` are relative to the file that lists them. Other
+paths are looked up in packages.
 
-Changes to these files apply when the deck is compiled again, e.g., after
-editing the deck.
+The frontmatter can list files, too. They are added to those of the
+presentation theme.
 
-## Styling
+The files are read when a deck is compiled. If you change one, edit the deck
+to see the change.
 
-The code blocks are `Code` components, which the MUI theme of the slides can
-style as `SliderCode`, e.g., to change their font:
+### Embedding languages
+
+A grammar can include the languages of Shiki by their scope:
+
+```json
+{ "include": "source.ts" }
+```
+
+The plugin then loads TypeScript, too.
+
+### Replacing languages
+
+The languages and themes you add come in addition to those of Shiki. To
+replace a language of Shiki, give your grammar its name.
+
+## Styling code blocks
+
+Code blocks are `Code` components. Style them as `SliderCode` in the MUI
+theme of your slides:
 
 ```ts
 createSlideTheme({
@@ -126,6 +133,6 @@ createSlideTheme({
 });
 ```
 
-The code is in a `pre` element in the component, with the background and
-text colors of the highlighting theme. By default, it uses the monospace
-font of the system, at three quarters of the size of the text around it.
+By default, code uses the monospace font of the system. It is three quarters
+of the size of the text. The background and text colors come from the
+highlighting theme.

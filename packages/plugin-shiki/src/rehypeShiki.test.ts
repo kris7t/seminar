@@ -125,4 +125,38 @@ describe('rehypeShiki', () => {
       expect.stringContaining('Cannot read ./missing.json') as unknown,
     ]);
   });
+
+  /** The number of colors in the code of a compiled deck. */
+  function colorsOf(code: string): number {
+    return new Set(code.match(/color: "#[0-9A-F]{6}"/gi)).size;
+  }
+
+  it('highlights the languages of Shiki that grammars embed', async () => {
+    const { code, messages } = await compileDeck(
+      '```template\nhi <% const answer = 42; %>\n```',
+      { options: { code: { languages: ['./template.tmLanguage.json'] } } },
+    );
+    expect(messages).toEqual([]);
+    // Keywords, names, and numbers of TypeScript besides the text.
+    expect(colorsOf(code)).toBeGreaterThan(2);
+  });
+
+  it('keeps the languages of Shiki besides other languages', async () => {
+    const { code, messages } = await compileDeck(
+      '```ts\nconst answer = 42;\n```',
+      { options: { code: { languages: ['./demo.tmLanguage.json'] } } },
+    );
+    expect(messages).toEqual([]);
+    expect(colorsOf(code)).toBeGreaterThan(2);
+  });
+
+  it('lets grammars with the name of a language of Shiki replace it', async () => {
+    const { code, messages } = await compileDeck('```ts\nshout\n```', {
+      options: {
+        code: { languages: [{ path: './demo.tmLanguage.json', name: 'ts' }] },
+      },
+    });
+    expect(messages).toEqual([]);
+    expect(code).toContain('color: "#D73A49"');
+  });
 });

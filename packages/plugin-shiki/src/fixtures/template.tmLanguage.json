@@ -1,0 +1,13 @@
+{
+  "name": "template",
+  "scopeName": "text.template",
+  "patterns": [
+    {
+      "begin": "<%",
+      "end": "%>",
+      "name": "meta.embedded.ts",
+      "patterns": [{ "include": "source.ts" }]
+    }
+  ],
+  "repository": {}
+}
