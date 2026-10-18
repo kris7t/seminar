@@ -12,6 +12,7 @@ import {
 } from '@slider/core';
 import type { JSX, ReactNode } from 'react';
 
+import { FIRST_CHILD } from '../selectors.ts';
 import { cssLength } from './Columns.tsx';
 
 /** Props of a {@link Column}. */
@@ -81,7 +82,7 @@ const ColumnRoot = styled(Step, {
         : `0 0 ${width}`,
     minWidth: 0,
     // The tops of columns line up, whatever their first blocks are.
-    '& > :first-child': { marginTop: 0 },
+    [`& > ${FIRST_CHILD}`]: { marginTop: 0 },
     '& > :last-child': { marginBottom: 0 },
   };
 });

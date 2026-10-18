@@ -39,6 +39,7 @@ import {
   ShadowFilter,
   shadowFilterUrl,
 } from '../svg/shadow.tsx';
+import { FIRST_CHILD } from '../selectors.ts';
 import { useSvgId } from '../svg/useSvgId.ts';
 
 export const DEFAULT_CALLOUT_MAX_WIDTH = 360;
@@ -368,7 +369,7 @@ const CalloutContent = styled('span', {
           marginBlock: theme.spacing(1),
         },
         [[1, 2, 3]
-          .map((depth) => `& ${'> :first-child '.repeat(depth)}`)
+          .map((depth) => `& ${`> ${FIRST_CHILD} `.repeat(depth)}`)
           .concat(`& > .${calloutTitleClasses.root} + *`)
           .join(', ')]: { marginTop: 0 },
         [[1, 2, 3]
