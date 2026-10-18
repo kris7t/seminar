@@ -61,6 +61,7 @@ export {
 } from './slide/slideBoxes.ts';
 export {
   useMeasure,
+  useSlideUpdate,
   useTransitionHold,
   type TransitionHoldOptions,
 } from './transitions/settling.ts';

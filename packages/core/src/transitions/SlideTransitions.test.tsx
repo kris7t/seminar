@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   use,
+  useEffect,
   useLayoutEffect,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
@@ -16,6 +18,7 @@ import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import type { CutProp } from './fades.ts';
 import { Slide } from '../slide/Slide.tsx';
+import { useSlideUpdate, useTransitionHold } from './settling.ts';
 import { useStepTransition } from './useStepTransition.ts';
 
 import {
@@ -413,6 +416,76 @@ describe('SlideTransitions', () => {
       });
       expect(update).toHaveBeenCalledOnce();
       expect(started).toHaveLength(0);
+    });
+  });
+
+  describe('useSlideUpdate', () => {
+    afterEach(cleanup);
+
+    /** Like a formula, which renders a moment after it's mounted. */
+    function Loading() {
+      const [ready, setReady] = useState(false);
+      useTransitionHold(!ready, { deadline: 1000 });
+      useEffect(() => {
+        const timeout = setTimeout(() => {
+          setReady(true);
+        }, 50);
+        return () => {
+          clearTimeout(timeout);
+        };
+      }, []);
+      return <span>{ready ? 'ready' : 'loading'}</span>;
+    }
+
+    it('cuts to the update once the slide is ready', async () => {
+      const transitions = new SlideTransitions();
+      const frame = createFrame();
+      const started = fakeTransitions(frame);
+      transitions.register(frame);
+      let updateSlide: (update: () => void) => void = () => undefined;
+      let show: () => void = () => undefined;
+      function Widget() {
+        const [shown, setShown] = useState(false);
+        updateSlide = useSlideUpdate();
+        show = () => {
+          setShown(true);
+        };
+        return shown ? <Loading /> : null;
+      }
+      render(
+        <SlideTransitionsContext value={transitions}>
+          <Widget />
+        </SlideTransitionsContext>,
+        { container: frame },
+      );
+      updateSlide(() => {
+        show();
+      });
+      expect(started).toHaveLength(1);
+      expect(started[0]?.kind).toBe('step');
+      expect(started[0]?.duration).toBe('0ms');
+      let shown = false;
+      const captured = started[0]?.capture().then(() => {
+        shown = true;
+      });
+      expect(screen.getByText('loading')).toBeDefined();
+      await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+      expect(shown).toBe(false);
+      await act(() => captured);
+      expect(shown).toBe(true);
+      expect(screen.getByText('ready')).toBeDefined();
+    });
+
+    it('updates at once without view transitions', () => {
+      const update = vi.fn();
+      let updateSlide: (update: () => void) => void = () => undefined;
+      function Widget() {
+        updateSlide = useSlideUpdate();
+        return null;
+      }
+      render(<Widget />);
+      updateSlide(update);
+      expect(update).toHaveBeenCalledOnce();
     });
   });
 

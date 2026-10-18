@@ -35,7 +35,8 @@ A good slide component follows these rules:
 - **Measure in slide pixels.** Slides are 1280 × 720 pixels, scaled to fit
   the screen. Use `useSlideBox` instead of `getBoundingClientRect`.
 - **Be ready before the slide is shown.** Measure in layout effects or with
-  `useMeasure`. While loading, hold the change with `useTransitionHold`. See
+  `useMeasure`. While loading, hold the change with `useTransitionHold`.
+  Make updates on click wait, too, with `useSlideUpdate`. See
   [Waiting until the slide is ready](components.md#waiting-until-the-slide-is-ready).
 - **Use `Step` for steps.** Wrap the component in a `Step`, and set where it
   goes with `defaultAttachment`. Then `:step` attributes work on it.

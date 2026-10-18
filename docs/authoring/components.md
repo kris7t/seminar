@@ -172,6 +172,37 @@ export function Plot({ src }: { src: string }) {
 - A hold only delays changes that happen while it's pending. A component
   that never finishes loading delays one change, not every step after it.
 
+### Updating the slide
+
+Changes of the slide or its step wait for it to be ready, but other updates,
+e.g., of the state of a component when it's clicked, show at once. To make
+an update wait, too, run it with the function that `useSlideUpdate()`
+returns:
+
+```tsx
+import { useSlideUpdate } from '@slider/core';
+
+export function Reveal() {
+  const [shown, setShown] = useState(false);
+  const updateSlide = useSlideUpdate();
+  return shown ? (
+    <Plot src="data.csv" />
+  ) : (
+    <Button onClick={() => updateSlide(() => setShown(true))}>Show</Button>
+  );
+}
+```
+
+The views keep showing the slide as it was until `Plot` stops holding the
+change, and then cut to it, in both views at the same time.
+
+- The update may run a moment later, but before any later update or change
+  of the slide.
+- An update cuts short the change before it, if it's still waiting or
+  fading. Set state as usual for updates that come quickly one after
+  another, e.g., while typing or dragging.
+- Browsers without view transitions update the slide at once.
+
 ### Measuring
 
 Measure in layout effects, not in effects: layout effects run before the

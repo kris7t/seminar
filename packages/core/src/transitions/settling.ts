@@ -1,4 +1,4 @@
-import { use, useEffectEvent, useLayoutEffect } from 'react';
+import { use, useCallback, useEffectEvent, useLayoutEffect } from 'react';
 
 import { SlideTransitionsContext } from './SlideTransitions.ts';
 
@@ -33,6 +33,30 @@ export function useTransitionHold(
   useLayoutEffect(
     () => (pending ? transitions.hold(deadline) : undefined),
     [transitions, pending, deadline],
+  );
+}
+
+/**
+ * Returns a function that changes the slide with `update`, e.g., to set the
+ * state of a component when it's clicked, and keeps showing the slide as it
+ * was until the changed slide is ready, like changes of the slide or its
+ * step do. Components that aren't ready yet hold the change with
+ * {@link useTransitionHold}, so that the slide doesn't flash in an
+ * unfinished state, e.g., while a formula renders. The slide cuts to the
+ * change, without fading.
+ *
+ * `update` may run later, but before any later update or change of the
+ * slide, which shows the update right away, if it's still waiting. Updates
+ * that come in quick succession, e.g., for each key pressed, should set state
+ * as usual instead. Without view transitions, `update` runs at once.
+ */
+export function useSlideUpdate(): (update: () => void) => void {
+  const transitions = use(SlideTransitionsContext);
+  return useCallback(
+    (update: () => void) => {
+      transitions.run(update, 'step', 0);
+    },
+    [transitions],
   );
 }
 
