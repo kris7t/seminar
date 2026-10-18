@@ -9,6 +9,23 @@ import {
   type SliderMdxOptions,
 } from '@slider/mdx';
 
+/** A warning of compiling a deck. */
+interface CompileWarning {
+  message: string;
+  line?: number;
+  column?: number;
+}
+
+/** The parts of a compiled file of MDX that {@link slider} reads. */
+interface CompiledFile {
+  path: string;
+  messages: readonly {
+    reason: string;
+    line?: number | null | undefined;
+    column?: number | null | undefined;
+  }[];
+}
+
 export interface SliderPluginOptions
   extends
     Omit<MdxOptions, 'include'>,
@@ -80,6 +97,19 @@ export default function slider({
   // themes, by the path of the deck.
   const dependencies = new Map<string, Set<string>>();
   const pluginDependencies = new Set<string>();
+  // Warnings of compiling decks, by the path of the deck, which the MDX
+  // plugin doesn't report.
+  const warnings = new Map<string, CompileWarning[]>();
+  const collectWarnings = () => (_tree: unknown, file: CompiledFile) => {
+    warnings.set(
+      file.path,
+      file.messages.map(({ reason, line, column }) => ({
+        message: reason,
+        ...(line === undefined || line === null ? {} : { line }),
+        ...(column === undefined || column === null ? {} : { column }),
+      })),
+    );
+  };
   const createMdx = async (root: string) => {
     const sliderConfigs: LoadedSliderConfigEntry[] = [];
     const importer = importModule ?? importWithNode;
@@ -134,6 +164,8 @@ export default function slider({
       recmaPlugins: [
         ...(sliderOptions.recmaPlugins ?? []),
         ...(recmaPlugins ?? []),
+        // Last, to see the warnings of all the other plugins.
+        collectWarnings,
       ],
     });
   };
@@ -172,13 +204,28 @@ export default function slider({
     },
     // `this` is the plugin context of Rollup or Vite.
     async transform(
-      this: { addWatchFile(id: string): void },
+      this: {
+        addWatchFile(id: string): void;
+        warn(warning: {
+          message: string;
+          loc?: { file: string; line: number; column: number };
+        }): void;
+      },
       value: string,
       id: string,
     ) {
       const mdxPlugin = await getInner(rootPath);
       dependencies.delete(id);
+      warnings.delete(id);
       const result = await mdxPlugin.transform(value, id);
+      for (const { message, line, column } of warnings.get(id) ?? []) {
+        this.warn({
+          message,
+          ...(line === undefined
+            ? {}
+            : { loc: { file: id, line, column: column ?? 1 } }),
+        });
+      }
       for (const dependency of pluginDependencies) {
         this.addWatchFile(dependency);
       }
