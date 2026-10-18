@@ -2,6 +2,8 @@ import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { ReactNode } from 'react';
+
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import HUNGARIAN from '../i18n/locales/hu.ts';
@@ -25,6 +27,11 @@ const notes = () =>
     .queryAllByLabelText('Presenter notes')
     .filter((element) => element.getAttribute('aria-hidden') !== 'true');
 
+/** The text of the notes of `slide`, as rendered. */
+function notesText(slide: ReactNode): string | null {
+  return render(<>{getSlideNotes(slide)}</>).container.textContent;
+}
+
 describe('Notes', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
@@ -41,24 +48,47 @@ describe('Notes', () => {
 
   it('is taken from the children of slides', () => {
     expect(
-      getSlideNotes(
+      notesText(
         <Slide>
           a<Notes>b</Notes>
         </Slide>,
       ),
-    ).toEqual(['b']);
+    ).toBe('b');
     expect(getSlideNotes(<Slide>a</Slide>)).toBeUndefined();
   });
 
   it('is taken from the notes prop of slides', () => {
-    expect(getSlideNotes(<Slide notes="b">a</Slide>)).toEqual(['b']);
+    expect(notesText(<Slide notes="b">a</Slide>)).toBe('b');
     expect(
-      getSlideNotes(
+      notesText(
         <Slide notes="b">
           <Notes>c</Notes>
         </Slide>,
       ),
-    ).toEqual(['b', 'c']);
+    ).toBe('bc');
+  });
+
+  it('renders notes of several paragraphs without warnings', () => {
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    render(
+      <Deck>
+        <Slide
+          title="First"
+          // Like the compiler passes notes of several paragraphs.
+          // eslint-disable-next-line @eslint-react/no-missing-key
+          notes={[<p>One</p>, <p>Two</p>]}
+        >
+          <Notes>
+            <p>Three</p>
+            <p>Four</p>
+          </Notes>
+        </Slide>
+      </Deck>,
+    );
+    expect(notes()[0]?.textContent).toContain('OneTwoThreeFour');
+    expect(error).not.toHaveBeenCalled();
   });
 
   it('shows the notes of the current slide instead of on the slide', async () => {

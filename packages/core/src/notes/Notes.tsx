@@ -1,4 +1,11 @@
-import { Children, isValidElement, type JSX, type ReactNode } from 'react';
+import {
+  Children,
+  createElement,
+  Fragment,
+  isValidElement,
+  type JSX,
+  type ReactNode,
+} from 'react';
 
 export interface NotesProps {
   children?: ReactNode;
@@ -35,5 +42,11 @@ export function getSlideNotes(slide: ReactNode): ReactNode {
   if (notesProp !== undefined && notesProp !== null) {
     notes.unshift(notesProp);
   }
-  return notes.length === 0 ? undefined : notes;
+  if (notes.length === 0) {
+    return undefined;
+  }
+  // The parts of the notes are separate children of a fragment, rather than
+  // a list, so that they don't need keys, e.g., the paragraphs that the
+  // compiler passes as an array.
+  return createElement(Fragment, null, ...notes.flat(Infinity));
 }
