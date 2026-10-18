@@ -1,7 +1,13 @@
 import { Box, ButtonBase } from '@mui/material';
-import { useState, type JSX, type ReactNode, type RefCallback } from 'react';
+import {
+  useId,
+  useState,
+  type JSX,
+  type ReactNode,
+  type RefCallback,
+} from 'react';
 
-import { useT } from '../i18n/UiLanguageContext.ts';
+import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import type { Size } from '../view/useFitScale.ts';
 import {
   INTERACTIVE_ATTRIBUTE,
@@ -65,7 +71,8 @@ export function NotesDisplay({
   size,
   scale,
 }: NotesDisplayProps): JSX.Element | null {
-  const t = useT();
+  const { lang, t } = useUiLanguage();
+  const notesId = useId();
   const fullscreen = useFullscreen();
   const [measureRef, notesHeight] = useHeight();
   const [expanded, setExpanded] = useState(false);
@@ -140,6 +147,7 @@ export function NotesDisplay({
           ]}
         >
           <Box
+            id={notesId}
             sx={[
               NOTES_STYLES,
               { flex: 1, minWidth: 0 },
@@ -160,20 +168,35 @@ export function NotesDisplay({
             {notes}
           </Box>
           <ButtonBase
+            // In the language of the user interface, unlike the notes.
+            lang={lang}
             aria-expanded={expanded}
+            aria-controls={notesId}
             onClick={() => {
               setExpanded(!expanded);
             }}
             sx={{
+              position: 'relative',
               flex: 'none',
               typography: 'body2',
               fontWeight: 500,
               borderRadius: 1,
               px: 0.5,
               pointerEvents: 'auto',
+              // A touch target of at least 44 × 44 pixels, without taking
+              // room from the notes.
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: 'max(100% + 16px, 44px)',
+                height: 'max(100%, 44px)',
+                transform: 'translate(-50%, -50%)',
+              },
             }}
           >
-            {expanded ? 'less' : 'more'}
+            {expanded ? t('lessNotes') : t('moreNotes')}
           </ButtonBase>
         </Box>
       )}

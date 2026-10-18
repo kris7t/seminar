@@ -49,6 +49,8 @@
   "presenterNotes": "Referentennotizen",
   "notes": "Notizen",
   "noNotes": "Keine Notizen",
+  "moreNotes": "mehr",
+  "lessNotes": "weniger",
   "presenterControls": "Referentensteuerung",
   "timeElapsed": "Verstrichene Zeit",
   "currentTime": "Uhrzeit",

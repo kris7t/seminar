@@ -49,6 +49,8 @@
   "presenterNotes": "Notes du présentateur",
   "notes": "Notes",
   "noNotes": "Aucune note",
+  "moreNotes": "plus",
+  "lessNotes": "moins",
   "presenterControls": "Commandes du présentateur",
   "timeElapsed": "Temps écoulé",
   "currentTime": "Heure actuelle",

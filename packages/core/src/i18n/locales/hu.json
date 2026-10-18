@@ -49,6 +49,8 @@
   "presenterNotes": "Előadói jegyzetek",
   "notes": "Jegyzetek",
   "noNotes": "Nincsenek jegyzetek",
+  "moreNotes": "több",
+  "lessNotes": "kevesebb",
   "presenterControls": "Előadói vezérlők",
   "timeElapsed": "Eltelt idő",
   "currentTime": "Pontos idő",

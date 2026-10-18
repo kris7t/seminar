@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
+import HUNGARIAN from '../i18n/locales/hu.ts';
 import { getSlideNotes, Notes } from './Notes.tsx';
 
 function renderDeck() {
@@ -97,9 +98,23 @@ describe('Notes', () => {
     const [shown] = notes();
     const button = within(shown ?? document.body).getByRole('button');
     expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.textContent).toBe('more');
     await user.click(button);
     expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(button.textContent).toBe('less');
     expect(window.location.hash).toBe('#slide=1');
+  });
+
+  it('labels the button in the language of the user interface', () => {
+    render(
+      <Deck lang="hu" uiLocales={[HUNGARIAN]}>
+        <Slide title="Első">
+          <Notes>Jegyezd meg</Notes>
+        </Slide>
+      </Deck>,
+    );
+    const button = screen.getByRole('button', { name: 'több' });
+    expect(button.getAttribute('lang')).toBe('hu');
   });
 
   it('is hidden in full screen', () => {
