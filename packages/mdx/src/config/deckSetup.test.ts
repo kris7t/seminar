@@ -58,7 +58,7 @@ describe('loadDeckSetup', () => {
     'remark-before': { plugin: () => undefined },
     'rehype-after': { plugin: () => undefined },
   };
-  const importModule: ModuleImporter = (specifier) =>
+  const importPlugin: ModuleImporter = (specifier) =>
     modules[specifier] === undefined
       ? Promise.reject(new Error(`Cannot find ${specifier}`))
       : Promise.resolve({
@@ -71,7 +71,7 @@ describe('loadDeckSetup', () => {
       theme: 'theme-package',
       pluginsImporter: deckPath,
       themeImporter: deckPath,
-      importModule,
+      importPlugin,
     });
     expect(setup.sliderConfigs.map(({ source }) => source)).toEqual([
       'base-plugin',
@@ -101,7 +101,7 @@ describe('loadDeckSetup', () => {
       plugins: ['no-such-plugin'],
       pluginsImporter: deckPath,
       themeImporter: deckPath,
-      importModule,
+      importPlugin,
     });
     expect(setup.sliderConfigs).toEqual([]);
     expect(setup.warnings).toEqual([

@@ -8,6 +8,7 @@ import {
   resolveThemeKey,
   sliderMdxOptions,
   type DeckSetup,
+  type ModuleImporter,
   type SliderMdxOptions,
 } from '@slider/mdx';
 import type { PluggableList } from 'unified';
@@ -41,6 +42,11 @@ export interface SliderPluginOptions
    * `@slider/core`, which doesn't load any fonts.
    */
   defaultTheme?: string | false;
+  /**
+   * Imports the modules of plugins and themes at compile time, e.g., to read
+   * their `slider` export. Defaults to importing with Node.
+   */
+  importModule?: ModuleImporter | undefined;
   /**
    * Files to compile as decks. Defaults to files ending in `.deck.mdx`.
    */
@@ -99,7 +105,6 @@ export default function slider({
   defaultMirrorPointer = false,
   include = /\.deck\.mdx$/,
   importSource,
-  math,
   importModule,
   plugins = [],
   remarkPlugins = [],
@@ -142,8 +147,6 @@ export default function slider({
       defaultTheme: resolvedDefaultTheme(root),
       defaultMouseNavigation,
       defaultMirrorPointer,
-      math,
-      importModule,
       sliderConfigs: setup.sliderConfigs,
       mdxPlugins: setup.mdxPlugins,
       onDependency(path, dependency) {

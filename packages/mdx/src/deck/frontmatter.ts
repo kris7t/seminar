@@ -2,7 +2,6 @@ import type { Root } from 'mdast';
 import { toString } from 'mdast-util-to-string';
 import remarkDirective from 'remark-directive';
 import remarkFrontmatter from 'remark-frontmatter';
-import remarkMath from 'remark-math';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
 import { unified, type PluggableList } from 'unified';
@@ -170,8 +169,6 @@ export function parseDeck(
     .use(remarkHeadingAttributes)
     .use(remarkMdx)
     .use(remarkFrontmatter)
-    // Braces in math are not JavaScript expressions.
-    .use(remarkMath)
     .use(syntaxPlugins)
     .use(remarkDirective)
     .parse(file);

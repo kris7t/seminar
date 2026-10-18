@@ -2,25 +2,37 @@ import { compile } from '@mdx-js/mdx';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { sliderMdxOptions, type SliderMdxOptions } from '../options.ts';
-import { withThemeConfig } from '../test/compileDeck.ts';
+import {
+  deckMdxOptions,
+  importWithNode,
+  type ModuleImporter,
+} from '@slider/mdx';
 
-const DECK_PATH = fileURLToPath(
-  new URL('../test/test.deck.mdx', import.meta.url),
-);
+import * as compileModule from './compile.ts';
 
+const DECK_PATH = path.join(import.meta.dirname, 'test', 'test.deck.mdx');
+
+/** Imports the plugins of this package from their sources. */
+const importPlugin: ModuleImporter = (specifier, importer) =>
+  specifier === '@slider/plugin-mathjax/compile'
+    ? Promise.resolve({ module: compileModule })
+    : importWithNode(specifier, importer);
+
+/** Compiles a deck with `plugins`, by default with this plugin. */
 async function compileDeck(
   source: string,
-  options?: SliderMdxOptions,
   deckPath = DECK_PATH,
+  plugins: string[] = ['@slider/plugin-mathjax'],
 ) {
-  const file = await compile(
-    { value: source, path: deckPath },
-    sliderMdxOptions(await withThemeConfig(source, deckPath, options)),
-  );
+  const { options, setup } = await deckMdxOptions(source, deckPath, {
+    plugins,
+    pluginsImporter: import.meta.filename,
+    importPlugin,
+  });
+  expect(setup.warnings).toEqual([]);
+  const file = await compile({ value: source, path: deckPath }, options);
   return { code: String(file), messages: file.messages.map(String) };
 }
 
@@ -36,15 +48,15 @@ function fonts(code: string): string[] {
   return [...new Set(code.match(/(?<=id: "MJX-\d+-)[A-Z]+/g))];
 }
 
-describe('rehypeMath', () => {
+describe('rehypeMathJax', () => {
   it('renders inline and display math', async () => {
     const { code, messages } = await compileDeck(
       '## Math\n\nInline $x^{2}$\n\n$$\n\\int \\pi\n$$',
     );
     expect(messages).toEqual([]);
-    expect(code).toContain('Formula as _SliderFormula');
+    expect(code).toContain('Formula as _SliderMathFormula');
     expect(
-      code.match(/_jsxs?\(_SliderFormula, \{\s*(display: true)?/g),
+      code.match(/_jsxs?\(_SliderMathFormula, \{\s*(display: true)?/g),
     ).toEqual([
       expect.not.stringContaining('display'),
       expect.stringContaining('display: true'),
@@ -57,7 +69,7 @@ describe('rehypeMath', () => {
     // builds don't keep fonts for them.
     expect(display).toContain('&#x3C0;');
     expect(display).not.toMatch(/[\u0080-\u{10FFFF}]/u);
-    expect(fonts(code)).toEqual(['NCM']);
+    expect(fonts(code)).toEqual(['FIRA']);
   });
 
   it('numbers equations and resolves references', async () => {
@@ -117,19 +129,19 @@ describe('rehypeMath', () => {
     beforeAll(async () => {
       directory = await mkdtemp(path.join(tmpdir(), 'slider-themes-'));
       deckPath = path.join(directory, 'talk.deck.mdx');
-      const fira = { math: { font: 'fira' } };
+      const newcm = { options: { math: { font: 'newcm' } } };
       await createTheme(
         'condition-theme',
         {
           exports: { '.': { slider: './slider.json', default: './index.js' } },
           // Ignored in favor of the export condition.
-          slider: { math: { font: 'missing' } },
+          slider: { options: { math: { font: 'missing' } } },
         },
-        { 'slider.json': fira },
+        { 'slider.json': newcm },
       );
       await createTheme('key-theme', {
         exports: { '.': './index.js' },
-        slider: fira,
+        slider: newcm,
       });
     });
 
@@ -137,16 +149,15 @@ describe('rehypeMath', () => {
       await rm(directory, { recursive: true, force: true });
     });
 
-    it.each(['condition-theme', 'key-theme', '@slider/theme-default'])(
+    it.each(['condition-theme', 'key-theme'])(
       'reads the config of %s without importing it',
       async (theme) => {
         const { code, messages } = await compileDeck(
           `---\ntheme: "${theme}"\n---\n\n$x$`,
-          {},
-          theme.startsWith('@') ? DECK_PATH : deckPath,
+          deckPath,
         );
         expect(messages).toEqual([]);
-        expect(fonts(code)).toEqual(['FIRA']);
+        expect(fonts(code)).toEqual(['NCM']);
       },
     );
   });
@@ -156,15 +167,15 @@ describe('rehypeMath', () => {
       '---\ntheme: ./theme.ts\n---\n\n$\\R \\T$',
     );
     expect(messages).toEqual([]);
-    expect(fonts(code)).toEqual(['FIRA']);
+    expect(fonts(code)).toEqual(['NCM']);
     expect(mathml(code)[0]).toContain('data-latex="\\R \\T"');
   });
 
   it('overrides the theme with the frontmatter', async () => {
     const { code } = await compileDeck(
-      `---\ntheme: ./theme.ts\nmath:\n  font: newcm\n  macros:\n    T: \\text{deck}\n---\n\n$\\R \\T$`,
+      `---\ntheme: ./theme.ts\nmath:\n  font: fira\n  macros:\n    T: \\text{deck}\n---\n\n$\\R \\T$`,
     );
-    expect(fonts(code)).toEqual(['NCM']);
+    expect(fonts(code)).toEqual(['FIRA']);
     expect(mathml(code)[0]).toContain('<mtext>deck</mtext>');
   });
 
@@ -173,9 +184,11 @@ describe('rehypeMath', () => {
       '---\nmath:\n  font: 1\n  tags: some\n  macros:\n    x: [1]\n---\n\n$x$',
     );
     expect(messages).toEqual([
-      expect.stringContaining('Expected `math.font` in the frontmatter'),
-      expect.stringContaining('Expected the macro `x` in the frontmatter'),
-      expect.stringContaining('Expected `math.tags` in the frontmatter'),
+      expect.stringContaining('Expected `font` of `math` in the frontmatter'),
+      expect.stringContaining(
+        'Expected the macro `x` in `math` in the frontmatter',
+      ),
+      expect.stringContaining('Expected `tags` of `math` in the frontmatter'),
     ]);
   });
 
@@ -187,9 +200,9 @@ describe('rehypeMath', () => {
     );
   });
 
-  it('can be disabled', async () => {
-    const { code } = await compileDeck('Costs $5 or $6', { math: false });
-    expect(code).not.toContain('_jsx(_SliderFormula');
+  it('leaves dollar signs alone without the plugin', async () => {
+    const { code } = await compileDeck('Costs $5 or $6', DECK_PATH, []);
+    expect(code).not.toContain('_SliderMathFormula');
     expect(code).toContain('Costs $5 or $6');
   });
 });

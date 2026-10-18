@@ -36,7 +36,7 @@ import '@mathjax/src/js/input/tex/unicode/UnicodeConfiguration.js';
 import '@mathjax/src/js/input/tex/units/UnitsConfiguration.js';
 import '@mathjax/src/js/input/tex/upgreek/UpgreekConfiguration.js';
 
-import { findPackage } from '../config/packages.ts';
+import { findPackage } from './packages.ts';
 
 /** TeX packages available in decks. */
 const PACKAGES = [
@@ -66,7 +66,8 @@ const PACKAGES = [
   'upgreek',
 ];
 
-export const DEFAULT_FONT = 'newcm';
+/** Font of math without a `font` option, which this package depends on. */
+export const DEFAULT_FONT = 'fira';
 
 const adaptor = liteAdaptor();
 AssistiveMmlHandler(RegisterHTMLHandler(adaptor));

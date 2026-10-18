@@ -13,7 +13,6 @@ export const LIST_ITEM = '_SliderListItem';
 export const PARAGRAPH = '_SliderParagraph';
 export const IMAGE = '_SliderImage';
 export const SLIDE_ELEMENT = '_SliderSlideElement';
-export const FORMULA = '_SliderFormula';
 export const NOTES = '_SliderNotes';
 /** Name of the default theme of the deck, if it has one. */
 export const THEME = '_SliderTheme';

@@ -4,7 +4,13 @@ import { defaultClientConditions, defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [
-    slider({ plugins: ['@slider/elements', '@slider/plugin-shiki'] }),
+    slider({
+      plugins: [
+        '@slider/elements',
+        '@slider/plugin-mathjax',
+        '@slider/plugin-shiki',
+      ],
+    }),
     react(),
   ],
   resolve: {

@@ -1,0 +1,76 @@
+{
+  "name": "@slider/plugin-mathjax",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Math in slider decks, typeset with MathJax when decks are compiled",
+  "license": "Apache-2.0",
+  "type": "module",
+  "slider": {
+    "mdx": {
+      "remarkPlugins": {
+        "before": [
+          {
+            "source": "@slider/plugin-mathjax/compile",
+            "exportName": "remarkMath"
+          }
+        ]
+      },
+      "rehypePlugins": {
+        "after": [
+          {
+            "source": "@slider/plugin-mathjax/compile",
+            "exportName": "rehypeMathJax"
+          }
+        ]
+      }
+    }
+  },
+  "exports": {
+    ".": {
+      "@slider/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./compile": {
+      "@slider/source": "./src/compile.ts",
+      "types": "./dist/compile.d.ts",
+      "default": "./dist/compile.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@mathjax/mathjax-fira-font": "^4.1.3",
+    "@mathjax/src": "^4.1.3",
+    "@slider/mdx": "0.0.0",
+    "hast-util-from-html": "^2.0.3",
+    "hast-util-to-html": "^9.0.5",
+    "remark-math": "^6.0.0"
+  },
+  "peerDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^9.5.0",
+    "@slider/core": "0.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mdx-js/mdx": "^3.1.1",
+    "@mui/material": "^9.5.0",
+    "@slider/core": "0.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@types/hast": "^3.0.5",
+    "mdast-util-mdx-jsx": "^3.2.0",
+    "react": "^19.3.1",
+    "vfile": "^6.0.3",
+    "vitest": "^5.0.4"
+  }
+}

@@ -13,4 +13,4 @@ function SectionMaster({ title }: SlideMasterProps): JSX.Element {
 
 export default createSlideTheme({ master: { section: SectionMaster } });
 
-export const slider: SliderConfig = { math: { font: 'fira' } };
+export const slider: SliderConfig = { options: { math: { font: 'newcm' } } };

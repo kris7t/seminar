@@ -1,13 +1,7 @@
 import type { CompileOptions } from '@mdx-js/mdx';
 import remarkDirective from 'remark-directive';
 import remarkFrontmatter from 'remark-frontmatter';
-import remarkMath from 'remark-math';
 
-import {
-  rehypeMath,
-  type MathConfig,
-  type RehypeMathOptions,
-} from './math/rehypeMath.ts';
 import { recmaSlideExports } from './deck/recmaSlideExports.ts';
 import { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
 import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts';
@@ -21,6 +15,7 @@ import {
   type DeckSetup,
   type MdxPlugins,
 } from './config/deckSetup.ts';
+import type { ModuleImporter } from './config/themeConfig.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
 import { rehypeSlideElements } from './content/rehypeSlideElements.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
@@ -35,13 +30,7 @@ import {
   type LoadedSliderConfigEntry,
 } from './config/remarkSliderConfig.ts';
 
-export interface SliderMdxOptions
-  extends RemarkSlidesOptions, Omit<RehypeMathOptions, 'math'> {
-  /**
-   * Defaults for rendering math (see {@link rehypeMath}), or `false` to
-   * disable math, so that `$` is not special in decks.
-   */
-  math?: MathConfig | false | undefined;
+export interface SliderMdxOptions extends RemarkSlidesOptions {
   /** React components that render named Remark directives. */
   directives?: DirectiveComponents | undefined;
   /**
@@ -66,8 +55,6 @@ export interface SliderMdxOptions
  * directive.
  */
 export function sliderMdxOptions({
-  math,
-  importModule,
   onDependency,
   directives,
   sliderConfigs,
@@ -82,7 +69,6 @@ export function sliderMdxOptions({
     remarkPlugins: [
       remarkHeadingAttributes,
       remarkFrontmatter,
-      ...(math === false ? [] : [remarkMath]),
       ...mdxPlugins.remarkPlugins.before,
       remarkDirective,
       remarkNotes,
@@ -105,14 +91,6 @@ export function sliderMdxOptions({
       ...mdxPlugins.rehypePlugins.before,
       rehypeListSteps,
       rehypeSlideElements,
-      ...(math === false
-        ? []
-        : [
-            [rehypeMath, { math, importModule, onDependency }] satisfies [
-              typeof rehypeMath,
-              RehypeMathOptions,
-            ],
-          ]),
       ...mdxPlugins.rehypePlugins.after,
     ],
     recmaPlugins: [
@@ -132,6 +110,13 @@ export interface DeckMdxOptions extends Omit<
   plugins?: readonly string[] | undefined;
   /** Path to resolve `plugins` from. Defaults to the deck. */
   pluginsImporter?: string | undefined;
+  /**
+   * Imports the modules of plugins and themes at compile time. Defaults to
+   * importing with Node.
+   */
+  importModule?: ModuleImporter | undefined;
+  /** Imports the plugins of unified that configs add, see `loadDeckSetup`. */
+  importPlugin?: ModuleImporter | undefined;
 }
 
 /**
@@ -148,7 +133,13 @@ export interface DeckMdxOptions extends Omit<
 export async function deckMdxOptions(
   source: string,
   deckPath: string,
-  { plugins, pluginsImporter = deckPath, ...options }: DeckMdxOptions = {},
+  {
+    plugins,
+    pluginsImporter = deckPath,
+    importModule,
+    importPlugin,
+    ...options
+  }: DeckMdxOptions = {},
 ): Promise<{
   options: ReturnType<typeof sliderMdxOptions>;
   setup: DeckSetup;
@@ -158,7 +149,8 @@ export async function deckMdxOptions(
     theme: readDeckTheme(source) ?? options.defaultTheme,
     pluginsImporter,
     themeImporter: deckPath,
-    importModule: options.importModule,
+    importModule,
+    importPlugin,
   });
   return {
     options: sliderMdxOptions({

@@ -9,11 +9,7 @@ import '@fontsource/roboto/700.css';
 import '@fontsource/roboto/700-italic.css';
 
 import { Stack, Typography } from '@mui/material';
-import {
-  createSlideTheme,
-  type SlideMasterProps,
-  type SliderConfig,
-} from '@slider/core';
+import { createSlideTheme, type SlideMasterProps } from '@slider/core';
 import type { JSX } from 'react';
 
 /** Replaces the built-in `section` master of the theme. */
@@ -95,9 +91,3 @@ export const theme = createSlideTheme({
 });
 
 export default theme;
-
-/**
- * Options for compiling decks with this theme. Fira math goes well with the
- * sans-serif Roboto font, like in `@slider/theme-default`.
- */
-export const slider: SliderConfig = { math: { font: 'fira' } };

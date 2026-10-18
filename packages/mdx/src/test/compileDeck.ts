@@ -4,6 +4,7 @@ import * as runtime from 'react/jsx-runtime';
 
 import { SLIDE_EXPORT_PREFIX } from '../deck/recmaSlideExports.ts';
 import { loadDeckSetup, readDeckTheme } from '../config/deckSetup.ts';
+import type { ModuleImporter } from '../config/themeConfig.ts';
 import { sliderMdxOptions, type SliderMdxOptions } from '../options.ts';
 
 export type SlideSummary = Record<string, unknown>;
@@ -125,6 +126,7 @@ export async function withThemeConfig(
   source: string,
   deckPath: string,
   options: SliderMdxOptions = {},
+  importModule?: ModuleImporter,
 ): Promise<SliderMdxOptions> {
   const theme = readDeckTheme(source) ?? options.defaultTheme;
   if (theme === undefined) {
@@ -134,7 +136,7 @@ export async function withThemeConfig(
     theme,
     pluginsImporter: deckPath,
     themeImporter: deckPath,
-    importModule: options.importModule,
+    importModule,
   });
   return {
     ...options,

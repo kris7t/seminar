@@ -19,9 +19,9 @@ The pages:
    sizes, and naming and measuring elements.
 2. [Steps in components](steps.md): wrapping content in steps, and reacting
    to the steps of the slide.
-3. [Directives and plugins](directives.md): making components available as
-   Markdown directives.
-4. [Themes](themes.md): masters, styling components, and step behaviors.
+3. [Directives](directives.md): making components available as directives.
+4. [Plugins](plugins.md): configs, options, and compiler plugins.
+5. [Themes](themes.md): masters, styling components, and step behaviors.
 
 ## Guidelines
 

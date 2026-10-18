@@ -29,6 +29,7 @@
   "devDependencies": {
     "@slider/core": "0.0.0",
     "@slider/elements": "0.0.0",
+    "@slider/plugin-mathjax": "0.0.0",
     "rollup": "^4.64.6",
     "vite": "^8.3.4"
   }

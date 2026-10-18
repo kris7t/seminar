@@ -37,7 +37,7 @@ optional.
 | `depth`           | Deepest heading level that starts a slide, see [Headings](#headings-and-slides) |
 | `mouseNavigation` | `false` starts with text selection (S) instead of clicks changing steps         |
 | `mirrorPointer`   | `true` starts the presenter view showing the mouse pointer to the audience      |
-| `math`            | Options of math typesetting, see [Math](content.md#math)                        |
+| `math`            | Options of math, see [Math](../mathjax/README.md#options)                       |
 
 ## Headings and slides
 

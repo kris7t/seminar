@@ -1,7 +1,6 @@
 export type {
   DirectiveComponentConfig,
   DirectiveForm,
-  MathConfig,
   MdxPluginsConfig,
   MdxStagePluginsConfig,
   ModuleExportConfig,
@@ -41,12 +40,6 @@ export {
   type TitleMasterClassKey,
   type TitleMasterProps,
 } from './masters/TitleMaster.tsx';
-export {
-  Formula,
-  formulaClasses,
-  type FormulaClassKey,
-  type FormulaProps,
-} from './content/Formula.tsx';
 export { Notes, type NotesProps } from './notes/Notes.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
 export {

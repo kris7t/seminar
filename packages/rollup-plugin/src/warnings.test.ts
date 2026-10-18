@@ -4,7 +4,7 @@ import slider from './index.ts';
 
 describe('slider', () => {
   it('reports the warnings of compiling decks', async () => {
-    const plugin = slider({ defaultTheme: false, math: false });
+    const plugin = slider({ defaultTheme: false });
     const warnings: unknown[] = [];
     await plugin.transform.call(
       {

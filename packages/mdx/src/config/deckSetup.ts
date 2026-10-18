@@ -49,8 +49,17 @@ export interface DeckSetupOptions {
   pluginsImporter: string;
   /** Path to resolve `theme` from, i.e., the deck. */
   themeImporter: string;
-  /** Imports modules at compile time. Defaults to importing with Node. */
+  /**
+   * Imports the modules of configs at compile time, e.g., themes written in
+   * TypeScript. Defaults to importing with Node.
+   */
   importModule?: ModuleImporter | undefined;
+  /**
+   * Imports the plugins of unified that configs add. Defaults to importing
+   * with Node, since the plugins run long after they're imported, e.g., to
+   * load more modules, so they must be built to JavaScript.
+   */
+  importPlugin?: ModuleImporter | undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -99,6 +108,7 @@ export async function loadDeckSetup({
   pluginsImporter,
   themeImporter,
   importModule = importWithNode,
+  importPlugin = importWithNode,
 }: DeckSetupOptions): Promise<DeckSetup> {
   const setup: DeckSetup = {
     sliderConfigs: [],
@@ -146,7 +156,7 @@ export async function loadDeckSetup({
     await visit(theme, themeImporter);
   }
   for (const entry of setup.sliderConfigs) {
-    await importMdxPlugins(entry, setup, importModule);
+    await importMdxPlugins(entry, setup, importPlugin);
   }
   return setup;
 }

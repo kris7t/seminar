@@ -7,8 +7,12 @@ import {
 } from '@mui/material/styles';
 import type { JSX, ReactNode } from 'react';
 
-import type { ComponentTheme } from '../theme/ComponentTheme.ts';
-import { classNames } from '../theme/classNames.ts';
+import type { ComponentTheme } from '@slider/core';
+
+/** Joins the given class names, skipping `undefined` and empty ones. */
+function classNames(...names: (string | undefined)[]): string {
+  return names.filter((name) => name !== undefined && name !== '').join(' ');
+}
 
 export interface FormulaProps {
   /** Whether the formula is shown on its own line, like `$$…$$` in TeX. */

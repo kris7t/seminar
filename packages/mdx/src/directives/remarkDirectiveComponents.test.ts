@@ -16,17 +16,24 @@ import {
   text,
   withThemeConfig,
 } from '../test/compileDeck.ts';
-import type { ImportedModule } from '../config/themeConfig.ts';
+import type { ImportedModule, ModuleImporter } from '../config/themeConfig.ts';
 
 async function compile(
   source: string,
-  options: Parameters<typeof sliderMdxOptions>[0] = {},
+  {
+    importModule,
+    ...options
+  }: Parameters<typeof sliderMdxOptions>[0] & {
+    importModule?: ModuleImporter;
+  } = {},
 ) {
   const mdxOptions = sliderMdxOptions(
-    await withThemeConfig(source, fileURLToPath(import.meta.url), {
-      importSource: STUB_URL,
-      ...options,
-    }),
+    await withThemeConfig(
+      source,
+      fileURLToPath(import.meta.url),
+      { importSource: STUB_URL, ...options },
+      importModule,
+    ),
   );
   const module = await evaluate(source, {
     ...runtime,

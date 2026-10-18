@@ -18,11 +18,6 @@ export {
   type DeckDefaults,
 } from './deck/frontmatter.ts';
 export {
-  rehypeMath,
-  type MathConfig,
-  type RehypeMathOptions,
-} from './math/rehypeMath.ts';
-export {
   CONFIG_CONDITION,
   importWithNode,
   loadSliderConfig,

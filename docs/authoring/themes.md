@@ -14,8 +14,8 @@ export default createSlideTheme({
 
 `createSlideTheme` sizes the typography for slides and provides the built-in
 masters, and merges the options on top. A theme module can also export a
-[`slider` config](directives.md#registering-directives) for compiling decks,
-e.g., math options and directives.
+[`slider` config](plugins.md#the-config) for compiling decks,
+e.g., directives and the options of plugins.
 
 ## Masters
 

@@ -54,38 +54,9 @@ attributes the same way.
 
 ## Math
 
-`$…$` is inline math and `$$…$$` is display math, in TeX:
-
-```mdx
-Euler's identity, $e^{i\pi} + 1 = 0$, in display:
-
-$$
-\begin{equation}
-  e^{i\pi} + 1 = 0 \label{euler}
-\end{equation}
-$$
-
-As $\eqref{euler}$ shows, …
-```
-
-Math is typeset with MathJax when the deck is compiled, so it needs no
-scripts or fonts when shown, and screen readers read it as MathML. Write
-`\$` for a dollar sign.
-
-Equations in environments like `equation` and `align` are numbered.
-`\eqref` refers to equations defined earlier in the deck, but doesn't link to
-them, since that would leave the slide.
-
-The `math` key of the frontmatter overrides the options of the theme:
-
-```yaml
-math:
-  font: fira # a MathJax font, defaults to newcm (New Computer Modern)
-  macros:
-    R: '\mathbb{R}'
-    norm: ['\lVert #1 \rVert', 1]
-  tags: ams # or none, or all
-```
+Math is written in TeX between dollar signs, like `$e^{i\pi}$`. It's
+typeset by a plugin, like [`@slider/plugin-mathjax`](../mathjax/README.md).
+Without one, dollar signs are ordinary text.
 
 ## Code
 

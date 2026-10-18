@@ -26,7 +26,10 @@ async function buildApp(options?: SliderPluginOptions) {
     root,
     configFile: false,
     logLevel: 'silent',
-    plugins: [slider(options), react()],
+    plugins: [
+      slider({ plugins: ['@slider/plugin-mathjax'], ...options }),
+      react(),
+    ],
     resolve: {
       conditions: ['@slider/source', ...defaultClientConditions],
     },

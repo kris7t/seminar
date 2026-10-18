@@ -25,7 +25,7 @@ const config: InlineConfig = {
   root,
   configFile: false,
   logLevel: 'silent',
-  plugins: [slider(), react()],
+  plugins: [slider({ plugins: ['@slider/plugin-mathjax'] }), react()],
   resolve: {
     conditions: ['@slider/source', ...defaultClientConditions],
   },
@@ -82,8 +82,8 @@ describe('sliderEntries', () => {
       const code = output.output
         .map((file) => (file.type === 'chunk' ? file.code : ''))
         .join('');
-      expect(code).toMatch(/MJX-\d+-FIRA-/);
-      expect(code).not.toMatch(/MJX-\d+-NCM-/);
+      expect(code).toMatch(/MJX-\d+-NCM-/);
+      expect(code).not.toMatch(/MJX-\d+-FIRA-/);
     });
   });
 

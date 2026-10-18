@@ -5,7 +5,13 @@ import slider from './src/index.ts';
 
 export default defineProject({
   plugins: [
-    slider({ plugins: ['./src/fixtures/plugin.ts', '@slider/elements'] }),
+    slider({
+      plugins: [
+        './src/fixtures/plugin.ts',
+        '@slider/elements',
+        '@slider/plugin-mathjax',
+      ],
+    }),
   ],
   resolve: {
     // Use the TypeScript sources of workspace packages directly.

@@ -21,6 +21,7 @@
     "@mui/material": "^9.5.0",
     "@slider/core": "0.0.0",
     "@slider/elements": "0.0.0",
+    "@slider/plugin-mathjax": "0.0.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

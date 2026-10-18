@@ -6,52 +6,47 @@ import type {
   MdxJsxFlowElementHast,
   MdxJsxTextElementHast,
 } from 'mdast-util-mdx-jsx';
-import path from 'node:path';
 import type { VFile } from 'vfile';
 
-import { createStringAttribute } from '../utils/estree.ts';
-import { EXPLICIT_JSX_HAST, FORMULA } from '../utils/jsx.ts';
+import {
+  createEsm,
+  createStringAttribute,
+  EXPLICIT_JSX_HAST,
+  getSliderOptionLayers,
+} from '@slider/mdx';
+
 import {
   createMathRenderer,
   DEFAULT_FONT,
   type MathOptions,
   type MathRenderer,
 } from './mathjax.ts';
-import {
-  importWithNode,
-  loadSliderConfig,
-  type ModuleImporter,
-} from '../config/themeConfig.ts';
-import { getSliderConfigs } from '../config/remarkSliderConfig.ts';
+
+/** Name that decks import the `Formula` component as. */
+const FORMULA = '_SliderMathFormula';
 
 /**
- * Options for rendering math. See `MathConfig` in `@slider/core`.
+ * Options for rendering math, which the `math` options of the Slider configs
+ * and the `math` key of the frontmatter set.
  */
 export interface MathConfig {
+  /**
+   * MathJax font to render math with, e.g., `newcm` for New Computer Modern
+   * of the `@mathjax/mathjax-newcm-font` package, or the name of a MathJax
+   * font package. Defaults to `fira`, which this plugin depends on. Font
+   * packages are found from the config or the deck that sets the font.
+   */
   font?: string | undefined;
+  /**
+   * TeX macros, e.g., `{ R: '\\mathbb{R}', norm: ['\\lVert #1 \\rVert', 1] }`,
+   * which are merged.
+   */
   macros?: Record<string, string | [string, number]> | undefined;
+  /**
+   * Which equations are numbered: `ams` numbers the environments that are
+   * numbered in LaTeX with `amsmath`, like `equation`. Defaults to `ams`.
+   */
   tags?: 'none' | 'ams' | 'all' | undefined;
-}
-
-export interface RehypeMathOptions {
-  /**
-   * Defaults for rendering math, which themes and the `math` key of the
-   * frontmatter of decks override.
-   */
-  math?: MathConfig | undefined;
-  /**
-   * Imports theme modules to read their `slider` export, if they are not
-   * packages that provide their config with the `slider` export condition or
-   * the `slider` key of their `package.json`. Defaults to importing with Node,
-   * which only supports JavaScript (and TypeScript that Node can strip), but
-   * not style sheets or JSX.
-   */
-  importModule?: ModuleImporter | undefined;
-  /**
-   * Called with the files that the compiled deck depends on, e.g., the
-   * config of its theme, which should be watched for changes.
-   */
-  onDependency?: ((deckPath: string, dependency: string) => void) | undefined;
 }
 
 interface MathNode {
@@ -145,7 +140,7 @@ function parseMathConfig(
     return {};
   }
   if (!isRecord(value)) {
-    file.message(`Expected \`math\` in ${source} to be a mapping`);
+    file.message(`Expected ${source} to be a mapping`);
     return {};
   }
   const config: MathConfig = {};
@@ -153,7 +148,7 @@ function parseMathConfig(
   if (typeof font === 'string') {
     config.font = font;
   } else if (font !== undefined) {
-    file.message(`Expected \`math.font\` in ${source} to be a string`);
+    file.message(`Expected \`font\` of ${source} to be a string`);
   }
   if (isRecord(macros)) {
     config.macros = {};
@@ -167,13 +162,13 @@ function parseMathConfig(
       }
     }
   } else if (macros !== undefined) {
-    file.message(`Expected \`math.macros\` in ${source} to be a mapping`);
+    file.message(`Expected \`macros\` of ${source} to be a mapping`);
   }
   if (tags === 'none' || tags === 'ams' || tags === 'all') {
     config.tags = tags;
   } else if (tags !== undefined) {
     file.message(
-      `Expected \`math.tags\` in ${source} to be \`none\`, \`ams\`, or \`all\``,
+      `Expected \`tags\` of ${source} to be \`none\`, \`ams\`, or \`all\``,
     );
   }
   return config;
@@ -300,59 +295,13 @@ function createFormula(
   };
 }
 
-/** The frontmatter of the deck, as stored by {@link remarkSlides}. */
-function getFrontmatter(file: VFile): Record<string, unknown> {
-  const { sliderFrontmatter } = file.data as {
-    sliderFrontmatter?: Record<string, unknown>;
-  };
-  return sliderFrontmatter ?? {};
-}
-
-async function createRenderer(
-  { math, importModule = importWithNode, onDependency }: RehypeMathOptions,
-  file: VFile,
-): Promise<MathRenderer | undefined> {
-  const deckPath = file.path || path.resolve('deck.mdx');
-  const frontmatter = getFrontmatter(file);
-  const configs: MathConfig[] = [math ?? {}];
-  const bases = [deckPath];
-  const loadedConfigs = getSliderConfigs(file);
-  if (loadedConfigs !== undefined) {
-    for (const loaded of loadedConfigs) {
-      bases.unshift(loaded.base);
-      configs.push(
-        parseMathConfig(
-          isRecord(loaded.config) ? loaded.config['math'] : undefined,
-          `the config of ${loaded.source}`,
-          file,
-        ),
-      );
-    }
-  } else if (typeof frontmatter['theme'] === 'string') {
-    try {
-      const { config, base, dependencies } = await loadSliderConfig(
-        frontmatter['theme'],
-        deckPath,
-        importModule,
-      );
-      for (const dependency of dependencies) {
-        onDependency?.(deckPath, dependency);
-      }
-      bases.unshift(base);
-      configs.push(
-        parseMathConfig(
-          isRecord(config) ? config['math'] : undefined,
-          `the config of the theme ${frontmatter['theme']}`,
-          file,
-        ),
-      );
-    } catch (error) {
-      file.message(
-        `Cannot load the config of the theme ${frontmatter['theme']}: ${String(error)}`,
-      );
-    }
-  }
-  configs.push(parseMathConfig(frontmatter['math'], 'the frontmatter', file));
+async function createRenderer(file: VFile): Promise<MathRenderer | undefined> {
+  const layers = getSliderOptionLayers(file, 'math');
+  const configs = layers.map(({ options, source }) =>
+    parseMathConfig(options, source, file),
+  );
+  // Fonts are found from the configs that set them, the latest first.
+  const bases = layers.map(({ base }) => base).reverse();
   try {
     return await createMathRenderer(mergeConfigs(configs), bases);
   } catch (error) {
@@ -362,32 +311,25 @@ async function createRenderer(
 
 /**
  * Renders the math of a deck, as parsed by `remark-math`, to `Formula`
- * elements with SVG and MathML (for accessibility) with MathJax.
+ * elements of `@slider/plugin-mathjax`, with SVG, and MathML for assistive
+ * technology, with MathJax.
  *
- * Options are taken from `options.math`, the configured Slider plugins, the
- * theme of the deck (see {@link loadSliderConfig}), and the `math` key of the
- * frontmatter, in order of increasing precedence. See `MathConfig` in
- * `@slider/core` for the options and the caveats of rendering math at compile
- * time.
+ * Takes the `math` options of the Slider configs and the frontmatter, in
+ * order of increasing precedence, see {@link MathConfig}.
  *
  * All glyphs of the font are loaded before rendering, since MathJax would
  * otherwise restart formulas that need more glyphs, defining their labels
  * twice. TeX errors, like undefined macros, are reported as messages of the
  * file, and shown in red in the deck.
- *
- * Must run after {@link remarkSlides}, which stores the frontmatter of the
- * deck and imports the `Formula` component.
  */
-export function rehypeMath(
-  options: RehypeMathOptions = {},
-): (tree: Root, file: VFile) => Promise<void> {
+export function rehypeMathJax(): (tree: Root, file: VFile) => Promise<void> {
   return async (tree, file) => {
     const found: MathNode[] = [];
     findMath(tree, found);
     if (found.length === 0) {
       return;
     }
-    const render = await createRenderer(options, file);
+    const render = await createRenderer(file);
     if (render === undefined) {
       return;
     }
@@ -399,5 +341,10 @@ export function rehypeMath(
       });
       parent.children[index] = createFormula(html, display);
     }
+    tree.children.unshift(
+      createEsm(
+        `import { Formula as ${FORMULA} } from "@slider/plugin-mathjax";`,
+      ),
+    );
   };
 }

@@ -8,7 +8,6 @@ import type { VFile } from 'vfile';
 import {
   DECK,
   EXPLICIT_JSX,
-  FORMULA,
   NOTES,
   SLIDE,
   STEP,
@@ -410,7 +409,6 @@ export function remarkSlides({
           `Paragraph as ${PARAGRAPH}`,
           `Image as ${IMAGE}`,
           `SlideElement as ${SLIDE_ELEMENT}`,
-          `Formula as ${FORMULA}`,
           `Notes as ${NOTES}`,
           ...coreLocales,
         ].join(', ')} } from ${JSON.stringify(importSource)};`,

@@ -1,3 +1,4 @@
+import remarkMath from 'remark-math';
 import { describe, expect, it } from 'vitest';
 
 import { readDeckFrontmatter } from './frontmatter.ts';
@@ -43,8 +44,10 @@ describe('readDeckFrontmatter', () => {
     expect(readDeckFrontmatter(source)).toMatchObject({ depth });
   });
 
-  it('reads decks with math', () => {
-    expect(readDeckFrontmatter('## Slide\n\n$e^{i\\pi}$')).toEqual({
+  it('reads decks with the syntax of plugins', () => {
+    expect(
+      readDeckFrontmatter('## Slide\n\n$e^{i\\pi}$', undefined, [remarkMath]),
+    ).toEqual({
       title: 'Slide',
       mouseNavigation: true,
       mirrorPointer: false,
