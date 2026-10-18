@@ -1,4 +1,10 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -157,6 +163,34 @@ describe('TocList', () => {
     await user.click(within(nav).getByText('Custom'));
     expect(window.location.hash).toBe('#slide=3');
     expect(current()).toBe('Custom');
+  });
+
+  it('shows titles that are cut off in a tooltip', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck toc={TOC} defaultShowToc>
+        <Slide id="intro" title="Introduction" />
+        <Slide title="Motivation" />
+        <Slide title="Goals" />
+        <Slide>Untitled</Slide>
+      </Deck>,
+    );
+    const nav = screen.getByRole('navigation');
+    const long = within(nav).getByText('Motivation');
+    // jsdom doesn't lay out, so the title is cut off as far as it knows.
+    Object.defineProperties(long, {
+      scrollWidth: { value: 300 },
+      clientWidth: { value: 100 },
+    });
+    await user.hover(within(nav).getByText('Custom'));
+    await user.hover(long);
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip.textContent).toBe('Motivation');
+    await user.unhover(long);
+    await user.hover(within(nav).getByText('Custom'));
+    await waitFor(() => {
+      expect(screen.queryByRole('tooltip')).toBeNull();
+    });
   });
 
   it('links recaps and the slides they recap', async () => {

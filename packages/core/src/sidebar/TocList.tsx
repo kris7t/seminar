@@ -5,8 +5,11 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  listItemTextClasses,
+  Tooltip,
+  type ListItemTextProps,
 } from '@mui/material';
-import type { JSX } from 'react';
+import { useRef, useState, type JSX } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import type { Translate } from '../i18n/messages.ts';
@@ -52,6 +55,54 @@ function isSpareEntry(
   return entry.hasSlide
     ? spares[entry.slideIndex] === true
     : entry.children.every((child) => isSpareEntry(child, spares));
+}
+
+/**
+ * The title of an entry, on one line, which shows in full in a tooltip next
+ * to the table of contents when it's cut off. The tooltip is beside the whole
+ * entry, so that it doesn't cover the buttons of the entry.
+ */
+function EntryTitle({
+  children,
+  lang,
+  ...other
+}: ListItemTextProps): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <Tooltip
+      title={<span lang={lang}>{children}</span>}
+      placement="right"
+      open={open}
+      onOpen={() => {
+        const primary = ref.current?.querySelector(
+          `.${listItemTextClasses.primary}`,
+        );
+        if (
+          primary !== null &&
+          primary !== undefined &&
+          primary.scrollWidth > primary.clientWidth
+        ) {
+          setOpen(true);
+        }
+      }}
+      onClose={() => {
+        setOpen(false);
+      }}
+      // The title is in the entry already.
+      describeChild
+      slotProps={{
+        popper: {
+          anchorEl: () =>
+            ref.current?.closest('li') ?? (ref.current as HTMLElement),
+        },
+      }}
+    >
+      <ListItemText ref={ref} lang={lang} {...other}>
+        {children}
+      </ListItemText>
+    </Tooltip>
+  );
 }
 
 function renderEntries({
@@ -183,7 +234,7 @@ function renderEntries({
           }}
           sx={{ pl: 2 + level * 2 }}
         >
-          <ListItemText
+          <EntryTitle
             // The titles of slides are in the language of the slide, unless
             // they stand in for one, like `Slide 3`.
             lang={
@@ -196,6 +247,7 @@ function renderEntries({
             slotProps={{
               primary: {
                 variant: 'body2',
+                noWrap: true,
                 sx: [
                   level === 0 && { fontWeight: 500 },
                   spare && { color: 'text.secondary' },
@@ -204,7 +256,7 @@ function renderEntries({
             }}
           >
             {entry.title}
-          </ListItemText>
+          </EntryTitle>
           {/* Spare slides are skipped when going through the deck. */}
           {spare && <SpareIcon sx={{ ml: 1, color: 'text.secondary' }} />}
         </ListItemButton>
