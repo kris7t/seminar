@@ -1,5 +1,6 @@
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -186,6 +187,14 @@ describe('TocList', () => {
     await user.hover(long);
     const tooltip = await screen.findByRole('tooltip');
     expect(tooltip.textContent).toBe('Motivation');
+    // Scrolling the table of contents closes it.
+    fireEvent.scroll(nav.parentElement ?? nav);
+    await waitFor(() => {
+      expect(screen.queryByRole('tooltip')).toBeNull();
+    });
+    await user.hover(within(nav).getByText('Custom'));
+    await user.hover(long);
+    await screen.findByRole('tooltip');
     await user.unhover(long);
     await user.hover(within(nav).getByText('Custom'));
     await waitFor(() => {

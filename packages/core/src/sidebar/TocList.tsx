@@ -9,7 +9,7 @@ import {
   Tooltip,
   type ListItemTextProps,
 } from '@mui/material';
-import { useRef, useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import type { Translate } from '../i18n/messages.ts';
@@ -86,6 +86,22 @@ function EntryTitle({
 }: ListItemTextProps): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  // Closes when the table of contents scrolls, rather than following the
+  // entry away from the pointer.
+  useEffect(() => {
+    const doc = ref.current?.ownerDocument;
+    if (!open || doc === undefined) {
+      return undefined;
+    }
+    const close = () => {
+      setOpen(false);
+    };
+    // Scrolling elements doesn't bubble, but can be captured.
+    doc.addEventListener('scroll', close, { capture: true, passive: true });
+    return () => {
+      doc.removeEventListener('scroll', close, { capture: true });
+    };
+  }, [open]);
   return (
     <Tooltip
       title={<span lang={lang}>{children}</span>}
