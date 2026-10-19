@@ -502,8 +502,13 @@ export function MirroredPointer(
   }
   const style = {
     position: 'absolute',
-    left: position.x,
-    top: position.y,
+    left: 0,
+    top: 0,
+    // Moved on a layer of its own, rather than by its position, so that it
+    // doesn't repaint the slide, which leaves traces of it in some browsers,
+    // e.g., in WebKit, where its shadow is outside of its box.
+    translate: `${String(position.x)}px ${String(position.y)}px`,
+    willChange: 'translate',
     zIndex: 1,
     pointerEvents: 'none',
   } as const;

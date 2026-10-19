@@ -292,8 +292,7 @@ describe('the presenter view', () => {
       clientX: 150,
       clientY: 100,
     });
-    expect(pointer()?.style.left).toBe('100px');
-    expect(pointer()?.style.top).toBe('100px');
+    expect(pointer()?.style.translate).toBe('100px 100px');
     expect(pointer()?.dataset['cursor']).toBe('default');
     const link = document.createElement('span');
     link.style.cursor = 'pointer';
@@ -311,7 +310,7 @@ describe('the presenter view', () => {
       clientX: 200,
       clientY: 100,
     });
-    expect(pointer()?.style.left).toBe('100px');
+    expect(pointer()?.style.translate).toBe('100px 100px');
     fireEvent.pointerLeave(frame, { pointerType: 'mouse' });
     expect(pointer()).toBeNull();
     fireEvent.pointerMove(frame, {
