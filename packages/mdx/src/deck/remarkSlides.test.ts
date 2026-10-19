@@ -2,10 +2,13 @@ import { compile, evaluate } from '@mdx-js/mdx';
 import * as runtime from 'react/jsx-runtime';
 import { describe, expect, it } from 'vitest';
 
+import { Fragment, isValidElement, type ReactNode } from 'react';
+
 import { sliderMdxOptions } from '../options.ts';
 import {
   compileDeck,
   renderDeck,
+  renderSlideExport,
   slides,
   STUB_URL,
   THEME_URL,
@@ -60,6 +63,16 @@ More
         children: '',
       },
     ]);
+  });
+
+  it('puts titles with markup in a fragment, so that they need no keys', async () => {
+    const deck = renderDeck(await compileDeck('## Hello *world*'));
+    const slide = renderSlideExport([deck.props.children].flat()[0]);
+    const title = isValidElement<{ title?: ReactNode }>(slide)
+      ? slide.props.title
+      : undefined;
+    expect(isValidElement(title) && title.type === Fragment).toBe(true);
+    expect((await slides('## Hello'))[0]?.['title']).toBe('Hello');
   });
 
   it('keeps deeper headings in the content', async () => {

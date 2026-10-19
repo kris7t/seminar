@@ -172,7 +172,19 @@ function createSlideElement(
             attributes: [],
             data: EXPLICIT_JSX,
             // MDX compiles phrasing content in flow elements as expected.
-            children: title as unknown as MdxJsxFlowElement['children'],
+            // Titles of several nodes, e.g., with markup, are in a fragment,
+            // so that the nodes are its children rather than a list, which
+            // would need keys when rendered.
+            children: (title.length > 1
+              ? [
+                  {
+                    type: 'mdxJsxTextElement',
+                    name: null,
+                    attributes: [],
+                    children: title,
+                  },
+                ]
+              : title) as unknown as MdxJsxFlowElement['children'],
           },
         ];
   return {

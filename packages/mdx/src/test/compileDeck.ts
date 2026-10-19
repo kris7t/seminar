@@ -1,5 +1,10 @@
 import { evaluate } from '@mdx-js/mdx';
-import { isValidElement, type ReactElement, type ReactNode } from 'react';
+import {
+  Fragment,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import * as runtime from 'react/jsx-runtime';
 
 import { SLIDE_EXPORT_PREFIX } from '../deck/recmaSlideExports.ts';
@@ -60,6 +65,9 @@ export function text(node: ReactNode): string {
   if (isValidElement<{ children?: ReactNode }>(node)) {
     if (typeof node.type === 'string') {
       return `<${node.type}>${text(node.props.children)}</${node.type}>`;
+    }
+    if (node.type === Fragment) {
+      return text(node.props.children);
     }
     // Titles and notes of slides included from other decks are rendered by
     // them.
