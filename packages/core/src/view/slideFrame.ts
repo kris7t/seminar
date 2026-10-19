@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import type { SxProps, Theme } from '@mui/material';
 
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
+import { SLIDE_ZOOM_PROPERTY } from './slideZoom.ts';
 
 /**
  * Styles of a slide in the middle of the area of the slides, which should be
@@ -135,10 +136,12 @@ function scalesWithZoom(): boolean {
  * at different scales. Both keep the boxes of elements on screen, e.g., from
  * `getBoundingClientRect`, scaled, and their sizes in CSS, e.g., from
  * `offsetWidth`, in logical pixels.
+ *
+ * With `zoom`, the frame also sets {@link SLIDE_ZOOM_PROPERTY}.
  */
 export function slideScaleStyles(scale: number): CSSProperties {
   return scalesWithZoom()
-    ? { zoom: scale }
+    ? ({ zoom: scale, [SLIDE_ZOOM_PROPERTY]: scale } as CSSProperties)
     : { transform: `scale(${String(scale)})` };
 }
 

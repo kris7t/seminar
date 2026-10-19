@@ -79,6 +79,9 @@ describe('slideScaleStyles', () => {
     withUserAgent(
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/60.5 Safari/605.1.15 Epiphany/605.1.15',
     );
-    expect(slideScaleStyles(1.5)).toEqual({ zoom: 1.5 });
+    expect(slideScaleStyles(1.5)).toEqual({
+      zoom: 1.5,
+      '--slider-zoom': 1.5,
+    });
   });
 });

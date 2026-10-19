@@ -23,6 +23,14 @@ describe('createSlideTheme', () => {
     expect(typography.pxToRem(14)).toBe('24px');
     expect(typography.button.fontSize).toMatch(/px$/u);
   });
+
+  it('scales icons with the zoom of the slide', () => {
+    const { components } = createSlideTheme();
+    expect(components?.MuiSvgIcon?.styleOverrides?.root).toEqual({
+      width: 'calc(1em * var(--slider-zoom, 1))',
+      height: 'calc(1em * var(--slider-zoom, 1))',
+    });
+  });
 });
 
 describe('theming', () => {

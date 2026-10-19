@@ -5,6 +5,7 @@ import { ContentMaster } from '../masters/ContentMaster.tsx';
 import { SectionMaster } from '../masters/SectionMaster.tsx';
 import { SubsectionMaster } from '../masters/SubsectionMaster.tsx';
 import { TitleMaster } from '../masters/TitleMaster.tsx';
+import { SLIDE_ZOOM_PROPERTY } from '../view/slideZoom.ts';
 
 /** Logical width of a slide in CSS pixels before scaling to the viewport. */
 export const SLIDE_WIDTH = 1280;
@@ -12,7 +13,19 @@ export const SLIDE_WIDTH = 1280;
 /** Logical height of a slide in CSS pixels before scaling to the viewport. */
 export const SLIDE_HEIGHT = 720;
 
+/** A size in `em` in an `svg` element that sets its `font-size`. */
+const SVG_EM = `calc(1em * var(${SLIDE_ZOOM_PROPERTY}, 1))`;
+
 const slideThemeOptions: ThemeOptions = {
+  components: {
+    MuiSvgIcon: {
+      styleOverrides: {
+        // Icons are sized in `em`, but set their `font-size`, see
+        // `SLIDE_ZOOM_PROPERTY`.
+        root: { width: SVG_EM, height: SVG_EM },
+      },
+    },
+  },
   master: {
     content: ContentMaster,
     title: TitleMaster,
