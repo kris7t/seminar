@@ -25,6 +25,23 @@ import {
   type ResolvedTocEntry,
 } from '../deck/tableOfContents.ts';
 
+/** Width of the buttons of entries, small icon buttons with 20 pixel icons. */
+const BUTTON_WIDTH = 30;
+
+/** Space between the buttons of entries, in pixels. */
+const BUTTON_GAP = 4;
+
+/**
+ * Distance of the last button of an entry from the edge, in pixels: the 16
+ * pixels of `ListItemSecondaryAction` less the 3 of `edge="end"`.
+ */
+const BUTTON_INSET = 13;
+
+/** Room for `buttons` buttons next to an entry, and a gap before them. */
+function buttonsRoom(buttons: number): string {
+  return `${String(BUTTON_INSET + buttons * (BUTTON_WIDTH + BUTTON_GAP))}px`;
+}
+
 interface RenderEntriesOptions {
   entries: readonly ResolvedTocEntry[];
   level: number;
@@ -158,14 +175,15 @@ function renderEntries({
           // Without the space below inline content, so that the buttons are
           // centered on the entry.
           { '& .MuiListItemSecondaryAction-root': { display: 'flex' } },
-          // Room for the buttons next to the entry.
-          buttons > 1 && {
-            '& > .MuiListItemButton-root': { pr: 1 + buttons * 4 },
+          // Room for the buttons next to the entry, so that titles that are
+          // cut off end before them.
+          buttons > 0 && {
+            '& > .MuiListItemButton-root': { pr: buttonsRoom(buttons) },
           },
         ]}
         secondaryAction={
           buttons === 0 ? undefined : (
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', gap: `${String(BUTTON_GAP)}px` }}>
               {/* Steps on the edge, so that their buttons line up. */}
               {link !== undefined && (
                 <IconButton
