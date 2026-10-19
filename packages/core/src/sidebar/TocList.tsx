@@ -75,6 +75,17 @@ function isSpareEntry(
 }
 
 /**
+ * Options of the poppers of the tooltips of entries. They stay in place
+ * rather than following the entry as the table of contents scrolls, while they
+ * fade out after it closed them, and are fixed, so that they don't overflow the
+ * window while they are below it.
+ */
+const TITLE_POPPER_OPTIONS = {
+  strategy: 'fixed',
+  modifiers: [{ name: 'eventListeners', options: { scroll: false } }],
+} as const;
+
+/**
  * The title of an entry, on one line, which shows in full in a tooltip next
  * to the table of contents when it's cut off. The tooltip is beside the whole
  * entry, so that it doesn't cover the buttons of the entry.
@@ -126,6 +137,7 @@ function EntryTitle({
       describeChild
       slotProps={{
         popper: {
+          popperOptions: TITLE_POPPER_OPTIONS,
           anchorEl: () =>
             ref.current?.closest('li') ?? (ref.current as HTMLElement),
         },
