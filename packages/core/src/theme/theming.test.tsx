@@ -16,6 +16,15 @@ import { Slide } from '../slide/Slide.tsx';
 import { slideNumberClasses } from '../slide/SlideNumber.tsx';
 import { createSlideTheme } from './createSlideTheme.ts';
 
+describe('createSlideTheme', () => {
+  it('sizes MUI components in pixels', () => {
+    const { typography } = createSlideTheme();
+    // Like `1.5rem` at the font size of the slides, 24 rather than 14.
+    expect(typography.pxToRem(14)).toBe('24px');
+    expect(typography.button.fontSize).toMatch(/px$/u);
+  });
+});
+
 describe('theming', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');

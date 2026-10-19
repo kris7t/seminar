@@ -112,6 +112,10 @@ Slides are `SLIDE_WIDTH` × `SLIDE_HEIGHT`, i.e., 1280 × 720, logical pixels,
 scaled to fit the screen, or a thumbnail. Sizes in CSS pixels are logical
 pixels, so components can lay out in pixels, and stay sharp at any scale.
 
+Don't use `rem` on slides. In Safari and other WebKit browsers, slides are
+scaled with `zoom`, which doesn't scale `rem`. Use `px` or `em` instead.
+MUI components are fine: the slide theme sizes them in pixels.
+
 ## Naming elements
 
 The same slide can be rendered several times on a page, so ids on it must be
