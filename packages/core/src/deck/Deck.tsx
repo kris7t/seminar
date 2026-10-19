@@ -70,6 +70,7 @@ import { SelectionFrame } from '../view/SelectionFrame.tsx';
 import {
   FITTED_SLIDE_FRAME_STYLES,
   pixelBoxStyles,
+  slideScaleStyles,
 } from '../view/slideFrame.ts';
 import { SwipeHint } from '../interaction/SwipeHint.tsx';
 import {
@@ -826,7 +827,9 @@ export function Deck({
                                           <Box
                                             sx={FITTED_SLIDE_FRAME_STYLES}
                                             style={{
-                                              transform: `scale(${String(slideFit.scale)})`,
+                                              ...slideScaleStyles(
+                                                slideFit.scale,
+                                              ),
                                             }}
                                             {...{
                                               [SLIDE_VIEW_ATTRIBUTE]: 'preview',
@@ -846,7 +849,7 @@ export function Deck({
                                     ref={setPresenterFrame}
                                     sx={FITTED_SLIDE_FRAME_STYLES}
                                     style={{
-                                      transform: `scale(${String(slideFit.scale)})`,
+                                      ...slideScaleStyles(slideFit.scale),
                                       // The laser pointer replaces the mouse cursor.
                                       ...(presenting && pointerMode === 'laser'
                                         ? { cursor: 'none' }
@@ -900,7 +903,7 @@ export function Deck({
                                   <Box
                                     sx={FITTED_SLIDE_FRAME_STYLES}
                                     style={{
-                                      transform: `scale(${String(slideFit.scale)})`,
+                                      ...slideScaleStyles(slideFit.scale),
                                       backgroundColor: 'transparent',
                                     }}
                                   >

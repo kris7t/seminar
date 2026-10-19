@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { fitArea } from './slideFrame.ts';
+import { fitArea, slideScaleStyles } from './slideFrame.ts';
 
 describe('fitArea', () => {
   it('fits the slide into the middle of the area', () => {
@@ -52,5 +52,33 @@ describe('fitArea', () => {
     expect(720 * slide.scale).toBeGreaterThanOrEqual(slide.height - 1e-9);
     expect(1280 * slide.scale - slide.width).toBeLessThan(1 / 1.25);
     expect(720 * slide.scale - slide.height).toBeLessThan(1 / 1.25);
+  });
+});
+
+describe('slideScaleStyles', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const withUserAgent = (userAgent: string) => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+  };
+
+  it('scales with a transform', () => {
+    withUserAgent(
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    );
+    expect(slideScaleStyles(1.5)).toEqual({ transform: 'scale(1.5)' });
+    withUserAgent(
+      'Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0',
+    );
+    expect(slideScaleStyles(1.5)).toEqual({ transform: 'scale(1.5)' });
+  });
+
+  it('scales with zoom in WebKit', () => {
+    withUserAgent(
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/60.5 Safari/605.1.15 Epiphany/605.1.15',
+    );
+    expect(slideScaleStyles(1.5)).toEqual({ zoom: 1.5 });
   });
 });

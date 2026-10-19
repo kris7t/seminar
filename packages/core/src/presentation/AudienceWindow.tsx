@@ -30,6 +30,7 @@ import { useFitScale } from '../view/useFitScale.ts';
 import {
   FITTED_SLIDE_FRAME_STYLES,
   pixelBoxStyles,
+  slideScaleStyles,
 } from '../view/slideFrame.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import type { AudienceWindow as AudienceWindowState } from './usePresenterView.ts';
@@ -198,7 +199,7 @@ export function AudienceWindow({
               <SelectionFrame
                 ref={setFrame}
                 sx={FITTED_SLIDE_FRAME_STYLES}
-                style={{ transform: `scale(${String(slideFit.scale)})` }}
+                style={slideScaleStyles(slideFit.scale)}
                 {...{ [SLIDE_VIEW_ATTRIBUTE]: 'audience' }}
               >
                 <SlideMirror
@@ -227,7 +228,7 @@ export function AudienceWindow({
                 <Box
                   sx={FITTED_SLIDE_FRAME_STYLES}
                   style={{
-                    transform: `scale(${String(slideFit.scale)})`,
+                    ...slideScaleStyles(slideFit.scale),
                     backgroundColor: 'transparent',
                   }}
                 >

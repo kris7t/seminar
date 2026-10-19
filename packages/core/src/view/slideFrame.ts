@@ -107,8 +107,44 @@ export function pixelBoxStyles({
 }
 
 /**
+ * Whether slides are scaled with `zoom` rather than a `transform`, see
+ * {@link slideScaleStyles}.
+ */
+function scalesWithZoom(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+  const { userAgent } = navigator;
+  // Other browsers mention WebKit in their user agents, too.
+  return (
+    userAgent.includes('AppleWebKit/') &&
+    !/(?:Chrome|Chromium|Edg)\//u.test(userAgent)
+  );
+}
+
+/**
+ * Styles that scale a slide frame with {@link FITTED_SLIDE_FRAME_STYLES} to
+ * `scale`.
+ *
+ * Slides are scaled with a `transform`, which lays them out at their size in
+ * logical pixels at any scale. WebKit, however, draws a transformed slide
+ * from a texture of its unscaled size whenever it's composited, e.g., while
+ * an element in it is focused, so that the slide blurs. There, slides are
+ * scaled with `zoom` instead, which keeps them sharp, but lays out text at
+ * the scaled size of its font, so that lines may break a little differently
+ * at different scales. Both keep the boxes of elements on screen, e.g., from
+ * `getBoundingClientRect`, scaled, and their sizes in CSS, e.g., from
+ * `offsetWidth`, in logical pixels.
+ */
+export function slideScaleStyles(scale: number): CSSProperties {
+  return scalesWithZoom()
+    ? { zoom: scale }
+    : { transform: `scale(${String(scale)})` };
+}
+
+/**
  * Styles of a slide in its box of an {@link AreaFit}, which should be scaled
- * with a `transform` to the scale of the fit.
+ * to the scale of the fit with {@link slideScaleStyles}.
  */
 export const FITTED_SLIDE_FRAME_STYLES: SxProps<Theme> = {
   position: 'absolute',
