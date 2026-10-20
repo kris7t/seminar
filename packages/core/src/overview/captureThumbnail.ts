@@ -40,7 +40,11 @@ function styleText(
     if (
       value !== initial.get(property) ||
       property === 'direction' ||
-      property === 'unicode-bidi'
+      property === 'unicode-bidi' ||
+      // Origins resolve percentages against the element's box. The empty
+      // reference's 0px 0px doesn't mean the CSS initial value is zero.
+      property === 'transform-origin' ||
+      property === 'perspective-origin'
     ) {
       declarations.push(`${property}:${value};`);
     }

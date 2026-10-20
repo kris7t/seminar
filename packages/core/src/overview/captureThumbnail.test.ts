@@ -15,7 +15,7 @@ const nativeGetComputedStyle = window.getComputedStyle.bind(window);
 
 function frozenStyle(
   frame: HTMLElement | undefined,
-  element = frame,
+  element: HTMLElement | SVGElement | undefined = frame,
 ): CSSStyleDeclaration {
   const style = document.createElement('div').style;
   const name = element?.getAttribute('data-seminar-thumbnail-style');
@@ -215,6 +215,40 @@ describe('captureThumbnail', () => {
     expect(clone?.querySelector('div')?.style.backgroundImage).toContain(
       'https://example.test/image.png',
     );
+  });
+
+  it('preserves SVG transform origins even when they match an empty reference element', async () => {
+    const mock = vi.spyOn(window, 'getComputedStyle');
+    const original = mock.getMockImplementation();
+    mock.mockImplementation((element, pseudo) => {
+      if (
+        !pseudo &&
+        ((element instanceof HTMLElement && element.style.all === 'initial') ||
+          element.tagName === 'g')
+      ) {
+        const style = document.createElement('div').style;
+        // An empty HTML reference resolves 50% 50% to the same pixels as
+        // SVG's 0 0 origin, despite having a different CSS initial value.
+        style.transformOrigin = '0px 0px';
+        style.perspectiveOrigin = '0px 0px';
+        if (element.tagName === 'g')
+          style.transform = 'matrix(1, 0, 0, -1, 0, 0)';
+        return style;
+      }
+      return original?.(element, pseudo) ?? document.createElement('div').style;
+    });
+    vi.mocked(toPng).mockResolvedValueOnce('image');
+    const frame = document.createElement('div');
+    frame.innerHTML =
+      '<svg viewBox="0 -1000 2000 2000"><g transform="scale(1,-1)"><path d="M0 0 L100 100" /></g></svg>';
+    document.body.append(frame);
+    await captureThumbnail(frame);
+    const [clone] = vi.mocked(toPng).mock.calls.at(-1) ?? [];
+    const group = clone?.querySelector('g');
+    const style = frozenStyle(clone, group ?? undefined);
+    expect(style.transformOrigin).toBe('0px 0px');
+    expect(style.perspectiveOrigin).toBe('0px 0px');
+    expect(style.transform).toBe('matrix(1, 0, 0, -1, 0, 0)');
   });
 
   it('freezes pseudo-elements before disabling the rasterizer’s second style copy', async () => {
