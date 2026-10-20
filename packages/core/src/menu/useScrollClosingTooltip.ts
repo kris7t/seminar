@@ -1,3 +1,4 @@
+import type { PopperProps } from '@mui/material';
 import { useEffect, useState, type RefObject } from 'react';
 
 /**
@@ -6,10 +7,10 @@ import { useEffect, useState, type RefObject } from 'react';
  * they fade out after it closed them, and are fixed, so that they don't
  * overflow the window while they are below it.
  */
-export const SCROLL_CLOSING_POPPER_OPTIONS = {
+export const SCROLL_CLOSING_POPPER_OPTIONS: PopperProps['popperOptions'] = {
   strategy: 'fixed',
   modifiers: [{ name: 'eventListeners', options: { scroll: false } }],
-} as const;
+};
 
 /**
  * Whether a tooltip is open, which closes when anything in the document of
