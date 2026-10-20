@@ -1,7 +1,11 @@
 import type { SxProps, Theme } from '@mui/material/styles';
 import { useEffect, useEffectEvent, useState, type JSX } from 'react';
 
-import { useSliderOptions, useTransitionHold } from '@slider/core';
+import {
+  useSliderOptions,
+  useSlideView,
+  useTransitionHold,
+} from '@slider/core';
 
 import { Formula } from '../Formula.tsx';
 import { isRuntimeMathOptions } from './runtimeOptions.ts';
@@ -45,7 +49,7 @@ const RENDER_DEADLINE = 1000;
  * MathJax is only loaded when a `DynamicFormula` is first shown. Until then,
  * and while the formula changes, it shows the formula it rendered before.
  * Changes of the slide wait for the formula to be rendered, so that the
- * slide doesn't shift when it appears.
+ * slide doesn't shift when it appears. Probe views skip rendering.
  *
  * Can be themed as `SliderFormula`, like the math of decks.
  */
@@ -57,6 +61,7 @@ export function DynamicFormula({
   onError,
   ...other
 }: DynamicFormulaProps): JSX.Element {
+  const { visible } = useSlideView();
   const options = useSliderOptions('math');
   const deck = isRuntimeMathOptions(options) ? options : undefined;
   const [rendered, setRendered] = useState<Rendered>();
@@ -76,10 +81,12 @@ export function DynamicFormula({
   const key = JSON.stringify([tex, display, macrosKey, effectiveTags]);
   // Hold the change of the slide until the formula is rendered, so that the
   // slide doesn't shift when it appears.
-  useTransitionHold(unavailable === undefined && rendered?.key !== key, {
-    deadline: RENDER_DEADLINE,
-  });
+  useTransitionHold(
+    visible && unavailable === undefined && rendered?.key !== key,
+    { deadline: RENDER_DEADLINE },
+  );
   useEffect(() => {
+    if (!visible) return;
     if (dynamic === undefined) {
       if (unavailable !== undefined) {
         reportError(unavailable);
@@ -123,7 +130,16 @@ export function DynamicFormula({
     return () => {
       current = false;
     };
-  }, [tex, display, dynamic, unavailable, macrosKey, effectiveTags, key]);
+  }, [
+    visible,
+    tex,
+    display,
+    dynamic,
+    unavailable,
+    macrosKey,
+    effectiveTags,
+    key,
+  ]);
   const error =
     unavailable ??
     (rendered !== undefined && 'error' in rendered

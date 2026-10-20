@@ -16,8 +16,10 @@ const sliderOptions = vi.hoisted((): { math: unknown } => ({
 }));
 
 const transitionHold = vi.hoisted(() => vi.fn());
+const slideView = vi.hoisted(() => ({ visible: true }));
 
 vi.mock('@slider/core', () => ({
+  useSlideView: () => slideView,
   useSliderOptions: (name: string) =>
     name === 'math' ? sliderOptions.math : undefined,
   useTransitionHold: transitionHold,
@@ -123,10 +125,47 @@ describe('DynamicFormula', () => {
 
   beforeEach(() => {
     sliderOptions.math = deckOptions;
+    slideView.visible = true;
     transitionHold.mockClear();
   });
 
   afterEach(cleanup);
+
+  it('skips loading math and holding transitions until the view is visible', async () => {
+    const loadRenderer = vi.fn(() => import('./render.ts'));
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: { font: firaFont, loadRenderer },
+    };
+    slideView.visible = false;
+    const { container, rerender } = render(<DynamicFormula tex="x" />);
+    expect(loadRenderer).not.toHaveBeenCalled();
+    expect(transitionHold.mock.lastCall?.[0]).toBe(false);
+    expect(container.querySelector('svg')).toBeNull();
+
+    slideView.visible = true;
+    rerender(<DynamicFormula tex="x" />);
+    expect(loadRenderer).toHaveBeenCalledOnce();
+    expect(transitionHold.mock.lastCall?.[0]).toBe(true);
+    await waitFor(() => {
+      expect(container.querySelector('math')?.getAttribute('data-latex')).toBe(
+        'x',
+      );
+    });
+    expect(transitionHold.mock.lastCall?.[0]).toBe(false);
+  });
+
+  it.each([undefined, { ...deckOptions, dynamic: undefined }])(
+    'does not report configuration errors in probe views with options %j',
+    (options) => {
+      sliderOptions.math = options;
+      slideView.visible = false;
+      const onError = vi.fn();
+      render(<DynamicFormula tex="x" onError={onError} />);
+      expect(onError).not.toHaveBeenCalled();
+      expect(transitionHold.mock.lastCall?.[0]).toBe(false);
+    },
+  );
 
   it('takes the macros of the deck', async () => {
     const { container } = render(<DynamicFormula tex={'\\R'} />);
