@@ -27,6 +27,11 @@ Workspace packages resolve to their TypeScript sources through the
 - `scripts/android/`: reproduce bugs of Chrome on Android in an emulator, see
   its `README.md`.
 
+Run tests with sandbox escalation by default, including `npm run check`,
+which runs the tests. Vite dev-server tests need permission to listen on
+`127.0.0.1`; the sandbox blocks this with `listen EPERM` and a setup-hook
+timeout.
+
 ## Conventions
 
 - Write code that reads like the surrounding code. Only comment on why
