@@ -9,11 +9,15 @@ import {
   Tooltip,
   type ListItemTextProps,
 } from '@mui/material';
-import { useEffect, useRef, useState, type JSX } from 'react';
+import { useRef, type JSX } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import type { Translate } from '../i18n/messages.ts';
 import { useT } from '../i18n/UiLanguageContext.ts';
+import {
+  SCROLL_CLOSING_POPPER_OPTIONS,
+  useScrollClosingTooltip,
+} from '../menu/useScrollClosingTooltip.ts';
 import { scrollIntoView } from './Sidebar.tsx';
 import { RecapIcon } from '../icons/RecapIcon.tsx';
 import { RecappedIcon } from '../icons/RecappedIcon.tsx';
@@ -75,17 +79,6 @@ function isSpareEntry(
 }
 
 /**
- * Options of the poppers of the tooltips of entries. They stay in place
- * rather than following the entry as the table of contents scrolls, while they
- * fade out after it closed them, and are fixed, so that they don't overflow the
- * window while they are below it.
- */
-const TITLE_POPPER_OPTIONS = {
-  strategy: 'fixed',
-  modifiers: [{ name: 'eventListeners', options: { scroll: false } }],
-} as const;
-
-/**
  * The title of an entry, on one line, which shows in full in a tooltip next
  * to the table of contents when it's cut off. The tooltip is beside the whole
  * entry, so that it doesn't cover the buttons of the entry.
@@ -96,23 +89,7 @@ function EntryTitle({
   ...other
 }: ListItemTextProps): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  // Closes when the table of contents scrolls, rather than following the
-  // entry away from the pointer.
-  useEffect(() => {
-    const doc = ref.current?.ownerDocument;
-    if (!open || doc === undefined) {
-      return undefined;
-    }
-    const close = () => {
-      setOpen(false);
-    };
-    // Scrolling elements doesn't bubble, but can be captured.
-    doc.addEventListener('scroll', close, { capture: true, passive: true });
-    return () => {
-      doc.removeEventListener('scroll', close, { capture: true });
-    };
-  }, [open]);
+  const [open, setOpen] = useScrollClosingTooltip(ref);
   return (
     <Tooltip
       title={<span lang={lang}>{children}</span>}
@@ -137,7 +114,7 @@ function EntryTitle({
       describeChild
       slotProps={{
         popper: {
-          popperOptions: TITLE_POPPER_OPTIONS,
+          popperOptions: SCROLL_CLOSING_POPPER_OPTIONS,
           anchorEl: () =>
             ref.current?.closest('li') ?? (ref.current as HTMLElement),
         },

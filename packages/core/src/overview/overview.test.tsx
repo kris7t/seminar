@@ -1,4 +1,12 @@
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -174,6 +182,11 @@ describe('SlideOverview', () => {
       }),
     );
     expect((await screen.findByRole('tooltip')).textContent).toBe('Again');
+    // Scrolling the overview closes it.
+    fireEvent.scroll(overview());
+    await waitFor(() => {
+      expect(screen.queryByRole('tooltip')).toBeNull();
+    });
   });
 
   it('goes to a clicked slide', async () => {

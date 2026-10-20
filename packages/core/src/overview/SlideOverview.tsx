@@ -25,6 +25,10 @@ import { StateIcon } from '../icons/StateIcon.tsx';
 import { StepsIcon } from '../icons/StepsIcon.tsx';
 import type { ContextMenuHandlers } from '../interaction/useContextMenu.ts';
 import { darkUiTheme } from '../menu/uiTheme.ts';
+import {
+  SCROLL_CLOSING_POPPER_OPTIONS,
+  useScrollClosingTooltip,
+} from '../menu/useScrollClosingTooltip.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import {
   SLIDE_VIEW_ATTRIBUTE,
@@ -109,6 +113,7 @@ function Thumbnail({
     ...(steps ? [t('withStepsNote')] : []),
   ];
   const ref = useRef<HTMLButtonElement>(null);
+  const [tooltipOpen, setTooltipOpen] = useScrollClosingTooltip(ref);
   const view = useMemo<SlideView>(
     () => ({ index, kind: 'thumbnail', interactive: false }),
     [index],
@@ -213,6 +218,14 @@ function Thumbnail({
         describeChild
         enterDelay={500}
         enterNextDelay={500}
+        open={tooltipOpen}
+        onOpen={() => {
+          setTooltipOpen(true);
+        }}
+        onClose={() => {
+          setTooltipOpen(false);
+        }}
+        slotProps={{ popper: { popperOptions: SCROLL_CLOSING_POPPER_OPTIONS } }}
       >
         <ButtonBase
           ref={ref}
