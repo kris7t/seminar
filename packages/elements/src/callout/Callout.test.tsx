@@ -1,4 +1,10 @@
-import { createSlideTheme, Deck, Slide, Step, stepClasses } from '@slider/core';
+import {
+  createSlideTheme,
+  Deck,
+  Slide,
+  Step,
+  stepClasses,
+} from '@seminar/core';
 import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -21,7 +27,7 @@ declare module '@mui/material/styles' {
   }
 }
 
-declare module '@slider/core' {
+declare module '@seminar/core' {
   interface StepBehaviorOverrides {
     ghost: true;
   }
@@ -122,7 +128,7 @@ describe('Callout', () => {
   it('fits its text up to its maximum width without a width', () => {
     const theme = createSlideTheme({
       components: {
-        SliderCallout: { defaultProps: { maxWidth: 240, align: 'left' } },
+        SeminarCallout: { defaultProps: { maxWidth: 240, align: 'left' } },
       },
     });
     render(
@@ -164,15 +170,15 @@ describe('Callout', () => {
     );
     const primary = getComputedStyle(calloutWithText('Primary'));
     // Opaque over the white paper, so that the slide doesn't show through.
-    expect(primary.getPropertyValue('--SliderCallout-palette-main')).toBe(
+    expect(primary.getPropertyValue('--SeminarCallout-palette-main')).toBe(
       'rgb(33,33,33)',
     );
     expect(
-      primary.getPropertyValue('--SliderCallout-palette-contrastText'),
+      primary.getPropertyValue('--SeminarCallout-palette-contrastText'),
     ).toBe('#fff');
     expect(
       getComputedStyle(calloutWithText('Secondary')).getPropertyValue(
-        '--SliderCallout-palette-main',
+        '--SeminarCallout-palette-main',
       ),
     ).toBe('rgb(102,102,102)');
   });
@@ -267,7 +273,7 @@ describe('Callout', () => {
   it('casts the shadow of its elevation in the theme', () => {
     const theme = createSlideTheme({
       components: {
-        SliderCallout: { defaultProps: { elevation: 2 } },
+        SeminarCallout: { defaultProps: { elevation: 2 } },
       },
     });
     render(
@@ -302,7 +308,7 @@ describe('Callout', () => {
         accent: { main: '#123456', contrastText: '#ffffff' },
       },
       components: {
-        SliderCallout: {
+        SeminarCallout: {
           defaultProps: {
             color: 'accent',
             width: 420,
@@ -329,11 +335,11 @@ describe('Callout', () => {
     if (background === null) throw new Error('Missing callout background');
     expect(
       getComputedStyle(callout).getPropertyValue(
-        '--SliderCallout-palette-main',
+        '--SeminarCallout-palette-main',
       ),
     ).toBe('#123456');
     expect(getComputedStyle(background).fill).toBe(
-      'var(--SliderCallout-background)',
+      'var(--SeminarCallout-background)',
     );
     expect(background.querySelector('path')?.getAttribute('d')).toContain(
       'M 24 0',
@@ -357,25 +363,25 @@ describe('Callout', () => {
       </Deck>,
     );
     const filled = getComputedStyle(calloutWithText('Filled'));
-    expect(filled.getPropertyValue('--SliderCallout-palette-main')).toBe(
+    expect(filled.getPropertyValue('--SeminarCallout-palette-main')).toBe(
       '#123456',
     );
-    expect(filled.getPropertyValue('--SliderCallout-color')).toBe(
-      'var(--SliderCallout-palette-contrastText)',
+    expect(filled.getPropertyValue('--SeminarCallout-color')).toBe(
+      'var(--SeminarCallout-palette-contrastText)',
     );
-    expect(filled.getPropertyValue('--SliderCallout-outline-width')).toBe('0');
+    expect(filled.getPropertyValue('--SeminarCallout-outline-width')).toBe('0');
 
     const outlined = getComputedStyle(calloutWithText('Outlined'));
-    expect(outlined.getPropertyValue('--SliderCallout-background')).toBe(
+    expect(outlined.getPropertyValue('--SeminarCallout-background')).toBe(
       theme.palette.background.paper,
     );
-    expect(outlined.getPropertyValue('--SliderCallout-color')).toBe(
-      'var(--SliderCallout-palette-main)',
+    expect(outlined.getPropertyValue('--SeminarCallout-color')).toBe(
+      'var(--SeminarCallout-palette-main)',
     );
-    expect(outlined.getPropertyValue('--SliderCallout-outline')).toBe(
-      'var(--SliderCallout-palette-main)',
+    expect(outlined.getPropertyValue('--SeminarCallout-outline')).toBe(
+      'var(--SeminarCallout-palette-main)',
     );
-    expect(outlined.getPropertyValue('--SliderCallout-outline-width')).toBe(
+    expect(outlined.getPropertyValue('--SeminarCallout-outline-width')).toBe(
       '2',
     );
   });
@@ -391,7 +397,7 @@ describe('Callout', () => {
         },
       },
       components: {
-        SliderCallout: {
+        SeminarCallout: {
           styleOverrides: {
             background: ({ theme: styleTheme, ownerState }) =>
               ownerState.variant === 'filled' && ownerState.color === 'accent'
@@ -422,19 +428,19 @@ describe('Callout', () => {
   it('lets themes extend variants and override their CSS', () => {
     const theme = createSlideTheme({
       components: {
-        SliderCallout: {
+        SeminarCallout: {
           variants: [
             {
               props: { variant: 'outlined' },
-              style: { '--SliderCallout-outline-width': 6 },
+              style: { '--SeminarCallout-outline-width': 6 },
             },
             {
               props: { variant: 'soft' },
               style: {
-                '--SliderCallout-background': '#abcdef',
-                '--SliderCallout-color': '#010203',
-                '--SliderCallout-outline': '#fedcba',
-                '--SliderCallout-outline-width': 4,
+                '--SeminarCallout-background': '#abcdef',
+                '--SeminarCallout-color': '#010203',
+                '--SeminarCallout-outline': '#fedcba',
+                '--SeminarCallout-outline-width': 4,
               },
             },
           ],
@@ -451,13 +457,15 @@ describe('Callout', () => {
     );
     expect(
       getComputedStyle(calloutWithText('Overridden')).getPropertyValue(
-        '--SliderCallout-outline-width',
+        '--SeminarCallout-outline-width',
       ),
     ).toBe('6');
     const soft = getComputedStyle(calloutWithText('Soft'));
-    expect(soft.getPropertyValue('--SliderCallout-background')).toBe('#abcdef');
-    expect(soft.getPropertyValue('--SliderCallout-color')).toBe('#010203');
-    expect(soft.getPropertyValue('--SliderCallout-outline')).toBe('#fedcba');
-    expect(soft.getPropertyValue('--SliderCallout-outline-width')).toBe('4');
+    expect(soft.getPropertyValue('--SeminarCallout-background')).toBe(
+      '#abcdef',
+    );
+    expect(soft.getPropertyValue('--SeminarCallout-color')).toBe('#010203');
+    expect(soft.getPropertyValue('--SeminarCallout-outline')).toBe('#fedcba');
+    expect(soft.getPropertyValue('--SeminarCallout-outline-width')).toBe('4');
   });
 });

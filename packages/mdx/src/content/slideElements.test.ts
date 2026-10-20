@@ -1,7 +1,7 @@
 import { compile } from '@mdx-js/mdx';
 import { describe, expect, it } from 'vitest';
 
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import { slides } from '../test/compileDeck.ts';
 
 describe('slide elements', () => {
@@ -90,7 +90,7 @@ export const active = true;
 
 <span id="a">E</span>
 `,
-      { ...sliderMdxOptions() },
+      { ...seminarMdxOptions() },
     );
     expect(file.messages.map(String)).toEqual([
       '7:1-7:22: The id `a` is used more than once on the slide',

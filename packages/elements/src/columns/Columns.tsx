@@ -1,6 +1,6 @@
 import { generateUtilityClasses } from '@mui/material';
 import { styled, useThemeProps } from '@mui/material/styles';
-import type { ComponentTheme } from '@slider/core';
+import type { ComponentTheme } from '@seminar/core';
 import type { ComponentProps, JSX } from 'react';
 
 /** Alignment of the columns of {@link Columns} across the row. */
@@ -20,19 +20,19 @@ export interface ColumnsProps extends ComponentProps<'div'> {
 export type ColumnsClassKey = 'root';
 
 export const columnsClasses: Record<ColumnsClassKey, string> =
-  generateUtilityClasses('SliderColumns', ['root']);
+  generateUtilityClasses('SeminarColumns', ['root']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderColumns: ColumnsClassKey;
+    SeminarColumns: ColumnsClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderColumns: ColumnsProps;
+    SeminarColumns: ColumnsProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderColumns?: ComponentTheme<'SliderColumns', Theme> | undefined;
+    SeminarColumns?: ComponentTheme<'SeminarColumns', Theme> | undefined;
   }
 }
 
@@ -58,7 +58,7 @@ const ALIGN_ITEMS: Record<ColumnsAlign, string> = {
 };
 
 const ColumnsRoot = styled('div', {
-  name: 'SliderColumns',
+  name: 'SeminarColumns',
   slot: 'Root',
   overridesResolver: (_props, styles) => styles['root'],
 })<{ ownerState: ColumnsOwnerState }>(({ theme, ownerState }) => ({
@@ -74,10 +74,10 @@ const ColumnsRoot = styled('div', {
  * containers in it. The columns share the width of the row, and are aligned
  * at their tops by default.
  *
- * Can be themed as `SliderColumns` in the `components` of the MUI theme.
+ * Can be themed as `SeminarColumns` in the `components` of the MUI theme.
  */
 export function Columns(inProps: ColumnsProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderColumns' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarColumns' });
   const { gap, align = 'start', className, ...other } = props;
   return (
     <ColumnsRoot

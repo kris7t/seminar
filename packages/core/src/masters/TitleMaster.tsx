@@ -11,19 +11,20 @@ export type TitleMasterProps = SlideMasterProps;
 export type TitleMasterClassKey = 'root' | 'title' | 'subtitle';
 
 export const titleMasterClasses: Record<TitleMasterClassKey, string> =
-  generateUtilityClasses('SliderTitleMaster', ['root', 'title', 'subtitle']);
+  generateUtilityClasses('SeminarTitleMaster', ['root', 'title', 'subtitle']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderTitleMaster: TitleMasterClassKey;
+    SeminarTitleMaster: TitleMasterClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderTitleMaster: TitleMasterProps;
+    SeminarTitleMaster: TitleMasterProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderTitleMaster?: ComponentTheme<'SliderTitleMaster', Theme> | undefined;
+    SeminarTitleMaster?:
+      ComponentTheme<'SeminarTitleMaster', Theme> | undefined;
   }
 }
 
@@ -32,7 +33,7 @@ interface OwnerStateProps {
 }
 
 const TitleMasterRoot = styled('section', {
-  name: 'SliderTitleMaster',
+  name: 'SeminarTitleMaster',
   slot: 'Root',
 })<OwnerStateProps>(({ theme }) => ({
   display: 'flex',
@@ -45,7 +46,7 @@ const TitleMasterRoot = styled('section', {
 }));
 
 const TitleMasterTitle = styled('h1', {
-  name: 'SliderTitleMaster',
+  name: 'SeminarTitleMaster',
   slot: 'Title',
 })<OwnerStateProps>(({ theme }) => ({
   ...theme.typography.h1,
@@ -54,7 +55,7 @@ const TitleMasterTitle = styled('h1', {
 }));
 
 const TitleMasterSubtitle = styled('div', {
-  name: 'SliderTitleMaster',
+  name: 'SeminarTitleMaster',
   slot: 'Subtitle',
 })<OwnerStateProps>(({ theme }) => ({
   ...theme.typography.subtitle1,
@@ -65,10 +66,10 @@ const TitleMasterSubtitle = styled('div', {
  *
  * The body is intended for the subtitle, authors and venue of the talk.
  *
- * Can be themed as `SliderTitleMaster` in the `components` of the MUI theme.
+ * Can be themed as `SeminarTitleMaster` in the `components` of the MUI theme.
  */
 export function TitleMaster(inProps: TitleMasterProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderTitleMaster' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarTitleMaster' });
   const { title, className, children } = props;
   return (
     <TitleMasterRoot

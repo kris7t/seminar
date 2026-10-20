@@ -1,7 +1,7 @@
 import type { SxProps, Theme } from '@mui/material/styles';
 import { useEffect, useEffectEvent, useState, type JSX } from 'react';
 
-import { useCached, useSliderOptions, useSlideView } from '@slider/core';
+import { useCached, useSeminarOptions, useSlideView } from '@seminar/core';
 
 import { Formula } from '../Formula.tsx';
 import {
@@ -101,7 +101,7 @@ function CachedFormula({
  * Changes of the slide wait for the formula to be rendered, so that the
  * slide doesn't shift when it appears.
  *
- * Can be themed as `SliderFormula`, like the math of decks.
+ * Can be themed as `SeminarFormula`, like the math of decks.
  */
 export function DynamicFormula({
   tex,
@@ -112,7 +112,7 @@ export function DynamicFormula({
   ...other
 }: DynamicFormulaProps): JSX.Element {
   const { visible } = useSlideView();
-  const options = useSliderOptions('math');
+  const options = useSeminarOptions('math');
   const deck = isRuntimeMathOptions(options) ? options : undefined;
   const reportError = useEffectEvent((message: string) => {
     onError?.(message);
@@ -122,7 +122,7 @@ export function DynamicFormula({
     dynamic !== undefined
       ? undefined
       : deck === undefined
-        ? 'DynamicFormula only works in decks with @slider/plugin-mathjax'
+        ? 'DynamicFormula only works in decks with @seminar/plugin-mathjax'
         : 'Enable `dynamic` in the `math` options of the deck to show a DynamicFormula';
   useEffect(() => {
     if (visible && unavailable !== undefined) reportError(unavailable);

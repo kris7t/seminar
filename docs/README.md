@@ -1,15 +1,15 @@
-# slider documentation
+# Seminar documentation
 
-These pages describe how to write slider decks in MDX: Markdown with
+These pages describe how to write Seminar decks in MDX: Markdown with
 directives, attributes, and React components, and how to write components,
 plugins, and themes for them. Read them in order the first time, and come
 back to look things up.
 
-> slider is a proof of concept, so the syntax may still change.
+> Seminar is a proof of concept, so the syntax may still change.
 
 ## Core
 
-What every deck can use, provided by `@slider/core` and `@slider/mdx`:
+What every deck can use, provided by `@seminar/core` and `@seminar/mdx`:
 
 1. [Decks and slides](core/decks.md): the deck file, its frontmatter, and how
    headings turn into slides.
@@ -22,7 +22,7 @@ What every deck can use, provided by `@slider/core` and `@slider/mdx`:
 
 ## Elements
 
-Presentation elements from the `@slider/elements` plugin:
+Presentation elements from the `@seminar/elements` plugin:
 
 1. [Using elements](elements/README.md): enabling the plugin.
 2. [Callouts](elements/callouts.md): speech bubbles pointing at text, images,
@@ -31,11 +31,11 @@ Presentation elements from the `@slider/elements` plugin:
 
 ## Plugins
 
-1. [Math](mathjax/README.md) with `@slider/plugin-mathjax`: writing math,
+1. [Math](mathjax/README.md) with `@seminar/plugin-mathjax`: writing math,
    fonts, and macros.
    - [Dynamic math](mathjax/dynamic.md): math that changes while you
      present.
-2. [Highlighting code](shiki/README.md) with `@slider/plugin-shiki`: themes,
+2. [Highlighting code](shiki/README.md) with `@seminar/plugin-shiki`: themes,
    and other languages.
 
 ## Authoring

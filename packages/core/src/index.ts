@@ -4,8 +4,8 @@ export type {
   MdxPluginsConfig,
   MdxStagePluginsConfig,
   ModuleExportConfig,
-  SliderConfig,
-} from './SliderConfig.ts';
+  SeminarConfig,
+} from './SeminarConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
 export { useDeckState } from './state/useDeckState.ts';
@@ -23,9 +23,9 @@ export {
 } from './shared/definitions.ts';
 export { useCached, useResource } from './shared/useSharedWork.ts';
 export {
-  useSliderOptions,
-  type SliderOptions,
-} from './deck/SliderOptionsContext.ts';
+  useSeminarOptions,
+  type SeminarOptions,
+} from './deck/SeminarOptionsContext.ts';
 export type { GoToOptions, GoToSteps } from './deck/useDeckNavigation.ts';
 export { INTERACTIVE_ATTRIBUTE } from './interaction/interaction.ts';
 export type {

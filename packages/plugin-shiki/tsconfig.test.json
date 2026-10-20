@@ -8,7 +8,7 @@
     "tsBuildInfoFile": "../../node_modules/.cache/tsc/plugin-shiki-test.tsbuildinfo",
     "lib": ["es2024", "dom", "dom.iterable"],
     "jsx": "react-jsx",
-    "customConditions": ["@slider/source"]
+    "customConditions": ["@seminar/source"]
   },
   "include": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [

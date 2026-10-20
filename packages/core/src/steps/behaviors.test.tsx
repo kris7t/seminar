@@ -143,7 +143,7 @@ describe('step behaviors', () => {
   it('prefers the slide to the default of the theme', async () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({
-      components: { SliderStep: { defaultProps: { behavior: 'only' } } },
+      components: { SeminarStep: { defaultProps: { behavior: 'only' } } },
     });
     render(
       <ThemeProvider theme={theme}>
@@ -441,11 +441,11 @@ describe('step behaviors', () => {
     await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
     const classesOf = (text: string) => screen.getByText(text).className;
     // Faded with A, since reveal would show it.
-    expect(classesOf('A')).toContain('SliderStep-faded');
-    expect(classesOf('X')).toContain('SliderStep-faded');
+    expect(classesOf('A')).toContain('SeminarStep-faded');
+    expect(classesOf('X')).toContain('SeminarStep-faded');
     // Dimmed is more hidden than faded.
-    expect(classesOf('Y')).toContain('SliderStep-dimmed');
-    expect(classesOf('Y')).not.toContain('SliderStep-faded');
+    expect(classesOf('Y')).toContain('SeminarStep-dimmed');
+    expect(classesOf('Y')).not.toContain('SeminarStep-faded');
   });
 
   it('takes behaviors from shorthands', async () => {

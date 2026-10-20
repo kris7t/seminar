@@ -1,24 +1,25 @@
 {
-  "name": "@slider/elements",
+  "name": "@seminar/elements",
   "version": "0.0.0",
   "private": true,
-  "description": "Reusable presentation elements for slider decks",
+  "description": "Reusable presentation elements for Seminar decks",
+  "homepage": "https://seminar.run",
   "license": "Apache-2.0",
   "type": "module",
-  "slider": {
+  "seminar": {
     "directives": {
       "callout": {
-        "source": "@slider/elements",
+        "source": "@seminar/elements",
         "exportName": "CalloutDirective",
         "formProp": "directive",
         "labelProp": "label"
       },
       "columns": {
-        "source": "@slider/elements",
+        "source": "@seminar/elements",
         "exportName": "Columns"
       },
       "column": {
-        "source": "@slider/elements",
+        "source": "@seminar/elements",
         "exportName": "Column",
         "labelProp": "heading",
         "wrapIn": "columns"
@@ -27,7 +28,7 @@
   },
   "exports": {
     ".": {
-      "@slider/source": "./src/index.ts",
+      "@seminar/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
@@ -44,14 +45,14 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^9.5.0",
-    "@slider/core": "0.0.0",
+    "@seminar/core": "0.0.0",
     "react": "^19.0.0"
   },
   "devDependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.5.0",
-    "@slider/core": "0.0.0",
+    "@seminar/core": "0.0.0",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "react": "^19.3.1",

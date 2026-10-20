@@ -11,7 +11,7 @@ import {
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SliderOptionsContext } from '../../../core/src/deck/SliderOptionsContext.ts';
+import { SeminarOptionsContext } from '../../../core/src/deck/SeminarOptionsContext.ts';
 import { SharedWorkProvider } from '../../../core/src/shared/SharedWorkProvider.tsx';
 import {
   SlideTransitions,
@@ -25,7 +25,7 @@ import { defineMathFont } from './fonts.ts';
 import { renderFormula, type RenderedFormula } from './render.ts';
 import type { RuntimeMathOptions } from './runtimeOptions.ts';
 
-const sliderOptions: { math: unknown } = {
+const seminarOptions: { math: unknown } = {
   math: undefined,
 };
 
@@ -36,7 +36,7 @@ const activeHolds = new Set<object>();
 function TestContext({ children }: { children: ReactNode }) {
   return (
     <SharedWorkProvider>
-      <SliderOptionsContext value={sliderOptions}>
+      <SeminarOptionsContext value={seminarOptions}>
         <SlideTransitionsContext value={transitions}>
           <SlideViewProvider
             view={{
@@ -48,7 +48,7 @@ function TestContext({ children }: { children: ReactNode }) {
             {children}
           </SlideViewProvider>
         </SlideTransitionsContext>
-      </SliderOptionsContext>
+      </SeminarOptionsContext>
     </SharedWorkProvider>
   );
 }
@@ -156,7 +156,7 @@ describe('DynamicFormula', () => {
   };
 
   beforeEach(() => {
-    sliderOptions.math = deckOptions;
+    seminarOptions.math = deckOptions;
     slideKind = 'audience';
     transitions = new SlideTransitions();
     activeHolds.clear();
@@ -179,7 +179,7 @@ describe('DynamicFormula', () => {
     const loadRenderer = vi.fn(() =>
       Promise.resolve({ renderFormula: typeset }),
     );
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: { font: firaFont, loadRenderer },
     };
@@ -207,7 +207,7 @@ describe('DynamicFormula', () => {
   it.each([undefined, { ...deckOptions, dynamic: undefined }])(
     'does not report configuration errors in probe views with options %j',
     (options) => {
-      sliderOptions.math = options;
+      seminarOptions.math = options;
       slideKind = 'probe';
       const onError = vi.fn();
       render(<DynamicFormula tex="x" onError={onError} />);
@@ -226,7 +226,7 @@ describe('DynamicFormula', () => {
   });
 
   it('asks for dynamic math to be enabled', async () => {
-    sliderOptions.math = { ...deckOptions, dynamic: undefined };
+    seminarOptions.math = { ...deckOptions, dynamic: undefined };
     const onError = vi.fn();
     const { container } = render(<DynamicFormula tex="x" onError={onError} />);
     await waitFor(() => {
@@ -271,7 +271,7 @@ describe('DynamicFormula', () => {
   });
 
   it('does not hold the change if it cannot render', () => {
-    sliderOptions.math = { ...deckOptions, dynamic: undefined };
+    seminarOptions.math = { ...deckOptions, dynamic: undefined };
     render(<DynamicFormula tex="x" />);
     expect(activeHolds.size).toBe(0);
   });
@@ -289,7 +289,7 @@ describe('DynamicFormula', () => {
     const loadRenderer = vi.fn(() =>
       Promise.resolve({ renderFormula: typeset }),
     );
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: { font: firaFont, loadRenderer },
     };
@@ -330,7 +330,7 @@ describe('DynamicFormula', () => {
       (tex: string, options: Parameters<typeof renderFormula>[1]) =>
         tex === 'y' ? next.promise : renderFormula(tex, options),
     );
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: {
         font: firaFont,
@@ -357,7 +357,7 @@ describe('DynamicFormula', () => {
 
   it('includes display mode, macros, and numbering in the cache key', async () => {
     const typeset = vi.fn(renderFormula);
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: {
         font: firaFont,
@@ -382,7 +382,7 @@ describe('DynamicFormula', () => {
   it('keeps caches separate when the runtime font configuration changes', async () => {
     const typeset = vi.fn(renderFormula);
     const loadRenderer = () => Promise.resolve({ renderFormula: typeset });
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: { font: firaFont, loadRenderer },
     };
@@ -391,7 +391,7 @@ describe('DynamicFormula', () => {
       expect(container.querySelector('svg')).not.toBeNull();
     });
     const otherFont = { ...firaFont };
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: { font: otherFont, loadRenderer },
     };
@@ -408,7 +408,7 @@ describe('DynamicFormula', () => {
 
   it('reports cached TeX errors to each consumer, including consumers mounted later', async () => {
     const typeset = vi.fn(renderFormula);
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: {
         font: firaFont,
@@ -442,7 +442,7 @@ describe('DynamicFormula', () => {
   });
 
   it('reports loader failures and releases transition holds', async () => {
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: {
         font: firaFont,
@@ -465,7 +465,7 @@ describe('DynamicFormula', () => {
       renderFormula: typeof renderFormula;
     }>();
     const typeset = vi.fn(renderFormula);
-    sliderOptions.math = {
+    seminarOptions.math = {
       ...deckOptions,
       dynamic: { font: firaFont, loadRenderer: () => renderer.promise },
     };

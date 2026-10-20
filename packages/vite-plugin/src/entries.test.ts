@@ -17,7 +17,7 @@ import {
 } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import slider from './index.ts';
+import seminar from './index.ts';
 
 const root = fileURLToPath(new URL('fixtures', import.meta.url));
 
@@ -25,9 +25,9 @@ const config: InlineConfig = {
   root,
   configFile: false,
   logLevel: 'silent',
-  plugins: [slider({ plugins: ['@slider/plugin-mathjax'] }), react()],
+  plugins: [seminar({ plugins: ['@seminar/plugin-mathjax'] }), react()],
   resolve: {
-    conditions: ['@slider/source', ...defaultClientConditions],
+    conditions: ['@seminar/source', ...defaultClientConditions],
   },
 };
 
@@ -53,7 +53,7 @@ function get(
   });
 }
 
-describe('sliderEntries', () => {
+describe('seminarEntries', () => {
   describe('build', () => {
     let output: Rolldown.RolldownOutput;
 
@@ -116,11 +116,11 @@ describe('sliderEntries', () => {
       expect(response.status).toBe(200);
       const html = await response.text();
       expect(html).toContain('<title>A talk about slides</title>');
-      expect(html).toContain('src="./talk.deck.mdx?slider-entry"');
+      expect(html).toContain('src="./talk.deck.mdx?seminar-entry"');
     });
 
     it('serves the script that renders the deck', async () => {
-      const response = await fetch(`${baseUrl}/talk.deck.mdx?slider-entry`);
+      const response = await fetch(`${baseUrl}/talk.deck.mdx?seminar-entry`);
       expect(response.status).toBe(200);
       const code = await response.text();
       expect(code).toContain('createRoot');

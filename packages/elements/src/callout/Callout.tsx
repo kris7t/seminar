@@ -24,7 +24,7 @@ import {
   type SlidePoint,
   type StepProps,
   type StepState,
-} from '@slider/core';
+} from '@seminar/core';
 import { useState, type JSX, type ReactNode } from 'react';
 
 import {
@@ -154,7 +154,7 @@ export type CalloutClassKey =
   'anchor' | 'origin' | 'positioner' | 'root' | 'background' | 'content';
 
 export const calloutClasses: Record<CalloutClassKey, string> =
-  generateUtilityClasses('SliderCallout', [
+  generateUtilityClasses('SeminarCallout', [
     'anchor',
     'origin',
     'positioner',
@@ -165,15 +165,15 @@ export const calloutClasses: Record<CalloutClassKey, string> =
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderCallout: CalloutClassKey;
+    SeminarCallout: CalloutClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderCallout: CalloutProps;
+    SeminarCallout: CalloutProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderCallout?: ComponentTheme<'SliderCallout', Theme> | undefined;
+    SeminarCallout?: ComponentTheme<'SeminarCallout', Theme> | undefined;
   }
 }
 
@@ -245,7 +245,7 @@ function textColors(palette: Palette): [CalloutColor, PaletteColorLike][] {
  * placed relative to.
  */
 const CalloutOrigin = styled('span', {
-  name: 'SliderCallout',
+  name: 'SeminarCallout',
   slot: 'Origin',
   overridesResolver: (_props, styles) => styles['origin'],
 })<{ ownerState: CalloutOwnerState }>({
@@ -256,7 +256,7 @@ const CalloutOrigin = styled('span', {
 });
 
 const CalloutPositioner = styled('span', {
-  name: 'SliderCallout',
+  name: 'SeminarCallout',
   slot: 'Positioner',
   overridesResolver: (_props, styles) => styles['positioner'],
 })<{ ownerState: CalloutOwnerState }>(({ ownerState }) => ({
@@ -271,7 +271,7 @@ const CalloutPositioner = styled('span', {
 }));
 
 const CalloutRoot = styled(Step, {
-  name: 'SliderCallout',
+  name: 'SeminarCallout',
   slot: 'Root',
   overridesResolver: (_props, styles) => styles['root'],
 })<{ ownerState: CalloutOwnerState }>(({ theme }) => {
@@ -289,10 +289,10 @@ const CalloutRoot = styled(Step, {
   const colorVariants = colors.map(([color, selected]) => ({
     props: { color },
     style: {
-      '--SliderCallout-palette-main': selected.main,
-      '--SliderCallout-palette-light': selected.light ?? selected.main,
-      '--SliderCallout-palette-dark': selected.dark ?? selected.main,
-      '--SliderCallout-palette-contrastText':
+      '--SeminarCallout-palette-main': selected.main,
+      '--SeminarCallout-palette-light': selected.light ?? selected.main,
+      '--SeminarCallout-palette-dark': selected.dark ?? selected.main,
+      '--SeminarCallout-palette-contrastText':
         selected.contrastText ?? theme.palette.getContrastText(selected.main),
     },
   }));
@@ -301,24 +301,25 @@ const CalloutRoot = styled(Step, {
     display: 'block',
     boxSizing: 'border-box',
     width: '100%',
-    color: 'var(--SliderCallout-color)',
+    color: 'var(--SeminarCallout-color)',
     variants: [
       {
         props: { variant: 'filled' },
         style: {
-          '--SliderCallout-background': 'var(--SliderCallout-palette-main)',
-          '--SliderCallout-color': 'var(--SliderCallout-palette-contrastText)',
-          '--SliderCallout-outline': 'transparent',
-          '--SliderCallout-outline-width': 0,
+          '--SeminarCallout-background': 'var(--SeminarCallout-palette-main)',
+          '--SeminarCallout-color':
+            'var(--SeminarCallout-palette-contrastText)',
+          '--SeminarCallout-outline': 'transparent',
+          '--SeminarCallout-outline-width': 0,
         },
       },
       {
         props: { variant: 'outlined' },
         style: {
-          '--SliderCallout-background': theme.palette.background.paper,
-          '--SliderCallout-color': 'var(--SliderCallout-palette-main)',
-          '--SliderCallout-outline': 'var(--SliderCallout-palette-main)',
-          '--SliderCallout-outline-width': 2,
+          '--SeminarCallout-background': theme.palette.background.paper,
+          '--SeminarCallout-color': 'var(--SeminarCallout-palette-main)',
+          '--SeminarCallout-outline': 'var(--SeminarCallout-palette-main)',
+          '--SeminarCallout-outline-width': 2,
         },
       },
       ...colorVariants,
@@ -327,7 +328,7 @@ const CalloutRoot = styled(Step, {
 });
 
 const CalloutBackground = styled('svg', {
-  name: 'SliderCallout',
+  name: 'SeminarCallout',
   slot: 'Background',
   overridesResolver: (_props, styles) => styles['background'],
 })<{ ownerState: CalloutOwnerState }>({
@@ -339,14 +340,14 @@ const CalloutBackground = styled('svg', {
   height: '100%',
   overflow: 'visible',
   pointerEvents: 'none',
-  fill: 'var(--SliderCallout-background)',
-  stroke: 'var(--SliderCallout-outline)',
-  strokeWidth: 'var(--SliderCallout-outline-width)',
+  fill: 'var(--SeminarCallout-background)',
+  stroke: 'var(--SeminarCallout-outline)',
+  strokeWidth: 'var(--SeminarCallout-outline-width)',
   strokeLinejoin: 'round',
 });
 
 const CalloutContent = styled('span', {
-  name: 'SliderCallout',
+  name: 'SeminarCallout',
   slot: 'Content',
   overridesResolver: (_props, styles) => styles['content'],
 })<{ ownerState: CalloutOwnerState }>(({ theme, ownerState }) => ({
@@ -444,7 +445,7 @@ function initialGeometry(ownerState: CalloutOwnerState): CalloutGeometry {
  */
 export function Callout(inProps: CalloutProps): JSX.Element {
   const theme = useTheme();
-  const props = useThemeProps({ props: inProps, name: 'SliderCallout' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarCallout' });
   const {
     width: requestedWidth,
     maxWidth: requestedMaxWidth = DEFAULT_CALLOUT_MAX_WIDTH,
@@ -555,7 +556,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
 
   // Callouts with blocks are blocks themselves.
   const element = block ? 'div' : 'span';
-  const shadowId = useSvgId('SliderCallout-shadow');
+  const shadowId = useSvgId('SeminarCallout-shadow');
   const shadow = theme.shadows[elevation] ?? 'none';
 
   const content = (body: ReactNode): ReactNode => (

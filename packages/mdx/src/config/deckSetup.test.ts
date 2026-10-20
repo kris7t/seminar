@@ -20,20 +20,20 @@ describe('readDeckTheme', () => {
 describe('loadDeckSetup', () => {
   let root: string;
 
-  /** Creates a package in the project with `slider` in its manifest. */
-  async function createPackage(name: string, slider: unknown): Promise<void> {
+  /** Creates a package in the project with `seminar` in its manifest. */
+  async function createPackage(name: string, seminar: unknown): Promise<void> {
     const directory = path.join(root, 'node_modules', name);
     await mkdir(directory, { recursive: true });
     await writeFile(
       path.join(directory, 'package.json'),
-      JSON.stringify({ name, exports: { '.': './index.js' }, slider }),
+      JSON.stringify({ name, exports: { '.': './index.js' }, seminar }),
     );
   }
 
   const plugin = (name: string) => ({ source: name, exportName: 'plugin' });
 
   beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'slider-setup-'));
+    root = await mkdtemp(path.join(tmpdir(), 'seminar-setup-'));
     await createPackage('base-plugin', {
       options: { demo: { from: 'base' } },
       mdx: { remarkPlugins: { before: [plugin('remark-before')] } },
@@ -73,7 +73,7 @@ describe('loadDeckSetup', () => {
       themeImporter: deckPath,
       importPlugin,
     });
-    expect(setup.sliderConfigs.map(({ source }) => source)).toEqual([
+    expect(setup.seminarConfigs.map(({ source }) => source)).toEqual([
       'base-plugin',
       'other-plugin',
       'theme-package',
@@ -103,7 +103,7 @@ describe('loadDeckSetup', () => {
       themeImporter: deckPath,
       importPlugin,
     });
-    expect(setup.sliderConfigs).toEqual([]);
+    expect(setup.seminarConfigs).toEqual([]);
     expect(setup.warnings).toEqual([
       expect.stringContaining(
         'Cannot load the config of no-such-plugin',

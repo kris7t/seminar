@@ -220,7 +220,7 @@ skipped steps can still be chosen from the step tree.
 
 ## Steps in JSX
 
-JSX on a slide can use the components of `@slider/core`:
+JSX on a slide can use the components of `@seminar/core`:
 
 - `<Step>` takes the same props as `:step`, e.g., `<Step group="parse" only>`.
 - `<Together>` shows the `<Step>`s directly inside it in a single step.

@@ -1,21 +1,21 @@
 import { defaultClientConditions } from 'vite';
 import { defineProject } from 'vitest/config';
 
-import slider from './src/index.ts';
+import seminar from './src/index.ts';
 
 export default defineProject({
   plugins: [
-    slider({
+    seminar({
       plugins: [
         './src/fixtures/plugin.ts',
-        '@slider/elements',
-        '@slider/plugin-mathjax',
+        '@seminar/elements',
+        '@seminar/plugin-mathjax',
       ],
     }),
   ],
   resolve: {
     // Use the TypeScript sources of workspace packages directly.
-    conditions: ['@slider/source', ...defaultClientConditions],
+    conditions: ['@seminar/source', ...defaultClientConditions],
     dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled'],
   },
   test: {

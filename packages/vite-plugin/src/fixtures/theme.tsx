@@ -3,8 +3,8 @@ import '@fontsource/roboto/400.css';
 import {
   createSlideTheme,
   type SlideMasterProps,
-  type SliderConfig,
-} from '@slider/core';
+  type SeminarConfig,
+} from '@seminar/core';
 import type { JSX } from 'react';
 
 function SectionMaster({ title }: SlideMasterProps): JSX.Element {
@@ -13,4 +13,4 @@ function SectionMaster({ title }: SlideMasterProps): JSX.Element {
 
 export default createSlideTheme({ master: { section: SectionMaster } });
 
-export const slider: SliderConfig = { options: { math: { font: 'newcm' } } };
+export const seminar: SeminarConfig = { options: { math: { font: 'newcm' } } };

@@ -1,4 +1,4 @@
-import { SLIDE_HEIGHT, SLIDE_WIDTH } from '@slider/core';
+import { SLIDE_HEIGHT, SLIDE_WIDTH } from '@seminar/core';
 import { describe, expect, it } from 'vitest';
 
 import {

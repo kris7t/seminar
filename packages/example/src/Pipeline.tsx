@@ -5,7 +5,7 @@ import {
   useStepTransition,
   useTransitionHold,
   type StepHandle,
-} from '@slider/core';
+} from '@seminar/core';
 import { useEffect, useState, type JSX } from 'react';
 
 const STAGE_WIDTH = 240;

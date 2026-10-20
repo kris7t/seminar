@@ -93,7 +93,7 @@ export interface SlideDraft {
   level: number | undefined;
 }
 
-/** An entry of the table of contents, as in `@slider/core`. */
+/** An entry of the table of contents, as in `@seminar/core`. */
 export interface TocEntry {
   slide?: number;
   title?: string;

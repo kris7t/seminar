@@ -27,8 +27,8 @@ describe('createSlideTheme', () => {
   it('scales icons with the zoom of the slide', () => {
     const { components } = createSlideTheme();
     expect(components?.MuiSvgIcon?.styleOverrides?.root).toEqual({
-      width: 'calc(1em * var(--slider-zoom, 1))',
-      height: 'calc(1em * var(--slider-zoom, 1))',
+      width: 'calc(1em * var(--seminar-zoom, 1))',
+      height: 'calc(1em * var(--seminar-zoom, 1))',
     });
   });
 });
@@ -83,7 +83,7 @@ describe('theming', () => {
   it('applies default props from the theme', () => {
     const theme = createSlideTheme({
       components: {
-        SliderContentMaster: {
+        SeminarContentMaster: {
           defaultProps: { showSlideNumber: false },
         },
       },
@@ -99,10 +99,10 @@ describe('theming', () => {
   it('applies style overrides from the theme', () => {
     const theme = createSlideTheme({
       components: {
-        SliderContentMaster: {
+        SeminarContentMaster: {
           styleOverrides: { title: { color: 'rgb(0, 0, 255)' } },
         },
-        SliderSlideNumber: {
+        SeminarSlideNumber: {
           styleOverrides: { root: { color: 'rgb(255, 0, 0)' } },
         },
       },
@@ -125,7 +125,7 @@ describe('theming', () => {
     window.history.replaceState(null, '', '#slide=2');
     const theme = createSlideTheme({
       components: {
-        SliderTitleMaster: {
+        SeminarTitleMaster: {
           styleOverrides: { subtitle: { color: 'rgb(0, 128, 0)' } },
         },
       },
@@ -146,7 +146,7 @@ describe('theming', () => {
   it('applies variants from the theme', () => {
     const theme = createSlideTheme({
       components: {
-        SliderContentMaster: {
+        SeminarContentMaster: {
           defaultProps: { showSlideNumber: false },
           variants: [
             {
@@ -174,9 +174,9 @@ describe('theming', () => {
   it('applies style overrides to the pointer', () => {
     const theme = createSlideTheme({
       components: {
-        SliderPointer: {
+        SeminarPointer: {
           styleOverrides: {
-            cursor: { '--SliderPointer-fill': 'yellow' },
+            cursor: { '--SeminarPointer-fill': 'yellow' },
             laser: { width: 32 },
           },
         },
@@ -193,7 +193,7 @@ describe('theming', () => {
     expect(
       cursor === null
         ? undefined
-        : getComputedStyle(cursor).getPropertyValue('--SliderPointer-fill'),
+        : getComputedStyle(cursor).getPropertyValue('--SeminarPointer-fill'),
     ).toBe('yellow');
     rerender(
       <ThemeProvider theme={theme}>
@@ -209,8 +209,8 @@ describe('theming', () => {
   it('applies style overrides to the selection', () => {
     const theme = createSlideTheme({
       components: {
-        SliderSelection: {
-          styleOverrides: { root: { '--SliderSelection-background': 'pink' } },
+        SeminarSelection: {
+          styleOverrides: { root: { '--SeminarSelection-background': 'pink' } },
         },
       },
     });
@@ -224,7 +224,7 @@ describe('theming', () => {
       frame === null
         ? undefined
         : getComputedStyle(frame).getPropertyValue(
-            '--SliderSelection-background',
+            '--SeminarSelection-background',
           ),
     ).toBe('pink');
   });

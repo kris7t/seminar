@@ -1,4 +1,4 @@
-/** Stand-ins for the components of `@slider/core` in tests. */
+/** Stand-ins for the components of `@seminar/core` in tests. */
 export function Deck(): null {
   return null;
 }

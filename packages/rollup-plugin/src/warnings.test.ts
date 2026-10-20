@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import slider from './index.ts';
+import seminar from './index.ts';
 
-describe('slider', () => {
+describe('seminar', () => {
   it('reports the warnings of compiling decks', async () => {
-    const plugin = slider({ defaultTheme: false });
+    const plugin = seminar({ defaultTheme: false });
     const warnings: unknown[] = [];
     await plugin.transform.call(
       {

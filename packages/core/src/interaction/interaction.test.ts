@@ -30,7 +30,7 @@ describe('getInteraction', () => {
     ['<div role="switch" id="target"></div>', 'activatable'],
     ['<div tabindex="0" id="target"></div>', 'activatable'],
     ['<div tabindex="-1" id="target"></div>', undefined],
-    ['<div data-slider-interactive><p id="target">x</p></div>', 'custom'],
+    ['<div data-seminar-interactive><p id="target">x</p></div>', 'custom'],
     ['<div role="dialog"><button id="target">OK</button></div>', 'custom'],
     ['<div aria-modal="true"><p id="target">x</p></div>', 'custom'],
   ])('classifies %s as %s', (html, expected) => {

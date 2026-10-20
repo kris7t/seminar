@@ -11,20 +11,20 @@ export type SectionMasterProps = SlideMasterProps;
 export type SectionMasterClassKey = 'root' | 'title' | 'subtitle';
 
 export const sectionMasterClasses: Record<SectionMasterClassKey, string> =
-  generateUtilityClasses('SliderSectionMaster', ['root', 'title', 'subtitle']);
+  generateUtilityClasses('SeminarSectionMaster', ['root', 'title', 'subtitle']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderSectionMaster: SectionMasterClassKey;
+    SeminarSectionMaster: SectionMasterClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderSectionMaster: SectionMasterProps;
+    SeminarSectionMaster: SectionMasterProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderSectionMaster?:
-      ComponentTheme<'SliderSectionMaster', Theme> | undefined;
+    SeminarSectionMaster?:
+      ComponentTheme<'SeminarSectionMaster', Theme> | undefined;
   }
 }
 
@@ -33,7 +33,7 @@ interface OwnerStateProps {
 }
 
 const SectionMasterRoot = styled('section', {
-  name: 'SliderSectionMaster',
+  name: 'SeminarSectionMaster',
   slot: 'Root',
 })<OwnerStateProps>(({ theme }) => ({
   display: 'flex',
@@ -46,7 +46,7 @@ const SectionMasterRoot = styled('section', {
 }));
 
 const SectionMasterTitle = styled('h1', {
-  name: 'SliderSectionMaster',
+  name: 'SeminarSectionMaster',
   slot: 'Title',
 })<OwnerStateProps>(({ theme }) => ({
   ...theme.typography.h2,
@@ -55,7 +55,7 @@ const SectionMasterTitle = styled('h1', {
 }));
 
 const SectionMasterSubtitle = styled('div', {
-  name: 'SliderSectionMaster',
+  name: 'SeminarSectionMaster',
   slot: 'Subtitle',
 })<OwnerStateProps>(({ theme }) => ({
   ...theme.typography.subtitle1,
@@ -67,10 +67,10 @@ const SectionMasterSubtitle = styled('div', {
  *
  * The body is intended for a short summary of the section.
  *
- * Can be themed as `SliderSectionMaster` in the `components` of the MUI theme.
+ * Can be themed as `SeminarSectionMaster` in the `components` of the MUI theme.
  */
 export function SectionMaster(inProps: SectionMasterProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderSectionMaster' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarSectionMaster' });
   const { title, className, children } = props;
   return (
     <SectionMasterRoot

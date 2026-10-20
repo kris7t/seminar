@@ -322,8 +322,8 @@ const OPEN_HAND_PATH =
   'M23 5.5V20c0 2.2-1.8 4-4 4h-7.3c-1.08 0-2.1-.43-2.85-1.19L1 14.83s1.26-1.23 1.3-1.25c.22-.19.49-.29.79-.29.22 0 .42.06.6.16.04.01 4.31 2.46 4.31 2.46V4c0-.83.67-1.5 1.5-1.5S11 3.17 11 4v7h1V1.5c0-.83.67-1.5 1.5-1.5S15 .67 15 1.5V11h1V2.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5V11h1V5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5';
 
 /** The colors of the mirrored mouse cursor, as CSS custom properties. */
-const FILL_PROPERTY = '--SliderPointer-fill';
-const OUTLINE_PROPERTY = '--SliderPointer-outline';
+const FILL_PROPERTY = '--SeminarPointer-fill';
+const OUTLINE_PROPERTY = '--SeminarPointer-outline';
 
 const FILLED_STYLE = {
   fill: `var(${FILL_PROPERTY})`,
@@ -434,24 +434,24 @@ export interface MirroredPointerProps {
 export type MirroredPointerClassKey = 'cursor' | 'laser';
 
 export const mirroredPointerClasses: Record<MirroredPointerClassKey, string> =
-  generateUtilityClasses('SliderPointer', ['cursor', 'laser']);
+  generateUtilityClasses('SeminarPointer', ['cursor', 'laser']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderPointer: MirroredPointerClassKey;
+    SeminarPointer: MirroredPointerClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderPointer: MirroredPointerProps;
+    SeminarPointer: MirroredPointerProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderPointer?: ComponentTheme<'SliderPointer', Theme> | undefined;
+    SeminarPointer?: ComponentTheme<'SeminarPointer', Theme> | undefined;
   }
 }
 
 const PointerCursor = styled('svg', {
-  name: 'SliderPointer',
+  name: 'SeminarPointer',
   slot: 'Cursor',
 })({
   [FILL_PROPERTY]: '#fff',
@@ -461,7 +461,7 @@ const PointerCursor = styled('svg', {
 });
 
 const PointerLaser = styled('div', {
-  name: 'SliderPointer',
+  name: 'SeminarPointer',
   slot: 'Laser',
 })({
   width: 16,
@@ -478,9 +478,9 @@ const PointerLaser = styled('div', {
  * a mouse cursor of the same shape, or as a laser pointer. Should be placed in
  * the frame of a slide.
  *
- * Can be themed as `SliderPointer` in the `components` of the MUI theme. The
+ * Can be themed as `SeminarPointer` in the `components` of the MUI theme. The
  * `cursor` slot is an SVG element, whose colors are set by the
- * `--SliderPointer-fill` and `--SliderPointer-outline` custom properties, and
+ * `--SeminarPointer-fill` and `--SeminarPointer-outline` custom properties, and
  * whose shape is in its `data-cursor` attribute. The `laser` slot is the dot
  * of the laser pointer, centered on the position, whatever its size.
  */
@@ -489,7 +489,7 @@ export function MirroredPointer(
 ): JSX.Element | null {
   const { store, mode } = useThemeProps({
     props: inProps,
-    name: 'SliderPointer',
+    name: 'SeminarPointer',
   });
   const position = useSyncExternalStore(store.subscribe, store.get);
   // Only the laser pointer stays when it doesn't move.
@@ -517,7 +517,7 @@ export function MirroredPointer(
       <PointerLaser
         aria-hidden
         className={mirroredPointerClasses.laser}
-        data-slider-pointer="laser"
+        data-seminar-pointer="laser"
         style={style}
       />
     );
@@ -530,7 +530,7 @@ export function MirroredPointer(
     <PointerCursor
       aria-hidden
       className={mirroredPointerClasses.cursor}
-      data-slider-pointer="mirror"
+      data-seminar-pointer="mirror"
       data-cursor={shape}
       viewBox={viewBox.join(' ')}
       width={viewWidth * scale}

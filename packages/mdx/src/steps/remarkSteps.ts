@@ -14,7 +14,7 @@ import { EXPLICIT_JSX, NOTES, PARAGRAPH } from '../utils/jsx.ts';
  * Name of the hast property of list items with the attributes of their `:step`
  * directive, as JSON, which {@link rehypeListSteps} reads.
  */
-export const STEP_PROPERTY = 'dataSliderStep';
+export const STEP_PROPERTY = 'dataSeminarStep';
 
 const WITH_VALUES: ReadonlySet<string> = new Set([
   'self',

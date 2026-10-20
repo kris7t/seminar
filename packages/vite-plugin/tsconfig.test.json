@@ -7,9 +7,9 @@
     "allowImportingTsExtensions": true,
     "tsBuildInfoFile": "../../node_modules/.cache/tsc/vite-plugin-test.tsbuildinfo",
     "lib": ["es2024", "dom", "dom.iterable"],
-    "types": ["node", "@slider/mdx/client"],
+    "types": ["node", "@seminar/mdx/client"],
     "jsx": "react-jsx",
-    "customConditions": ["@slider/source"]
+    "customConditions": ["@seminar/source"]
   },
   "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/fixtures"],
   "references": [

@@ -2,7 +2,7 @@ import type { CompileOptions } from '@mdx-js/mdx';
 import remarkDirective from 'remark-directive';
 import remarkFrontmatter from 'remark-frontmatter';
 
-import { recmaSliderOptions } from './config/sliderOptions.ts';
+import { recmaSeminarOptions } from './config/seminarOptions.ts';
 import { recmaSlideExports } from './deck/recmaSlideExports.ts';
 import { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
 import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts';
@@ -27,18 +27,18 @@ import {
   type DirectiveComponents,
 } from './directives/remarkDirectiveComponents.ts';
 import {
-  remarkSliderConfig,
-  type LoadedSliderConfigEntry,
-} from './config/remarkSliderConfig.ts';
+  remarkSeminarConfig,
+  type LoadedSeminarConfigEntry,
+} from './config/remarkSeminarConfig.ts';
 
-export interface SliderMdxOptions extends RemarkSlidesOptions {
+export interface SeminarMdxOptions extends RemarkSlidesOptions {
   /** React components that render named Remark directives. */
   directives?: DirectiveComponents | undefined;
   /**
    * Compile-time configs of the plugins and the theme of the deck, in
    * increasing precedence, see `loadDeckSetup`.
    */
-  sliderConfigs?: readonly LoadedSliderConfigEntry[] | undefined;
+  seminarConfigs?: readonly LoadedSeminarConfigEntry[] | undefined;
   /** Plugins of unified that the configs add, see `loadDeckSetup`. */
   mdxPlugins?: MdxPlugins | undefined;
 }
@@ -55,13 +55,13 @@ export interface SliderMdxOptions extends RemarkSlidesOptions {
  * since a colon followed by a word, like in `10:30`, is parsed as a
  * directive.
  */
-export function sliderMdxOptions({
+export function seminarMdxOptions({
   onDependency,
   directives,
-  sliderConfigs,
+  seminarConfigs,
   mdxPlugins = emptyMdxPlugins(),
   ...options
-}: SliderMdxOptions = {}): Pick<
+}: SeminarMdxOptions = {}): Pick<
   CompileOptions,
   'remarkPlugins' | 'remarkRehypeOptions' | 'rehypePlugins' | 'recmaPlugins'
 > {
@@ -84,7 +84,7 @@ export function sliderMdxOptions({
           syntaxPlugins: mdxPlugins.remarkPlugins.before,
         },
       ],
-      [remarkSliderConfig, { configs: sliderConfigs }],
+      [remarkSeminarConfig, { configs: seminarConfigs }],
       [remarkDirectiveComponents, { directives }],
       ...mdxPlugins.remarkPlugins.after,
     ],
@@ -96,7 +96,7 @@ export function sliderMdxOptions({
     ],
     recmaPlugins: [
       ...mdxPlugins.recmaPlugins.before,
-      recmaSliderOptions,
+      recmaSeminarOptions,
       recmaSlideTitles,
       recmaSlideExports,
       ...mdxPlugins.recmaPlugins.after,
@@ -105,10 +105,10 @@ export function sliderMdxOptions({
 }
 
 export interface DeckMdxOptions extends Omit<
-  SliderMdxOptions,
-  'sliderConfigs' | 'mdxPlugins'
+  SeminarMdxOptions,
+  'seminarConfigs' | 'mdxPlugins'
 > {
-  /** Slider plugins of the integration, e.g., `['@slider/elements']`. */
+  /** Seminar plugins of the integration, e.g., `['@seminar/elements']`. */
   plugins?: readonly string[] | undefined;
   /** Path to resolve `plugins` from. Defaults to the deck. */
   pluginsImporter?: string | undefined;
@@ -128,7 +128,7 @@ export interface DeckMdxOptions extends Omit<
  * {@link loadDeckSetup}).
  *
  * Integrations that compile many decks should load the setup once for each
- * theme instead, like `@slider/rollup-plugin`.
+ * theme instead, like `@seminar/rollup-plugin`.
  *
  * @returns The options, and the problems with the configs.
  */
@@ -143,7 +143,7 @@ export async function deckMdxOptions(
     ...options
   }: DeckMdxOptions = {},
 ): Promise<{
-  options: ReturnType<typeof sliderMdxOptions>;
+  options: ReturnType<typeof seminarMdxOptions>;
   setup: DeckSetup;
 }> {
   const setup = await loadDeckSetup({
@@ -155,9 +155,9 @@ export async function deckMdxOptions(
     importPlugin,
   });
   return {
-    options: sliderMdxOptions({
+    options: seminarMdxOptions({
       ...options,
-      sliderConfigs: setup.sliderConfigs,
+      seminarConfigs: setup.seminarConfigs,
       mdxPlugins: setup.mdxPlugins,
     }),
     setup,

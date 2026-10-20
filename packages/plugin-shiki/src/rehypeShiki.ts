@@ -6,14 +6,14 @@ import {
   EXPLICIT_JSX_HAST,
   getStepProps,
   parseAttributeWords,
-} from '@slider/mdx';
+} from '@seminar/mdx';
 import type { VFile } from 'vfile';
 
 import { readCodeOptions } from './codeOptions.ts';
 import { highlight } from './highlight.ts';
 
 /** Name that decks import the {@link Code} component as. */
-const CODE = '_SliderShikiCode';
+const CODE = '_SeminarShikiCode';
 
 interface CodeBlock {
   parent: { children: (RootContent | ElementContent)[] };
@@ -77,15 +77,15 @@ function findBlocks(
 
 /**
  * Highlights the code blocks of decks with Shiki, and renders them with the
- * `Code` component of `@slider/plugin-shiki`. Takes the `code` options of
- * the Slider configs and the frontmatter (see {@link readCodeOptions}).
+ * `Code` component of `@seminar/plugin-shiki`. Takes the `code` options of
+ * the Seminar configs and the frontmatter (see {@link readCodeOptions}).
  *
  * The first line of a block takes the attributes of `:step` after the
  * language, e.g., ` ```ts #fib .wide step `, and passes the other words to
  * the component as `meta`. Blocks that can't be highlighted, e.g., in an
  * unknown language, are reported, and shown as plain text.
  *
- * Enabled by the `mdx` config of `@slider/plugin-shiki`.
+ * Enabled by the `mdx` config of `@seminar/plugin-shiki`.
  */
 export function rehypeShiki(): (tree: Root, file: VFile) => Promise<void> {
   return async (tree, file) => {
@@ -128,7 +128,7 @@ export function rehypeShiki(): (tree: Root, file: VFile) => Promise<void> {
       block.parent.children[block.index] = element;
     }
     tree.children.unshift(
-      createEsm(`import { Code as ${CODE} } from "@slider/plugin-shiki";`),
+      createEsm(`import { Code as ${CODE} } from "@seminar/plugin-shiki";`),
     );
   };
 }

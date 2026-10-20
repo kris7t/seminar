@@ -1,11 +1,11 @@
 import type { VFile } from 'vfile';
 
-import { getSliderOptionLayers } from '@slider/mdx';
+import { getSeminarOptionLayers } from '@seminar/mdx';
 
 import { DEFAULT_FONT, type MathOptions } from './mathjax.ts';
 
 /**
- * Options for rendering math, which the `math` options of the Slider configs
+ * Options for rendering math, which the `math` options of the Seminar configs
  * and the `math` key of the frontmatter set.
  */
 export interface MathConfig {
@@ -150,11 +150,11 @@ function toDynamic(
 }
 
 /**
- * Reads the `math` options of the Slider configs and the frontmatter of a
+ * Reads the `math` options of the Seminar configs and the frontmatter of a
  * deck, in order of increasing precedence, reporting invalid ones.
  */
 export function readMathOptions(file: VFile): DeckMathOptions {
-  const layers = getSliderOptionLayers(file, 'math');
+  const layers = getSeminarOptionLayers(file, 'math');
   const options: DeckMathOptions = {
     font: DEFAULT_FONT,
     macros: {},

@@ -15,7 +15,7 @@ function renderDeck() {
         <div role="slider" tabIndex={0} aria-valuenow={0}>
           Slider
         </div>
-        <div data-slider-interactive tabIndex={0}>
+        <div data-seminar-interactive tabIndex={0}>
           Custom
         </div>
         <Step>a</Step>

@@ -10,7 +10,7 @@ own state, and lose it when the slide is left.
 `useSlideState` is like `useState`, but the state belongs to the slide:
 
 ```tsx
-import { useResetSlideState, useSlideState } from '@slider/core';
+import { useResetSlideState, useSlideState } from '@seminar/core';
 
 export function Counter() {
   const [count, setCount] = useSlideState(0);
@@ -43,7 +43,7 @@ runs, like a media stream that one view creates for the others.
 the audience gives on one slide and that a later slide shows:
 
 ```tsx
-import { useDeckState } from '@slider/core';
+import { useDeckState } from '@seminar/core';
 
 export function Vote() {
   const [vote, setVote] = useDeckState<string>('vote');
@@ -104,7 +104,7 @@ need cleanup. A cache computes reusable values from arguments, optionally
 using resources:
 
 ```tsx
-import { defineCache, defineResource, useCached } from '@slider/core';
+import { defineCache, defineResource, useCached } from '@seminar/core';
 
 const engine = defineResource({
   load: async () => {
@@ -177,7 +177,7 @@ previous step. Interactive elements take precedence for the input they use:
 - links and buttons take Space and Enter, and clicks.
 
 Clicks on these elements don't change steps. Mark other elements that handle
-all input themselves, e.g., a canvas, with the `data-slider-interactive`
+all input themselves, e.g., a canvas, with the `data-seminar-interactive`
 attribute (`INTERACTIVE_ATTRIBUTE`).
 
 ## Sizes
@@ -235,7 +235,7 @@ Call `useTransitionHold(pending)` while a component isn't ready, e.g., while
 it loads data:
 
 ```tsx
-import { useTransitionHold } from '@slider/core';
+import { useTransitionHold } from '@seminar/core';
 
 export function Plot({ src }: { src: string }) {
   const data = useData(src);
@@ -258,7 +258,7 @@ an update wait, too, run it with the function that `useSlideUpdate()`
 returns:
 
 ```tsx
-import { useSlideUpdate } from '@slider/core';
+import { useSlideUpdate } from '@seminar/core';
 
 export function Reveal() {
   const [shown, setShown] = useState(false);
@@ -311,7 +311,7 @@ zero-size element, and place the drawing relative to it, which is what
 callouts do:
 
 ```tsx
-import { useSlideBox, useSlidePoint, type SlidePoint } from '@slider/core';
+import { useSlideBox, useSlidePoint, type SlidePoint } from '@seminar/core';
 import { useState } from 'react';
 
 export function Marker({ for: target, at }: { for?: string; at?: SlidePoint }) {

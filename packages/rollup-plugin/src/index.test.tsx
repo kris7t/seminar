@@ -1,4 +1,4 @@
-import { createSlideTheme, type SlideMasterProps } from '@slider/core';
+import { createSlideTheme, type SlideMasterProps } from '@seminar/core';
 import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import type { JSX } from 'react';
@@ -85,13 +85,13 @@ describe('.deck.mdx', () => {
       title: 'Plain deck',
       mouseNavigation: true,
       mirrorPointer: false,
-      theme: '@slider/theme-default',
+      theme: '@seminar/theme-default',
       depth: 1,
     });
     render(<Plain />);
     expect(screen.getByRole('heading').textContent).toBe('Plain deck');
     expect(
-      screen.getByText('From a Slider plugin').closest('aside'),
+      screen.getByText('From a Seminar plugin').closest('aside'),
     ).toHaveProperty('dataset.plugin', 'callout');
     expect(screen.getByText('Inline callout').tagName).toBe('SPAN');
     await user.click(screen.getByText('Uses the default theme'));
@@ -102,9 +102,9 @@ describe('.deck.mdx', () => {
     render(<CalloutDeck />);
     const callout = screen
       .getByText('Custom callout')
-      .closest<HTMLElement>('.SliderCallout-root');
+      .closest<HTMLElement>('.SeminarCallout-root');
     if (callout === null) throw new Error('Missing callout');
-    expect(callout.classList).toContain('SliderStep-dimmed');
+    expect(callout.classList).toContain('SeminarStep-dimmed');
     expect(callout.hasAttribute('ghost')).toBe(false);
   });
 
@@ -114,7 +114,7 @@ describe('.deck.mdx', () => {
     expect(math.getAttribute('data-latex')).toBe('x^2');
     expect(math.namespaceURI).toBe('http://www.w3.org/1998/Math/MathML');
     const svg = math
-      .closest('[class*="SliderFormula-root"]')
+      .closest('[class*="SeminarFormula-root"]')
       ?.querySelector('svg');
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
     // Glyphs of the Fira font of the default theme.

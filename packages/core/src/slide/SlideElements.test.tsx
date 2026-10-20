@@ -53,7 +53,7 @@ describe('SlideElement', () => {
     const ids = targets.map(({ id }) => id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) {
-      expect(id).toMatch(/^slider-[\w-]+-target$/);
+      expect(id).toMatch(/^seminar-[\w-]+-target$/);
     }
     // Each rendering finds its own element.
     expect(
@@ -97,7 +97,7 @@ describe('SlideElement', () => {
       </Deck>,
     );
     const parse = screen.getByTestId('parse');
-    expect(parse.id).toMatch(/^slider-[\w-]+-parse$/);
+    expect(parse.id).toMatch(/^seminar-[\w-]+-parse$/);
     expect(screen.getByTestId('found').textContent).toBe(parse.id);
     await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=parse');

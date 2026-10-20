@@ -1,5 +1,5 @@
 import { styled } from '@mui/material/styles';
-import type { DirectiveForm } from '@slider/core';
+import type { DirectiveForm } from '@seminar/core';
 import { useState, type JSX, type ReactNode } from 'react';
 
 import { Callout, calloutClasses, type CalloutProps } from './Callout.tsx';
@@ -30,7 +30,7 @@ export interface CalloutDirectiveProps extends Omit<
 
 /** Marks the position of a callout in the text, as tall as a character. */
 const CalloutInlineAnchor = styled('span', {
-  name: 'SliderCallout',
+  name: 'SeminarCallout',
   slot: 'Anchor',
   overridesResolver: (_props, styles) => styles['anchor'],
 })({

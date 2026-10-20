@@ -29,7 +29,7 @@ const CODE_SPAN_PATTERN = /(`+)(?:(?!\1)[\s\S])*?\1/g;
  * Name of the directive that the attribute blocks of images are rewritten
  * to, which `remarkImages` reads.
  */
-export const IMAGE_ATTRIBUTES = 'slider-attributes';
+export const IMAGE_ATTRIBUTES = 'seminar-attributes';
 
 /** Rewrites the attribute blocks of the images on a line, outside of code. */
 function rewriteImages(content: string): string {
@@ -120,7 +120,7 @@ export function remarkHeadingAttributes(this: Processor): undefined {
   this.parser = (document, file) => {
     const rewritten = rewriteHeadingAttributes(document);
     // Positions refer to the rewritten source.
-    (file.data as { sliderSource?: string }).sliderSource = rewritten;
+    (file.data as { seminarSource?: string }).seminarSource = rewritten;
     return parser(rewritten, file);
   };
 }

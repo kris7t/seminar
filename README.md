@@ -1,8 +1,8 @@
-# slider
+# Seminar
 
 Maintain scientific talks and lectures as Markdown presentations.
 
-slider turns `.deck.mdx` files into presentations built with React and
+Seminar turns `.deck.mdx` files into presentations built with React and
 [Material UI](https://mui.com/). Slides are plain text under version control,
 styled by themes, and can contain interactive React components. A production
 build is a single, self-contained HTML file that works offline.
@@ -11,7 +11,7 @@ build is a single, self-contained HTML file that works offline.
 
 ## Getting started
 
-slider needs Node.js 24 or newer.
+Seminar needs Node.js 24 or newer.
 
 ```sh
 npm install
@@ -75,7 +75,7 @@ See the [documentation](docs/README.md) for the syntax:
 - [Highlighting code](docs/shiki/README.md) with Shiki
 - [Authoring components](docs/authoring/README.md), plugins, and themes
 
-Decks can also be written in JSX with `Deck` and `Slide` from `@slider/core`;
+Decks can also be written in JSX with `Deck` and `Slide` from `@seminar/core`;
 see [`ExampleDeck.tsx`](packages/example/src/ExampleDeck.tsx).
 
 ## Presenting
@@ -128,39 +128,39 @@ and selection of text fields, selected text, and the ripples of buttons.
 
 ## Packages
 
-| Package                                             | Description                                           |
-| --------------------------------------------------- | ----------------------------------------------------- |
-| [`@slider/core`](packages/core)                     | Deck, slides, steps, themes, and the presenter view   |
-| [`@slider/elements`](packages/elements)             | Reusable presentation elements and MDX directives     |
-| [`@slider/mdx`](packages/mdx)                       | Compiles decks written in MDX                         |
-| [`@slider/plugin-mathjax`](packages/plugin-mathjax) | Math typeset with MathJax                             |
-| [`@slider/plugin-shiki`](packages/plugin-shiki)     | Syntax highlighting of code blocks with Shiki         |
-| [`@slider/rollup-plugin`](packages/rollup-plugin)   | Rollup and Vite plugin for `.deck.mdx` files          |
-| [`@slider/vite-plugin`](packages/vite-plugin)       | Vite plugin with HTML pages and self-contained builds |
-| [`@slider/theme-default`](packages/theme-default)   | Default theme with the Roboto font                    |
-| [`@slider/example`](packages/example)               | Example deck                                          |
+| Package                                              | Description                                           |
+| ---------------------------------------------------- | ----------------------------------------------------- |
+| [`@seminar/core`](packages/core)                     | Deck, slides, steps, themes, and the presenter view   |
+| [`@seminar/elements`](packages/elements)             | Reusable presentation elements and MDX directives     |
+| [`@seminar/mdx`](packages/mdx)                       | Compiles decks written in MDX                         |
+| [`@seminar/plugin-mathjax`](packages/plugin-mathjax) | Math typeset with MathJax                             |
+| [`@seminar/plugin-shiki`](packages/plugin-shiki)     | Syntax highlighting of code blocks with Shiki         |
+| [`@seminar/rollup-plugin`](packages/rollup-plugin)   | Rollup and Vite plugin for `.deck.mdx` files          |
+| [`@seminar/vite-plugin`](packages/vite-plugin)       | Vite plugin with HTML pages and self-contained builds |
+| [`@seminar/theme-default`](packages/theme-default)   | Default theme with the Roboto font                    |
+| [`@seminar/example`](packages/example)               | Example deck                                          |
 
-To use slider in a Vite project, add the plugin along with the React plugin:
+To use Seminar in a Vite project, add the plugin along with the React plugin:
 
 ```ts
-import slider from '@slider/vite-plugin';
+import seminar from '@seminar/vite-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [slider(), react()],
+  plugins: [seminar(), react()],
 });
 ```
 
 Every `.deck.mdx` file then gets its own HTML page. Pass
-`slider({ selfContained: false })` to keep scripts and assets in separate
+`seminar({ selfContained: false })` to keep scripts and assets in separate
 files, e.g., for hosting with a Content Security Policy.
 
 Presentation elements, like callouts and columns, come from
-[`@slider/elements`](packages/elements), which is enabled as a plugin:
+[`@seminar/elements`](packages/elements), which is enabled as a plugin:
 
 ```ts
-slider({ plugins: ['@slider/elements'] });
+seminar({ plugins: ['@seminar/elements'] });
 ```
 
 ## License

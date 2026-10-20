@@ -10,7 +10,7 @@ import {
   EXPLICIT_JSX,
   NOTES,
   SLIDE,
-  SLIDER_OPTIONS,
+  SEMINAR_OPTIONS,
   STEP,
   LIST_ITEM,
   PARAGRAPH,
@@ -225,7 +225,7 @@ function createSlideElement(
 
 /** The name of the import of the language of the user interface at `index`. */
 function uiLocaleName(index: number): string {
-  return `_SliderUiLocale${String(index)}`;
+  return `_SeminarUiLocale${String(index)}`;
 }
 
 /** Returns the module to import the theme from, if any. */
@@ -267,7 +267,7 @@ function createDeckAttributes(
         )
         .join(', ')}]`,
     ),
-    createExpressionAttribute('options', SLIDER_OPTIONS),
+    createExpressionAttribute('options', SEMINAR_OPTIONS),
   ];
   for (const [key, prop] of [
     ['mouseNavigation', 'defaultMouseNavigation'],
@@ -345,7 +345,7 @@ function createDeckAttributes(
  * the deck, which can still be overridden with the `theme` prop.
  */
 export function remarkSlides({
-  importSource = '@slider/core',
+  importSource = '@seminar/core',
   onDependency,
   syntaxPlugins,
   ...defaults
@@ -357,7 +357,7 @@ export function remarkSlides({
     const depth = frontmatter['depth'] as number;
     const lang = getDeckLang(frontmatter, file);
     // Read by `rehypeMath`.
-    (file.data as { sliderFrontmatter?: unknown }).sliderFrontmatter =
+    (file.data as { seminarFrontmatter?: unknown }).seminarFrontmatter =
       frontmatter;
     const includeEsm: RootContent[] = [];
     const includeContext: IncludeContext = {

@@ -14,7 +14,7 @@ import type { VFile } from 'vfile';
 
 import { createEsm, createStringAttribute } from '../utils/estree.ts';
 import { EXPLICIT_JSX } from '../utils/jsx.ts';
-import { getSliderConfigs } from '../config/remarkSliderConfig.ts';
+import { getSeminarConfigs } from '../config/remarkSeminarConfig.ts';
 
 /** A React component used to render a Remark directive. */
 export interface DirectiveComponent {
@@ -58,7 +58,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Reads directive component registrations from an untrusted Slider config. */
+/** Reads directive component registrations from an untrusted Seminar config. */
 export function parseDirectiveComponents(
   value: unknown,
   source: string,
@@ -195,7 +195,7 @@ function replaceDirectives(
     let imported = imports.get(key);
     if (imported === undefined) {
       imported = {
-        local: `_SliderDirective${String(imports.size)}`,
+        local: `_SeminarDirective${String(imports.size)}`,
         component,
       };
       imports.set(key, imported);
@@ -238,7 +238,7 @@ function applyDirectiveComponents(
   tree: Root,
   file: VFile,
   defaults: DirectiveComponents,
-  entries: NonNullable<ReturnType<typeof getSliderConfigs>>,
+  entries: NonNullable<ReturnType<typeof getSeminarConfigs>>,
 ): void {
   const components: DirectiveComponents = { ...defaults };
   for (const entry of entries) {
@@ -274,11 +274,11 @@ function applyDirectiveComponents(
 
 /**
  * Turns registered Remark directives into imported React components.
- * Registrations from previously loaded Slider configs are applied in order,
+ * Registrations from previously loaded Seminar configs are applied in order,
  * so the theme can replace components supplied by plugins.
  *
  * Must run after `remarkSlides`, which puts the whole deck below one root,
- * and `remarkSliderConfig`, which loads plugin and theme registrations.
+ * and `remarkSeminarConfig`, which loads plugin and theme registrations.
  */
 export function remarkDirectiveComponents({
   directives = {},
@@ -288,7 +288,7 @@ export function remarkDirectiveComponents({
       tree,
       file,
       directives,
-      getSliderConfigs(file) ?? [],
+      getSeminarConfigs(file) ?? [],
     );
   };
 }

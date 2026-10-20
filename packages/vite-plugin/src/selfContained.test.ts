@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react';
 import { createBuilder, defaultClientConditions } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import slider, { type SliderPluginOptions } from './index.ts';
+import seminar, { type SeminarPluginOptions } from './index.ts';
 
 const root = fileURLToPath(new URL('fixtures', import.meta.url));
 
@@ -20,18 +20,18 @@ afterEach(async () => {
 });
 
 /** Builds the fixtures like `vite build` and returns the output files. */
-async function buildApp(options?: SliderPluginOptions) {
-  outDir = await mkdtemp(path.join(tmpdir(), 'slider-build-'));
+async function buildApp(options?: SeminarPluginOptions) {
+  outDir = await mkdtemp(path.join(tmpdir(), 'seminar-build-'));
   const builder = await createBuilder({
     root,
     configFile: false,
     logLevel: 'silent',
     plugins: [
-      slider({ plugins: ['@slider/plugin-mathjax'], ...options }),
+      seminar({ plugins: ['@seminar/plugin-mathjax'], ...options }),
       react(),
     ],
     resolve: {
-      conditions: ['@slider/source', ...defaultClientConditions],
+      conditions: ['@seminar/source', ...defaultClientConditions],
     },
     build: { outDir, emptyOutDir: true },
   });
@@ -41,7 +41,7 @@ async function buildApp(options?: SliderPluginOptions) {
   return { files: files.sort(), html };
 }
 
-describe('sliderSelfContained', () => {
+describe('seminarSelfContained', () => {
   it('builds decks into self-contained pages', async () => {
     const { files, html } = await buildApp();
     expect(files).toEqual(['talk.html']);

@@ -2,14 +2,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { compile } from '@mdx-js/mdx';
-import { emptyMdxPlugins, sliderMdxOptions } from '@slider/mdx';
+import { emptyMdxPlugins, seminarMdxOptions } from '@seminar/mdx';
 import { describe, expect, it } from 'vitest';
 
 import { rehypeShiki } from './rehypeShiki.ts';
 
-const { slider } = JSON.parse(
+const { seminar } = JSON.parse(
   readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'),
-) as { slider: unknown };
+) as { seminar: unknown };
 
 const FIXTURES = path.join(import.meta.dirname, 'fixtures');
 
@@ -17,17 +17,17 @@ async function compileDeck(source: string, theme: unknown = {}) {
   const file = await compile(
     { value: source, path: path.join(FIXTURES, 'deck.mdx') },
     {
-      ...sliderMdxOptions({
+      ...seminarMdxOptions({
         defaultTheme: undefined,
         mdxPlugins: {
           ...emptyMdxPlugins(),
           rehypePlugins: { before: [], after: [rehypeShiki] },
         },
-        sliderConfigs: [
+        seminarConfigs: [
           {
-            source: '@slider/plugin-shiki',
-            base: '@slider/plugin-shiki',
-            config: slider,
+            source: '@seminar/plugin-shiki',
+            base: '@seminar/plugin-shiki',
+            config: seminar,
           },
           {
             source: 'theme',
@@ -46,7 +46,7 @@ describe('rehypeShiki', () => {
     const { code, messages } = await compileDeck('```ts\nconst x = 1;\n```');
     expect(messages).toEqual([]);
     expect(code).toContain(
-      'import {Code as _SliderShikiCode} from "@slider/plugin-shiki";',
+      'import {Code as _SeminarShikiCode} from "@seminar/plugin-shiki";',
     );
     expect(code).toContain('lang: "ts"');
     expect(code).toContain('className: "shiki github-light"');

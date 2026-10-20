@@ -129,7 +129,7 @@ describe('starting the presentation', () => {
     await user.click(screen.getByRole('button', { name: 'OK' }));
     expect(open).toHaveBeenCalledWith(
       '',
-      'slider-audience',
+      'seminar-audience',
       expect.stringContaining('fullscreen'),
     );
     // This window stays as it is.
@@ -213,7 +213,7 @@ describe('the presenter view', () => {
     await user.keyboard('{Shift>}P{/Shift}');
     expect(open).toHaveBeenCalledWith(
       '',
-      'slider-audience',
+      'seminar-audience',
       expect.not.stringContaining('fullscreen'),
     );
     expect(audience.document.title).toBe('Deck');
@@ -222,10 +222,10 @@ describe('the presenter view', () => {
     expect(body.textContent).toContain('First');
     expect(body.textContent).not.toContain('Some notes');
     expect(body.querySelector('button')).toBeNull();
-    expect(body.querySelector('[data-slider-view="audience"]')).not.toBeNull();
+    expect(body.querySelector('[data-seminar-view="audience"]')).not.toBeNull();
     // This window becomes the presenter view.
     expect(
-      document.querySelector('[data-slider-view="presenter"]'),
+      document.querySelector('[data-seminar-view="presenter"]'),
     ).not.toBeNull();
     await user.keyboard('{ArrowRight}');
     expect(body.textContent).toContain('Second');
@@ -252,7 +252,7 @@ describe('the presenter view', () => {
     expect(panel.textContent).toContain('Some notes');
     expect(panel.textContent).toContain('Next step');
     // The preview shows the step, which is still hidden on the slide.
-    const preview = panel.querySelector('[data-slider-view="preview"]');
+    const preview = panel.querySelector('[data-seminar-view="preview"]');
     expect(preview?.textContent).toContain('Revealed');
     expect(
       getComputedStyle(screen.getAllByText('Revealed')[0] ?? document.body)
@@ -261,7 +261,7 @@ describe('the presenter view', () => {
     await user.keyboard('{ArrowRight}');
     expect(panel.textContent).toContain('Next slide');
     expect(
-      panel.querySelector('[data-slider-view="preview"]')?.textContent,
+      panel.querySelector('[data-seminar-view="preview"]')?.textContent,
     ).toContain('Second');
     await user.keyboard('{ArrowRight}');
     expect(panel.textContent).toContain('End of the presentation');
@@ -276,7 +276,7 @@ describe('the presenter view', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderDeck();
     await user.keyboard('{Shift>}P{/Shift}');
-    const frame = document.querySelector('[data-slider-view="presenter"]');
+    const frame = document.querySelector('[data-seminar-view="presenter"]');
     if (!(frame instanceof HTMLElement)) {
       throw new Error('No presenter view');
     }
@@ -285,7 +285,7 @@ describe('the presenter view', () => {
       new DOMRect(100, 50, SLIDE_WIDTH / 2, SLIDE_HEIGHT / 2),
     );
     const pointer = () =>
-      audience.document.querySelector<SVGElement>('[data-slider-pointer]');
+      audience.document.querySelector<SVGElement>('[data-seminar-pointer]');
     expect(pointer()).toBeNull();
     fireEvent.pointerMove(frame, {
       pointerType: 'mouse',
@@ -336,7 +336,7 @@ describe('the presenter view', () => {
       </Deck>,
     );
     await user.keyboard('{Shift>}P{/Shift}');
-    const frame = document.querySelector('[data-slider-view="presenter"]');
+    const frame = document.querySelector('[data-seminar-view="presenter"]');
     if (!(frame instanceof HTMLElement)) {
       throw new Error('No presenter view');
     }
@@ -345,7 +345,9 @@ describe('the presenter view', () => {
       clientX: 10,
       clientY: 10,
     });
-    expect(audience.document.querySelector('[data-slider-pointer]')).toBeNull();
+    expect(
+      audience.document.querySelector('[data-seminar-pointer]'),
+    ).toBeNull();
     expect(
       screen
         .getByRole('button', { name: 'Show pointer to the audience' })
@@ -359,7 +361,7 @@ describe('the presenter view', () => {
     const user = userEvent.setup();
     renderDeck();
     await user.keyboard('{Shift>}P{/Shift}');
-    const frame = document.querySelector('[data-slider-view="presenter"]');
+    const frame = document.querySelector('[data-seminar-view="presenter"]');
     if (!(frame instanceof HTMLElement)) {
       throw new Error('No presenter view');
     }
@@ -375,8 +377,8 @@ describe('the presenter view', () => {
     };
     const shown = (doc: Document) =>
       doc
-        .querySelector('[data-slider-pointer]')
-        ?.getAttribute('data-slider-pointer') ?? 'none';
+        .querySelector('[data-seminar-pointer]')
+        ?.getAttribute('data-seminar-pointer') ?? 'none';
     const mirror = screen.getByRole('button', {
       name: 'Show pointer to the audience',
     });
@@ -427,7 +429,7 @@ describe('the presenter view', () => {
       renderDeck();
       await user.keyboard('{Shift>}P{/Shift}');
       expect(
-        document.querySelector('[data-slider-view="presenter"]'),
+        document.querySelector('[data-seminar-view="presenter"]'),
       ).not.toBeNull();
       if (which === 'this') {
         await user.keyboard('{Escape}');
@@ -441,7 +443,7 @@ describe('the presenter view', () => {
       expect(close).toHaveBeenCalled();
       expect(document.title).toBe('Deck');
       expect(
-        document.querySelector('[data-slider-view="audience"]'),
+        document.querySelector('[data-seminar-view="audience"]'),
       ).not.toBeNull();
       remove();
     },
@@ -477,7 +479,7 @@ describe('the presenter view', () => {
       audience.dispatchEvent(new Event('pagehide'));
     });
     expect(
-      document.querySelector('[data-slider-view="audience"]'),
+      document.querySelector('[data-seminar-view="audience"]'),
     ).not.toBeNull();
     remove();
   });

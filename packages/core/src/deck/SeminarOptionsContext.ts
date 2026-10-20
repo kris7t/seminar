@@ -1,12 +1,12 @@
 import { createContext, use, type Context } from 'react';
 
-/** The options of a deck by their name, see `SliderConfig`. */
-export type SliderOptions = Readonly<Record<string, unknown>>;
+/** The options of a deck by their name, see `SeminarConfig`. */
+export type SeminarOptions = Readonly<Record<string, unknown>>;
 
-const NO_OPTIONS: SliderOptions = {};
+const NO_OPTIONS: SeminarOptions = {};
 
 /** The options of the deck, which its {@link Deck} provides. */
-export const SliderOptionsContext: Context<SliderOptions> =
+export const SeminarOptionsContext: Context<SeminarOptions> =
   createContext(NO_OPTIONS);
 
 /**
@@ -14,10 +14,10 @@ export const SliderOptionsContext: Context<SliderOptions> =
  * `undefined` if the deck has none.
  *
  * Decks written in MDX have the options of their configs and frontmatter
- * (see the `options` of `SliderConfig`), as plugins that compile decks may
+ * (see the `options` of `SeminarConfig`), as plugins that compile decks may
  * have replaced them.
  */
-export function useSliderOptions(name: string): unknown {
-  const options = use(SliderOptionsContext);
+export function useSeminarOptions(name: string): unknown {
+  const options = use(SeminarOptionsContext);
   return Object.hasOwn(options, name) ? options[name] : undefined;
 }

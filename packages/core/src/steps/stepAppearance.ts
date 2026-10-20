@@ -8,7 +8,7 @@ import type { StepPhase } from './StepStore.ts';
  * Further appearances of steps. Add them by module augmentation, e.g.,
  * `interface StepAppearanceOverrides { blurred: true }`, give them a rank with
  * `stepAppearances` in the theme, and style them with their
- * `SliderStep-<name>` class.
+ * `SeminarStep-<name>` class.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- Augmented by themes.
 export interface StepAppearanceOverrides {}
@@ -173,7 +173,7 @@ export const ALWAYS_SHOWN: RankedAppearances = {
 
 /**
  * Returns the class of the elements of the component `name` with `appearance`,
- * e.g., `SliderStep-dimmed`, if they have to apply it themselves, i.e., it's
+ * e.g., `SeminarStep-dimmed`, if they have to apply it themselves, i.e., it's
  * more hidden than `enclosing`, which they inherit from the DOM.
  */
 export function appearanceClass(

@@ -82,5 +82,5 @@ Without `angle`, the callout grows toward the top right, with its stem pointing
 down and left. It flips horizontally or vertically when needed to keep its
 body within a 24-pixel margin of the slide.
 
-Themes can set the defaults of these and add variants as `SliderCallout`, and
-style the titles as `SliderCalloutTitle`.
+Themes can set the defaults of these and add variants as `SeminarCallout`, and
+style the titles as `SeminarCalloutTitle`.

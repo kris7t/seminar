@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { Deck, Slide } from '@slider/core';
+import { Deck, Slide } from '@seminar/core';
 import { describe, expect, it } from 'vitest';
 
 import { Code, codeClasses } from './Code.tsx';

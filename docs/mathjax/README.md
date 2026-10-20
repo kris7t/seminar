@@ -1,6 +1,6 @@
 # Math
 
-`@slider/plugin-mathjax` typesets math with [MathJax](https://www.mathjax.org).
+`@seminar/plugin-mathjax` typesets math with [MathJax](https://www.mathjax.org).
 
 Math is typeset when the deck is compiled. The deck contains the result as
 SVG, with MathML for screen readers. It needs no scripts or fonts to show
@@ -10,11 +10,11 @@ For math that changes while you present, see [Dynamic math](dynamic.md).
 
 ## Enabling the plugin
 
-Add `@slider/plugin-mathjax` to the dependencies of your project. Then list
+Add `@seminar/plugin-mathjax` to the dependencies of your project. Then list
 it in the plugins in `vite.config.ts`:
 
 ```ts
-slider({ plugins: ['@slider/plugin-mathjax'] });
+seminar({ plugins: ['@seminar/plugin-mathjax'] });
 ```
 
 Without the plugin, dollar signs are ordinary text.
@@ -70,7 +70,7 @@ To set options for every deck, set them in the config of your presentation
 theme:
 
 ```ts
-export const slider: SliderConfig = {
+export const seminar: SeminarConfig = {
   options: { math: { macros: { R: '\\mathbb{R}' } } },
 };
 ```
@@ -85,5 +85,5 @@ dependencies to use it.
 
 ## Styling formulas
 
-Formulas are `Formula` components. Style them as `SliderFormula` in the MUI
+Formulas are `Formula` components. Style them as `SeminarFormula` in the MUI
 theme of your slides.

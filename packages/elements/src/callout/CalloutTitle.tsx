@@ -4,7 +4,7 @@ import {
   useThemeProps,
   type TypographyVariant,
 } from '@mui/material/styles';
-import type { ComponentTheme } from '@slider/core';
+import type { ComponentTheme } from '@seminar/core';
 import type { ComponentProps, JSX } from 'react';
 
 /** Props of the title of a callout. */
@@ -19,20 +19,20 @@ export interface CalloutTitleProps extends ComponentProps<'span'> {
 export type CalloutTitleClassKey = 'root';
 
 export const calloutTitleClasses: Record<CalloutTitleClassKey, string> =
-  generateUtilityClasses('SliderCalloutTitle', ['root']);
+  generateUtilityClasses('SeminarCalloutTitle', ['root']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderCalloutTitle: CalloutTitleClassKey;
+    SeminarCalloutTitle: CalloutTitleClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderCalloutTitle: CalloutTitleProps;
+    SeminarCalloutTitle: CalloutTitleProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderCalloutTitle?:
-      ComponentTheme<'SliderCalloutTitle', Theme> | undefined;
+    SeminarCalloutTitle?:
+      ComponentTheme<'SeminarCalloutTitle', Theme> | undefined;
   }
 }
 
@@ -41,7 +41,7 @@ interface CalloutTitleOwnerState extends CalloutTitleProps {
 }
 
 const CalloutTitleRoot = styled('span', {
-  name: 'SliderCalloutTitle',
+  name: 'SeminarCalloutTitle',
   slot: 'Root',
   overridesResolver: (_props, styles) => styles['root'],
 })<{ ownerState: CalloutTitleOwnerState }>(({ theme, ownerState }) => ({
@@ -60,7 +60,7 @@ const CalloutTitleRoot = styled('span', {
  * it may go in any callout.
  */
 export function CalloutTitle(inProps: CalloutTitleProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderCalloutTitle' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarCalloutTitle' });
   const { variant = 'h5', className, ...other } = props;
   return (
     <CalloutTitleRoot

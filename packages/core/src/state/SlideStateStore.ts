@@ -5,7 +5,7 @@ import {
 } from '../steps/StepPosition.ts';
 
 /** Key of the position in the steps of a slide. */
-const STEP_KEY = 'slider:steps';
+const STEP_KEY = 'seminar:steps';
 
 /**
  * State of the slides of a deck that is shared by the views of the slides,

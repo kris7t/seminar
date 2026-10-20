@@ -6,4 +6,4 @@
  * It contains a dash, so MDX treats it as an intrinsic element and doesn't
  * look it up among the components.
  */
-export const SLIDE_TITLE_MARKER = 'slider-slide-title';
+export const SLIDE_TITLE_MARKER = 'seminar-slide-title';

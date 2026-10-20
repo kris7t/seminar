@@ -18,7 +18,7 @@ interface Parent {
   children: (RootContent | ElementContent)[];
 }
 
-/** A part of a reference, see `SlideElementReference` in `@slider/core`. */
+/** A part of a reference, see `SlideElementReference` in `@seminar/core`. */
 type ReferencePart = string | [string];
 
 function isJsxElement(node: RootContent | ElementContent): node is JsxElement {

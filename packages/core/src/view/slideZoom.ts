@@ -4,6 +4,6 @@
  *
  * WebKit resolves `em` in an `svg` element with a `font-size` of its own as
  * if the slide weren't zoomed, so sizes in `em` there should be multiplied
- * by it, e.g., `calc(1em * var(--slider-zoom, 1))`.
+ * by it, e.g., `calc(1em * var(--seminar-zoom, 1))`.
  */
-export const SLIDE_ZOOM_PROPERTY = '--slider-zoom';
+export const SLIDE_ZOOM_PROPERTY = '--seminar-zoom';

@@ -13,25 +13,25 @@ const REACT_REFRESH_RUNTIME = '/@react-refresh';
 function renderRefreshWrapper(id: string): string {
   const deck = JSON.stringify(id);
   return `
-import * as __sliderRefreshRuntime from ${JSON.stringify(REACT_REFRESH_RUNTIME)};
-import * as __sliderDeckExports from ${deck};
+import * as __seminarRefreshRuntime from ${JSON.stringify(REACT_REFRESH_RUNTIME)};
+import * as __seminarDeckExports from ${deck};
 if (import.meta.hot && window.$RefreshReg$) {
   const register = (exports) => {
     for (const [name, value] of Object.entries(exports)) {
       if (typeof value === 'function') {
-        __sliderRefreshRuntime.register(value, ${deck} + ' export ' + name);
+        __seminarRefreshRuntime.register(value, ${deck} + ' export ' + name);
       }
     }
   };
   queueMicrotask(() => {
-    register(__sliderDeckExports);
+    register(__seminarDeckExports);
     import.meta.hot.accept((nextExports) => {
       if (!nextExports) return;
       register(nextExports);
       const invalidateMessage =
-        __sliderRefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate(
+        __seminarRefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate(
           ${deck},
-          { default: __sliderDeckExports.default },
+          { default: __seminarDeckExports.default },
           { default: nextExports.default },
         );
       if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
@@ -52,13 +52,13 @@ if (import.meta.hot && window.$RefreshReg$) {
  * so that the refresh runtime doesn't take them for components, so they are
  * registered by hand. Without the plugin, changed decks reload the page.
  */
-export function sliderHotReload({
+export function seminarHotReload({
   include = /\.deck\.mdx$/,
 }: { include?: FilterPattern | undefined } = {}): Plugin {
   const isDeck = createFilter(include);
   let enabled = false;
   return {
-    name: 'slider:hot-reload',
+    name: 'seminar:hot-reload',
     apply: 'serve',
 
     configResolved(config) {

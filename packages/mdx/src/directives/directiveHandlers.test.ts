@@ -1,7 +1,7 @@
 import { compile } from '@mdx-js/mdx';
 import { describe, expect, it } from 'vitest';
 
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import { slides } from '../test/compileDeck.ts';
 
 describe('directiveHandlers', () => {
@@ -16,7 +16,7 @@ describe('directiveHandlers', () => {
 
   it('reports unknown directives with attributes', async () => {
     const file = await compile('Some :typo{x=1} here\n\n::other', {
-      ...sliderMdxOptions(),
+      ...seminarMdxOptions(),
     });
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining('Unknown directive `:typo`'),

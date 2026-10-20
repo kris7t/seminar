@@ -4,13 +4,13 @@
 set -euo pipefail
 
 : "${ANDROID_HOME:=$HOME/Android/Sdk}"
-AVD_NAME="${AVD_NAME:-slider}"
+AVD_NAME="${AVD_NAME:-seminar}"
 # The API 37 image crashes in SurfaceFlinger with emulator 37.2.
 SYSTEM_IMAGE="${SYSTEM_IMAGE:-system-images;android-36;google_apis;x86_64}"
 SNAPSHOTS=https://commondatastorage.googleapis.com/chromium-browser-snapshots
 # A build with element-scoped view transitions, which came in Chrome 147.
 CHROMIUM_REVISION="${CHROMIUM_REVISION:-1722657}"
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/slider-android"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/seminar-android"
 PORT="${PORT:-5173}"
 URL="${1:-http://localhost:$PORT/}"
 

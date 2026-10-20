@@ -1,4 +1,4 @@
-import { createSlideTheme, Deck, Slide } from '@slider/core';
+import { createSlideTheme, Deck, Slide } from '@seminar/core';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -62,7 +62,7 @@ describe('CalloutDirective', () => {
   it('shows the label of a container as a title styled by the theme', () => {
     const theme = createSlideTheme({
       components: {
-        SliderCalloutTitle: {
+        SeminarCalloutTitle: {
           defaultProps: { variant: 'h4' },
           styleOverrides: { root: { color: 'rgb(1, 2, 3)' } },
         },

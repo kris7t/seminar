@@ -90,7 +90,7 @@ export function SlideElementScope({
 }): JSX.Element {
   // Ids from `useId` may have characters, like colons, that need escaping in
   // selectors and in `url(#…)`.
-  const prefix = `slider-${useId().replace(/[^\w-]/g, '')}-`;
+  const prefix = `seminar-${useId().replace(/[^\w-]/g, '')}-`;
   const [store] = useState(() => new SlideElementStore(prefix));
   return <SlideElementContext value={store}>{children}</SlideElementContext>;
 }

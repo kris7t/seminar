@@ -371,7 +371,7 @@ export function includeSlides(
     }
     let name = imported.get(index);
     if (name === undefined) {
-      name = `_SliderInclude${String(context.imports.count)}`;
+      name = `_SeminarInclude${String(context.imports.count)}`;
       context.imports.count += 1;
       imported.set(index, name);
       context.esm.push(
@@ -388,7 +388,7 @@ export function includeSlides(
     if (index === undefined || slide.title === undefined) {
       return undefined;
     }
-    const name = `_SliderIncludeTitle${String(context.imports.count)}`;
+    const name = `_SeminarIncludeTitle${String(context.imports.count)}`;
     context.imports.count += 1;
     context.esm.push(
       createEsm(
@@ -403,7 +403,7 @@ export function includeSlides(
     if (index === undefined || !hasNotes(slide)) {
       return undefined;
     }
-    const name = `_SliderIncludeNotes${String(context.imports.count)}`;
+    const name = `_SeminarIncludeNotes${String(context.imports.count)}`;
     context.imports.count += 1;
     context.esm.push(
       createEsm(

@@ -10,9 +10,9 @@ import '@fontsource/roboto/700.css';
 import '@fontsource/roboto/700-italic.css';
 
 import type { Theme } from '@mui/material';
-import { createSlideTheme } from '@slider/core';
+import { createSlideTheme } from '@seminar/core';
 
-/** The default theme of slider decks, with the Roboto font. */
+/** The default theme of Seminar decks, with the Roboto font. */
 const theme: Theme = createSlideTheme();
 
 export default theme;

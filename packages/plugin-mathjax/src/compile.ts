@@ -1,5 +1,5 @@
 /**
- * The plugins of unified that `@slider/plugin-mathjax` adds to the compiler
+ * The plugins of unified that `@seminar/plugin-mathjax` adds to the compiler
  * of decks, see its config.
  */
 export { default as remarkMath } from 'remark-math';

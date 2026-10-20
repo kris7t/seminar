@@ -5,7 +5,7 @@ import { mirrorStylisPlugin } from './mirror/mirrorStylisPlugin.ts';
 import type { ScreenDetailed } from './screens.ts';
 
 /** Name of the audience window, so that a reloaded deck reuses it. */
-const WINDOW_NAME = 'slider-audience';
+const WINDOW_NAME = 'seminar-audience';
 
 /** Size of the audience window if no screen is given. */
 const DEFAULT_WIDTH = 960;
@@ -48,7 +48,7 @@ function setUpDocument(
   const container = doc.createElement('div');
   doc.body.append(container);
   const cache = createCache({
-    key: 'slider-audience',
+    key: 'seminar-audience',
     container: doc.head,
     // Show hover and focus of the presenter to the audience.
     stylisPlugins: [mirrorStylisPlugin],

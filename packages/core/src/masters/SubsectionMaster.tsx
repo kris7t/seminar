@@ -11,7 +11,7 @@ export type SubsectionMasterProps = SlideMasterProps;
 export type SubsectionMasterClassKey = 'root' | 'title' | 'subtitle';
 
 export const subsectionMasterClasses: Record<SubsectionMasterClassKey, string> =
-  generateUtilityClasses('SliderSubsectionMaster', [
+  generateUtilityClasses('SeminarSubsectionMaster', [
     'root',
     'title',
     'subtitle',
@@ -19,16 +19,16 @@ export const subsectionMasterClasses: Record<SubsectionMasterClassKey, string> =
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderSubsectionMaster: SubsectionMasterClassKey;
+    SeminarSubsectionMaster: SubsectionMasterClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderSubsectionMaster: SubsectionMasterProps;
+    SeminarSubsectionMaster: SubsectionMasterProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderSubsectionMaster?:
-      ComponentTheme<'SliderSubsectionMaster', Theme> | undefined;
+    SeminarSubsectionMaster?:
+      ComponentTheme<'SeminarSubsectionMaster', Theme> | undefined;
   }
 }
 
@@ -37,7 +37,7 @@ interface OwnerStateProps {
 }
 
 const SubsectionMasterRoot = styled('section', {
-  name: 'SliderSubsectionMaster',
+  name: 'SeminarSubsectionMaster',
   slot: 'Root',
 })<OwnerStateProps>(({ theme }) => ({
   display: 'flex',
@@ -50,7 +50,7 @@ const SubsectionMasterRoot = styled('section', {
 }));
 
 const SubsectionMasterTitle = styled('h1', {
-  name: 'SliderSubsectionMaster',
+  name: 'SeminarSubsectionMaster',
   slot: 'Title',
 })<OwnerStateProps>(({ theme }) => ({
   ...theme.typography.h3,
@@ -59,7 +59,7 @@ const SubsectionMasterTitle = styled('h1', {
 }));
 
 const SubsectionMasterSubtitle = styled('div', {
-  name: 'SliderSubsectionMaster',
+  name: 'SeminarSubsectionMaster',
   slot: 'Subtitle',
 })<OwnerStateProps>(({ theme }) => ({
   ...theme.typography.subtitle2,
@@ -71,13 +71,13 @@ const SubsectionMasterSubtitle = styled('div', {
  *
  * The body is intended for a short summary of the subsection.
  *
- * Can be themed as `SliderSubsectionMaster` in the `components` of the MUI
+ * Can be themed as `SeminarSubsectionMaster` in the `components` of the MUI
  * theme.
  */
 export function SubsectionMaster(inProps: SubsectionMasterProps): JSX.Element {
   const props = useThemeProps({
     props: inProps,
-    name: 'SliderSubsectionMaster',
+    name: 'SeminarSubsectionMaster',
   });
   const { title, className, children } = props;
   return (

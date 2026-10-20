@@ -6,7 +6,7 @@ import type {
 } from 'mdast-util-directive';
 import type { Handler, State } from 'mdast-util-to-hast';
 
-/** Directives that the plugins of slider handle where they're allowed. */
+/** Directives that the plugins of Seminar handle where they're allowed. */
 const KNOWN_DIRECTIVES: ReadonlySet<string> = new Set([
   'include',
   'notes',
@@ -30,7 +30,7 @@ function sourceOf(state: State, node: Directive): string {
   const file = state.options.file;
   // The source may have been rewritten before parsing.
   const value =
-    (file?.data as { sliderSource?: string } | undefined)?.sliderSource ??
+    (file?.data as { seminarSource?: string } | undefined)?.seminarSource ??
     file?.value;
   return start === undefined || end === undefined || value === undefined
     ? `${PREFIXES[node.type]}${node.name}`
@@ -94,7 +94,7 @@ function handleDirective(
  * `remark-directive`) that no plugin turned into something else as text, since
  * they would become empty elements otherwise, e.g., `10:30` is parsed as the
  * text directive `:30`. Reports unknown directives with labels or attributes,
- * which are probably mistakes, and directives of slider in places where they
+ * which are probably mistakes, and directives of Seminar in places where they
  * aren't allowed.
  *
  * Directives with `data.hName`, `data.hProperties`, or `data.hChildren`, set by

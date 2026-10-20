@@ -1,13 +1,14 @@
 {
-  "name": "@slider/core",
+  "name": "@seminar/core",
   "version": "0.0.0",
   "private": true,
-  "description": "Core Markdown presentation model for slider",
+  "description": "Core Markdown presentation model for Seminar",
+  "homepage": "https://seminar.run",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": {
-      "@slider/source": "./src/index.ts",
+      "@seminar/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },

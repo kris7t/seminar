@@ -20,7 +20,7 @@ export interface SelfContainedOptions {
 }
 
 /** Prefix of the names of the build environments of decks. */
-const ENVIRONMENT_PREFIX = 'slider_deck_';
+const ENVIRONMENT_PREFIX = 'seminar_deck_';
 
 function escapeRegExp(text: string): string {
   return text.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -149,7 +149,7 @@ function shouldEmptyOutDir({ root, build }: ResolvedConfig): boolean {
  *
  * Files in the `public` directory are not inlined.
  */
-export function sliderSelfContained({
+export function seminarSelfContained({
   keepUnicodeRanges = [],
 }: SelfContainedOptions = {}): Plugin {
   const keep = keepUnicodeRanges.flatMap((range) => {
@@ -163,7 +163,7 @@ export function sliderSelfContained({
   let pages = new Map<string, string>();
 
   return {
-    name: 'slider:self-contained',
+    name: 'seminar:self-contained',
     apply: 'build',
 
     config(config, { isSsrBuild = false }) {
@@ -242,7 +242,7 @@ export function sliderSelfContained({
         return false;
       }
       return {
-        name: 'slider:self-contained:deck',
+        name: 'seminar:self-contained:deck',
         options(options) {
           return { ...options, input: [page] };
         },

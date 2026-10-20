@@ -2,7 +2,7 @@
 
 A plugin or a theme can make components available as Markdown
 [directives](../README.md#syntax-at-a-glance), so that decks don't have to
-import them. `@slider/elements` is a plugin like this.
+import them. `@seminar/elements` is a plugin like this.
 
 ## Registering directives
 
@@ -12,7 +12,7 @@ List the directives in the `directives` key of the
 ```json
 {
   "name": "my-elements",
-  "slider": {
+  "seminar": {
     "directives": {
       "note": {
         "source": "my-elements",
@@ -60,7 +60,7 @@ means `true`.
 `wrapIn` wraps consecutive directives of this kind in a container directive,
 unless they're directly in one already.
 
-`@slider/elements` registers `column` with `"wrapIn": "columns"`. So
+`@seminar/elements` registers `column` with `"wrapIn": "columns"`. So
 consecutive `:::column`s don't need a `::::columns` around them. The wrapper
 has no attributes. To set them, write the wrapper explicitly.
 

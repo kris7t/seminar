@@ -50,7 +50,7 @@ export function SlideTransitionStyles(): JSX.Element {
           }),
         ),
         // The pointer keeps following the mouse instead of fading.
-        [`${running} [data-slider-pointer]`]: {
+        [`${running} [data-seminar-pointer]`]: {
           viewTransitionName: POINTER_TRANSITION_NAME,
           viewTransitionClass: OWN_ANIMATION_CLASS,
         },

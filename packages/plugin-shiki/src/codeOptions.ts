@@ -2,13 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { getSliderOptionLayers } from '@slider/mdx';
+import { getSeminarOptionLayers } from '@seminar/mdx';
 import type { LanguageRegistration, ThemeRegistration } from 'shiki';
 import type { VFile } from 'vfile';
 
 import type { HighlightOptions } from './highlight.ts';
 
-/** Name of the options of `@slider/plugin-shiki`, and of their key in the frontmatter. */
+/** Name of the options of `@seminar/plugin-shiki`, and of their key in the frontmatter. */
 export const OPTIONS_NAME = 'code';
 
 /**
@@ -69,7 +69,7 @@ async function readFiles(
   key: 'languages' | 'themes',
 ): Promise<{ entry: FileEntry; json: Record<string, unknown> }[]> {
   const files: { entry: FileEntry; json: Record<string, unknown> }[] = [];
-  for (const { options, base, source } of getSliderOptionLayers(
+  for (const { options, base, source } of getSeminarOptionLayers(
     file,
     OPTIONS_NAME,
   )) {
@@ -115,7 +115,10 @@ async function readFiles(
  */
 export async function readCodeOptions(file: VFile): Promise<HighlightOptions> {
   let theme: string | undefined;
-  for (const { options, source } of getSliderOptionLayers(file, OPTIONS_NAME)) {
+  for (const { options, source } of getSeminarOptionLayers(
+    file,
+    OPTIONS_NAME,
+  )) {
     const value = options['theme'];
     if (value === undefined) {
       continue;

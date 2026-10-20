@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Fragment, isValidElement, type ReactNode } from 'react';
 
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import {
   compileDeck,
   renderDeck,
@@ -244,7 +244,7 @@ author: Someone
   });
 
   it('uses the defaults passed as options', async () => {
-    const options = sliderMdxOptions({
+    const options = seminarMdxOptions({
       importSource: STUB_URL,
       defaultTheme: THEME_URL,
       defaultMouseNavigation: false,
@@ -271,7 +271,7 @@ author: Someone
 
   it('reports invalid themes in the frontmatter', async () => {
     const file = await compile('---\ntheme: 42\n---\n\n# Slide', {
-      ...sliderMdxOptions(),
+      ...seminarMdxOptions(),
     });
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining('Expected `theme` in the frontmatter'),
@@ -313,13 +313,13 @@ author: Someone
       const code = String(
         await compile(
           '---\nlang: de-AT\nuiLanguages: [en, hu, { pt: ./pt.json }]\n---\n\n## A',
-          sliderMdxOptions({ importSource: STUB_URL }),
+          seminarMdxOptions({ importSource: STUB_URL }),
         ),
       );
-      expect(code).toContain('GERMAN as _SliderUiLocale0');
-      expect(code).toContain('ENGLISH as _SliderUiLocale1');
-      expect(code).toContain('HUNGARIAN as _SliderUiLocale2');
-      expect(code).toContain('import _SliderUiLocale3 from "./pt.json"');
+      expect(code).toContain('GERMAN as _SeminarUiLocale0');
+      expect(code).toContain('ENGLISH as _SeminarUiLocale1');
+      expect(code).toContain('HUNGARIAN as _SeminarUiLocale2');
+      expect(code).toContain('import _SeminarUiLocale3 from "./pt.json"');
       expect(code).toContain('lang: "pt"');
       expect(code).not.toContain('FRENCH');
     });
@@ -327,7 +327,7 @@ author: Someone
     it('warns about languages without a user interface', async () => {
       const file = await compile(
         '---\nlang: ja\nuiLanguages: [xx]\n---\n\n## A',
-        sliderMdxOptions({ importSource: STUB_URL }),
+        seminarMdxOptions({ importSource: STUB_URL }),
       );
       expect(file.messages.map(String)).toEqual([
         expect.stringContaining("isn't available in `ja`"),
@@ -396,7 +396,7 @@ author: Someone
 
     it('reports invalid depths', async () => {
       const file = await compile('---\ndepth: 5\n---\n\n# A', {
-        ...sliderMdxOptions(),
+        ...seminarMdxOptions(),
       });
       expect(file.messages.map(String)).toEqual([
         expect.stringContaining('Expected `depth` in the frontmatter'),
@@ -556,7 +556,7 @@ More
 
     it('reports invalid values', async () => {
       const file = await compile('## A {spare=maybe}', {
-        ...sliderMdxOptions(),
+        ...seminarMdxOptions(),
       });
       expect(file.messages.map(String)).toEqual([
         expect.stringContaining('Expected `spare` to be `true` or `false`'),
@@ -636,7 +636,7 @@ depth: 3
     it('warn about masters, which they have no slide for', async () => {
       const file = await compile(
         '# Foo {subsection noslide}\n\n## Bar :slide{noslide master=X}\n\n### Baz',
-        { ...sliderMdxOptions() },
+        { ...seminarMdxOptions() },
       );
       expect(file.messages.map(String)).toEqual([
         expect.stringContaining('Ignoring the master `subsection`'),
@@ -647,7 +647,7 @@ depth: 3
     it('are ignored on content slides and ::slide', async () => {
       const file = await compile(
         '## Section\n\n### Content {noslide}\n\n::slide{noslide}',
-        { ...sliderMdxOptions() },
+        { ...seminarMdxOptions() },
       );
       expect(file.messages.map(String)).toEqual([
         expect.stringContaining('Ignoring `noslide` on a heading of a content'),
@@ -667,7 +667,7 @@ depth: 3
         children: '',
       },
     ]);
-    const file = await compile('## A {from=1.x}', { ...sliderMdxOptions() });
+    const file = await compile('## A {from=1.x}', { ...seminarMdxOptions() });
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining('Expected `from` to be a step path'),
     ]);
@@ -724,7 +724,7 @@ depth: 3
     it('reports attributes taken from the recapped slide', async () => {
       const file = await compile(
         '## Intro\n\n::recap[#intro]{.wide section steps=dim}\n\n::recap[intro]',
-        { ...sliderMdxOptions() },
+        { ...seminarMdxOptions() },
       );
       expect(file.messages.map(String)).toEqual([
         expect.stringContaining('Ignoring `.wide` on a recap'),
@@ -802,7 +802,7 @@ import { TwoColumn } from '${STUB_URL}';
     it('warns about bare words that refer to the document', async () => {
       const file = await compile(
         'export const count = 3\n\n## Total {count}\n\n## Sum {String(count)}',
-        { ...sliderMdxOptions() },
+        { ...seminarMdxOptions() },
       );
       expect(file.messages.map(String)).toEqual([
         expect.stringContaining(

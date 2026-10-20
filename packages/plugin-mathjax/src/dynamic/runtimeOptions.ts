@@ -5,13 +5,13 @@ import type { renderFormula } from './render.ts';
 export interface RuntimeDynamicMath {
   /** The font of the deck. */
   font: MathFont;
-  /** Imports the renderer, `@slider/plugin-mathjax/render`. */
+  /** Imports the renderer, `@seminar/plugin-mathjax/render`. */
   loadRenderer: () => Promise<{ renderFormula: typeof renderFormula }>;
 }
 
 /**
- * The `math` options of a deck in the browser, which `useSliderOptions` of
- * `@slider/core` returns in decks compiled with this plugin.
+ * The `math` options of a deck in the browser, which `useSeminarOptions` of
+ * `@seminar/core` returns in decks compiled with this plugin.
  */
 export interface RuntimeMathOptions {
   /** The name of the font, like `fira`. */

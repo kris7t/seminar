@@ -1,10 +1,10 @@
 export { directiveHandlers } from './directives/directiveHandlers.ts';
 export {
-  getSliderConfigs,
-  remarkSliderConfig,
-  type LoadedSliderConfigEntry,
-  type RemarkSliderConfigOptions,
-} from './config/remarkSliderConfig.ts';
+  getSeminarConfigs,
+  remarkSeminarConfig,
+  type LoadedSeminarConfigEntry,
+  type RemarkSeminarConfigOptions,
+} from './config/remarkSeminarConfig.ts';
 export {
   parseDirectiveComponents,
   remarkDirectiveComponents,
@@ -20,18 +20,18 @@ export {
 export {
   CONFIG_CONDITION,
   importWithNode,
-  loadSliderConfig,
+  loadSeminarConfig,
   loadThemeConfig,
   type ImportedModule,
-  type LoadedSliderConfig,
+  type LoadedSeminarConfig,
   type LoadedThemeConfig,
   type ModuleImporter,
 } from './config/themeConfig.ts';
 export {
   deckMdxOptions,
-  sliderMdxOptions,
+  seminarMdxOptions,
   type DeckMdxOptions,
-  type SliderMdxOptions,
+  type SeminarMdxOptions,
 } from './options.ts';
 export {
   recmaSlideExports,
@@ -59,11 +59,11 @@ export {
 } from './config/deckSetup.ts';
 export {
   getFrontmatter,
-  getSliderOptionLayers,
-  getSliderOptions,
-  setRuntimeSliderOptions,
-  type SliderOptionsLayer,
-} from './config/sliderOptions.ts';
+  getSeminarOptionLayers,
+  getSeminarOptions,
+  setRuntimeSeminarOptions,
+  type SeminarOptionsLayer,
+} from './config/seminarOptions.ts';
 export { parseAttributeWords } from './directives/attributeWords.ts';
 export { getAttributes, type Attributes } from './directives/directives.ts';
 export { getStepProps } from './steps/remarkSteps.ts';

@@ -22,7 +22,7 @@ function renderDeck() {
         <a href="#nowhere">Link</a>
         <div role="button">Role button</div>
         <div tabIndex={0}>Focusable</div>
-        <div data-slider-interactive>Custom</div>
+        <div data-seminar-interactive>Custom</div>
         <div role="tablist">
           <span>Tab</span>
         </div>
@@ -144,7 +144,7 @@ describe('click navigation', () => {
     function renderPlacedDeck() {
       renderDeck();
       const text = screen.getByText('Text');
-      const slide = text.closest('[data-slider-view="audience"]');
+      const slide = text.closest('[data-seminar-view="audience"]');
       if (slide === null) {
         throw new Error('No slide frame');
       }
@@ -238,7 +238,7 @@ describe('click navigation', () => {
     const { container } = render(
       <Deck>
         <Slide title="Title">
-          <div data-slider-interactive>Custom</div>
+          <div data-seminar-interactive>Custom</div>
         </Slide>
       </Deck>,
     );
@@ -246,7 +246,7 @@ describe('click navigation', () => {
     // the track that moves the slides while swiping, with the box of the
     // frame of the slide.
     const root =
-      container.querySelector('[data-slider-view]')?.parentElement
+      container.querySelector('[data-seminar-view]')?.parentElement
         ?.parentElement?.parentElement?.parentElement ?? null;
     expect(root).not.toBeNull();
     if (root !== null) {

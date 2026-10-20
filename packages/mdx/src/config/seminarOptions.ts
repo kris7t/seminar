@@ -4,8 +4,8 @@ import type { Program } from 'estree';
 import type { VFile } from 'vfile';
 
 import { parseProgram } from '../utils/estree.ts';
-import { SLIDER_OPTIONS } from '../utils/jsx.ts';
-import { getSliderConfigs } from './remarkSliderConfig.ts';
+import { SEMINAR_OPTIONS } from '../utils/jsx.ts';
+import { getSeminarConfigs } from './remarkSeminarConfig.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -13,14 +13,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Returns the frontmatter of the deck that `file` compiles. */
 export function getFrontmatter(file: VFile): Record<string, unknown> {
-  const { sliderFrontmatter } = file.data as {
-    sliderFrontmatter?: Record<string, unknown>;
+  const { seminarFrontmatter } = file.data as {
+    seminarFrontmatter?: Record<string, unknown>;
   };
-  return sliderFrontmatter ?? {};
+  return seminarFrontmatter ?? {};
 }
 
 /** The options called some name that a config or the frontmatter sets. */
-export interface SliderOptionsLayer {
+export interface SeminarOptionsLayer {
   /** The options. */
   options: Record<string, unknown>;
   /**
@@ -36,17 +36,17 @@ export interface SliderOptionsLayer {
  * Returns the options called `name` that the configs of the plugins and the
  * theme of the deck that `file` compiles, and the key `name` of its
  * frontmatter set, in order of increasing precedence, e.g., to resolve the
- * files they name, or to merge lists (see `SliderConfig` in `@slider/core`).
+ * files they name, or to merge lists (see `SeminarConfig` in `@seminar/core`).
  *
- * Must be called after `remarkSlides` and `remarkSliderConfig`, which read
+ * Must be called after `remarkSlides` and `remarkSeminarConfig`, which read
  * the frontmatter and the configs, e.g., in plugins of the `mdx` config.
  */
-export function getSliderOptionLayers(
+export function getSeminarOptionLayers(
   file: VFile,
   name: string,
-): SliderOptionsLayer[] {
+): SeminarOptionsLayer[] {
   const layers = [
-    ...(getSliderConfigs(file) ?? []).map(({ source, config, base }) => ({
+    ...(getSeminarConfigs(file) ?? []).map(({ source, config, base }) => ({
       source: `\`options.${name}\` in the config of ${source}`,
       base,
       value:
@@ -76,39 +76,39 @@ export function getSliderOptionLayers(
  * Returns the options called `name` of the deck that `file` compiles, as
  * the `options` of the configs of the plugins and the theme, and the key
  * `name` of the frontmatter set them, in order of increasing precedence
- * (see `SliderConfig` in `@slider/core`). Their keys are merged, so later
- * ones replace earlier ones as a whole. See {@link getSliderOptionLayers}
+ * (see `SeminarConfig` in `@seminar/core`). Their keys are merged, so later
+ * ones replace earlier ones as a whole. See {@link getSeminarOptionLayers}
  * for the options as each of them sets them.
  */
-export function getSliderOptions(
+export function getSeminarOptions(
   file: VFile,
   name: string,
 ): Record<string, unknown> {
   return Object.assign(
     {},
-    ...getSliderOptionLayers(file, name).map(({ options }) => options),
+    ...getSeminarOptionLayers(file, name).map(({ options }) => options),
   ) as Record<string, unknown>;
 }
 
 /** Code of options in the browser that plugins set, by their name. */
 function getRuntimeOptions(file: VFile): Map<string, string> {
-  const data = file.data as { sliderRuntimeOptions?: Map<string, string> };
-  data.sliderRuntimeOptions ??= new Map();
-  return data.sliderRuntimeOptions;
+  const data = file.data as { seminarRuntimeOptions?: Map<string, string> };
+  data.seminarRuntimeOptions ??= new Map();
+  return data.seminarRuntimeOptions;
 }
 
 /**
  * Sets the options called `name` of the deck that `file` compiles in the
- * browser, where components read them with `useSliderOptions` of
- * `@slider/core`, to the value of the JavaScript expression `code`, e.g., to
+ * browser, where components read them with `useSeminarOptions` of
+ * `@seminar/core`, to the value of the JavaScript expression `code`, e.g., to
  * merge them differently, or to add functions that import modules. The code
  * can use the imports that the plugin adds to the deck.
  *
- * Otherwise, the deck has the options as {@link getSliderOptions} returns
+ * Otherwise, the deck has the options as {@link getSeminarOptions} returns
  * them. Must be called before the plugins of recma run, e.g., in plugins of
  * rehype.
  */
-export function setRuntimeSliderOptions(
+export function setRuntimeSeminarOptions(
   file: VFile,
   name: string,
   code: string,
@@ -119,12 +119,12 @@ export function setRuntimeSliderOptions(
 /**
  * Declares the options of the deck that `file` compiles for the browser,
  * which the `Deck` gets: those that the configs set, and those that plugins
- * set with {@link setRuntimeSliderOptions}.
+ * set with {@link setRuntimeSeminarOptions}.
  */
-export function recmaSliderOptions(): (tree: Program, file: VFile) => void {
+export function recmaSeminarOptions(): (tree: Program, file: VFile) => void {
   return (tree, file) => {
     const names = new Set<string>();
-    for (const { config } of getSliderConfigs(file) ?? []) {
+    for (const { config } of getSeminarConfigs(file) ?? []) {
       if (isRecord(config) && isRecord(config['options'])) {
         for (const name of Object.keys(config['options'])) {
           names.add(name);
@@ -136,7 +136,7 @@ export function recmaSliderOptions(): (tree: Program, file: VFile) => void {
       .filter((name) => !runtime.has(name))
       .map(
         (name) =>
-          `${JSON.stringify(name)}: ${JSON.stringify(getSliderOptions(file, name))}`,
+          `${JSON.stringify(name)}: ${JSON.stringify(getSeminarOptions(file, name))}`,
       );
     for (const [name, code] of runtime) {
       entries.push(`${JSON.stringify(name)}: (${code})`);
@@ -151,7 +151,7 @@ export function recmaSliderOptions(): (tree: Program, file: VFile) => void {
     tree.body.splice(
       index === -1 ? tree.body.length : index,
       0,
-      ...parseProgram(`const ${SLIDER_OPTIONS} = { ${entries.join(', ')} };`)
+      ...parseProgram(`const ${SEMINAR_OPTIONS} = { ${entries.join(', ')} };`)
         .body,
     );
   };

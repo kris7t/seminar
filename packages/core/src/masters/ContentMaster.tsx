@@ -15,7 +15,7 @@ export interface ContentMasterProps extends SlideMasterProps {
 export type ContentMasterClassKey = 'root' | 'title' | 'body' | 'slideNumber';
 
 export const contentMasterClasses: Record<ContentMasterClassKey, string> =
-  generateUtilityClasses('SliderContentMaster', [
+  generateUtilityClasses('SeminarContentMaster', [
     'root',
     'title',
     'body',
@@ -24,16 +24,16 @@ export const contentMasterClasses: Record<ContentMasterClassKey, string> =
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderContentMaster: ContentMasterClassKey;
+    SeminarContentMaster: ContentMasterClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderContentMaster: ContentMasterProps;
+    SeminarContentMaster: ContentMasterProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderContentMaster?:
-      ComponentTheme<'SliderContentMaster', Theme> | undefined;
+    SeminarContentMaster?:
+      ComponentTheme<'SeminarContentMaster', Theme> | undefined;
   }
 }
 
@@ -42,7 +42,7 @@ interface OwnerStateProps {
 }
 
 const ContentMasterRoot = styled('section', {
-  name: 'SliderContentMaster',
+  name: 'SeminarContentMaster',
   slot: 'Root',
 })<OwnerStateProps>(({ theme }) => ({
   position: 'relative',
@@ -55,7 +55,7 @@ const ContentMasterRoot = styled('section', {
 }));
 
 const ContentMasterTitle = styled('h1', {
-  name: 'SliderContentMaster',
+  name: 'SeminarContentMaster',
   slot: 'Title',
 })<OwnerStateProps>(({ theme }) => ({
   ...theme.typography.h2,
@@ -63,7 +63,7 @@ const ContentMasterTitle = styled('h1', {
 }));
 
 const ContentMasterBody = styled('div', {
-  name: 'SliderContentMaster',
+  name: 'SeminarContentMaster',
   slot: 'Body',
 })<OwnerStateProps>({
   flex: 1,
@@ -71,7 +71,7 @@ const ContentMasterBody = styled('div', {
 });
 
 const ContentMasterSlideNumber = styled(SlideNumber, {
-  name: 'SliderContentMaster',
+  name: 'SeminarContentMaster',
   slot: 'SlideNumber',
 })<OwnerStateProps>(({ theme }) => ({
   position: 'absolute',
@@ -83,10 +83,10 @@ const ContentMasterSlideNumber = styled(SlideNumber, {
  * Slide master with a heading at the top, the body below it, and the slide
  * number in the bottom right corner.
  *
- * Can be themed as `SliderContentMaster` in the `components` of the MUI theme.
+ * Can be themed as `SeminarContentMaster` in the `components` of the MUI theme.
  */
 export function ContentMaster(inProps: ContentMasterProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderContentMaster' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarContentMaster' });
   const { title, className, children, showSlideNumber = true } = props;
   return (
     <ContentMasterRoot

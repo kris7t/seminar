@@ -4,7 +4,7 @@ import type {} from 'mdast-util-directive';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import { compileDeck, renderDeck, slides, text } from '../test/compileDeck.ts';
 
 describe('remarkNotes', () => {
@@ -50,7 +50,7 @@ Say *this*
     expect(
       text(
         (module as unknown as Record<string, (props: object) => ReactNode>)[
-          '__sliderNotes0'
+          '__seminarNotes0'
         ]?.({}),
       ),
     ).toBe('<p>Say <em>this</em></p>');
@@ -58,7 +58,7 @@ Say *this*
 
   it('reports notes inside other content', async () => {
     const file = await compile('## A\n\n> :::notes\n> B\n> :::', {
-      ...sliderMdxOptions(),
+      ...seminarMdxOptions(),
     });
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining('Expected `:::notes` at the top level'),
@@ -67,9 +67,9 @@ Say *this*
 
   it('leaves other directives to other plugins', async () => {
     const file = await compile(':::other\nText\n:::', {
-      ...sliderMdxOptions(),
+      ...seminarMdxOptions(),
       remarkPlugins: [
-        ...(sliderMdxOptions().remarkPlugins ?? []),
+        ...(seminarMdxOptions().remarkPlugins ?? []),
         () => (tree: Root) => {
           const visit = (node: Nodes) => {
             if (node.type === 'containerDirective') {

@@ -10,11 +10,11 @@ import * as runtime from 'react/jsx-runtime';
 import { SLIDE_EXPORT_PREFIX } from '../deck/recmaSlideExports.ts';
 import { loadDeckSetup, readDeckTheme } from '../config/deckSetup.ts';
 import type { ModuleImporter } from '../config/themeConfig.ts';
-import { sliderMdxOptions, type SliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions, type SeminarMdxOptions } from '../options.ts';
 
 export type SlideSummary = Record<string, unknown>;
 
-/** URL of the stub of `@slider/core` that compiled decks import. */
+/** URL of the stub of `@seminar/core` that compiled decks import. */
 export const STUB_URL: string = new URL('stub.ts', import.meta.url).href;
 
 /** URL of a theme for compiled decks. */
@@ -23,7 +23,7 @@ export const THEME_URL: string = new URL('theme.ts', import.meta.url).href;
 export async function compileDeck(source: string) {
   const module = await evaluate(source, {
     ...runtime,
-    ...sliderMdxOptions({
+    ...seminarMdxOptions({
       importSource: STUB_URL,
     }),
     baseUrl: import.meta.url,
@@ -73,8 +73,8 @@ export function text(node: ReactNode): string {
     // them.
     if (
       typeof node.type === 'function' &&
-      (node.type.name.startsWith('__sliderTitle') ||
-        node.type.name.startsWith('__sliderNotes'))
+      (node.type.name.startsWith('__seminarTitle') ||
+        node.type.name.startsWith('__seminarNotes'))
     ) {
       return text((node.type as (props: object) => ReactNode)(node.props));
     }
@@ -133,9 +133,9 @@ export async function slides(source: string): Promise<SlideSummary[]> {
 export async function withThemeConfig(
   source: string,
   deckPath: string,
-  options: SliderMdxOptions = {},
+  options: SeminarMdxOptions = {},
   importModule?: ModuleImporter,
-): Promise<SliderMdxOptions> {
+): Promise<SeminarMdxOptions> {
   const theme = readDeckTheme(source) ?? options.defaultTheme;
   if (theme === undefined) {
     return options;
@@ -148,7 +148,10 @@ export async function withThemeConfig(
   });
   return {
     ...options,
-    sliderConfigs: [...(options.sliderConfigs ?? []), ...setup.sliderConfigs],
+    seminarConfigs: [
+      ...(options.seminarConfigs ?? []),
+      ...setup.seminarConfigs,
+    ],
     mdxPlugins: setup.mdxPlugins,
   };
 }

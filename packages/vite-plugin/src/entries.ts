@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { readDeckFrontmatter } from '@slider/mdx';
+import { readDeckFrontmatter } from '@seminar/mdx';
 import type { PluggableList } from 'unified';
 import type { Plugin } from 'vite';
 
@@ -16,10 +16,10 @@ import {
 } from './decks.ts';
 
 /** Query that marks the script that renders a deck. */
-const ENTRY_QUERY = '?slider-entry';
+const ENTRY_QUERY = '?seminar-entry';
 
 /** Prefix of the virtual modules that render decks. */
-const ENTRY_PREFIX = '\0slider-entry:';
+const ENTRY_PREFIX = '\0seminar-entry:';
 
 /** Whether `file` is inside of the directory `root`, not in a sibling. */
 function isInside(root: string, file: string): boolean {
@@ -138,12 +138,12 @@ function addInputs(
  *
  * Only works with Vite.
  */
-export function sliderEntries({
+export function seminarEntries({
   syntaxPlugins,
 }: { syntaxPlugins?: SyntaxPlugins | undefined } = {}): Plugin {
   let root = process.cwd();
   return {
-    name: 'slider:entries',
+    name: 'seminar:entries',
     enforce: 'pre',
 
     config(config) {

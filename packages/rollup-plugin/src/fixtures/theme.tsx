@@ -1,7 +1,7 @@
-import { createSlideTheme, type SlideMasterProps } from '@slider/core';
+import { createSlideTheme, type SlideMasterProps } from '@seminar/core';
 import type { JSX } from 'react';
 
-declare module '@slider/core' {
+declare module '@seminar/core' {
   interface StepBehaviorOverrides {
     ghost: true;
   }

@@ -21,7 +21,7 @@ scripts/android/start-emulator.sh 'http://localhost:5173/#revealing-content'
 ```
 
 `start-emulator.sh` installs the system image and creates the virtual device
-`slider`, if needed, downloads Chromium into `~/.cache/slider-android`, boots
+`seminar`, if needed, downloads Chromium into `~/.cache/seminar-android`, boots
 the emulator, and opens the URL in Chromium. Calling it again opens another
 URL in the running emulator. Set `PORT` if the dev server doesn't listen on
 5173, and `CHROMIUM_REVISION` to try another build from the

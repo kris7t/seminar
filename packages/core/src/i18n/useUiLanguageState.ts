@@ -9,7 +9,7 @@ import {
 import type { UiLanguage } from './UiLanguageContext.ts';
 
 /** Key of the language of the user interface chosen by the viewer. */
-const STORAGE_KEY = 'slider:ui-language';
+const STORAGE_KEY = 'seminar:ui-language';
 
 function readChoice(): string | undefined {
   try {

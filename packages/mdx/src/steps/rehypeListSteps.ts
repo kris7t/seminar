@@ -151,7 +151,7 @@ function isStep(node: RootContent | ElementContent): boolean {
 }
 
 /**
- * Checks the step groups of a slide. As in `@slider/core`, the least nested
+ * Checks the step groups of a slide. As in `@seminar/core`, the least nested
  * element of a group (the first one if there are several) places the group,
  * so `with` is ignored on the other elements.
  */

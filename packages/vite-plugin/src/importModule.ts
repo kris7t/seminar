@@ -1,10 +1,10 @@
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { ImportedModule, ModuleImporter } from '@slider/mdx';
+import type { ImportedModule, ModuleImporter } from '@seminar/mdx';
 import { isCSSRequest, runnerImport, type Plugin } from 'vite';
 
-const EMPTY_MODULE = '\0slider-empty-module';
+const EMPTY_MODULE = '\0seminar-empty-module';
 
 /**
  * Replaces style sheets with empty modules, since they don't affect the
@@ -12,7 +12,7 @@ const EMPTY_MODULE = '\0slider-empty-module';
  * modules at compile time.
  */
 const stubStyles: Plugin = {
-  name: 'slider:stub-styles',
+  name: 'seminar:stub-styles',
   enforce: 'pre',
   resolveId(source) {
     return isCSSRequest(source) ? EMPTY_MODULE : undefined;

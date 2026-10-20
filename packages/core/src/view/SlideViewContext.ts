@@ -116,4 +116,4 @@ export function useSlideView(): SlideViewState {
 }
 
 /** The data attribute of the element of a slide view with its kind. */
-export const SLIDE_VIEW_ATTRIBUTE = 'data-slider-view';
+export const SLIDE_VIEW_ATTRIBUTE = 'data-seminar-view';

@@ -61,7 +61,7 @@ interface Press {
  * dismisses them instead.
  *
  * Clicks on interactive elements, such as links, buttons, form controls, and
- * elements with the `data-slider-interactive` attribute, are ignored (see
+ * elements with the `data-seminar-interactive` attribute, are ignored (see
  * {@link getInteraction}), and so are clicks on selectable text (see
  * {@link isSelectable}), and so are clicks that started on them, or that
  * moved too much between press and release to be clicks, e.g., when

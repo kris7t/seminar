@@ -3,7 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from './Deck.tsx';
-import { useSliderOptions } from './SliderOptionsContext.ts';
+import { useSeminarOptions } from './SeminarOptionsContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
 import { Together } from '../steps/Together.tsx';
@@ -48,7 +48,7 @@ describe('Deck', () => {
   it('provides its options to the slides', () => {
     function Options() {
       return (
-        <>{JSON.stringify([useSliderOptions('a'), useSliderOptions('b')])}</>
+        <>{JSON.stringify([useSeminarOptions('a'), useSeminarOptions('b')])}</>
       );
     }
     render(
@@ -268,7 +268,7 @@ describe('Deck', () => {
       </Deck>,
     );
     expect(window.location.hash).toBe('#slide=1&step=named');
-    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+    expect(screen.getByText('b').classList).toContain('SeminarStep-current');
   });
 
   it('stays on a named step when its group is renamed', async () => {
@@ -293,7 +293,7 @@ describe('Deck', () => {
       </Deck>,
     );
     expect(window.location.hash).toBe('#slide=1&step=renamed');
-    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+    expect(screen.getByText('b').classList).toContain('SeminarStep-current');
   });
 
   it('stays on an unnamed step when steps are added before it', async () => {
@@ -319,7 +319,7 @@ describe('Deck', () => {
       </Deck>,
     );
     expect(window.location.hash).toBe('#slide=1&step=3');
-    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+    expect(screen.getByText('b').classList).toContain('SeminarStep-current');
   });
 
   it('stays on the step that keeps the most of its text', async () => {
@@ -353,7 +353,7 @@ describe('Deck', () => {
       </Deck>,
     );
     expect(window.location.hash).toBe('#slide=1&step=4');
-    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+    expect(screen.getByText('b').classList).toContain('SeminarStep-current');
   });
 
   it('stays on a step from the location hash when steps are added', () => {
@@ -397,7 +397,7 @@ describe('Deck', () => {
       </Deck>,
     );
     expect(window.location.hash).toBe('#slide=1&step=renamed');
-    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+    expect(screen.getByText('b').classList).toContain('SeminarStep-current');
   });
 
   it('accepts slide numbers for slides with an id', () => {

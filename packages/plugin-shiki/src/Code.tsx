@@ -5,7 +5,7 @@ import {
   WITH_PREVIOUS,
   type ComponentTheme,
   type StepProps,
-} from '@slider/core';
+} from '@seminar/core';
 import type { JSX, ReactNode } from 'react';
 
 /** Props of a {@link Code} block. */
@@ -26,26 +26,26 @@ export interface CodeProps extends Omit<
 export type CodeClassKey = 'root';
 
 export const codeClasses: Record<CodeClassKey, string> = generateUtilityClasses(
-  'SliderCode',
+  'SeminarCode',
   ['root'],
 );
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderCode: CodeClassKey;
+    SeminarCode: CodeClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderCode: CodeProps;
+    SeminarCode: CodeProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderCode?: ComponentTheme<'SliderCode', Theme> | undefined;
+    SeminarCode?: ComponentTheme<'SeminarCode', Theme> | undefined;
   }
 }
 
 const CodeRoot = styled(Step, {
-  name: 'SliderCode',
+  name: 'SeminarCode',
   slot: 'Root',
   overridesResolver: (_props, styles) => styles['root'],
 })(({ theme }) => ({
@@ -67,14 +67,14 @@ const CodeRoot = styled(Step, {
  * shown with the previous step, like paragraphs, unless it's placed
  * otherwise.
  *
- * Can be themed as `SliderCode` in the `components` of the MUI theme.
+ * Can be themed as `SeminarCode` in the `components` of the MUI theme.
  */
 export function Code(inProps: CodeProps): JSX.Element {
   // The meta and the text of the block are for other components, and aren't
   // passed on to the element.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { lang, meta, code, className, children, ...stepProps } = useThemeProps(
-    { props: inProps, name: 'SliderCode' },
+    { props: inProps, name: 'SeminarCode' },
   );
   return (
     <CodeRoot

@@ -8,7 +8,7 @@ import {
   deckMdxOptions,
   importWithNode,
   type ModuleImporter,
-} from '@slider/mdx';
+} from '@seminar/mdx';
 
 import * as compileModule from './compile.ts';
 
@@ -16,7 +16,7 @@ const DECK_PATH = path.join(import.meta.dirname, 'test', 'test.deck.mdx');
 
 /** Imports the plugins of this package from their sources. */
 const importPlugin: ModuleImporter = (specifier, importer) =>
-  specifier === '@slider/plugin-mathjax/compile'
+  specifier === '@seminar/plugin-mathjax/compile'
     ? Promise.resolve({ module: compileModule })
     : importWithNode(specifier, importer);
 
@@ -24,7 +24,7 @@ const importPlugin: ModuleImporter = (specifier, importer) =>
 async function compileDeck(
   source: string,
   deckPath = DECK_PATH,
-  plugins: string[] = ['@slider/plugin-mathjax'],
+  plugins: string[] = ['@seminar/plugin-mathjax'],
 ) {
   const { options, setup } = await deckMdxOptions(source, deckPath, {
     plugins,
@@ -54,9 +54,9 @@ describe('rehypeMathJax', () => {
       '## Math\n\nInline $x^{2}$\n\n$$\n\\int \\pi\n$$',
     );
     expect(messages).toEqual([]);
-    expect(code).toContain('Formula as _SliderMathFormula');
+    expect(code).toContain('Formula as _SeminarMathFormula');
     expect(
-      code.match(/_jsxs?\(_SliderMathFormula, \{\s*(display: true)?/g),
+      code.match(/_jsxs?\(_SeminarMathFormula, \{\s*(display: true)?/g),
     ).toEqual([
       expect.not.stringContaining('display'),
       expect.stringContaining('display: true'),
@@ -127,21 +127,23 @@ describe('rehypeMathJax', () => {
     }
 
     beforeAll(async () => {
-      directory = await mkdtemp(path.join(tmpdir(), 'slider-themes-'));
+      directory = await mkdtemp(path.join(tmpdir(), 'seminar-themes-'));
       deckPath = path.join(directory, 'talk.deck.mdx');
       const newcm = { options: { math: { font: 'newcm' } } };
       await createTheme(
         'condition-theme',
         {
-          exports: { '.': { slider: './slider.json', default: './index.js' } },
+          exports: {
+            '.': { seminar: './seminar.json', default: './index.js' },
+          },
           // Ignored in favor of the export condition.
-          slider: { options: { math: { font: 'missing' } } },
+          seminar: { options: { math: { font: 'missing' } } },
         },
-        { 'slider.json': newcm },
+        { 'seminar.json': newcm },
       );
       await createTheme('key-theme', {
         exports: { '.': './index.js' },
-        slider: newcm,
+        seminar: newcm,
       });
     });
 
@@ -162,7 +164,7 @@ describe('rehypeMathJax', () => {
     );
   });
 
-  it('uses the slider export of other themes', async () => {
+  it('uses the seminar export of other themes', async () => {
     const { code, messages } = await compileDeck(
       '---\ntheme: ./theme.ts\n---\n\n$\\R \\T$',
     );
@@ -203,7 +205,7 @@ describe('rehypeMathJax', () => {
   /** Returns the options of the deck in the browser, as code on one line. */
   function runtimeOptions(code: string): string {
     return (
-      /const _sliderOptions = (\{[\s\S]*?\n\});/.exec(code)?.[1] ?? ''
+      /const _seminarOptions = (\{[\s\S]*?\n\});/.exec(code)?.[1] ?? ''
     ).replaceAll(/\s+/g, ' ');
   }
 
@@ -212,7 +214,7 @@ describe('rehypeMathJax', () => {
       '---\ntheme: ./theme.ts\nmath:\n  tags: none\n---\n\nNo math',
     );
     expect(messages).toEqual([]);
-    expect(code).toContain('options: _sliderOptions');
+    expect(code).toContain('options: _seminarOptions');
     const math = runtimeOptions(code);
     expect(math).toContain('font: "newcm"');
     expect(math).toContain('macros: { "R": "\\\\mathbb{R}", "T": "theme" }');
@@ -229,9 +231,9 @@ describe('rehypeMathJax', () => {
     expect(messages).toEqual([]);
     const math = runtimeOptions(code);
     expect(math).toContain(
-      'loadRenderer: () => import("@slider/plugin-mathjax/render")',
+      'loadRenderer: () => import("@seminar/plugin-mathjax/render")',
     );
-    expect(math).toContain('font: _sliderDefineMathFont(');
+    expect(math).toContain('font: _seminarDefineMathFont(');
     expect(math).toMatch(
       /import\("@mathjax\/mathjax-newcm-font\/mjs\/svg\.js"\)/,
     );
@@ -254,7 +256,7 @@ describe('rehypeMathJax', () => {
 
   it('leaves dollar signs alone without the plugin', async () => {
     const { code } = await compileDeck('Costs $5 or $6', DECK_PATH, []);
-    expect(code).not.toContain('_SliderMathFormula');
+    expect(code).not.toContain('_SeminarMathFormula');
     expect(code).toContain('Costs $5 or $6');
   });
 });

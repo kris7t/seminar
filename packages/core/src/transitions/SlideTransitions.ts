@@ -66,43 +66,43 @@ export function getFadeTransition(
  * {@link SlideTransitionKind}: the slide frame itself, if the browser supports view transitions scoped to an element, or
  * the root element of its document otherwise.
  */
-export const TRANSITION_ATTRIBUTE = 'data-slider-transition';
+export const TRANSITION_ATTRIBUTE = 'data-seminar-transition';
 
 /**
  * Custom property of the element whose view transition is running with its
  * duration, if it differs from that of the theme, e.g., for a slide.
  */
-export const DURATION_PROPERTY = '--slider-fade-duration';
+export const DURATION_PROPERTY = '--seminar-fade-duration';
 
 /**
  * Custom property of a frame with how far its view transitions move their
  * snapshots back onto it, see {@link alignSnapshots}.
  */
-export const SNAPSHOT_OFFSET_PROPERTY = '--slider-snapshot-offset';
+export const SNAPSHOT_OFFSET_PROPERTY = '--seminar-snapshot-offset';
 
 /**
  * Attribute of the slide frames that take part in a view transition of their
  * whole document, which are the only parts of the document that are animated.
  */
-export const TRANSITION_FRAME_ATTRIBUTE = 'data-slider-transition-frame';
+export const TRANSITION_FRAME_ATTRIBUTE = 'data-seminar-transition-frame';
 
 /**
  * Name of the view transition of slide frames in transitions of their whole
  * document.
  */
-export const SLIDE_TRANSITION_NAME = 'slider-slide';
+export const SLIDE_TRANSITION_NAME = 'seminar-slide';
 
 /**
  * Name of the view transition of the mirrored pointer, which keeps following
  * the mouse while the slide fades.
  */
-export const POINTER_TRANSITION_NAME = 'slider-pointer';
+export const POINTER_TRANSITION_NAME = 'seminar-pointer';
 
 /**
  * View transition class of elements that animate themselves, rather than
  * fading with the slide (see {@link useOwnAnimation}).
  */
-export const OWN_ANIMATION_CLASS = 'slider-own-animation';
+export const OWN_ANIMATION_CLASS = 'seminar-own-animation';
 
 /**
  * Returns styles that keep an element out of the fade of the slide from one
@@ -120,7 +120,7 @@ export function useOwnAnimation(): CSSProperties {
   // View transition names must be identifiers.
   const id = useId().replace(/[^\w-]/g, '');
   return {
-    viewTransitionName: `slider-own-animation-${id}`,
+    viewTransitionName: `seminar-own-animation-${id}`,
     viewTransitionClass: OWN_ANIMATION_CLASS,
   };
 }

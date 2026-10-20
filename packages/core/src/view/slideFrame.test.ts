@@ -104,7 +104,7 @@ describe('slideScaleStyles', () => {
     );
     expect(slideScaleStyles(1.5)).toEqual({
       zoom: 1.5,
-      '--slider-zoom': 1.5,
+      '--seminar-zoom': 1.5,
     });
   });
 });

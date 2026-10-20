@@ -6,7 +6,7 @@ import {
   Together,
   Steps,
   type TocEntry,
-} from '@slider/core';
+} from '@seminar/core';
 import type { JSX } from 'react';
 
 import { ClosingMaster, theme } from './theme.tsx';
@@ -30,7 +30,7 @@ const toc: TocEntry[] = [
 export function ExampleDeck(): JSX.Element {
   return (
     <Deck theme={theme} toc={toc}>
-      <Slide master="title" title="slider">
+      <Slide master="title" title="Seminar">
         <Typography variant="subtitle1">
           Scientific talks and lectures in Markdown
         </Typography>
@@ -38,7 +38,7 @@ export function ExampleDeck(): JSX.Element {
           Use the arrow keys, Page Up / Page Down or Space to navigate.
         </Typography>
       </Slide>
-      <Slide id="why" title="Why slider?">
+      <Slide id="why" title="Why Seminar?">
         <ul>
           <li>Keep your slides in plain text under version control</li>
           <li>Write content in Markdown, style it with themes</li>
@@ -120,7 +120,7 @@ export function ExampleDeck(): JSX.Element {
       <Slide master={ClosingMaster} title="Thank you!">
         <Typography variant="subtitle1">Questions?</Typography>
         <Typography variant="body2">
-          Back to <Link href="#why">Why slider?</Link> or{' '}
+          Back to <Link href="#why">Why Seminar?</Link> or{' '}
           <Link href="#slide=1">the beginning</Link>
         </Typography>
       </Slide>

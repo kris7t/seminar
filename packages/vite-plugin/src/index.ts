@@ -1,28 +1,28 @@
-import rollupSlider, {
-  type SliderPlugin as RollupSliderPlugin,
-  type SliderPluginOptions as RollupSliderPluginOptions,
-} from '@slider/rollup-plugin';
+import rollupSeminar, {
+  type SeminarPlugin as RollupSeminarPlugin,
+  type SeminarPluginOptions as RollupSeminarPluginOptions,
+} from '@seminar/rollup-plugin';
 
 import type { Plugin } from 'vite';
 
-import { sliderEntries } from './entries.ts';
-import { sliderHotReload } from './hotReload.ts';
+import { seminarEntries } from './entries.ts';
+import { seminarHotReload } from './hotReload.ts';
 import { createViteImporter } from './importModule.ts';
 import {
-  sliderSelfContained,
+  seminarSelfContained,
   type SelfContainedOptions,
 } from './selfContained.ts';
 
-export interface SliderPluginOptions extends RollupSliderPluginOptions {
+export interface SeminarPluginOptions extends RollupSeminarPluginOptions {
   /**
    * Whether to turn `.deck.mdx` files into entry points with generated HTML
-   * pages (see {@link sliderEntries}). Defaults to `true`.
+   * pages (see {@link seminarEntries}). Defaults to `true`.
    */
   entries?: boolean;
   /**
    * Whether `vite build` turns the generated page of each deck into a single,
    * self-contained HTML file, with all scripts, style sheets, fonts, and
-   * other assets inlined (see {@link sliderSelfContained}). Defaults to
+   * other assets inlined (see {@link seminarSelfContained}). Defaults to
    * `true`. Disable it, e.g., when hosting decks with a Content Security
    * Policy that forbids inline scripts.
    *
@@ -33,36 +33,36 @@ export interface SliderPluginOptions extends RollupSliderPluginOptions {
 
 /**
  * Compiles `.deck.mdx` files into `Deck` components (see
- * `@slider/rollup-plugin`) and turns them into entry points with generated
- * HTML pages (see {@link sliderEntries}).
+ * `@seminar/rollup-plugin`) and turns them into entry points with generated
+ * HTML pages (see {@link seminarEntries}).
  *
  * With `@vitejs/plugin-react`, the dev server updates decks in place when they
- * change, keeping their state (see {@link sliderHotReload}).
+ * change, keeping their state (see {@link seminarHotReload}).
  *
  * Theme modules that aren't packages with a compile-time config are imported
- * with the module runner of Vite to read their `slider` export (see
- * `SliderConfig` in `@slider/core`). This takes about a second, so modules are
+ * with the module runner of Vite to read their `seminar` export (see
+ * `SeminarConfig` in `@seminar/core`). This takes about a second, so modules are
  * cached until one of their files changes.
  */
-export default function slider({
+export default function seminar({
   entries = true,
   selfContained = true,
   ...options
-}: SliderPluginOptions = {}): Plugin[] {
+}: SeminarPluginOptions = {}): Plugin[] {
   let root = process.cwd();
-  const rollupPlugin: RollupSliderPlugin = rollupSlider({
+  const rollupPlugin: RollupSeminarPlugin = rollupSeminar({
     // Theme modules may be written in TypeScript and import style sheets.
     importModule: createViteImporter(() => root),
     ...options,
   });
   const mdx = rollupPlugin as unknown as Plugin;
   const setRoot: Plugin = {
-    name: 'slider:root',
+    name: 'seminar:root',
     configResolved(config) {
       root = config.root;
     },
   };
-  const hotReload = sliderHotReload({ include: options.include });
+  const hotReload = seminarHotReload({ include: options.include });
   if (!entries) {
     return [mdx, setRoot, hotReload];
   }
@@ -70,19 +70,19 @@ export default function slider({
     mdx,
     setRoot,
     hotReload,
-    sliderEntries({
+    seminarEntries({
       syntaxPlugins: (source, deckPath) =>
         rollupPlugin.syntaxPlugins(source, deckPath),
     }),
     ...(selfContained === false
       ? []
-      : [sliderSelfContained(selfContained === true ? {} : selfContained)]),
+      : [seminarSelfContained(selfContained === true ? {} : selfContained)]),
   ];
 }
 
 export {
-  sliderEntries,
-  sliderHotReload,
-  sliderSelfContained,
+  seminarEntries,
+  seminarHotReload,
+  seminarSelfContained,
   type SelfContainedOptions,
 };

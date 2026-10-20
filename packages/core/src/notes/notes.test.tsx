@@ -117,9 +117,9 @@ describe('Notes', () => {
     const user = userEvent.setup();
     renderDeck();
     const [shown] = notes();
-    expect(shown?.hasAttribute('data-slider-interactive')).toBe(false);
+    expect(shown?.hasAttribute('data-seminar-interactive')).toBe(false);
     await user.click(within(shown ?? document.body).getByRole('button'));
-    expect(shown?.hasAttribute('data-slider-interactive')).toBe(true);
+    expect(shown?.hasAttribute('data-seminar-interactive')).toBe(true);
   });
 
   it('expands the notes without navigating', async () => {

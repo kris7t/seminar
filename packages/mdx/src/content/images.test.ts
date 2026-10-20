@@ -2,7 +2,7 @@ import { compile } from '@mdx-js/mdx';
 import { describe, expect, it } from 'vitest';
 
 import { rewriteHeadingAttributes } from '../directives/remarkHeadingAttributes.ts';
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import { slides } from '../test/compileDeck.ts';
 
 const ARCH = 'https://example.com/arch.svg';
@@ -64,12 +64,12 @@ See ![icon](${ARCH}){.small} here, and ![ref][logo]
     const file = await compile(
       '## Slide\n\n![A](./a%20b.svg)\n\n![B](./a%20b.svg)',
       {
-        ...sliderMdxOptions(),
+        ...seminarMdxOptions(),
       },
     );
     const code = String(file);
-    expect(code).toContain('import _SliderImage0 from "./a b.svg";');
-    expect(code.match(/src: _SliderImage0/g)).toHaveLength(2);
+    expect(code).toContain('import _SeminarImage0 from "./a b.svg";');
+    expect(code.match(/src: _SeminarImage0/g)).toHaveLength(2);
   });
 
   it('rewrites attribute blocks after images outside of code', () => {
@@ -78,7 +78,7 @@ See ![icon](${ARCH}){.small} here, and ![ref][logo]
         'A ![x](y){#a} `![x](y){#b}` ![x][r]{.c} ![x](y) {#d}\n',
       ),
     ).toBe(
-      'A ![x](y):slider-attributes{#a} `![x](y){#b}` ![x][r]:slider-attributes{.c} ![x](y) {#d}\n',
+      'A ![x](y):seminar-attributes{#a} `![x](y){#b}` ![x][r]:seminar-attributes{.c} ![x](y) {#d}\n',
     );
   });
 });

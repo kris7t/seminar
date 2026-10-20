@@ -223,7 +223,7 @@ export type StepClassKey =
   'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
 
 export const stepClasses: Record<StepClassKey, string> = generateUtilityClasses(
-  'SliderStep',
+  'SeminarStep',
   [
     'root',
     'distantFuture',
@@ -240,15 +240,15 @@ export const stepClasses: Record<StepClassKey, string> = generateUtilityClasses(
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderStep: StepClassKey;
+    SeminarStep: StepClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderStep: StepProps;
+    SeminarStep: StepProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderStep?: ComponentTheme<'SliderStep', Theme> | undefined;
+    SeminarStep?: ComponentTheme<'SeminarStep', Theme> | undefined;
   }
 }
 
@@ -258,7 +258,7 @@ interface StepOwnerState extends StepProps {
 }
 
 const StepRoot = styled('div', {
-  name: 'SliderStep',
+  name: 'SeminarStep',
   slot: 'Root',
 })<{ ownerState: StepOwnerState }>({
   // Steps change at once: views that show them fade the whole slide instead
@@ -267,7 +267,7 @@ const StepRoot = styled('div', {
   // Keep the space of hidden content, so that the layout doesn't shift.
   [`&.${stepClasses.hidden}`]: { visibility: 'hidden', opacity: 0 },
   [`&.${stepClasses.dimmed}`]: {
-    opacity: 'var(--SliderStep-dim-opacity, 0.35)',
+    opacity: 'var(--SeminarStep-dim-opacity, 0.35)',
   },
   [`&.${stepClasses.collapsed}`]: { display: 'none' },
 });
@@ -295,20 +295,20 @@ const StepRoot = styled('div', {
  * at least the time it asks for, e.g., for an animation. Otherwise, the
  * `fade` of the slide counts.
  *
- * Can be themed as `SliderStep` in the `components` of the MUI theme. The step
- * has a class for its phase (`SliderStep-distantFuture`, `-future`,
+ * Can be themed as `SeminarStep` in the `components` of the MUI theme. The step
+ * has a class for its phase (`SeminarStep-distantFuture`, `-future`,
  * `-current`, `-open`, `-past`, or `-distantPast`, see {@link StepPhase}),
- * and `SliderStep-dimmed`, `-hidden`, or `-collapsed` if it has to dim,
+ * and `SeminarStep-dimmed`, `-hidden`, or `-collapsed` if it has to dim,
  * hide, or collapse itself, or the class of an
  * appearance added by the theme (see {@link StepAppearanceOverrides}). The
- * opacity of dimmed steps is the `--SliderStep-dim-opacity` custom property.
+ * opacity of dimmed steps is the `--SeminarStep-dim-opacity` custom property.
  * Add behaviors with `stepBehaviors` in the theme, which map phases to
  * appearances, and style further appearances by their classes here, e.g.,
- * `{ root: { '&.SliderStep-blurred': { filter: 'blur(4px)' } } }`, rather
+ * `{ root: { '&.SeminarStep-blurred': { filter: 'blur(4px)' } } }`, rather
  * than styling behaviors or phases, which nested steps don't inherit.
  */
 export function Step(inProps: StepProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderStep' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarStep' });
   const theme = useTheme();
   const slideBehavior = use(StepBehaviorContext);
   const enclosing = use(StepAppearanceContext);
@@ -395,7 +395,7 @@ export function Step(inProps: StepProps): JSX.Element {
       className={classNames(
         stepClasses.root,
         stepClasses[phase],
-        appearanceClass('SliderStep', appearance, enclosing),
+        appearanceClass('SeminarStep', appearance, enclosing),
         className,
       )}
       ownerState={{ ...props, behavior, phase }}

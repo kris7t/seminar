@@ -1,13 +1,14 @@
 {
-  "name": "@slider/mdx",
+  "name": "@seminar/mdx",
   "version": "0.0.0",
   "private": true,
-  "description": "MDX support for slider presentations",
+  "description": "MDX support for Seminar presentations",
+  "homepage": "https://seminar.run",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": {
-      "@slider/source": "./src/index.ts",
+      "@seminar/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },

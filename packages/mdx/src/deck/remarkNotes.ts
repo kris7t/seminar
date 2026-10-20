@@ -37,7 +37,7 @@ function transform(parent: Parents, file: VFile) {
 /**
  * Turns `:::notes` container directives (parsed by `remark-directive`) into
  * the presenter notes of their slide, i.e., the `Notes` component of
- * `@slider/core`. Notes must be at the top level of the slide.
+ * `@seminar/core`. Notes must be at the top level of the slide.
  *
  * Other directives are left to other plugins.
  */

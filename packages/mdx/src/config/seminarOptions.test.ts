@@ -5,17 +5,17 @@ import type { VFile } from 'vfile';
 import { describe, expect, it } from 'vitest';
 
 import { emptyMdxPlugins } from './deckSetup.ts';
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import { STUB_URL } from '../test/compileDeck.ts';
-import { setRuntimeSliderOptions } from './sliderOptions.ts';
+import { setRuntimeSeminarOptions } from './seminarOptions.ts';
 
 /** Compiles a deck with configs that set options, and returns its options. */
 async function deckOptions(source: string, rehypePlugin?: () => void) {
   const module = await evaluate(source, {
     ...runtime,
-    ...sliderMdxOptions({
+    ...seminarMdxOptions({
       importSource: STUB_URL,
-      sliderConfigs: [
+      seminarConfigs: [
         {
           source: 'plugin',
           base: import.meta.filename,
@@ -57,8 +57,8 @@ describe('options of decks in the browser', () => {
   it('lets plugins replace options with code', async () => {
     expect(
       await deckOptions('# Slide', () => (_tree: unknown, file: VFile) => {
-        setRuntimeSliderOptions(file, 'code', '{ lines: [1, 2].length }');
-        setRuntimeSliderOptions(file, 'extra', 'true');
+        setRuntimeSeminarOptions(file, 'code', '{ lines: [1, 2].length }');
+        setRuntimeSeminarOptions(file, 'extra', 'true');
       }),
     ).toEqual({ code: { lines: 2 }, other: { a: 1 }, extra: true });
   });

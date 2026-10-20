@@ -13,7 +13,7 @@ import type {
 import { DECK, NOTES } from '../utils/jsx.ts';
 
 /** Prefix of the names of the components that decks export for their slides. */
-export const SLIDE_EXPORT_PREFIX = '__sliderSlide';
+export const SLIDE_EXPORT_PREFIX = '__seminarSlide';
 
 /** Returns the name of the component of the slide at `index` of a deck. */
 export function slideExportName(index: number): string {
@@ -25,7 +25,7 @@ export function slideExportName(index: number): string {
  * a deck, which slides with titles have.
  */
 export function titleExportName(index: number): string {
-  return `__sliderTitle${String(index)}`;
+  return `__seminarTitle${String(index)}`;
 }
 
 /**
@@ -33,7 +33,7 @@ export function titleExportName(index: number): string {
  * `index` of a deck, which slides with notes have.
  */
 export function notesExportName(index: number): string {
-  return `__sliderNotes${String(index)}`;
+  return `__seminarNotes${String(index)}`;
 }
 
 function identifier(name: string): Expression {
@@ -136,8 +136,8 @@ function findDeck(
 }
 
 /**
- * Exports a component for each slide of the deck, e.g., `__sliderSlide0`, and
- * for the title of each slide with one, e.g., `__sliderTitle0`, so
+ * Exports a component for each slide of the deck, e.g., `__seminarSlide0`, and
+ * for the title of each slide with one, e.g., `__seminarTitle0`, so
  * that other decks can include them (see `::include`), and bundlers only keep
  * the slides, and the modules they import, that are used.
  *
@@ -148,7 +148,7 @@ function findDeck(
  * props of the slides, so that the `Deck` can read them. The presenter notes
  * of the slides become their `notes` prop, which the `Deck` reads instead of
  * the `Notes` among their children, and are exported, too, e.g.,
- * `__sliderNotes0`.
+ * `__seminarNotes0`.
  *
  * Requires the JSX to be compiled to function calls, i.e., the `jsx` option of
  * MDX to be `false`, and should run after {@link recmaSlideTitles}.

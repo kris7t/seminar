@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { VFile } from 'vfile';
 
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import { parseDirectiveComponents } from './remarkDirectiveComponents.ts';
 import {
   isComponent,
@@ -23,11 +23,11 @@ async function compile(
   {
     importModule,
     ...options
-  }: Parameters<typeof sliderMdxOptions>[0] & {
+  }: Parameters<typeof seminarMdxOptions>[0] & {
     importModule?: ModuleImporter;
   } = {},
 ) {
-  const mdxOptions = sliderMdxOptions(
+  const mdxOptions = seminarMdxOptions(
     await withThemeConfig(
       source,
       fileURLToPath(import.meta.url),
@@ -133,7 +133,7 @@ describe('remarkDirectiveComponents', () => {
 
   it('warns about wrappers without components', async () => {
     const file = await mdxCompile(':::column\nOne\n:::', {
-      ...sliderMdxOptions({
+      ...seminarMdxOptions({
         importSource: STUB_URL,
         directives: {
           column: {
@@ -167,7 +167,7 @@ describe('remarkDirectiveComponents', () => {
     const importModule = vi.fn((): Promise<ImportedModule> =>
       Promise.resolve({
         module: {
-          slider: {
+          seminar: {
             directives: {
               callout: {
                 source: STUB_URL,
@@ -182,7 +182,7 @@ describe('remarkDirectiveComponents', () => {
     const module = await compile(
       `---\ntheme: ${THEME_URL}\n---\n\n:::callout\nFrom theme with $x$\n:::`,
       {
-        sliderConfigs: [
+        seminarConfigs: [
           {
             source: 'plugin-module',
             base: 'plugin-module',
@@ -206,9 +206,9 @@ describe('remarkDirectiveComponents', () => {
     expect(importModule).toHaveBeenCalledOnce();
   });
 
-  it('uses Slider configs supplied by the integration', async () => {
+  it('uses Seminar configs supplied by the integration', async () => {
     const module = await compile('::callout[From plugin]', {
-      sliderConfigs: [
+      seminarConfigs: [
         {
           source: 'plugin-module',
           base: 'plugin-module',

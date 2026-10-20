@@ -3,10 +3,10 @@ import path from 'node:path';
 import type { Pluggable } from 'unified';
 import { parse as parseYaml } from 'yaml';
 
-import type { LoadedSliderConfigEntry } from './remarkSliderConfig.ts';
+import type { LoadedSeminarConfigEntry } from './remarkSeminarConfig.ts';
 import {
   importWithNode,
-  loadSliderConfig,
+  loadSeminarConfig,
   type ModuleImporter,
 } from './themeConfig.ts';
 
@@ -19,7 +19,7 @@ const STAGES: readonly MdxPluginStage[] = [
   'recmaPlugins',
 ];
 
-/** Plugins of a stage, which run before or after those of Slider. */
+/** Plugins of a stage, which run before or after those of Seminar. */
 export interface StagePlugins {
   before: Pluggable[];
   after: Pluggable[];
@@ -31,7 +31,7 @@ export type MdxPlugins = Record<MdxPluginStage, StagePlugins>;
 /** Everything that compiling a deck needs from its configs. */
 export interface DeckSetup {
   /** The configs of the plugins and the theme, in increasing precedence. */
-  sliderConfigs: LoadedSliderConfigEntry[];
+  seminarConfigs: LoadedSeminarConfigEntry[];
   /** The plugins of unified that the configs add. */
   mdxPlugins: MdxPlugins;
   /** Files that the setup was loaded from, to watch for changes. */
@@ -41,7 +41,7 @@ export interface DeckSetup {
 }
 
 export interface DeckSetupOptions {
-  /** Plugins of the integration, e.g., `['@slider/elements']`. */
+  /** Plugins of the integration, e.g., `['@seminar/elements']`. */
   plugins?: readonly string[] | undefined;
   /** The theme of the deck, if any, as written in the frontmatter. */
   theme?: string | undefined;
@@ -98,7 +98,7 @@ export function readDeckTheme(source: string): string | undefined {
  * Loads the configs of the plugins of the integration and of the theme of a
  * deck, and the plugins that they refer to, in their `plugins` key, before
  * them. Then imports the plugins of unified that they add (see
- * `SliderConfig` in `@slider/core`).
+ * `SeminarConfig` in `@seminar/core`).
  *
  * Each config is loaded once, even if several others refer to it.
  */
@@ -111,7 +111,7 @@ export async function loadDeckSetup({
   importPlugin = importWithNode,
 }: DeckSetupOptions): Promise<DeckSetup> {
   const setup: DeckSetup = {
-    sliderConfigs: [],
+    seminarConfigs: [],
     mdxPlugins: emptyMdxPlugins(),
     dependencies: [],
     warnings: [],
@@ -120,7 +120,7 @@ export async function loadDeckSetup({
   const visit = async (source: string, importer: string): Promise<void> => {
     let loaded;
     try {
-      loaded = await loadSliderConfig(source, importer, importModule);
+      loaded = await loadSeminarConfig(source, importer, importModule);
     } catch (error) {
       setup.warnings.push(
         `Cannot load the config of ${source}: ${String(error)}`,
@@ -147,7 +147,7 @@ export async function loadDeckSetup({
     } else if (references !== undefined) {
       setup.warnings.push(`Expected \`plugins\` of ${source} to be an array`);
     }
-    setup.sliderConfigs.push({ source, config, base: loaded.base });
+    setup.seminarConfigs.push({ source, config, base: loaded.base });
   };
   for (const plugin of plugins) {
     await visit(plugin, pluginsImporter);
@@ -155,7 +155,7 @@ export async function loadDeckSetup({
   if (theme !== undefined) {
     await visit(theme, themeImporter);
   }
-  for (const entry of setup.sliderConfigs) {
+  for (const entry of setup.seminarConfigs) {
     await importMdxPlugins(entry, setup, importPlugin);
   }
   return setup;
@@ -163,7 +163,7 @@ export async function loadDeckSetup({
 
 /** Imports the plugins of unified that the config of `entry` adds. */
 async function importMdxPlugins(
-  { source, config, base }: LoadedSliderConfigEntry,
+  { source, config, base }: LoadedSeminarConfigEntry,
   setup: DeckSetup,
   importModule: ModuleImporter,
 ): Promise<void> {

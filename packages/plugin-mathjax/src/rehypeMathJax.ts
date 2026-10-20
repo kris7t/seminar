@@ -14,8 +14,8 @@ import {
   createEsm,
   createStringAttribute,
   EXPLICIT_JSX_HAST,
-  setRuntimeSliderOptions,
-} from '@slider/mdx';
+  setRuntimeSeminarOptions,
+} from '@seminar/mdx';
 
 import { readMathOptions, type DeckMathOptions } from './mathConfig.ts';
 import {
@@ -28,7 +28,7 @@ import {
 import { findPackage } from './packages.ts';
 
 /** Name that decks import the `Formula` component as. */
-const FORMULA = '_SliderMathFormula';
+const FORMULA = '_SeminarMathFormula';
 
 interface MathNode {
   parent: { children: (RootContent | ElementContent)[] };
@@ -275,17 +275,17 @@ async function createRuntimeOptions(
       (name) =>
         `${JSON.stringify(name)}: () => import(${specifier('mjs', 'svg', 'dynamic', name)})`,
     );
-    fontCode = `{ loadRenderer: () => import("@slider/plugin-mathjax/render"), font: _sliderDefineMathFont(() => import(${specifier('mjs', 'svg.js')}), {${loaders.join(', ')}}) }`;
+    fontCode = `{ loadRenderer: () => import("@seminar/plugin-mathjax/render"), font: _seminarDefineMathFont(() => import(${specifier('mjs', 'svg.js')}), {${loaders.join(', ')}}) }`;
   }
   return `{ font: ${JSON.stringify(font)}, macros: ${JSON.stringify(macros)}, tags: ${JSON.stringify(tags)}, dynamic: ${fontCode} }`;
 }
 
 /**
  * Renders the math of a deck, as parsed by `remark-math`, to `Formula`
- * elements of `@slider/plugin-mathjax`, with SVG, and MathML for assistive
+ * elements of `@seminar/plugin-mathjax`, with SVG, and MathML for assistive
  * technology, with MathJax.
  *
- * Takes the `math` options of the Slider configs and the frontmatter, in
+ * Takes the `math` options of the Seminar configs and the frontmatter, in
  * order of increasing precedence, see {@link MathConfig}, and sets them for
  * the `DynamicFormula`s of the deck in the browser.
  *
@@ -298,7 +298,7 @@ export function rehypeMathJax(): (tree: Root, file: VFile) => Promise<void> {
   return async (tree, file) => {
     const options = readMathOptions(file);
     try {
-      setRuntimeSliderOptions(
+      setRuntimeSeminarOptions(
         file,
         'math',
         await createRuntimeOptions(options, file),
@@ -306,7 +306,7 @@ export function rehypeMathJax(): (tree: Root, file: VFile) => Promise<void> {
       if (options.dynamic !== undefined) {
         tree.children.unshift(
           createEsm(
-            'import { defineMathFont as _sliderDefineMathFont } from "@slider/plugin-mathjax";',
+            'import { defineMathFont as _seminarDefineMathFont } from "@seminar/plugin-mathjax";',
           ),
         );
       }
@@ -332,7 +332,7 @@ export function rehypeMathJax(): (tree: Root, file: VFile) => Promise<void> {
     }
     tree.children.unshift(
       createEsm(
-        `import { Formula as ${FORMULA} } from "@slider/plugin-mathjax";`,
+        `import { Formula as ${FORMULA} } from "@seminar/plugin-mathjax";`,
       ),
     );
   };

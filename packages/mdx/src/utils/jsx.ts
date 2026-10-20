@@ -2,23 +2,23 @@ import type { MdxJsxFlowElement } from 'mdast-util-mdx';
 import type { MdxJsxFlowElementHast } from 'mdast-util-mdx-jsx';
 
 /*
- * Names that the compiled deck imports the components of `@slider/core` as,
+ * Names that the compiled deck imports the components of `@seminar/core` as,
  * which are unlikely to clash with the names in the document.
  */
 
-export const DECK = '_SliderDeck';
+export const DECK = '_SeminarDeck';
 
-/** Name of the options of the deck in the browser, see `recmaSliderOptions`. */
-export const SLIDER_OPTIONS = '_sliderOptions';
-export const SLIDE = '_SliderSlide';
-export const STEP = '_SliderStep';
-export const LIST_ITEM = '_SliderListItem';
-export const PARAGRAPH = '_SliderParagraph';
-export const IMAGE = '_SliderImage';
-export const SLIDE_ELEMENT = '_SliderSlideElement';
-export const NOTES = '_SliderNotes';
+/** Name of the options of the deck in the browser, see `recmaSeminarOptions`. */
+export const SEMINAR_OPTIONS = '_seminarOptions';
+export const SLIDE = '_SeminarSlide';
+export const STEP = '_SeminarStep';
+export const LIST_ITEM = '_SeminarListItem';
+export const PARAGRAPH = '_SeminarParagraph';
+export const IMAGE = '_SeminarImage';
+export const SLIDE_ELEMENT = '_SeminarSlideElement';
+export const NOTES = '_SeminarNotes';
 /** Name of the default theme of the deck, if it has one. */
-export const THEME = '_SliderTheme';
+export const THEME = '_SeminarTheme';
 
 /**
  * Marks generated JSX elements as written explicitly, like JSX in the MDX

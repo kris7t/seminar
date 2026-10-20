@@ -4,7 +4,7 @@
 that changes while you present, like a formula that the audience types:
 
 ```tsx
-import { DynamicFormula } from '@slider/plugin-mathjax/dynamic';
+import { DynamicFormula } from '@seminar/plugin-mathjax/dynamic';
 
 <DynamicFormula tex={tex} display />;
 ```
@@ -58,4 +58,4 @@ Glyphs in other files show as missing.
 - `onError` is called with errors, like those of TeX. TeX errors are also
   shown in red.
 
-Style it as `SliderFormula`, like other formulas.
+Style it as `SeminarFormula`, like other formulas.

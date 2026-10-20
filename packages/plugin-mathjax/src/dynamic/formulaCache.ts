@@ -3,7 +3,7 @@ import {
   defineResource,
   type CacheDefinition,
   type ResourceDefinition,
-} from '@slider/core';
+} from '@seminar/core';
 
 import type { RenderedFormula, RenderOptions } from './render.ts';
 import type { RuntimeDynamicMath } from './runtimeOptions.ts';

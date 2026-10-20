@@ -20,24 +20,25 @@ export interface SlideNumberProps {
 export type SlideNumberClassKey = 'root';
 
 export const slideNumberClasses: Record<SlideNumberClassKey, string> =
-  generateUtilityClasses('SliderSlideNumber', ['root']);
+  generateUtilityClasses('SeminarSlideNumber', ['root']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderSlideNumber: SlideNumberClassKey;
+    SeminarSlideNumber: SlideNumberClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderSlideNumber: SlideNumberProps;
+    SeminarSlideNumber: SlideNumberProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderSlideNumber?: ComponentTheme<'SliderSlideNumber', Theme> | undefined;
+    SeminarSlideNumber?:
+      ComponentTheme<'SeminarSlideNumber', Theme> | undefined;
   }
 }
 
 const SlideNumberRoot = styled('div', {
-  name: 'SliderSlideNumber',
+  name: 'SeminarSlideNumber',
   slot: 'Root',
 })<{ ownerState: SlideNumberProps }>(({ theme }) => ({
   ...theme.typography.caption,
@@ -48,10 +49,10 @@ const SlideNumberRoot = styled('div', {
  * Shows the number of the current slide and the number of slides in the deck,
  * e.g., `3 / 12`.
  *
- * Can be themed as `SliderSlideNumber` in the `components` of the MUI theme.
+ * Can be themed as `SeminarSlideNumber` in the `components` of the MUI theme.
  */
 export function SlideNumber(inProps: SlideNumberProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderSlideNumber' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarSlideNumber' });
   const { className, ...other } = props;
   // The slide may be shown in several views, e.g., in the overview.
   const { index } = useSlideView();

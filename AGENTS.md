@@ -1,4 +1,4 @@
-# slider
+# Seminar
 
 Monorepo of npm workspaces in `packages/` that turns `.deck.mdx` files into
 React presentations. See `README.md` for the features and the syntax of decks.
@@ -16,7 +16,7 @@ React presentations. See `README.md` for the features and the syntax of decks.
 - `example`: the example deck, also used for trying out changes by hand.
 
 Workspace packages resolve to their TypeScript sources through the
-`@slider/source` export condition, so most changes need no build.
+`@seminar/source` export condition, so most changes need no build.
 
 ## Commands
 

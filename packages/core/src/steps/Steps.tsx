@@ -58,7 +58,7 @@ export type StepsClassKey =
   'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
 
 export const stepsClasses: Record<StepsClassKey, string> =
-  generateUtilityClasses('SliderSteps', [
+  generateUtilityClasses('SeminarSteps', [
     'root',
     'distantFuture',
     'future',
@@ -73,15 +73,15 @@ export const stepsClasses: Record<StepsClassKey, string> =
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderSteps: StepsClassKey;
+    SeminarSteps: StepsClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderSteps: StepsProps;
+    SeminarSteps: StepsProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderSteps?: ComponentTheme<'SliderSteps', Theme> | undefined;
+    SeminarSteps?: ComponentTheme<'SeminarSteps', Theme> | undefined;
   }
 }
 
@@ -91,13 +91,13 @@ interface StepsOwnerState extends StepsProps {
 }
 
 const StepsRoot = styled('div', {
-  name: 'SliderSteps',
+  name: 'SeminarSteps',
   slot: 'Root',
 })<{ ownerState: StepsOwnerState }>({
   // Like `Step`, for content nested in hidden or dimmed steps with `in`.
   [`&.${stepsClasses.hidden}`]: { visibility: 'hidden' },
   [`&.${stepsClasses.dimmed}`]: {
-    opacity: 'var(--SliderStep-dim-opacity, 0.35)',
+    opacity: 'var(--SeminarStep-dim-opacity, 0.35)',
   },
   [`&.${stepsClasses.collapsed}`]: { display: 'none' },
 });
@@ -109,10 +109,10 @@ const StepsRoot = styled('div', {
  * Unlike {@link Step}, the content is always shown: pass a function as
  * `children` to render it depending on the current step.
  *
- * Can be themed as `SliderSteps` in the `components` of the MUI theme.
+ * Can be themed as `SeminarSteps` in the `components` of the MUI theme.
  */
 export function Steps(inProps: StepsProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderSteps' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarSteps' });
   const {
     count,
     component = 'div',
@@ -144,7 +144,7 @@ export function Steps(inProps: StepsProps): JSX.Element {
       className={classNames(
         stepsClasses.root,
         stepsClasses[phase],
-        appearanceClass('SliderSteps', appearance, enclosing),
+        appearanceClass('SeminarSteps', appearance, enclosing),
         className,
       )}
       ownerState={{ ...props, stepIndex, phase }}

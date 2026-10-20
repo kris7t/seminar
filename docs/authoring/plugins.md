@@ -12,13 +12,13 @@ A presentation theme can do the same.
 
 ## The config
 
-A plugin describes what it adds in its `slider` config. A package puts it in
-the `slider` key of its `package.json`:
+A plugin describes what it adds in its `seminar` config. A package puts it in
+the `seminar` key of its `package.json`:
 
 ```json
 {
   "name": "my-elements",
-  "slider": {
+  "seminar": {
     "directives": {
       "note": { "source": "my-elements", "exportName": "Note" }
     }
@@ -27,20 +27,20 @@ the `slider` key of its `package.json`:
 ```
 
 A package with several configs, like several themes, can point to a JSON
-file with the `slider` export condition instead:
+file with the `seminar` export condition instead:
 
 ```json
-"exports": { ".": { "slider": "./slider.json", "default": "./dist/index.js" } }
+"exports": { ".": { "seminar": "./seminar.json", "default": "./dist/index.js" } }
 ```
 
 A local module, like a theme in `./src/theme.tsx`, exports the config as
-`slider`:
+`seminar`:
 
 ```ts
-import type { SliderConfig } from '@slider/core';
+import type { SeminarConfig } from '@seminar/core';
 
-export const slider: SliderConfig = {
-  plugins: ['@slider/plugin-mathjax'],
+export const seminar: SeminarConfig = {
+  plugins: ['@seminar/plugin-mathjax'],
   options: { math: { font: 'newcm' } },
 };
 ```
@@ -51,10 +51,10 @@ level. The packages it imports must be built to JavaScript.
 
 ## Enabling plugins
 
-List plugins in the options of the slider plugin of Vite or Rollup:
+List plugins in the options of the Seminar plugin of Vite or Rollup:
 
 ```ts
-slider({ plugins: ['my-elements'] });
+seminar({ plugins: ['my-elements'] });
 ```
 
 The configs of the plugins apply in order. The config of the theme of the
@@ -65,7 +65,7 @@ deck applies last, so the theme can override the plugins.
 A plugin or a theme can use other plugins. List them in its `plugins` key:
 
 ```json
-{ "slider": { "plugins": ["@slider/plugin-shiki"] } }
+{ "seminar": { "plugins": ["@seminar/plugin-shiki"] } }
 ```
 
 They are loaded before it, so it can override their options. Each plugin is
@@ -77,7 +77,7 @@ Plugins of the compiler take no options directly. Configs set them in their
 `options` key instead, by the name of the plugin's options:
 
 ```ts
-export const slider: SliderConfig = {
+export const seminar: SeminarConfig = {
   options: { code: { theme: 'github-dark' } },
 };
 ```
@@ -89,8 +89,8 @@ code:
   theme: min-light
 ```
 
-Components read the options of the deck with `useSliderOptions(name)` of
-`@slider/core`. The `Deck` gets them as its `options` prop.
+Components read the options of the deck with `useSeminarOptions(name)` of
+`@seminar/core`. The `Deck` gets them as its `options` prop.
 
 ## Compiler plugins
 
@@ -99,7 +99,7 @@ key of its config:
 
 ```json
 {
-  "slider": {
+  "seminar": {
     "mdx": {
       "rehypePlugins": {
         "after": [{ "source": "my-code/rehype", "exportName": "rehypeMyCode" }]
@@ -115,7 +115,7 @@ There are three stages:
 - `rehypePlugins` work on the HTML syntax tree.
 - `recmaPlugins` work on the JavaScript of the compiled deck.
 
-Each stage takes plugins that run `before` or `after` the plugins of Slider.
+Each stage takes plugins that run `before` or `after` the plugins of Seminar.
 Remark plugins in `before` can add syntax to Markdown, like math.
 
 The plugins are loaded in Node when decks are compiled. They may use
@@ -125,13 +125,13 @@ must be built to JavaScript.
 If a plugin can't be loaded, you get a warning, and the deck is compiled
 without it.
 
-`@slider/plugin-mathjax` and `@slider/plugin-shiki` are plugins like this.
+`@seminar/plugin-mathjax` and `@seminar/plugin-shiki` are plugins like this.
 
 ### Reading options
 
-Plugins read their options with `getSliderOptions(file, name)` of
-`@slider/mdx`. It merges the options of the plugins, the theme, and the
-frontmatter, in this order. `getSliderOptionLayers` returns them one by one,
+Plugins read their options with `getSeminarOptions(file, name)` of
+`@seminar/mdx`. It merges the options of the plugins, the theme, and the
+frontmatter, in this order. `getSeminarOptionLayers` returns them one by one,
 with the file to resolve paths from.
 
 Pick a name that isn't a key of the frontmatter of decks, like `title` or
@@ -139,16 +139,16 @@ Pick a name that isn't a key of the frontmatter of decks, like `title` or
 
 Decks get the options of every name that a config sets. They are merged the
 same way. To give components other values, call
-`setRuntimeSliderOptions(file, name, code)` in a remark or rehype plugin.
+`setRuntimeSeminarOptions(file, name, code)` in a remark or rehype plugin.
 `code` is a JavaScript expression. It can use the imports that the plugin
 adds to the deck.
 
-`@slider/plugin-mathjax` does this, since it merges macros, and gives
+`@seminar/plugin-mathjax` does this, since it merges macros, and gives
 components functions that import the font of the deck.
 
 ### Utilities
 
-`@slider/mdx` exports utilities for compiler plugins:
+`@seminar/mdx` exports utilities for compiler plugins:
 
 - `parseAttributeWords` reads attributes written like those of directives,
   but without braces, like in the first line of a code block.

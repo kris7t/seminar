@@ -1,7 +1,7 @@
 import type { VFile } from 'vfile';
 
 /**
- * The languages that `@slider/core` has a user interface in, and the names of
+ * The languages that `@seminar/core` has a user interface in, and the names of
  * their exports.
  */
 export const CORE_UI_LOCALES: ReadonlyMap<string, string> = new Map([

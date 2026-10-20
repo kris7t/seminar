@@ -68,7 +68,7 @@ function sourceAttribute(url: string, images: Images): MdxJsxAttribute {
   }
   let name = images.imports.get(url);
   if (name === undefined) {
-    name = `_SliderImage${String(images.imports.size)}`;
+    name = `_SeminarImage${String(images.imports.size)}`;
     images.imports.set(url, name);
   }
   return createExpressionAttribute('src', name);

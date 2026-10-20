@@ -40,19 +40,19 @@ export interface ImageProps extends Omit<
 export type ImageClassKey = 'root' | 'img' | 'caption';
 
 export const imageClasses: Record<ImageClassKey, string> =
-  generateUtilityClasses('SliderImage', ['root', 'img', 'caption']);
+  generateUtilityClasses('SeminarImage', ['root', 'img', 'caption']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderImage: ImageClassKey;
+    SeminarImage: ImageClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderImage: ImageProps;
+    SeminarImage: ImageProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderImage?: ComponentTheme<'SliderImage', Theme> | undefined;
+    SeminarImage?: ComponentTheme<'SeminarImage', Theme> | undefined;
   }
 }
 
@@ -61,7 +61,7 @@ interface ImageOwnerState extends ImageProps {
 }
 
 const ImageRoot = styled(Step, {
-  name: 'SliderImage',
+  name: 'SeminarImage',
   slot: 'Root',
   overridesResolver: (_props, styles) => styles['root'],
 })<{ ownerState: ImageOwnerState }>({
@@ -83,7 +83,7 @@ const ImageRoot = styled(Step, {
 });
 
 const ImageImg = styled('img', {
-  name: 'SliderImage',
+  name: 'SeminarImage',
   slot: 'Img',
   overridesResolver: (_props, styles) => styles['img'],
 })<{ ownerState: ImageOwnerState }>({
@@ -93,7 +93,7 @@ const ImageImg = styled('img', {
 });
 
 const ImageCaption = styled('figcaption', {
-  name: 'SliderImage',
+  name: 'SeminarImage',
   slot: 'Caption',
   overridesResolver: (_props, styles) => styles['caption'],
 })<{ ownerState: ImageOwnerState }>(({ theme }) => ({
@@ -113,10 +113,10 @@ const ImageCaption = styled('figcaption', {
  * MDX decks render Markdown images like this, with the attributes after
  * them, e.g., `![Architecture](./arch.svg){#arch step width=600}`.
  *
- * Can be themed as `SliderImage` in the `components` of the MUI theme.
+ * Can be themed as `SeminarImage` in the `components` of the MUI theme.
  */
 export function Image(inProps: ImageProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderImage' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarImage' });
   const {
     src,
     alt,

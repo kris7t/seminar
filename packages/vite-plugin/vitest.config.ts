@@ -4,7 +4,7 @@ import { defineProject } from 'vitest/config';
 export default defineProject({
   resolve: {
     // Use the TypeScript sources of workspace packages directly.
-    conditions: ['@slider/source', ...defaultClientConditions],
+    conditions: ['@seminar/source', ...defaultClientConditions],
   },
   test: {
     // The tests run Vite themselves.

@@ -7,7 +7,7 @@ It takes the props of `:step`, like `with`, `group`, `in`, `after`, `title`,
 and behaviors, and passes the others to its element:
 
 ```tsx
-import { Step } from '@slider/core';
+import { Step } from '@seminar/core';
 
 <Step component="section" only>
   Shown only during its step
@@ -21,7 +21,7 @@ Components that should take part in steps wrap their root in a `Step`, and
 pass on the step props they get, e.g., from `:::name{step group=parse}`:
 
 ```tsx
-import { Step, WITH_PREVIOUS, type StepProps } from '@slider/core';
+import { Step, WITH_PREVIOUS, type StepProps } from '@seminar/core';
 
 interface NoteProps extends Omit<StepProps, 'defaultAttachment'> {
   tone?: string | undefined;
@@ -69,7 +69,7 @@ document, and read its state:
 - `isActive` and `isCurrent`.
 
 ```tsx
-import { useSteps } from '@slider/core';
+import { useSteps } from '@seminar/core';
 
 export function Highlights({ parts }: { parts: string[] }) {
   const { ref, stepIndex } = useSteps(parts.length);
@@ -148,7 +148,7 @@ then shows its new state at once, and its own transition plays in full. It
 still fades when the slide changes.
 
 ```tsx
-import { useOwnAnimation, useStep, useStepTransition } from '@slider/core';
+import { useOwnAnimation, useStep, useStepTransition } from '@seminar/core';
 
 export function Marker() {
   const step = useStep({ group: 'parse' });

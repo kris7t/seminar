@@ -1,8 +1,9 @@
 {
-  "name": "@slider/monorepo",
+  "name": "@seminar/monorepo",
   "version": "0.0.0",
   "private": true,
   "description": "Maintain scientific talks and lectures as Markdown presentations",
+  "homepage": "https://seminar.run",
   "license": "Apache-2.0",
   "type": "module",
   "workspaces": [
@@ -22,7 +23,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run format:check && npm run build && npm run lint && npm run test",
-    "dev": "npm run dev --workspace @slider/example"
+    "dev": "npm run dev --workspace @seminar/example"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^5.26.7",

@@ -3,7 +3,7 @@
 Decks can use any React component, but components that know about slides
 work better: they keep their state when the slide is shown again, reveal
 themselves in steps, point at other elements, and follow the theme. These
-pages describe the API of `@slider/core` for writing them.
+pages describe the API of `@seminar/core` for writing them.
 
 Components reach decks in three ways:
 

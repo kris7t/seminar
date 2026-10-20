@@ -1,7 +1,7 @@
 # Content
 
 Slides hold ordinary Markdown: paragraphs, lists, emphasis, links, code, and
-tables. This page covers what slider adds to it.
+tables. This page covers what Seminar adds to it.
 
 ## Images
 
@@ -55,7 +55,7 @@ attributes the same way.
 ## Math
 
 Math is written in TeX between dollar signs, like `$e^{i\pi}$`. It's
-typeset by a plugin, like [`@slider/plugin-mathjax`](../mathjax/README.md).
+typeset by a plugin, like [`@seminar/plugin-mathjax`](../mathjax/README.md).
 Without one, dollar signs are ordinary text.
 
 ## Code
@@ -70,7 +70,7 @@ export const answer = 42;
 ````
 
 They're shown as plain text, unless a plugin highlights them, like
-[`@slider/plugin-shiki`](../shiki/README.md).
+[`@seminar/plugin-shiki`](../shiki/README.md).
 
 ## Presenter notes
 
@@ -97,7 +97,7 @@ import { Calculator } from './src/Calculator.tsx';
 <Calculator />
 ```
 
-Components can keep their state with `useSlideState` from `@slider/core`,
+Components can keep their state with `useSlideState` from `@seminar/core`,
 which shares it between every view of the slide, e.g., the presenter view and
 the audience window, so that interactive slides work in front of the
 audience.

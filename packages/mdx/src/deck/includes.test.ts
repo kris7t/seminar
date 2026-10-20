@@ -6,7 +6,7 @@ import { compile, compileSync, evaluate } from '@mdx-js/mdx';
 import * as runtime from 'react/jsx-runtime';
 import { describe, expect, it } from 'vitest';
 
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import {
   renderSlideExport,
   STUB_URL,
@@ -31,7 +31,7 @@ registerHooks({
     const filePath = fileURLToPath(url);
     const code = compileSync(
       { value: readFileSync(filePath, 'utf8'), path: filePath },
-      sliderMdxOptions(OPTIONS),
+      seminarMdxOptions(OPTIONS),
     );
     return { format: 'module', source: String(code), shortCircuit: true };
   },
@@ -40,7 +40,7 @@ registerHooks({
 async function compileHost(source: string) {
   return (await evaluate(
     { value: source, path: HOST_PATH },
-    { ...runtime, ...sliderMdxOptions(OPTIONS), baseUrl: FIXTURES },
+    { ...runtime, ...seminarMdxOptions(OPTIONS), baseUrl: FIXTURES },
   )) as { default: (props: object) => ReactNode };
 }
 
@@ -76,7 +76,7 @@ async function tocOf(source: string) {
 async function messages(source: string) {
   const file = await compile(
     { value: source, path: HOST_PATH },
-    sliderMdxOptions(OPTIONS),
+    seminarMdxOptions(OPTIONS),
   );
   return file.messages.map(String);
 }

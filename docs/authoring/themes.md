@@ -4,7 +4,7 @@ A theme is a module whose default export is an MUI theme made with
 `createSlideTheme`, which a deck selects with `theme:` in its frontmatter:
 
 ```tsx
-import { createSlideTheme } from '@slider/core';
+import { createSlideTheme } from '@seminar/core';
 
 export default createSlideTheme({
   palette: { primary: { main: '#00639b' } },
@@ -14,7 +14,7 @@ export default createSlideTheme({
 
 `createSlideTheme` sizes the typography for slides and provides the built-in
 masters, and merges the options on top. A theme module can also export a
-[`slider` config](plugins.md#the-config) for compiling decks,
+[`seminar` config](plugins.md#the-config) for compiling decks,
 e.g., directives and the options of plugins.
 
 ## Masters
@@ -25,7 +25,7 @@ of the slide, which they should add to their root, and the content as
 
 ```tsx
 import { Stack, Typography } from '@mui/material';
-import type { SlideMasterProps } from '@slider/core';
+import type { SlideMasterProps } from '@seminar/core';
 
 function SectionMaster({ title, className, children }: SlideMasterProps) {
   return (
@@ -46,15 +46,15 @@ to a slide, e.g., `{master=ClosingMaster}`.
 
 ## Theming components
 
-Components of slider and its elements can be themed in the `components` of
-the theme, like MUI components, by their names, e.g., `SliderStep`,
-`SliderImage`, `SliderCallout`, or `SliderColumn`:
+Components of Seminar and its elements can be themed in the `components` of
+the theme, like MUI components, by their names, e.g., `SeminarStep`,
+`SeminarImage`, `SeminarCallout`, or `SeminarColumn`:
 
 ```ts
 createSlideTheme({
   components: {
-    SliderCallout: { defaultProps: { color: 'secondary', elevation: 2 } },
-    SliderColumn: {
+    SeminarCallout: { defaultProps: { color: 'secondary', elevation: 2 } },
+    SeminarColumn: {
       styleOverrides: { heading: { textTransform: 'uppercase' } },
     },
   },
@@ -62,7 +62,7 @@ createSlideTheme({
 ```
 
 Each component documents its slots, like `root` and `heading`, as class keys,
-and adds classes like `SliderColumn-heading` to them.
+and adds classes like `SeminarColumn-heading` to them.
 
 Components of plugins can follow the same pattern:
 
@@ -70,10 +70,10 @@ Components of plugins can follow the same pattern:
 2. Build slots with `styled(…, { name: 'MyNote', slot: 'Root' })`, and pass
    the props that affect styles as `ownerState`.
 3. Register the name with the MUI theme by module augmentation, using
-   `ComponentTheme` from `@slider/core`:
+   `ComponentTheme` from `@seminar/core`:
 
 ```ts
-import type { ComponentTheme } from '@slider/core';
+import type { ComponentTheme } from '@seminar/core';
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -117,7 +117,7 @@ in a `hidden` step is hidden. This holds whether the step is nested in the
 document or with `in`.
 
 A step only applies its appearance itself, with a class like
-`SliderStep-dimmed`, when it's ranked higher than that of the step element
+`SeminarStep-dimmed`, when it's ranked higher than that of the step element
 around it in the document, which already applies to everything inside it, so
 that content isn't dimmed twice. A step nested with `in`, on the other hand,
 isn't inside the element of its parent, so it applies the appearance it
@@ -159,7 +159,7 @@ For example, a `blurred` appearance between shown and dimmed, and a `blur`
 behavior that blurs past steps:
 
 ```ts
-declare module '@slider/core' {
+declare module '@seminar/core' {
   interface StepAppearanceOverrides {
     blurred: true;
   }
@@ -172,17 +172,17 @@ createSlideTheme({
   stepAppearances: { blurred: 50 },
   stepBehaviors: { blur: { future: 'hidden', past: 'blurred' } },
   components: {
-    SliderStep: {
+    SeminarStep: {
       styleOverrides: {
-        root: { '&.SliderStep-blurred': { filter: 'blur(4px)' } },
+        root: { '&.SeminarStep-blurred': { filter: 'blur(4px)' } },
       },
     },
   },
 });
 ```
 
-`<Steps>` applies appearances with its own classes, like `SliderSteps-blurred`,
-so style those in `SliderSteps` as well. Decks then use `:step{blur}` or
+`<Steps>` applies appearances with its own classes, like `SeminarSteps-blurred`,
+so style those in `SeminarSteps` as well. Decks then use `:step{blur}` or
 `{steps=blur}`. A step nested in a blurred step is blurred with it, while a
 blurred step nested in a dimmed or hidden step stays dimmed or hidden.
 
@@ -193,10 +193,10 @@ would fade a step and the steps nested in it at the same time, which shows
 the nested steps through while they should stay hidden.
 
 Style appearances rather than behaviors or phases: a style attached to
-`behavior: 'blur'` or to `SliderStep-past` applies to that step only, so
+`behavior: 'blur'` or to `SeminarStep-past` applies to that step only, so
 steps nested in it don't inherit it, and it ignores whether a step around it
 already hides or dims it more. The dimming of `dimmed` can be adjusted with
-the `--SliderStep-dim-opacity` custom property.
+the `--SeminarStep-dim-opacity` custom property.
 
 ## Transitions
 

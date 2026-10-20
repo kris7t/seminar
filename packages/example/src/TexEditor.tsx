@@ -1,6 +1,6 @@
 import { Box, TextField } from '@mui/material';
-import { useSlideState } from '@slider/core';
-import { DynamicFormula } from '@slider/plugin-mathjax/dynamic';
+import { useSlideState } from '@seminar/core';
+import { DynamicFormula } from '@seminar/plugin-mathjax/dynamic';
 import { useState, type JSX } from 'react';
 
 /**

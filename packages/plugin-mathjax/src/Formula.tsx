@@ -7,7 +7,7 @@ import {
 } from '@mui/material/styles';
 import type { JSX, ReactNode } from 'react';
 
-import type { ComponentTheme } from '@slider/core';
+import type { ComponentTheme } from '@seminar/core';
 
 /** Joins the given class names, skipping `undefined` and empty ones. */
 function classNames(...names: (string | undefined)[]): string {
@@ -49,7 +49,7 @@ export interface FormulaProps {
 export type FormulaClassKey = 'root' | 'display' | 'inline' | 'svg' | 'mathml';
 
 export const formulaClasses: Record<FormulaClassKey, string> =
-  generateUtilityClasses('SliderFormula', [
+  generateUtilityClasses('SeminarFormula', [
     'root',
     'display',
     'inline',
@@ -59,21 +59,21 @@ export const formulaClasses: Record<FormulaClassKey, string> =
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderFormula: FormulaClassKey;
+    SeminarFormula: FormulaClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderFormula: FormulaProps;
+    SeminarFormula: FormulaProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderFormula?: ComponentTheme<'SliderFormula', Theme> | undefined;
+    SeminarFormula?: ComponentTheme<'SeminarFormula', Theme> | undefined;
   }
 }
 
 // Adapted from the style sheet of the SVG output of MathJax.
 const FormulaRoot = styled('span', {
-  name: 'SliderFormula',
+  name: 'SeminarFormula',
   slot: 'Root',
 })<{ ownerState: FormulaProps }>({
   position: 'relative',
@@ -105,13 +105,13 @@ const FormulaRoot = styled('span', {
 
 // Holds the SVG given as HTML, without a box of its own.
 const FormulaSvg = styled('span', {
-  name: 'SliderFormula',
+  name: 'SeminarFormula',
   slot: 'Svg',
 })({ display: 'contents' });
 
 // Shows the MathML to assistive technology only.
 const FormulaMathml = styled('span', {
-  name: 'SliderFormula',
+  name: 'SeminarFormula',
   slot: 'Mathml',
 })({
   position: 'absolute',
@@ -128,11 +128,11 @@ const FormulaMathml = styled('span', {
  * A formula rendered by MathJax, as created from `$…$` and `$$…$$` in decks
  * written in MDX.
  *
- * Can be themed as `SliderFormula` in the `components` of the MUI theme. The
- * math font is chosen when the deck is compiled (see `SliderConfig`).
+ * Can be themed as `SeminarFormula` in the `components` of the MUI theme. The
+ * math font is chosen when the deck is compiled (see `SeminarConfig`).
  */
 export function Formula(inProps: FormulaProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderFormula' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarFormula' });
   const {
     display = false,
     fullWidth = false,

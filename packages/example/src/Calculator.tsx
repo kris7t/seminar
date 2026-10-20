@@ -1,5 +1,5 @@
 import { Box, Button, TextField, Typography } from '@mui/material';
-import { useResetSlideState, useSlideState } from '@slider/core';
+import { useResetSlideState, useSlideState } from '@seminar/core';
 import type { JSX } from 'react';
 
 function parse(value: string): number | undefined {

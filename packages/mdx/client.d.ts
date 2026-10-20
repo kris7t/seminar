@@ -1,10 +1,10 @@
 /**
- * Types of `.deck.mdx` modules compiled with `@slider/rollup-plugin`.
+ * Types of `.deck.mdx` modules compiled with `@seminar/rollup-plugin`.
  *
- * Add `@slider/mdx/client` to the `types` of your `tsconfig.json`.
+ * Add `@seminar/mdx/client` to the `types` of your `tsconfig.json`.
  */
 declare module '*.deck.mdx' {
-  import type { DeckProps } from '@slider/core';
+  import type { DeckProps } from '@seminar/core';
   import type { JSX } from 'react';
 
   /** The frontmatter of the document. */

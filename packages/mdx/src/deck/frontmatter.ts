@@ -86,7 +86,7 @@ function getFirstHeading(tree: Root, depth: number): string | undefined {
 export interface DeckDefaults {
   /**
    * Module to import the theme of decks from, unless they set their own
-   * `theme`. Without one, decks use the default theme of `@slider/core`.
+   * `theme`. Without one, decks use the default theme of `@seminar/core`.
    */
   defaultTheme?: string | undefined;
   /**

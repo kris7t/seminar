@@ -1,4 +1,4 @@
-import { SLIDE_HEIGHT, SLIDE_WIDTH } from '@slider/core';
+import { SLIDE_HEIGHT, SLIDE_WIDTH } from '@seminar/core';
 
 /** Empty space kept between an automatically placed callout and the slide. */
 export const CALLOUT_SLIDE_MARGIN = 24;

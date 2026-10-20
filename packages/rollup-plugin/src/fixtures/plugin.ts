@@ -1,5 +1,5 @@
-/** Compile-time config of a Slider plugin used by the integration tests. */
-export const slider = {
+/** Compile-time config of a Seminar plugin used by the integration tests. */
+export const seminar = {
   directives: {
     fixture: {
       source: './pluginComponent.tsx',

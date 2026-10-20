@@ -1,32 +1,32 @@
 /**
- * Options of a Slider plugin or theme that apply when compiling decks, since
+ * Options of a Seminar plugin or theme that apply when compiling decks, since
  * they can't be changed at runtime.
  *
  * Plugin and theme packages provide them as either
  *
- * 1. a JSON file with the `slider` export condition, e.g.,
- *    `"exports": { ".": { "slider": "./slider.json", "default": … } }`,
+ * 1. a JSON file with the `seminar` export condition, e.g.,
+ *    `"exports": { ".": { "seminar": "./seminar.json", "default": … } }`,
  *    which lets packages with several themes configure each of them, or
- * 2. the `slider` key of their `package.json`, which is simpler for packages
+ * 2. the `seminar` key of their `package.json`, which is simpler for packages
  *    with a single theme.
  *
- * Other plugin and theme modules, like local files, export them as `slider`.
+ * Other plugin and theme modules, like local files, export them as `seminar`.
  * Reading this export runs the module when compiling decks, outside of the
  * browser:
  *
  * - The module shouldn't access browser globals, like `window`, at the top
  *   level.
- * - With `@slider/vite-plugin`, the module may be written in TypeScript, and
+ * - With `@seminar/vite-plugin`, the module may be written in TypeScript, and
  *   its style sheets are ignored. However, the packages it imports are loaded
  *   by Node, without the aliases, resolve conditions, and plugins of Vite, so
  *   they must be built to JavaScript.
- * - With `@slider/rollup-plugin` alone, the module is loaded by Node, so it
+ * - With `@seminar/rollup-plugin` alone, the module is loaded by Node, so it
  *   can't import style sheets or use JSX.
  */
-export interface SliderConfig {
+export interface SeminarConfig {
   /**
    * Other plugins that this plugin or theme uses, e.g.,
-   * `['@slider/plugin-shiki']`, which are loaded before it, so that it can
+   * `['@seminar/plugin-shiki']`, which are loaded before it, so that it can
    * override their options. Relative paths are resolved from this config.
    */
   plugins?: readonly string[] | undefined;
@@ -36,11 +36,11 @@ export interface SliderConfig {
   mdx?: MdxPluginsConfig | undefined;
   /**
    * Options of plugins by their name, e.g., `{ code: { theme: 'github-dark' } }`
-   * for the `code` options of `@slider/plugin-shiki`. Plugins, the theme, and the key
+   * for the `code` options of `@seminar/plugin-shiki`. Plugins, the theme, and the key
    * of the same name in the frontmatter of decks set them, in order of
    * increasing precedence. Plugins read them when compiling decks, with
-   * `getSliderOptions` of `@slider/mdx`, and components read them in the
-   * browser, with `useSliderOptions`.
+   * `getSeminarOptions` of `@seminar/mdx`, and components read them in the
+   * browser, with `useSeminarOptions`.
    */
   options?: Record<string, Record<string, unknown>> | undefined;
   /**
@@ -99,12 +99,12 @@ export interface ModuleExportConfig {
  * syntax tree (remark), the HTML syntax tree (rehype), or the JavaScript
  * syntax tree (recma).
  *
- * The plugins of each stage run `before` or `after` the plugins of Slider,
+ * The plugins of each stage run `before` or `after` the plugins of Seminar,
  * in the order of the configs. Remark plugins may extend the syntax of
  * Markdown, e.g., with math. The plugins are imported when compiling decks,
  * in Node, so they may use packages that decks shouldn't contain, but they
  * must be built to JavaScript. They take no options, but read those of
- * {@link SliderConfig} with `getSliderOptions` of `@slider/mdx`.
+ * {@link SeminarConfig} with `getSeminarOptions` of `@seminar/mdx`.
  */
 export interface MdxPluginsConfig {
   remarkPlugins?: MdxStagePluginsConfig | undefined;
@@ -114,8 +114,8 @@ export interface MdxPluginsConfig {
 
 /** Plugins of a stage of {@link MdxPluginsConfig}. */
 export interface MdxStagePluginsConfig {
-  /** Plugins that run before those of Slider. */
+  /** Plugins that run before those of Seminar. */
   before?: readonly ModuleExportConfig[] | undefined;
-  /** Plugins that run after those of Slider. */
+  /** Plugins that run after those of Seminar. */
   after?: readonly ModuleExportConfig[] | undefined;
 }

@@ -19,9 +19,9 @@ import {
 
 import { DeckContext, type DeckState } from './DeckContext.ts';
 import {
-  SliderOptionsContext,
-  type SliderOptions,
-} from './SliderOptionsContext.ts';
+  SeminarOptionsContext,
+  type SeminarOptions,
+} from './SeminarOptionsContext.ts';
 import {
   defaultSlideTheme,
   SLIDE_HEIGHT,
@@ -116,10 +116,10 @@ export interface DeckProps {
   children?: ReactNode;
   /**
    * Options of plugins by their name, which components read with
-   * {@link useSliderOptions}. Decks written in MDX get the `options` of their
+   * {@link useSeminarOptions}. Decks written in MDX get the `options` of their
    * configs and frontmatter.
    */
-  options?: SliderOptions | undefined;
+  options?: SeminarOptions | undefined;
   /** MUI theme of the slides. Defaults to {@link defaultSlideTheme}. */
   theme?: Theme;
   /**
@@ -128,7 +128,7 @@ export interface DeckProps {
    * it in the context menu.
    *
    * With mouse navigation, text on the slides can't be selected, except in
-   * text fields and elements with the `data-slider-interactive` attribute,
+   * text fields and elements with the `data-seminar-interactive` attribute,
    * since selecting text with the mouse would interfere with clicking.
    */
   defaultMouseNavigation?: boolean;
@@ -179,10 +179,10 @@ const SELECTABLE_SELECTOR = [
   .map((selector) => `& ${selector}`)
   .join(', ');
 
-/** Slides the slide in from `--slider-enter-from` after a swipe. */
+/** Slides the slide in from `--seminar-enter-from` after a swipe. */
 const enter = keyframes`
   from {
-    translate: var(--slider-enter-from) 0;
+    translate: var(--seminar-enter-from) 0;
   }
 `;
 
@@ -247,7 +247,7 @@ function useSpares(spares: readonly boolean[]): readonly boolean[] {
   return changed ? spares : stable;
 }
 
-const NO_OPTIONS: SliderOptions = {};
+const NO_OPTIONS: SeminarOptions = {};
 
 /**
  * Shows one of its child slides at a time, scaled to fit the viewport.
@@ -696,7 +696,7 @@ export function Deck({
       <SlideTransitionStyles />
       <UiLanguageContext value={uiLanguage}>
         <DeckContext value={deck}>
-          <SliderOptionsContext value={options}>
+          <SeminarOptionsContext value={options}>
             <SlideTransitionsContext value={transitions}>
               <DeckStateContext value={deckState}>
                 <SlideStateContext value={slideState}>
@@ -797,7 +797,7 @@ export function Deck({
                                   ...(swipe.enterFrom === undefined
                                     ? {}
                                     : {
-                                        '--slider-enter-from': `${String(swipe.enterFrom)}px`,
+                                        '--seminar-enter-from': `${String(swipe.enterFrom)}px`,
                                       }),
                                 }}
                               >
@@ -1054,7 +1054,7 @@ export function Deck({
                 </SlideStateContext>
               </DeckStateContext>
             </SlideTransitionsContext>
-          </SliderOptionsContext>
+          </SeminarOptionsContext>
         </DeckContext>
       </UiLanguageContext>
     </ThemeProvider>

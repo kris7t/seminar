@@ -1,6 +1,6 @@
 # Highlighting code
 
-`@slider/plugin-shiki` highlights code blocks with
+`@seminar/plugin-shiki` highlights code blocks with
 [Shiki](https://shiki.style). Shiki uses the grammars and themes of VS Code.
 
 The code is highlighted when the deck is compiled. The deck only contains
@@ -8,11 +8,11 @@ the result, not the highlighter.
 
 ## Enabling the plugin
 
-Add `@slider/plugin-shiki` to the dependencies of your project. Then list it
+Add `@seminar/plugin-shiki` to the dependencies of your project. Then list it
 in the plugins in `vite.config.ts`:
 
 ```ts
-slider({ plugins: ['@slider/plugin-shiki'] });
+seminar({ plugins: ['@seminar/plugin-shiki'] });
 ```
 
 ## Writing code blocks
@@ -56,7 +56,7 @@ To choose a theme for every deck, set it in the config of your presentation
 theme:
 
 ```ts
-export const slider: SliderConfig = {
+export const seminar: SeminarConfig = {
   options: { code: { theme: 'github-dark' } },
 };
 ```
@@ -69,7 +69,7 @@ You can load more languages and themes from JSON files. List them in
 `languages` and `themes`:
 
 ```ts
-export const slider: SliderConfig = {
+export const seminar: SeminarConfig = {
   options: {
     code: {
       languages: ['./grammars/prolog.tmLanguage.json'],
@@ -116,13 +116,13 @@ replace a language of Shiki, give your grammar its name.
 
 ## Styling code blocks
 
-Code blocks are `Code` components. Style them as `SliderCode` in the MUI
+Code blocks are `Code` components. Style them as `SeminarCode` in the MUI
 theme of your slides:
 
 ```ts
 createSlideTheme({
   components: {
-    SliderCode: {
+    SeminarCode: {
       styleOverrides: {
         root: {
           '& pre': { fontFamily: '"JetBrains Mono", monospace' },

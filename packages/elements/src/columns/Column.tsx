@@ -9,7 +9,7 @@ import {
   WITH_PREVIOUS,
   type ComponentTheme,
   type StepProps,
-} from '@slider/core';
+} from '@seminar/core';
 import type { JSX, ReactNode } from 'react';
 
 import { FIRST_CHILD } from '../selectors.ts';
@@ -44,19 +44,19 @@ export interface ColumnProps extends Omit<
 export type ColumnClassKey = 'root' | 'heading';
 
 export const columnClasses: Record<ColumnClassKey, string> =
-  generateUtilityClasses('SliderColumn', ['root', 'heading']);
+  generateUtilityClasses('SeminarColumn', ['root', 'heading']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
-    SliderColumn: ColumnClassKey;
+    SeminarColumn: ColumnClassKey;
   }
 
   interface ComponentsPropsList {
-    SliderColumn: ColumnProps;
+    SeminarColumn: ColumnProps;
   }
 
   interface Components<Theme = unknown> {
-    SliderColumn?: ComponentTheme<'SliderColumn', Theme> | undefined;
+    SeminarColumn?: ComponentTheme<'SeminarColumn', Theme> | undefined;
   }
 }
 
@@ -67,7 +67,7 @@ interface ColumnOwnerState {
 }
 
 const ColumnRoot = styled(Step, {
-  name: 'SliderColumn',
+  name: 'SeminarColumn',
   slot: 'Root',
   overridesResolver: (_props, styles) => styles['root'],
 })<{ ownerState: ColumnOwnerState }>(({ ownerState }) => {
@@ -88,7 +88,7 @@ const ColumnRoot = styled(Step, {
 });
 
 const ColumnHeading = styled('h2', {
-  name: 'SliderColumn',
+  name: 'SeminarColumn',
   slot: 'Heading',
   overridesResolver: (_props, styles) => styles['heading'],
 })<{ ownerState: ColumnOwnerState }>(({ theme, ownerState }) => ({
@@ -102,10 +102,10 @@ const ColumnHeading = styled('h2', {
  * with the previous step, like a paragraph, unless it's a step of its own,
  * e.g., `:::column{step}`, so that columns can be revealed one by one.
  *
- * Can be themed as `SliderColumn` in the `components` of the MUI theme.
+ * Can be themed as `SeminarColumn` in the `components` of the MUI theme.
  */
 export function Column(inProps: ColumnProps): JSX.Element {
-  const props = useThemeProps({ props: inProps, name: 'SliderColumn' });
+  const props = useThemeProps({ props: inProps, name: 'SeminarColumn' });
   const {
     heading,
     headingVariant = 'h5',

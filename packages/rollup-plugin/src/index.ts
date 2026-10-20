@@ -6,11 +6,11 @@ import {
   loadDeckSetup,
   readDeckTheme,
   resolveThemeKey,
-  sliderMdxOptions,
+  seminarMdxOptions,
   type DeckSetup,
   type ModuleImporter,
-  type SliderMdxOptions,
-} from '@slider/mdx';
+  type SeminarMdxOptions,
+} from '@seminar/mdx';
 import type { PluggableList } from 'unified';
 
 /** A warning of compiling a deck. */
@@ -20,7 +20,7 @@ interface CompileWarning {
   column?: number;
 }
 
-/** The parts of a compiled file of MDX that {@link slider} reads. */
+/** The parts of a compiled file of MDX that {@link seminar} reads. */
 interface CompiledFile {
   path: string;
   messages: readonly {
@@ -30,21 +30,24 @@ interface CompiledFile {
   }[];
 }
 
-export interface SliderPluginOptions
+export interface SeminarPluginOptions
   extends
     Omit<MdxOptions, 'include'>,
-    Omit<SliderMdxOptions, 'defaultTheme' | 'onDependency' | 'sliderConfigs'> {
+    Omit<
+      SeminarMdxOptions,
+      'defaultTheme' | 'onDependency' | 'seminarConfigs'
+    > {
   /**
    * Module to import the theme of decks from, unless they set their own
    * `theme` in the frontmatter. Relative paths, like `./src/theme.ts`, are
    * resolved against the root of the project. Defaults to
-   * `@slider/theme-default`. Set to `false` to use the built-in theme of
-   * `@slider/core`, which doesn't load any fonts.
+   * `@seminar/theme-default`. Set to `false` to use the built-in theme of
+   * `@seminar/core`, which doesn't load any fonts.
    */
   defaultTheme?: string | false;
   /**
    * Imports the modules of plugins and themes at compile time, e.g., to read
-   * their `slider` export. Defaults to importing with Node.
+   * their `seminar` export. Defaults to importing with Node.
    */
   importModule?: ModuleImporter | undefined;
   /**
@@ -52,14 +55,14 @@ export interface SliderPluginOptions
    */
   include?: MdxOptions['include'];
   /**
-   * Slider plugins that extend MDX compilation through their config. Relative
+   * Seminar plugins that extend MDX compilation through their config. Relative
    * paths are resolved against the root of the project.
    */
   plugins?: readonly string[] | undefined;
 }
 
 /** The plugin, which works with both Rollup and Vite. */
-export type SliderPlugin = ReturnType<typeof mdx> & {
+export type SeminarPlugin = ReturnType<typeof mdx> & {
   enforce: 'pre';
   watchChange(id: string): Promise<void>;
   /**
@@ -77,14 +80,14 @@ interface Compiler {
 
 /**
  * Compiles `.deck.mdx` files into `Deck` components with MDX (see
- * `remarkSlides` in `@slider/mdx`).
+ * `remarkSlides` in `@seminar/mdx`).
  *
- * In Vite, use `@slider/vite-plugin` instead, which also turns decks into
+ * In Vite, use `@seminar/vite-plugin` instead, which also turns decks into
  * entry points with generated HTML pages, and can read the compile-time config
  * of themes written in TypeScript.
  *
  * Math is rendered at compile time with the options of the theme of the deck
- * (see `SliderConfig` in `@slider/core`). Without Vite, theme modules that
+ * (see `SeminarConfig` in `@seminar/core`). Without Vite, theme modules that
  * aren't packages with a compile-time config are imported by Node to read
  * their config, so they can't import style sheets or use JSX. The files of the
  * config are watched for changes.
@@ -94,13 +97,13 @@ interface Compiler {
  * been turned into steps, and recma plugins run after the slide titles have
  * been resolved.
  *
- * Slider plugins can be listed in `plugins`. Their compile-time config is
- * read through the `slider` export condition or `slider` key in their
+ * Seminar plugins can be listed in `plugins`. Their compile-time config is
+ * read through the `seminar` export condition or `seminar` key in their
  * `package.json`. The deck's theme is merged after them, so it can replace
  * directive components registered by plugins.
  */
-export default function slider({
-  defaultTheme = '@slider/theme-default',
+export default function seminar({
+  defaultTheme = '@seminar/theme-default',
   defaultMouseNavigation = true,
   defaultMirrorPointer = false,
   include = /\.deck\.mdx$/,
@@ -111,7 +114,7 @@ export default function slider({
   rehypePlugins = [],
   recmaPlugins = [],
   ...options
-}: SliderPluginOptions = {}): SliderPlugin {
+}: SeminarPluginOptions = {}): SeminarPlugin {
   // Files that decks depend on at compile time, e.g., the configs of their
   // themes, by the path of the deck.
   const dependencies = new Map<string, Set<string>>();
@@ -142,12 +145,12 @@ export default function slider({
       themeImporter: deckPath,
       importModule,
     });
-    const sliderOptions = sliderMdxOptions({
+    const seminarOptions = seminarMdxOptions({
       importSource,
       defaultTheme: resolvedDefaultTheme(root),
       defaultMouseNavigation,
       defaultMirrorPointer,
-      sliderConfigs: setup.sliderConfigs,
+      seminarConfigs: setup.seminarConfigs,
       mdxPlugins: setup.mdxPlugins,
       onDependency(path, dependency) {
         let deckDependencies = dependencies.get(path);
@@ -164,20 +167,20 @@ export default function slider({
       remarkRehypeOptions: {
         ...options.remarkRehypeOptions,
         handlers: {
-          ...sliderOptions.remarkRehypeOptions?.handlers,
+          ...seminarOptions.remarkRehypeOptions?.handlers,
           ...options.remarkRehypeOptions?.handlers,
         },
       },
       remarkPlugins: [
-        ...(sliderOptions.remarkPlugins ?? []),
+        ...(seminarOptions.remarkPlugins ?? []),
         ...(remarkPlugins ?? []),
       ],
       rehypePlugins: [
-        ...(sliderOptions.rehypePlugins ?? []),
+        ...(seminarOptions.rehypePlugins ?? []),
         ...(rehypePlugins ?? []),
       ],
       recmaPlugins: [
-        ...(sliderOptions.recmaPlugins ?? []),
+        ...(seminarOptions.recmaPlugins ?? []),
         ...(recmaPlugins ?? []),
         // Last, to see the warnings of all the other plugins.
         collectWarnings,
@@ -201,8 +204,8 @@ export default function slider({
         : defaultTheme;
   let configured:
     | {
-        config: Parameters<SliderPlugin['config']>[0];
-        env: Parameters<SliderPlugin['config']>[1];
+        config: Parameters<SeminarPlugin['config']>[0];
+        env: Parameters<SeminarPlugin['config']>[1];
       }
     | undefined;
   // Compilers by the theme of the decks they compile, since the theme and
@@ -219,8 +222,8 @@ export default function slider({
     }
     return compiler;
   };
-  const plugin: SliderPlugin = {
-    name: 'slider',
+  const plugin: SeminarPlugin = {
+    name: 'seminar',
     // Vite has to compile the MDX before transforming the resulting JSX.
     enforce: 'pre',
     config(config, env) {

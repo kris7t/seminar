@@ -9,7 +9,7 @@ import '@fontsource/roboto/700.css';
 import '@fontsource/roboto/700-italic.css';
 
 import { Stack, Typography } from '@mui/material';
-import { createSlideTheme, type SlideMasterProps } from '@slider/core';
+import { createSlideTheme, type SlideMasterProps } from '@seminar/core';
 import type { JSX } from 'react';
 
 /** Replaces the built-in `section` master of the theme. */
@@ -78,7 +78,7 @@ export const theme = createSlideTheme({
     section: SectionMaster,
   },
   components: {
-    SliderSlideNumber: {
+    SeminarSlideNumber: {
       styleOverrides: {
         root: ({ theme }) => ({
           color: '#fff',

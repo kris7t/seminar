@@ -1,7 +1,7 @@
 import { compile } from '@mdx-js/mdx';
 import { describe, expect, it } from 'vitest';
 
-import { sliderMdxOptions } from '../options.ts';
+import { seminarMdxOptions } from '../options.ts';
 import { slides } from '../test/compileDeck.ts';
 
 describe('steps', () => {
@@ -173,7 +173,7 @@ Then that.
 
 - :step{group=a} D
 `,
-      { ...sliderMdxOptions() },
+      { ...seminarMdxOptions() },
     );
     expect(file.messages.map(String)).toEqual([
       '5:1-5:22: The step group `typo` is only used once on the slide',
@@ -190,7 +190,7 @@ Then that.
 - :step{group=b with=previous} D
   - :step{group=b with=initial} E
 `,
-      { ...sliderMdxOptions() },
+      { ...seminarMdxOptions() },
     );
     expect(file.messages.map(String)).toEqual([
       '5:1-6:34: Ignoring `with=previous` on the step group `b`, which is placed by its first element',
@@ -206,7 +206,7 @@ Then that.
 
   it('reports invalid steps', async () => {
     const file = await compile('- A :step{with=next}\n\n## B :step', {
-      ...sliderMdxOptions(),
+      ...seminarMdxOptions(),
     });
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining(
@@ -225,7 +225,7 @@ Then that.
 
 :step{in=typo} Lost
 `,
-      { ...sliderMdxOptions() },
+      { ...seminarMdxOptions() },
     );
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining('There is no step group `typo`'),
@@ -248,7 +248,7 @@ Then that.
 
 :step{after=typo} Lost
 `,
-      { ...sliderMdxOptions() },
+      { ...seminarMdxOptions() },
     );
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining(
