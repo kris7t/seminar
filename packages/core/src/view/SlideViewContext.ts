@@ -2,17 +2,14 @@ import { createContext, use, useSyncExternalStore, type Context } from 'react';
 
 /**
  * Where a slide is rendered. A deck may render the same slide in several
- * views at once, e.g., while generating a thumbnail, and in a presenter view, so
- * slides should render the same content in every view, maybe styled
- * differently.
+ * views at once. Slides should render the same content in every view,
+ * possibly styled differently.
  *
  * - `'audience'`: the slide shown to the audience, i.e., the normal view of
  *   the deck, or the audience window of the presenter view.
  * - `'presenter'`: the slide the presenter interacts with while the audience
  *   window shows it to the audience.
- * - `'thumbnail'`: an offscreen rendering used to generate the initial
- *   cached image of a slide for the overview. Once shown, the slide's image
- *   is captured from its presented view instead.
+ * - `'thumbnail'`: a small rendering of the slide for the overview.
  * - `'preview'`: the next or previous slide coming into view next to the
  *   audience view while swiping between slides, showing the steps last shown
  *   on it.

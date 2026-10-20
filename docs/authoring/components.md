@@ -2,10 +2,10 @@
 
 ## Slide state
 
-A slide is rendered in several views: for the audience, in the
-presenter view, in previews, and briefly to generate its initial thumbnail. Each
-rendering mounts its own components, so `useState` would give each view its
-own state, and lose it when the slide is left.
+A slide is rendered in several views: for the audience, in the presenter
+view, in previews, and as a thumbnail. Each rendering mounts its own
+components, so `useState` would give each view its own state, and lose it
+when the slide is left.
 
 `useSlideState` is like `useState`, but the state belongs to the slide:
 
@@ -67,34 +67,9 @@ Reset deck in the menu resets the state of the deck and of every slide.
 - `presenter`: the slide in the presenter view, while presenting,
 - `audience`: the slide shown to the audience, either in the deck window when
   not presenting, or in the audience window,
-- `thumbnail`: an offscreen rendering used to generate an initial image for
-  the overview,
+- `thumbnail`: a small rendering of the slide for the overview,
 - `preview`: the previews of the next step and slide, and
 - `probe`: an invisible rendering that finds the steps of a slide.
-
-The overview displays cached images. Initial thumbnails are generated one
-slide at a time during idle time. Once a slide has been shown, its thumbnail
-is captured from the presented view as it changes and when it is left, so
-the overview keeps its last shown appearance, including local component
-state. Components aren't mounted in the overview itself.
-After navigation, the departing slide stays mounted behind the current one
-until its capture finishes. It is inert and has `interactive: false` during
-capture. Style copying yields between short batches so navigation, swipes,
-and the overview can respond while thumbnails are generated. At most one
-departed slide is retained; rapid navigation cancels older captures.
-Returning to a previously shown slide reuses its thumbnail while the deck
-state generation, its slide state generation, and its step path are unchanged.
-Every successfully captured step path is retained for the current state
-generation, so going back and forth through captured steps restores their
-images immediately. A generation change discards that slide's old step
-snapshots. Slides that never read `useDeckState` omit the deck generation
-from their cache keys, so unrelated deck-state updates preserve their history.
-Recaps use the generation of the slide whose state they share. Changes and
-resets advance these small counters; initializing state and setting an
-unchanged value do not. Interaction with local widgets can still refresh the
-thumbnail without changing shared state.
-If a capture fails, for example because of external media, the thumbnail
-keeps its last successful image or remains empty until a later capture.
 
 `interactive` is `true` in the one view that the presenter interacts with:
 the deck window, which is the presenter view while presenting. The audience

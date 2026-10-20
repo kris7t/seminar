@@ -46,7 +46,11 @@ export function formulaCache(dynamic: RuntimeDynamicMath): FormulaCache {
         });
         return { ...formula, errors };
       },
-      { resources: { renderer }, transitionHold: 1000 },
+      {
+        resources: { renderer },
+        transitionHold: 1000,
+        maxUnusedEntries: 1024,
+      },
     );
     caches.set(dynamic, cache);
   }

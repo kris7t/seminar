@@ -30,6 +30,12 @@ the slide doesn't shift when they appear. So do updates made with
 
 In other decks, `DynamicFormula` shows its TeX in red.
 
+Identical formulas share their typesetting results across slides and views.
+The cache retains the complete working sets of mounted slides and the two
+most recently unmounted slides. It also retains up to 1,024 additional
+equations in least-recently-used order. Cached results contain SVG and
+MathML strings; slides can unmount while their typesetting results remain cached.
+
 ## Glyphs
 
 Fonts load most of their glyphs only when a formula needs them. The glyphs
