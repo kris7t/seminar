@@ -812,14 +812,25 @@ export function Deck({
                                       <Box
                                         key={index}
                                         inert
-                                        sx={{
-                                          position: 'absolute',
-                                          top: 0,
-                                          bottom: 0,
-                                          width: '100%',
-                                        }}
+                                        sx={[
+                                          {
+                                            position: 'absolute',
+                                            top: 0,
+                                            bottom: 0,
+                                            width: '100%',
+                                          },
+                                          swipe.transition === 'settle' && {
+                                            transition: `translate ${String(SETTLE_DURATION)}ms ease-out`,
+                                          },
+                                        ]}
                                         style={{
                                           left: side * areaFit.spacing,
+                                          // Stays behind while the slide resists.
+                                          ...(side === 1
+                                            ? {
+                                                translate: `${String(swipe.nextLag)}px 0`,
+                                              }
+                                            : {}),
                                         }}
                                       >
                                         <div style={pixelBoxStyles(slideFit)}>

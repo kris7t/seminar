@@ -31,17 +31,12 @@ const FLING_DISTANCE = 30;
 const RESISTANCE = 0.25;
 
 /**
- * Fraction of the width of the slide the finger has to cover before the slide
- * starts to break through the resistance of its steps.
+ * How long a slide that broke through the resistance of its steps takes to
+ * catch up with the finger, in ms. It breaks through once the finger covers
+ * {@link DISTANCE_THRESHOLD}, so a slide that gave way goes to the next one
+ * when let go.
  */
-const BREAK_START = 0.15;
-
-/**
- * Fraction of the width of the slide the finger covers while the slide breaks
- * through and catches up with it. Breaking through ends at {@link DISTANCE_THRESHOLD}, so
- * a slide that gave way goes to the next one when let go.
- */
-const BREAK_LENGTH = DISTANCE_THRESHOLD - BREAK_START;
+const BREAK_DURATION = 150;
 
 /**
  * Fraction of the width of the slide it moves at most at the first or last
@@ -106,6 +101,11 @@ export interface SwipeNavigation {
   /** Horizontal offset of the slides, in pixels. */
   offset: number;
   /**
+   * How far the next slide lags behind the others, in pixels, while the
+   * current slide resists being swiped past its steps.
+   */
+  nextLag: number;
+  /**
    * How the offset should change: `'none'` if the slides follow the finger,
    * and `'settle'` if they settle after letting go.
    */
@@ -144,6 +144,15 @@ interface Swipe {
   horizontal: boolean | undefined;
   /** Whether swiping forward has to overcome the steps of the slide. */
   resisted: boolean;
+  /**
+   * When the swipe broke through the resistance of the steps, as returned by
+   * `performance.now()`, or `undefined` if it hasn't.
+   */
+  brokeAt: number | undefined;
+  /** How far the finger moved horizontally, in pixels. */
+  dx: number;
+  /** The device pixel ratio of the window of the slides. */
+  pixelRatio: number;
   samples: Sample[];
 }
 
@@ -162,19 +171,15 @@ function rubberBand(dx: number, limit: number): number {
 }
 
 /**
- * Moves slowly at first, then breaks through the resistance: speeds up
- * smoothly until it catches up with `dx`, and follows it from then on.
+ * How far a slide that broke through the resistance at `brokeAt` caught up
+ * with the finger at `now`, from 0 to 1, eased out.
  */
-function breakThrough(dx: number, width: number): number {
-  const distance = Math.abs(dx) / width;
-  const t = Math.min(Math.max((distance - BREAK_START) / BREAK_LENGTH, 0), 1);
-  const eased = t * t * (3 - 2 * t);
-  return dx * (RESISTANCE + (1 - RESISTANCE) * eased);
-}
-
-/** Whether a swipe by `dx` hasn't broken through the resistance yet. */
-function resists(dx: number, width: number): boolean {
-  return Math.abs(dx) < width * (BREAK_START + BREAK_LENGTH);
+function breakProgress(brokeAt: number | undefined, now: number): number {
+  if (brokeAt === undefined) {
+    return 0;
+  }
+  const t = Math.min(Math.max((now - brokeAt) / BREAK_DURATION, 0), 1);
+  return 1 - (1 - t) ** 3;
 }
 
 /**
@@ -186,8 +191,9 @@ function resists(dx: number, width: number): boolean {
  * taps or long presses instead.
  *
  * If the current slide has more steps, it resists swiping forward: it moves
- * slowly at first, until the finger moves far enough to break through, when it
- * speeds up to catch up with the finger.
+ * slowly, until the finger moves far enough to break through, when it quickly
+ * catches up with the finger. The next slide stays in place until then, so
+ * that it doesn't seem to come yet.
  * Meanwhile, a hint tells that tapping goes through the steps.
  *
  * Swipes starting on elements that take input themselves, like text fields and
@@ -207,10 +213,12 @@ export function useSwipeNavigation({
   const swipeRef = useRef<Swipe>(undefined);
   const suppressClickRef = useRef(false);
   const [offset, setOffset] = useState(0);
+  const [nextLag, setNextLag] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [transition, setTransition] =
     useState<SwipeNavigation['transition']>('none');
   const [enterFrom, setEnterFrom] = useState<number>();
+  const [catchingUp, setCatchingUp] = useState(false);
   const [hintShown, setHintShown] = useState(false);
   const [hintLingers, setHintLingers] = useState(false);
 
@@ -253,22 +261,69 @@ export function useSwipeNavigation({
   /** Lets the slides move back from where they are shown to where they belong. */
   const settle = useCallback(() => {
     setDragging(false);
+    setCatchingUp(false);
     setOffset(0);
+    setNextLag(0);
     setTransition(offset === 0 || reducedMotion ? 'none' : 'settle');
   }, [offset, reducedMotion]);
 
-  const displayOffset = useCallback(
-    (dx: number, swipe: Swipe) => {
+  /**
+   * Moves the slides to where `swipe` puts them at `now`, and returns whether
+   * they are still catching up with the finger.
+   */
+  const follow = useCallback(
+    (swipe: Swipe, now: number): boolean => {
+      const { dx, pixelRatio } = swipe;
+      // On whole device pixels, so that the next slide doesn't show a sliver
+      // of its edge while it stays in place.
+      const round = (value: number) =>
+        Math.round(value * pixelRatio) / pixelRatio;
       if ((dx < 0 && !canGoNext) || (dx > 0 && !canGoPrevious)) {
-        return rubberBand(dx, slideWidth * EDGE_LIMIT);
+        const current = round(rubberBand(dx, slideWidth * EDGE_LIMIT));
+        setOffset(current);
+        setNextLag(0);
+        return false;
       }
-      if (dx < 0 && swipe.resisted) {
-        return breakThrough(dx, slideWidth);
+      if (dx >= 0 || !swipe.resisted) {
+        setOffset(round(dx));
+        setNextLag(0);
+        return false;
       }
-      return dx;
+      if (
+        swipe.brokeAt === undefined &&
+        Math.abs(dx) > slideWidth * DISTANCE_THRESHOLD
+      ) {
+        swipe.brokeAt = now;
+      }
+      const progress = reducedMotion
+        ? Number(swipe.brokeAt !== undefined)
+        : breakProgress(swipe.brokeAt, now);
+      const current = round(dx * (RESISTANCE + (1 - RESISTANCE) * progress));
+      setOffset(current);
+      setNextLag(round(dx * progress) - current);
+      return swipe.brokeAt !== undefined && progress < 1;
     },
-    [canGoNext, canGoPrevious, slideWidth],
+    [canGoNext, canGoPrevious, slideWidth, reducedMotion],
   );
+
+  // The slide keeps catching up with the finger after it broke through, even
+  // if the finger stops.
+  useEffect(() => {
+    if (!catchingUp) {
+      return undefined;
+    }
+    let frame = requestAnimationFrame(function tick() {
+      const swipe = swipeRef.current;
+      if (swipe === undefined || !follow(swipe, performance.now())) {
+        setCatchingUp(false);
+        return;
+      }
+      frame = requestAnimationFrame(tick);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [catchingUp, follow]);
 
   const end = (event: PointerEvent<HTMLElement>, cancelled: boolean) => {
     const swipe = swipeRef.current;
@@ -291,7 +346,7 @@ export function useSwipeNavigation({
       Math.sign(velocity) === Math.sign(dx) &&
       Math.abs(velocity) > FLING_VELOCITY;
     const possible = forward ? canGoNext : canGoPrevious;
-    const resisting = forward && swipe.resisted && resists(dx, slideWidth);
+    const resisting = forward && swipe.resisted && swipe.brokeAt === undefined;
     if (cancelled || !possible || resisting || !(far || fast)) {
       settle();
       if (forward && swipe.resisted) {
@@ -300,12 +355,14 @@ export function useSwipeNavigation({
       return;
     }
     setDragging(false);
+    setCatchingUp(false);
     setHintLingers(false);
     setOffset(0);
+    setNextLag(0);
     setTransition('none');
     // The slides keep moving from where they are, now around the new slide.
     if (!reducedMotion) {
-      setEnterFrom(forward ? offset + spacing : offset - spacing);
+      setEnterFrom(forward ? offset + nextLag + spacing : offset - spacing);
     }
     if (forward) {
       nextSlide();
@@ -340,6 +397,10 @@ export function useSwipeNavigation({
         startY: event.clientY,
         horizontal: undefined,
         resisted: hasMoreSteps(),
+        brokeAt: undefined,
+        dx: 0,
+        pixelRatio:
+          event.currentTarget.ownerDocument.defaultView?.devicePixelRatio ?? 1,
         samples: [],
       };
     },
@@ -368,7 +429,7 @@ export function useSwipeNavigation({
       if (!swipe.horizontal) {
         return;
       }
-      const dx = event.clientX - swipe.startX;
+      swipe.dx = event.clientX - swipe.startX;
       swipe.samples.push({ x: event.clientX, time: event.timeStamp });
       while (
         swipe.samples.length > 2 &&
@@ -376,8 +437,8 @@ export function useSwipeNavigation({
       ) {
         swipe.samples.shift();
       }
-      setOffset(displayOffset(dx, swipe));
-      setHintShown(swipe.resisted && dx < 0 && canGoNext);
+      setCatchingUp(follow(swipe, performance.now()));
+      setHintShown(swipe.resisted && swipe.dx < 0 && canGoNext);
     },
     onPointerUp: (event) => {
       end(event, false);
@@ -405,6 +466,7 @@ export function useSwipeNavigation({
   return {
     handlers,
     offset,
+    nextLag,
     transition,
     enterFrom,
     moving: dragging || transition !== 'none' || enterFrom !== undefined,

@@ -170,22 +170,83 @@ describe('useSwipeNavigation', () => {
     // Moves slowly, however fast the finger is.
     swipe(420, 100);
     expect(result.current.offset).toBe(-12);
+    // The next slide stays where it was.
+    expect(result.current.offset + result.current.nextLag).toBe(0);
     expect(result.current.showHint).toBe(true);
     release(420, 100);
     expect(nextSlide).not.toHaveBeenCalled();
+    expect(result.current.nextLag).toBe(0);
     // The hint stays for a while after letting go.
     expect(result.current.showHint).toBe(true);
   });
 
-  it('breaks through the resistance of more steps', () => {
-    const { result, nextSlide, swipe, release } = setup({
-      hasMoreSteps: () => true,
+  it('keeps the next slide in place on whole device pixels', () => {
+    Object.defineProperty(window, 'devicePixelRatio', {
+      value: 1.5,
+      configurable: true,
     });
-    swipe(100);
-    expect(result.current.offset).toBe(-360);
-    release(100);
-    expect(nextSlide).toHaveBeenCalledOnce();
-    expect(result.current.showHint).toBe(false);
+    try {
+      const { result, swipe } = setup({ hasMoreSteps: () => true });
+      swipe(430, 100);
+      const { offset, nextLag } = result.current;
+      expect(offset).not.toBe(0);
+      expect(offset + nextLag).toBe(0);
+      expect(Number.isInteger(offset * 1.5)).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'devicePixelRatio', {
+        value: 1,
+        configurable: true,
+      });
+    }
+  });
+
+  it('breaks through the resistance of more steps', () => {
+    vi.useFakeTimers({
+      toFake: ['performance', 'requestAnimationFrame', 'cancelAnimationFrame'],
+    });
+    try {
+      const { result, nextSlide, swipe, release } = setup({
+        hasMoreSteps: () => true,
+      });
+      swipe(100);
+      // Still where it resisted.
+      expect(result.current.offset).toBe(-90);
+      act(() => {
+        vi.advanceTimersByTime(50);
+      });
+      // Catching up with the finger, and the next slide comes along.
+      expect(result.current.offset).toBeLessThan(-90);
+      expect(result.current.offset).toBeGreaterThan(-360);
+      expect(result.current.offset + result.current.nextLag).toBeLessThan(0);
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(result.current.offset).toBe(-360);
+      expect(result.current.nextLag).toBe(0);
+      release(100);
+      expect(nextSlide).toHaveBeenCalledOnce();
+      expect(result.current.showHint).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('goes on from where the slides are when let go while catching up', () => {
+    vi.useFakeTimers({
+      toFake: ['performance', 'requestAnimationFrame', 'cancelAnimationFrame'],
+    });
+    try {
+      const { result, nextSlide, swipe, release } = setup({
+        hasMoreSteps: () => true,
+      });
+      swipe(100);
+      release(100);
+      expect(nextSlide).toHaveBeenCalledOnce();
+      // The next slide hadn't moved yet.
+      expect(result.current.enterFrom).toBe(WIDTH);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not resist swiping back', () => {
