@@ -29,13 +29,72 @@ describe('calloutGeometry', () => {
     expect(geometry.path.match(/\bM /g)).toHaveLength(1);
   });
 
-  it('mirrors the automatic stem attachment across the slide', () => {
-    expect(calloutGeometry({ ...BASE, anchorX: 200 }).path).toContain(
-      'H 110 L',
+  it.each([
+    [200, 200],
+    [900, 500],
+    [SLIDE_WIDTH / 2 - 0.01, SLIDE_HEIGHT / 2 - 0.01],
+    [SLIDE_WIDTH / 2 + 0.01, SLIDE_HEIGHT / 2 + 0.01],
+  ])(
+    'keeps the default direction and attachment at (%f, %f)',
+    (anchorX, anchorY) => {
+      const geometry = calloutGeometry({ ...BASE, anchorX, anchorY });
+      const preferred = calloutGeometry(BASE);
+      expect(geometry.angle).toBe(110);
+      expect(geometry.x).toBeCloseTo(preferred.x);
+      expect(geometry.y).toBeCloseTo(preferred.y);
+      expect(geometry.path).toContain('H 110 L');
+    },
+  );
+
+  it.each([
+    [1050, 360, 70, 'H 230 L'],
+    [640, 150, -110, 'H 70 L'],
+    [1050, 150, -70, 'H 190 L'],
+  ])(
+    'flips only the overflowing axes at (%i, %i)',
+    (anchorX, anchorY, angle, attachment) => {
+      const geometry = calloutGeometry({ ...BASE, anchorX, anchorY });
+      expect(geometry.angle).toBe(angle);
+      expect(geometry.path).toContain(attachment);
+      expect(anchorX + geometry.x).toBeGreaterThanOrEqual(CALLOUT_SLIDE_MARGIN);
+      expect(anchorY + geometry.y).toBeGreaterThanOrEqual(CALLOUT_SLIDE_MARGIN);
+      expect(anchorX + geometry.x + geometry.width).toBeLessThanOrEqual(
+        SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN,
+      );
+      expect(anchorY + geometry.y + geometry.height).toBeLessThanOrEqual(
+        SLIDE_HEIGHT - CALLOUT_SLIDE_MARGIN,
+      );
+    },
+  );
+
+  it('flips horizontally only when the body crosses the right slide margin', () => {
+    const preferred = calloutGeometry(BASE);
+    const anchorX =
+      SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN - preferred.width - preferred.x;
+    expect(calloutGeometry({ ...BASE, anchorX: anchorX - 0.01 }).angle).toBe(
+      110,
     );
+    expect(calloutGeometry({ ...BASE, anchorX: anchorX + 0.01 }).angle).toBe(
+      70,
+    );
+  });
+
+  it('flips vertically only when the body crosses the top slide margin', () => {
+    const preferred = calloutGeometry(BASE);
+    const anchorY = CALLOUT_SLIDE_MARGIN - preferred.y;
+    expect(calloutGeometry({ ...BASE, anchorY: anchorY + 0.01 }).angle).toBe(
+      110,
+    );
+    expect(calloutGeometry({ ...BASE, anchorY: anchorY - 0.01 }).angle).toBe(
+      -110,
+    );
+  });
+
+  it('includes the anchor height when deciding whether to flip', () => {
+    expect(calloutGeometry({ ...BASE, anchorY: 170 }).angle).toBe(110);
     expect(
-      calloutGeometry({ ...BASE, anchorX: SLIDE_WIDTH - 200 }).path,
-    ).toContain('H 230 L');
+      calloutGeometry({ ...BASE, anchorY: 170, anchorHeight: 20 }).angle,
+    ).toBe(-110);
   });
 
   it('uses the angle to select an edge and honors both offsets', () => {

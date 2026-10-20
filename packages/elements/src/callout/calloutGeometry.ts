@@ -189,30 +189,15 @@ function automaticPlacement(
   stemLength: number,
   requestedStemOffset: number | undefined,
 ): Placement {
-  const towardRight = anchor.x <= SLIDE_WIDTH / 2;
-  const towardBottom = anchor.y <= SLIDE_HEIGHT / 2;
-  // Prefer above, then below, left, and right. Each direction is tilted away
-  // from the edge normal toward the slide center, matching the off-center body.
+  // Keep the preferred direction and attachment stable across the slide center,
+  // reflecting them only when that reduces overflow.
   const candidates = [
-    towardRight ? 90 + DEFAULT_STEM_ANGLE : 90 - DEFAULT_STEM_ANGLE,
-    towardRight ? -90 - DEFAULT_STEM_ANGLE : -90 + DEFAULT_STEM_ANGLE,
-    towardBottom ? -DEFAULT_STEM_ANGLE : DEFAULT_STEM_ANGLE,
-    towardBottom ? -180 + DEFAULT_STEM_ANGLE : 180 - DEFAULT_STEM_ANGLE,
+    90 - DEFAULT_STEM_ANGLE,
+    -90 - DEFAULT_STEM_ANGLE,
+    -90 + DEFAULT_STEM_ANGLE,
   ];
-  let best = placementFor(
-    anchor,
-    anchorHeight,
-    width,
-    height,
-    radius,
-    stemSize,
-    stemLength,
-    candidates[0] ?? 90,
-    requestedStemOffset,
-  );
-  let bestOverflow = overflow(best.position, width, height);
-  for (const candidate of candidates.slice(1)) {
-    const placement = placementFor(
+  const place = (angle: number): Placement =>
+    placementFor(
       anchor,
       anchorHeight,
       width,
@@ -220,9 +205,16 @@ function automaticPlacement(
       radius,
       stemSize,
       stemLength,
-      candidate,
-      requestedStemOffset,
+      angle,
+      requestedStemOffset ??
+        (direction(angle).x < 0
+          ? DEFAULT_STEM_OFFSET
+          : DEFAULT_MIRRORED_STEM_OFFSET),
     );
+  let best = place(90 + DEFAULT_STEM_ANGLE);
+  let bestOverflow = overflow(best.position, width, height);
+  for (const candidate of candidates) {
+    const placement = place(candidate);
     const candidateOverflow = overflow(placement.position, width, height);
     if (candidateOverflow < bestOverflow) {
       best = placement;
@@ -287,7 +279,7 @@ function speechBubblePath(
 /**
  * Places a callout in the fixed-size slide and builds its SVG background. An
  * explicit angle, offset, or stem offset is a hard geometric constraint;
- * automatic placement merely chooses omitted values that minimize overflow.
+ * automatic placement prefers above and right, reflecting to minimize overflow.
  */
 export function calloutGeometry({
   anchorX,

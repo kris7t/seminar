@@ -78,7 +78,9 @@ Callouts fit their text, up to a width of 360 pixels.
 | `stemOffset` | Where the stem leaves its edge, from 0 to 1                                             |
 | `shift`      | Moves the point the stem points at, e.g., `0,-8`                                        |
 
-Without `angle`, the callout finds a direction where it fits on the slide.
+Without `angle`, the callout grows toward the top right, with its stem pointing
+down and left. It flips horizontally or vertically when needed to keep its
+body within a 24-pixel margin of the slide.
 
 Themes can set the defaults of these and add variants as `SliderCallout`, and
 style the titles as `SliderCalloutTitle`.

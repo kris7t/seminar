@@ -113,8 +113,9 @@ export interface CalloutProps extends Omit<
   stemSize?: number | undefined;
   /**
    * Direction from the bubble body to the directive anchor, in degrees. `0`
-   * selects the right edge and `90` the bottom edge. Omit it for automatic
-   * fitting; an explicit value is exact even when the bubble is clipped.
+   * selects the right edge and `90` the bottom edge. Without it, the bubble
+   * grows above and right, flipping to fit within the slide margin. An
+   * explicit value is exact even when the bubble is clipped.
    */
   angle?: number | undefined;
   /** Stem length from the body to the anchor. Defaults to `stemSize`. */
