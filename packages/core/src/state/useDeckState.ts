@@ -7,6 +7,8 @@ import {
 } from 'react';
 
 import { DeckStateContext } from './DeckStateContext.ts';
+import { DeckStateUsageContext } from './DeckStateUsageContext.ts';
+import { SlideViewContext } from '../view/SlideViewContext.ts';
 
 /**
  * Like `useState`, but the state belongs to the deck, so every slide that
@@ -21,6 +23,9 @@ export function useDeckState<T>(
   key: string,
 ): [T | undefined, Dispatch<SetStateAction<T | undefined>>] {
   const store = use(DeckStateContext);
+  const recordUse = use(DeckStateUsageContext);
+  const view = use(SlideViewContext);
+  recordUse?.(view.index);
   const getValue = useCallback(
     () => store.get(key) as T | undefined,
     [store, key],

@@ -38,6 +38,24 @@ function Counter() {
 }
 
 describe('DeckStateStore', () => {
+  it('advances its generation for every state change and nonempty reset', () => {
+    const store = new DeckStateStore();
+    expect(store.getGeneration()).toBe(0);
+    store.set('a', 1);
+    expect(store.getGeneration()).toBe(1);
+    store.set('a', 1);
+    store.set('unset', undefined);
+    expect(store.getGeneration()).toBe(1);
+    store.set('a', 2);
+    expect(store.getGeneration()).toBe(2);
+    store.set('b', 3);
+    expect(store.getGeneration()).toBe(3);
+    store.reset();
+    expect(store.getGeneration()).toBe(4);
+    store.reset();
+    expect(store.getGeneration()).toBe(4);
+  });
+
   it('stores values by key, and is changed while it has any', () => {
     const store = new DeckStateStore();
     const listener = vi.fn();

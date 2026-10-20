@@ -37,6 +37,44 @@ function Counter({ name, stateKey }: { name: string; stateKey?: string }) {
 const overview = () => screen.getByRole('region', { name: 'Slide overview' });
 
 describe('SlideStateStore', () => {
+  it('tracks generations per slide without counting initialization or steps', () => {
+    const store = new SlideStateStore();
+    expect(store.getGeneration(0)).toBe(0);
+    store.getOrInit(0, 'a', () => 1);
+    store.stepPosition(0).set({ path: [1], toEnd: false });
+    expect(store.getGeneration(0)).toBe(0);
+    store.set(0, 'a', 2);
+    store.set(0, 'a', 2);
+    expect(store.getGeneration(0)).toBe(1);
+    expect(store.getGeneration(1)).toBe(0);
+    store.set(0, 'a', 3);
+    expect(store.getGeneration(0)).toBe(2);
+    store.reset(0);
+    expect(store.getGeneration(0)).toBe(3);
+    store.reset(0);
+    expect(store.getGeneration(0)).toBe(3);
+    store.getOrInit(0, 'a', () => 1);
+    store.getOrInit(1, 'a', () => 1);
+    store.resetAll();
+    expect(store.getGeneration(0)).toBe(4);
+    expect(store.getGeneration(1)).toBe(1);
+    store.resetAll();
+    expect(store.getGeneration(0)).toBe(4);
+  });
+
+  it('invalidates generations only where moving state changes values', () => {
+    const store = new SlideStateStore();
+    store.set(0, 'a', 'first');
+    store.set(1, 'a', 'second');
+    store.move([0, 1]);
+    expect(store.getGeneration(0)).toBe(1);
+    expect(store.getGeneration(1)).toBe(1);
+    store.move([undefined, 2]);
+    expect(store.getGeneration(0)).toBe(2);
+    expect(store.getGeneration(1)).toBe(2);
+    expect(store.getGeneration(2)).toBe(1);
+  });
+
   it('stores values by slide and key', () => {
     const store = new SlideStateStore();
     const listener = vi.fn();

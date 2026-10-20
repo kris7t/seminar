@@ -21,7 +21,17 @@ export class SlideStateStore {
   readonly #listeners = new Map<string, Set<() => void>>();
   readonly #stepPositions = new Map<number, StepPosition>();
   readonly #changeListeners = new Set<() => void>();
+  readonly #generations = new Map<number, number>();
   #changed: ReadonlySet<number> = new Set();
+
+  /** Counts changes and resets of a slide's state, excluding its steps and initialization. */
+  getGeneration(slideIndex: number): number {
+    return this.#generations.get(slideIndex) ?? 0;
+  }
+
+  #advanceGeneration(slideIndex: number): void {
+    this.#generations.set(slideIndex, this.getGeneration(slideIndex) + 1);
+  }
 
   #id(slideIndex: number, key: string): string {
     return `${String(slideIndex)}\u0000${key}`;
@@ -54,6 +64,7 @@ export class SlideStateStore {
       return;
     }
     this.#values.set(id, value);
+    if (key !== STEP_KEY) this.#advanceGeneration(slideIndex);
     if (key !== STEP_KEY && !this.#changed.has(slideIndex)) {
       this.#setChanged(new Set([...this.#changed, slideIndex]));
     }
@@ -102,6 +113,7 @@ export class SlideStateStore {
    */
   reset(slideIndex: number): void {
     const ids = this.#keysOf(slideIndex);
+    if (ids.length > 0) this.#advanceGeneration(slideIndex);
     for (const id of ids) {
       this.#values.delete(id);
     }
@@ -121,6 +133,10 @@ export class SlideStateStore {
   resetAll(): void {
     const steps = `\u0000${STEP_KEY}`;
     const ids = [...this.#values.keys()].filter((id) => !id.endsWith(steps));
+    const slides = new Set(
+      ids.map((id) => Number(id.slice(0, id.indexOf('\u0000')))),
+    );
+    for (const slide of slides) this.#advanceGeneration(slide);
     for (const id of ids) {
       this.#values.delete(id);
     }
@@ -149,6 +165,16 @@ export class SlideStateStore {
         values.set(newId, value);
       }
     }
+    const changed = new Set<number>();
+    for (const id of ids) {
+      if (
+        !id.endsWith(`\u0000${STEP_KEY}`) &&
+        (this.#values.has(id) !== values.has(id) ||
+          !Object.is(this.#values.get(id), values.get(id)))
+      )
+        changed.add(Number(id.slice(0, id.indexOf('\u0000'))));
+    }
+    for (const slide of changed) this.#advanceGeneration(slide);
     this.#values.clear();
     for (const [id, value] of values) {
       this.#values.set(id, value);

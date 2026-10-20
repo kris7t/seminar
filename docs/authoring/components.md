@@ -82,6 +82,17 @@ until its capture finishes. It is inert and has `interactive: false` during
 capture. Style copying yields between short batches so navigation, swipes,
 and the overview can respond while thumbnails are generated. At most one
 departed slide is retained; rapid navigation cancels older captures.
+Returning to a previously shown slide reuses its thumbnail while the deck
+state generation, its slide state generation, and its step path are unchanged.
+Every successfully captured step path is retained for the current state
+generation, so going back and forth through captured steps restores their
+images immediately. A generation change discards that slide's old step
+snapshots. Slides that never read `useDeckState` omit the deck generation
+from their cache keys, so unrelated deck-state updates preserve their history.
+Recaps use the generation of the slide whose state they share. Changes and
+resets advance these small counters; initializing state and setting an
+unchanged value do not. Interaction with local widgets can still refresh the
+thumbnail without changing shared state.
 If a capture fails, for example because of external media, the thumbnail
 keeps its last successful image or remains empty until a later capture.
 

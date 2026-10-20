@@ -9,6 +9,12 @@ export class DeckStateStore {
   readonly #values = new Map<string, unknown>();
   readonly #listeners = new Map<string, Set<() => void>>();
   readonly #changeListeners = new Set<() => void>();
+  #generation = 0;
+
+  /** Counts state changes, excluding writes that preserve the current value. */
+  getGeneration(): number {
+    return this.#generation;
+  }
 
   get(key: string): unknown {
     return this.#values.get(key);
@@ -18,6 +24,7 @@ export class DeckStateStore {
     if (Object.is(this.#values.get(key), value)) {
       return;
     }
+    this.#generation += 1;
     const wasChanged = this.#values.size > 0;
     if (value === undefined) {
       this.#values.delete(key);
@@ -64,6 +71,7 @@ export class DeckStateStore {
     if (keys.length === 0) {
       return;
     }
+    this.#generation += 1;
     this.#values.clear();
     for (const key of keys) {
       for (const listener of this.#listeners.get(key) ?? []) {

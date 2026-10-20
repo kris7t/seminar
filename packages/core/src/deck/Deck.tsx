@@ -85,6 +85,7 @@ import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
 import { useDeckNavigation } from './useDeckNavigation.ts';
 import { SlideStateContext } from '../state/SlideStateContext.ts';
 import { DeckStateContext } from '../state/DeckStateContext.ts';
+import { DeckStateUsageContext } from '../state/DeckStateUsageContext.ts';
 import { DeckStateStore } from '../state/DeckStateStore.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { SharedWorkProvider } from '../shared/SharedWorkProvider.tsx';
@@ -1064,5 +1065,9 @@ export function Deck({
       </UiLanguageContext>
     </ThemeProvider>
   );
-  return <SharedWorkProvider>{content}</SharedWorkProvider>;
+  return (
+    <DeckStateUsageContext value={thumbnails.recordDeckStateUse}>
+      <SharedWorkProvider>{content}</SharedWorkProvider>
+    </DeckStateUsageContext>
+  );
 }
