@@ -23,8 +23,30 @@ describe('fitArea', () => {
     });
   });
 
+  it('separates slides side by side by the margin of one side', () => {
+    const { slide, spacing } = fitArea({
+      left: 0,
+      top: 0,
+      width: 1000,
+      height: 360,
+    });
+    expect(slide).toMatchObject({ left: 180, width: 640 });
+    expect(spacing).toBe(820);
+  });
+
+  it('keeps the next slide out of the area if the margins differ', () => {
+    const { area, slide, spacing } = fitArea({
+      left: 0,
+      top: 0,
+      width: 1001,
+      height: 360,
+    });
+    expect(slide).toMatchObject({ left: 180, width: 640 });
+    expect(spacing + slide.left).toBe(area.width);
+  });
+
   it('keeps the area and the slide on whole device pixels', () => {
-    const { area, slide } = fitArea(
+    const { area, slide, spacing } = fitArea(
       { left: 10.3, top: 0, width: 731.5, height: 457.25 },
       1.25,
     );
@@ -36,6 +58,7 @@ describe('fitArea', () => {
       slide.top,
       slide.width,
       slide.height,
+      spacing,
     ]) {
       expect(Math.abs(value * 1.25 - Math.round(value * 1.25))).toBeLessThan(
         1e-9,

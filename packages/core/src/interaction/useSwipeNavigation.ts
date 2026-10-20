@@ -86,11 +86,8 @@ export interface SwipeNavigationOptions {
   canGoPrevious: boolean;
   nextSlide: () => void;
   previousSlide: () => void;
-  /**
-   * Width of the area of the slides, in pixels, which is the distance between
-   * adjacent slides while swiping.
-   */
-  width: number;
+  /** Distance between adjacent slides while swiping, in pixels. */
+  spacing: number;
   /**
    * Width of the slide shown in the area, in pixels, which may be narrower
    * than the area if the slide doesn't fill it. Swipes have to cover distances
@@ -202,7 +199,7 @@ export function useSwipeNavigation({
   canGoPrevious,
   nextSlide,
   previousSlide,
-  width,
+  spacing,
   slideWidth,
   disabled = false,
 }: SwipeNavigationOptions): SwipeNavigation {
@@ -308,7 +305,7 @@ export function useSwipeNavigation({
     setTransition('none');
     // The slides keep moving from where they are, now around the new slide.
     if (!reducedMotion) {
-      setEnterFrom(forward ? offset + width : offset - width);
+      setEnterFrom(forward ? offset + spacing : offset - spacing);
     }
     if (forward) {
       nextSlide();

@@ -41,6 +41,12 @@ export interface AreaFit {
   area: PixelBox;
   /** Box of the slide in the middle of `area`, from its top left corner. */
   slide: SlideFit;
+  /**
+   * Distance between slides placed side by side, e.g., while swiping, so that
+   * only the margin on one side of the slide separates them, on whole device
+   * pixels.
+   */
+  spacing: number;
 }
 
 // Tolerates rounding errors in the sizes of the area.
@@ -74,6 +80,7 @@ export function fitArea(box: PixelBox, pixelRatio = 1): AreaFit {
     Math.floor(SLIDE_HEIGHT * fitScale + EPSILON),
     areaHeight,
   );
+  const slideLeft = Math.floor((areaWidth - width) / 2);
   return {
     area: {
       left: left / pixelRatio - box.left,
@@ -82,13 +89,16 @@ export function fitArea(box: PixelBox, pixelRatio = 1): AreaFit {
       height: areaHeight / pixelRatio,
     },
     slide: {
-      left: Math.floor((areaWidth - width) / 2) / pixelRatio,
+      left: slideLeft / pixelRatio,
       top: Math.floor((areaHeight - height) / 2) / pixelRatio,
       width: width / pixelRatio,
       height: height / pixelRatio,
       // Covers the box, which cuts off less than a device pixel of the slide.
       scale: Math.max(width / SLIDE_WIDTH, height / SLIDE_HEIGHT) / pixelRatio,
     },
+    // The margin on the right may be a device pixel wider, which keeps the
+    // next slide out of the area.
+    spacing: (areaWidth - slideLeft) / pixelRatio,
   };
 }
 

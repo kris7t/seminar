@@ -29,7 +29,7 @@ function setup(options: Partial<SwipeNavigationOptions> = {}) {
       canGoPrevious: true,
       nextSlide,
       previousSlide,
-      width: WIDTH,
+      spacing: WIDTH,
       slideWidth: WIDTH,
       ...options,
     }),
@@ -106,12 +106,15 @@ describe('useSwipeNavigation', () => {
   });
 
   it('measures swipes by the slide if it is narrower than the area', () => {
-    const { result, nextSlide, swipe, release } = setup({ slideWidth: 200 });
+    const { result, nextSlide, swipe, release } = setup({
+      spacing: 600,
+      slideWidth: 200,
+    });
     swipe(400);
     release(400);
     expect(nextSlide).toHaveBeenCalledOnce();
-    // The next slide is still a whole area away.
-    expect(result.current.enterFrom).toBe(930);
+    // The next slide comes from where it was shown, a slide and a margin away.
+    expect(result.current.enterFrom).toBe(530);
   });
 
   it('stops moving even if the browser does not report the end', () => {

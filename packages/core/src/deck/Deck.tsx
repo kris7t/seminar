@@ -668,7 +668,7 @@ export function Deck({
     previousSlide: () => {
       previousSlide({ transition: false });
     },
-    width: containerSize.width,
+    spacing: areaFit.spacing,
     slideWidth: SLIDE_WIDTH * slideFit.scale,
     disabled:
       menuPosition !== undefined ||
@@ -809,7 +809,6 @@ export function Deck({
                                         : [[index, side] as const],
                                     )
                                     .map(([index, side]) => (
-                                      // Placed a whole area away, which needs no measuring.
                                       <Box
                                         key={index}
                                         inert
@@ -820,7 +819,7 @@ export function Deck({
                                           width: '100%',
                                         }}
                                         style={{
-                                          left: `${String(side * 100)}%`,
+                                          left: side * areaFit.spacing,
                                         }}
                                       >
                                         <div style={pixelBoxStyles(slideFit)}>
