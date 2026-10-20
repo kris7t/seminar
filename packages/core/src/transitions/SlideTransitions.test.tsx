@@ -26,6 +26,7 @@ import {
   SETTLE_DEADLINE,
   SlideTransitions,
   SlideTransitionsContext,
+  SNAPSHOT_OFFSET_PROPERTY,
   TRANSITION_ATTRIBUTE,
   TRANSITION_FRAME_ATTRIBUTE,
 } from './SlideTransitions.ts';
@@ -157,6 +158,28 @@ describe('SlideTransitions', () => {
     await started[0]?.capture();
     await started[0]?.end();
     expect(frame.hasAttribute(TRANSITION_ATTRIBUTE)).toBe(false);
+  });
+
+  it('moves misplaced snapshots back onto the frame', async () => {
+    const getComputedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(
+      (element, pseudo) =>
+        pseudo === '::view-transition-group(root)'
+          ? ({ transform: 'matrix(1, 0, 0, 1, 0, 56)' } as CSSStyleDeclaration)
+          : getComputedStyle(element, pseudo),
+    );
+    vi.spyOn(CSS, 'supports').mockReturnValue(true);
+    const transitions = new SlideTransitions();
+    const frame = createFrame();
+    const started = fakeTransitions(frame);
+    transitions.register(frame);
+    transitions.run(() => undefined);
+    await started[0]?.capture();
+    expect(frame.style.getPropertyValue(SNAPSHOT_OFFSET_PROPERTY)).toBe(
+      '0px -56px',
+    );
+    await started[0]?.end();
+    vi.restoreAllMocks();
   });
 
   it('updates once every frame has its snapshot', async () => {

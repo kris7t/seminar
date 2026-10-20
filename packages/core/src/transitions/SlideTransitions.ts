@@ -75,6 +75,12 @@ export const TRANSITION_ATTRIBUTE = 'data-slider-transition';
 export const DURATION_PROPERTY = '--slider-fade-duration';
 
 /**
+ * Custom property of a frame with how far its view transitions move their
+ * snapshots back onto it, see {@link alignSnapshots}.
+ */
+export const SNAPSHOT_OFFSET_PROPERTY = '--slider-snapshot-offset';
+
+/**
  * Attribute of the slide frames that take part in a view transition of their
  * whole document, which are the only parts of the document that are animated.
  */
@@ -203,6 +209,41 @@ function startTransition(
     transition: doc.startViewTransition(update),
     scope: doc.documentElement,
   };
+}
+
+/** Returns the translation of a computed `transform`, e.g., `matrix(…)`. */
+function getTranslation(transform: string): [number, number] {
+  const match = /^matrix(3d)?\((.*)\)$/.exec(transform);
+  if (match === null) {
+    return [0, 0];
+  }
+  const values = (match[2] ?? '').split(',').map(Number);
+  const [x, y] = match[1] === undefined ? [4, 5] : [12, 13];
+  return [values[x] ?? 0, values[y] ?? 0];
+}
+
+/**
+ * Moves the snapshots of the view transition scoped to `frame` back onto it,
+ * once the transition is ready. Chrome on Android moves them down by the
+ * height of the address bar while it's shown, as if they were drawn under it
+ * like in transitions of the whole document. The snapshot of the frame
+ * itself should be right on it, so its transform is how far they're off. The
+ * offset stays for later transitions, so that they're in place from their
+ * first frame.
+ */
+function alignSnapshots(frame: HTMLElement): void {
+  const view = frame.ownerDocument.defaultView;
+  const pseudo = '::view-transition-group(root)';
+  // Not every environment computes the styles of these, e.g., jsdom.
+  if (view?.CSS.supports(`selector(${pseudo})`) !== true) {
+    return;
+  }
+  const { transform } = view.getComputedStyle(frame, pseudo);
+  const [x, y] = getTranslation(transform);
+  frame.style.setProperty(
+    SNAPSHOT_OFFSET_PROPERTY,
+    `${String(-x)}px ${String(-y)}px`,
+  );
 }
 
 function prefersReducedMotion(frame: HTMLElement): boolean {
@@ -641,7 +682,14 @@ export class SlideTransitions {
       };
       // Skipped transitions reject, which isn't an error here.
       transition.finished.then(finish, finish);
-      transition.ready.catch(() => undefined);
+      transition.ready.then(
+        () => {
+          if (scope === frame) {
+            alignSnapshots(frame);
+          }
+        },
+        () => undefined,
+      );
       transition.updateCallbackDone.then(
         () => {
           // Nothing to animate, and the snapshots would cover what's

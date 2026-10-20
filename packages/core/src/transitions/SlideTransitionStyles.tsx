@@ -7,6 +7,7 @@ import {
   OWN_ANIMATION_CLASS,
   POINTER_TRANSITION_NAME,
   SLIDE_TRANSITION_NAME,
+  SNAPSHOT_OFFSET_PROPERTY,
   TRANSITION_ATTRIBUTE,
   TRANSITION_FRAME_ATTRIBUTE,
 } from './SlideTransitions.ts';
@@ -29,6 +30,11 @@ export function SlideTransitionStyles(): JSX.Element {
         [`html${running}`]: { viewTransitionName: 'none' },
         [`${running} [${TRANSITION_FRAME_ATTRIBUTE}]`]: {
           viewTransitionName: SLIDE_TRANSITION_NAME,
+        },
+        // Snapshots of transitions scoped to the frame are in the wrong place in
+        // some browsers.
+        [`${running}::view-transition-group(root)`]: {
+          translate: `var(${SNAPSHOT_OFFSET_PROPERTY}, 0 0)`,
         },
         ...Object.fromEntries(
           (['step', 'slide'] as const).map((kind) => {
