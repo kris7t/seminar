@@ -60,7 +60,7 @@
   "builtInScreen": "built-in",
   "thisWindowIsHere": "this window is here",
   "clickToShowInFullScreen": "Click to show in full screen",
-  "moreSteps": "This slide has more steps. Tap to go through them.",
+  "moreSteps": "This slide has more steps. Tap to go through them, or tap its left edge to go back.",
   "keyLeft": "Left",
   "keyRight": "Right",
   "keyHome": "Home",

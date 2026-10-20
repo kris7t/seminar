@@ -655,7 +655,12 @@ export function Deck({
     onResetTimer,
     onEscape,
   });
-  const onClick = useClickNavigation(next, previous, transitions);
+  const onClick = useClickNavigation(
+    next,
+    previous,
+    transitions,
+    presenterFrame,
+  );
   const onWheel = useWheelNavigation(next, previous, transitions);
   const swipe = useSwipeNavigation({
     hasMoreSteps: () => stepStore.hasNext(),

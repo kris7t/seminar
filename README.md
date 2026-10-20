@@ -107,8 +107,9 @@ Clicking a slide or scrolling down goes to the next step, and Shift+click or
 scrolling up to the previous one.
 If a text field is focused or some text is selected, a click dismisses them
 first.
-On touch screens, tap to go to the next step, swipe to change slides, and pinch
-to open the overview.
+On touch screens, tap to go to the next step, tap the left quarter of the slide
+or the margin left of it to go to the previous step, swipe to change slides,
+and pinch to open the overview.
 
 ### Presenter view
 

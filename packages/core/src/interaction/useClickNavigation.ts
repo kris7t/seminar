@@ -12,6 +12,18 @@ import { getInteraction, isSelectable } from './interaction.ts';
 /** How far the mouse may move between press and release of a click. */
 const CLICK_SLOP = 5;
 
+/**
+ * Fraction of the width of the slide from its left edge where taps go to the
+ * previous step.
+ */
+const BACK_ZONE = 0.25;
+
+/** Whether `x` is in the {@link BACK_ZONE} of `slide`, or left of it. */
+function inBackZone(slide: Element, x: number): boolean {
+  const { left, width } = slide.getBoundingClientRect();
+  return x < left + width * BACK_ZONE;
+}
+
 function hasSelection(): boolean {
   const selection = window.getSelection();
   return selection !== null && !selection.isCollapsed;
@@ -41,7 +53,9 @@ interface Press {
 
 /**
  * Returns a click handler that goes to the next step on click, and to the
- * previous step on Shift+click.
+ * previous step on Shift+click. On touch screens, taps on the left edge of
+ * `slide` (see {@link BACK_ZONE}), or left of it, go to the previous step
+ * instead.
  *
  * If an element on the slide was focused or some text was selected, a click
  * dismisses them instead.
@@ -61,6 +75,7 @@ export function useClickNavigation(
   next: () => void,
   previous: () => void,
   transitions?: SlideTransitions,
+  slide: Element | null = null,
 ): MouseEventHandler<HTMLElement> {
   const pressRef = useRef<Press>(undefined);
   useEffect(() => {
@@ -180,12 +195,17 @@ export function useClickNavigation(
       ) {
         return;
       }
-      if (event.shiftKey) {
+      if (
+        event.shiftKey ||
+        (press?.touch === true &&
+          slide !== null &&
+          inBackZone(slide, event.clientX))
+      ) {
         previous();
       } else {
         next();
       }
     },
-    [next, previous],
+    [next, previous, slide],
   );
 }

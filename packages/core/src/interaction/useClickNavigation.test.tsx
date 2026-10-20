@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
@@ -124,6 +124,58 @@ describe('click navigation', () => {
       { keys: '[/MouseLeft]' },
     ]);
     expect(window.location.hash).toBe('#slide=1');
+  });
+
+  describe('tap zones', () => {
+    /** Presses and releases at `clientX`, with a touch or the mouse. */
+    function press(target: Element, clientX: number, pointerType = 'touch') {
+      const init = { clientX, clientY: 10, button: 0 };
+      fireEvent.pointerDown(target, {
+        ...init,
+        pointerId: 1,
+        pointerType,
+        isPrimary: true,
+      });
+      fireEvent.pointerUp(target, { ...init, pointerId: 1, pointerType });
+      fireEvent.click(target, init);
+    }
+
+    /** Renders the deck with its slide from x = 100 to 500. */
+    function renderPlacedDeck() {
+      renderDeck();
+      const text = screen.getByText('Text');
+      const slide = text.closest('[data-slider-view="audience"]');
+      if (slide === null) {
+        throw new Error('No slide frame');
+      }
+      vi.spyOn(slide, 'getBoundingClientRect').mockReturnValue({
+        left: 100,
+        width: 400,
+      } as DOMRect);
+      return text;
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('goes to the previous step on taps on the left edge', () => {
+      const text = renderPlacedDeck();
+      press(text, 300);
+      press(text, 300);
+      expect(window.location.hash).toBe('#slide=1&step=2');
+      press(text, 150);
+      expect(window.location.hash).toBe('#slide=1&step=1');
+      // Also in the margin left of the slide.
+      press(text, 50);
+      expect(window.location.hash).toBe('#slide=1');
+    });
+
+    it('goes to the next step on clicks on the left edge', () => {
+      const text = renderPlacedDeck();
+      press(text, 150, 'mouse');
+      expect(window.location.hash).toBe('#slide=1&step=1');
+    });
   });
 
   it('ignores dragging on the slide', async () => {
