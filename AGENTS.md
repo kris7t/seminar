@@ -37,3 +37,4 @@ Workspace packages resolve to their TypeScript sources through the
 - Commit messages have a summary in the imperative that says what changes
   for users, without a prefix, and a body that explains why if it isn't
   obvious.
+- Include a `Co-Authored-By` trailer in commit messages you write.
