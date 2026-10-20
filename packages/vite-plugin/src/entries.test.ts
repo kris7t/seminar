@@ -127,6 +127,14 @@ describe('sliderEntries', () => {
       expect(code).toContain('talk.deck.mdx');
     });
 
+    it('makes decks boundaries of React Fast Refresh', async () => {
+      const response = await fetch(`${baseUrl}/talk.deck.mdx`);
+      expect(response.status).toBe(200);
+      const code = await response.text();
+      expect(code).toContain('/@react-refresh');
+      expect(code).toContain('import.meta.hot.accept(');
+    });
+
     it('does not serve pages for other files', async () => {
       const response = await fetch(`${baseUrl}/missing.html`);
       expect(response.status).toBe(404);

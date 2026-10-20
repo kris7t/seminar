@@ -6,6 +6,7 @@ import rollupSlider, {
 import type { Plugin } from 'vite';
 
 import { sliderEntries } from './entries.ts';
+import { sliderHotReload } from './hotReload.ts';
 import { createViteImporter } from './importModule.ts';
 import {
   sliderSelfContained,
@@ -35,6 +36,9 @@ export interface SliderPluginOptions extends RollupSliderPluginOptions {
  * `@slider/rollup-plugin`) and turns them into entry points with generated
  * HTML pages (see {@link sliderEntries}).
  *
+ * With `@vitejs/plugin-react`, the dev server updates decks in place when they
+ * change, keeping their state (see {@link sliderHotReload}).
+ *
  * Theme modules that aren't packages with a compile-time config are imported
  * with the module runner of Vite to read their `slider` export (see
  * `SliderConfig` in `@slider/core`). This takes about a second, so modules are
@@ -58,12 +62,14 @@ export default function slider({
       root = config.root;
     },
   };
+  const hotReload = sliderHotReload({ include: options.include });
   if (!entries) {
-    return [mdx, setRoot];
+    return [mdx, setRoot, hotReload];
   }
   return [
     mdx,
     setRoot,
+    hotReload,
     sliderEntries({
       syntaxPlugins: (source, deckPath) =>
         rollupPlugin.syntaxPlugins(source, deckPath),
@@ -74,4 +80,9 @@ export default function slider({
   ];
 }
 
-export { sliderEntries, sliderSelfContained, type SelfContainedOptions };
+export {
+  sliderEntries,
+  sliderHotReload,
+  sliderSelfContained,
+  type SelfContainedOptions,
+};
