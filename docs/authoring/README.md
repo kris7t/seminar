@@ -28,7 +28,7 @@ The pages:
 A good slide component follows these rules:
 
 - **Keep shared state in `useSlideState`.** Each slide is rendered several
-  times at once: for the audience, in the presenter view, and as thumbnails.
+  times: for the audience, in the presenter view, and to generate thumbnails.
   With `useState`, each copy would have its own state.
 - **Don't use global ids.** Several copies of a slide can be on the page at
   once. Get ids from `useSlideElementId`.

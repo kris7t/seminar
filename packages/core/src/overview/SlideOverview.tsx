@@ -8,10 +8,10 @@ import {
   type Theme,
 } from '@mui/material';
 import {
-  use,
   useEffect,
   useMemo,
   useRef,
+  useSyncExternalStore,
   type JSX,
   type ReactNode,
 } from 'react';
@@ -29,29 +29,16 @@ import {
   SCROLL_CLOSING_POPPER_OPTIONS,
   useScrollClosingTooltip,
 } from '../menu/useScrollClosingTooltip.ts';
-import { SlideStateContext } from '../state/SlideStateContext.ts';
-import {
-  SLIDE_VIEW_ATTRIBUTE,
-  type SlideView,
-} from '../view/SlideViewContext.ts';
-import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
-import { StepStore } from '../steps/StepStore.ts';
+import { SLIDE_VIEW_ATTRIBUTE } from '../view/SlideViewContext.ts';
 import { groupSlides } from './groupSlides.ts';
-import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { slideTitles } from '../deck/tableOfContents.ts';
-import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
+import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from './captureThumbnail.ts';
+import type { ThumbnailCache } from './ThumbnailCache.ts';
 
 /** Typography of the headings of divisions by their level. */
 const HEADING_VARIANTS = ['h4', 'h5', 'h6'] as const;
 
 const HEADING_ELEMENTS = ['h2', 'h3', 'h4'] as const;
-
-/** Scale of the thumbnails of the slides. */
-const THUMBNAIL_SCALE = 0.2;
-
-const THUMBNAIL_WIDTH = SLIDE_WIDTH * THUMBNAIL_SCALE;
-
-const THUMBNAIL_HEIGHT = SLIDE_HEIGHT * THUMBNAIL_SCALE;
 
 /** Hides text from sight, but not from screen readers. */
 const VISUALLY_HIDDEN = {
@@ -67,7 +54,7 @@ interface ThumbnailProps {
   index: number;
   /** The theme of the slides, rather than of the overview. */
   slideTheme: Theme;
-  slide: ReactNode;
+  cache: ThumbnailCache;
   /** The title of the slide in the table of contents, if any. */
   title: ReactNode;
   /** The language of the slide, and its title. */
@@ -91,7 +78,7 @@ interface ThumbnailProps {
 function Thumbnail({
   index,
   slideTheme,
-  slide,
+  cache,
   title,
   lang,
   current,
@@ -114,15 +101,10 @@ function Thumbnail({
   ];
   const ref = useRef<HTMLButtonElement>(null);
   const [tooltipOpen, setTooltipOpen] = useScrollClosingTooltip(ref);
-  const view = useMemo<SlideView>(
-    () => ({ index, kind: 'thumbnail', interactive: false }),
-    [index],
-  );
-  // Show the steps last shown on the slide.
-  const slideState = use(SlideStateContext);
-  const stepStore = useMemo(
-    () => new StepStore({ position: slideState.stepPosition(index) }),
-    [slideState, index],
+  const image = useSyncExternalStore(
+    cache.subscribe,
+    () => cache.get(index),
+    () => undefined,
   );
   // Keep the focus on the current slide, so that Enter selects it when the
   // arrow keys change the current slide.
@@ -145,7 +127,7 @@ function Thumbnail({
       {/* The slide in its own theme, in the user interface around it. */}
       <ThemeProvider theme={slideTheme}>
         <Box
-          {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
+          {...{ [SLIDE_VIEW_ATTRIBUTE]: 'thumbnail' }}
           sx={[
             {
               position: 'relative',
@@ -164,21 +146,15 @@ function Thumbnail({
             spare && !current && { opacity: 0.5 },
           ]}
         >
-          {/* The contents of the slide can't be focused or clicked. */}
-          <Box
-            inert
-            sx={{
-              width: SLIDE_WIDTH,
-              height: SLIDE_HEIGHT,
-              transform: `scale(${String(THUMBNAIL_SCALE)})`,
-              transformOrigin: 'top left',
-              pointerEvents: 'none',
-            }}
-          >
-            <StepStoreContext value={stepStore}>
-              <SlideViewProvider view={view}>{slide}</SlideViewProvider>
-            </StepStoreContext>
-          </Box>
+          {image !== undefined && (
+            <Box
+              component="img"
+              src={image}
+              alt=""
+              draggable={false}
+              sx={{ display: 'block', width: '100%', height: '100%' }}
+            />
+          )}
         </Box>
       </ThemeProvider>
       <Typography
@@ -261,15 +237,15 @@ function Thumbnail({
 
 export interface SlideOverviewProps {
   slides: readonly ReactNode[];
+  cache: ThumbnailCache;
   onClose: () => void;
   /** Handlers that open the context menu of the deck. */
   menuHandlers?: ContextMenuHandlers | undefined;
 }
 
 /**
- * Shows the slides of the deck in grids of thumbnail views, with the steps
- * last shown on each, and goes to a slide when it is clicked, keeping its
- * steps.
+ * Shows cached images of the slides in grids, with their last shown
+ * appearance, and goes to a slide when it is clicked, keeping its steps.
  *
  * The slides are grouped by the divisions of the table of contents, like
  * sections, with their titles as headings (see {@link groupSlides}).
@@ -282,6 +258,7 @@ export interface SlideOverviewProps {
  */
 export function SlideOverview({
   slides,
+  cache,
   onClose,
   menuHandlers,
 }: SlideOverviewProps): JSX.Element {
@@ -384,7 +361,7 @@ export function SlideOverview({
                       key={index}
                       index={index}
                       slideTheme={slideTheme}
-                      slide={slides[index]}
+                      cache={cache}
                       title={titles[index]}
                       lang={slideLangs[index]}
                       current={index === overviewIndex}

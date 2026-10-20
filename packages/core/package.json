@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
-    "@mui/icons-material": "^9.5.0"
+    "@mui/icons-material": "^9.5.0",
+    "html-to-image": "^1.11.13"
   }
 }

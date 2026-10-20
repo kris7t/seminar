@@ -45,6 +45,17 @@ const current = () =>
     .find((button) => button.getAttribute('aria-current') === 'page')
     ?.textContent;
 
+/** The rasterizer stub records the captured markup in the image URL. */
+function thumbnail(index: number): HTMLElement | undefined {
+  const image = overview().querySelectorAll('img')[index];
+  return image === undefined
+    ? undefined
+    : new DOMParser().parseFromString(
+        decodeURIComponent(image.src.split(',')[1] ?? ''),
+        'text/html',
+      ).body;
+}
+
 describe('SlideOverview', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
@@ -54,7 +65,7 @@ describe('SlideOverview', () => {
     cleanup();
   });
 
-  it('shows all slides in thumbnail views', async () => {
+  it('shows all slides as cached thumbnails', async () => {
     const user = userEvent.setup();
     await renderDeck();
     await user.keyboard('o');
@@ -69,19 +80,30 @@ describe('SlideOverview', () => {
     ]);
     expect(current()).toBe('Slide 1: First (with steps)');
     // Slides are not in the buttons, which would change their styles.
-    expect(within(overview()).getByText('Later').closest('button')).toBeNull();
+    expect(overview().querySelector('img')?.closest('button')).toBeNull();
     // Each thumbnail knows its slide.
-    expect(within(overview()).getByText('2 / 3')).toBeDefined();
-    expect(within(overview()).getByText('thumbnail false')).toBeDefined();
+    await waitFor(() => {
+      expect(thumbnail(1)?.textContent).toContain('2 / 3');
+      expect(thumbnail(1)?.textContent).toContain('thumbnail false');
+    });
+  });
+
+  it('opens without mounting live copies of the slides', async () => {
+    const user = userEvent.setup();
+    await renderDeck();
+    await user.keyboard('o');
+    expect(within(overview()).getAllByRole('button')).toHaveLength(3);
+    expect(within(overview()).queryByText('Later')).toBeNull();
+    expect(within(overview()).queryByText('thumbnail false')).toBeNull();
   });
 
   it('shows and keeps the steps last shown on each slide', async () => {
     const user = userEvent.setup();
     await renderDeck();
     const isShown = () =>
-      !within(overview())
-        .getByText('Later')
-        .classList.contains(stepClasses.future);
+      !thumbnail(0)
+        ?.querySelector('[data-name="step"]')
+        ?.classList.contains(stepClasses.future);
     await user.keyboard('o');
     expect(isShown()).toBe(false);
     await user.keyboard('{Escape}{ArrowRight}{PageDown}o');

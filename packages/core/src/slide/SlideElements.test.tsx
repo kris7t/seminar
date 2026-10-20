@@ -1,10 +1,12 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Step, stepClasses } from '../steps/Step.tsx';
 import { Slide } from './Slide.tsx';
+import { SlideMirror } from '../view/SlideMirror.tsx';
 import {
   SlideElement,
   useSlideElement,
@@ -21,6 +23,17 @@ function IdOf({ name }: { name: string }) {
   return <data>{useSlideElementId(name)}</data>;
 }
 
+function renderMirrors(slide: ReactNode) {
+  return render(
+    <Deck>
+      <div>
+        <SlideMirror index={0} slide={slide} kind="audience" />
+        <SlideMirror index={1} slide={slide} kind="preview" />
+      </div>
+    </Deck>,
+  );
+}
+
 describe('SlideElement', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
@@ -31,23 +44,15 @@ describe('SlideElement', () => {
     vi.restoreAllMocks();
   });
 
-  it('gives every rendering of a slide ids of its own', async () => {
-    const user = userEvent.setup();
-    render(
-      <Deck>
-        <Slide id="first" title="First">
-          <SlideElement as="span" name="target" data-testid="target">
-            Target
-          </SlideElement>
-          <Finder name="target" />
-        </Slide>
-        <Slide recap="first" />
-      </Deck>,
+  it('gives every rendering of a slide ids of its own', () => {
+    renderMirrors(
+      <Slide id="first" title="First">
+        <SlideElement as="span" name="target" data-testid="target">
+          Target
+        </SlideElement>
+        <Finder name="target" />
+      </Slide>,
     );
-    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    // The overview renders both slides again, the recap with the content of
-    // the first one.
-    await user.keyboard('o');
     const targets = screen.getAllByTestId('target');
     expect(targets.length).toBeGreaterThanOrEqual(2);
     const ids = targets.map(({ id }) => id);
@@ -220,25 +225,19 @@ describe('SlideElement', () => {
     expect(window.location.hash).toBe('#slide=1&step=figure');
   });
 
-  it('refers to the elements of the same rendering', async () => {
-    const user = userEvent.setup();
-    render(
-      <Deck>
-        <Slide id="boxes">
-          <svg>
-            <SlideElement as="linearGradient" name="fade" />
-            <SlideElement
-              as="rect"
-              data-testid="rect"
-              references={{ fill: ['url(#', ['fade'], ')'] }}
-            />
-          </svg>
-        </Slide>
-        <Slide recap="boxes" />
-      </Deck>,
+  it('refers to the elements of the same rendering', () => {
+    renderMirrors(
+      <Slide id="boxes">
+        <svg>
+          <SlideElement as="linearGradient" name="fade" />
+          <SlideElement
+            as="rect"
+            data-testid="rect"
+            references={{ fill: ['url(#', ['fade'], ')'] }}
+          />
+        </svg>
+      </Slide>,
     );
-    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    await user.keyboard('o');
     const rects = screen.getAllByTestId('rect');
     expect(rects.length).toBeGreaterThanOrEqual(2);
     for (const rect of rects) {

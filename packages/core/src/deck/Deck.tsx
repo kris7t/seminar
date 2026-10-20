@@ -99,6 +99,9 @@ import { StepTree } from '../sidebar/StepTree.tsx';
 import { useSlideProbe } from '../view/SlideProbe.tsx';
 import { TocList } from '../sidebar/TocList.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
+import { ThumbnailCache } from '../overview/ThumbnailCache.ts';
+import { ThumbnailCapture } from '../overview/ThumbnailCapture.tsx';
+import { ThumbnailRenderer } from '../overview/ThumbnailRenderer.tsx';
 import { getSlideNotes } from '../notes/Notes.tsx';
 import { NotesDisplay } from '../notes/NotesDisplay.tsx';
 import {
@@ -283,6 +286,12 @@ export function Deck({
     };
   }, [children]);
   const slideCount = slides.length;
+  const thumbnails = useMemo(
+    () => new ThumbnailCache(),
+    // Content and rendering settings each start a fresh cache, including in HMR.
+    // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
+    [slides, theme, options, lang],
+  );
   const slideLangs = useMemo(
     () => slides.map((slide) => getSlideLang(slide) ?? lang),
     [slides, lang],
@@ -877,12 +886,16 @@ export function Deck({
                                   >
                                     {/* The overview shows the slide instead. */}
                                     {!showOverview && (
-                                      <SlideViewProvider
+                                      <ThumbnailCapture
                                         key={slideIndex}
-                                        view={view}
+                                        cache={thumbnails}
+                                        index={slideIndex}
+                                        frame={presenterFrame}
                                       >
-                                        {slides[slideIndex]}
-                                      </SlideViewProvider>
+                                        <SlideViewProvider view={view}>
+                                          {slides[slideIndex]}
+                                        </SlideViewProvider>
+                                      </ThumbnailCapture>
                                     )}
                                   </SelectionFrame>
                                 </div>
@@ -991,9 +1004,15 @@ export function Deck({
                       </Box>
                     </Box>
                     {probe}
+                    <ThumbnailRenderer
+                      cache={thumbnails}
+                      slides={slides}
+                      shownIndex={showOverview ? undefined : slideIndex}
+                    />
                     {showOverview && (
                       <SlideOverview
                         slides={slides}
+                        cache={thumbnails}
                         onClose={() => {
                           setShowOverview(false);
                         }}

@@ -17,6 +17,8 @@ import { StepStore } from '../steps/StepStore.ts';
 import { SlideStateScope } from './SlideStateScope.tsx';
 import { SlideStateStore } from './SlideStateStore.ts';
 import { useResetSlideState, useSlideState } from './useSlideState.ts';
+import { SlideStateContext } from './SlideStateContext.ts';
+import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
 
 function Counter({ name, stateKey }: { name: string; stateKey?: string }) {
   const [count, setCount] = useSlideState(0, { key: stateKey });
@@ -184,19 +186,31 @@ describe('useSlideState', () => {
   it('shares state between the views of a slide', async () => {
     const user = userEvent.setup();
     render(
-      <Deck defaultMouseNavigation={false}>
-        <Slide title="First">
-          <Counter name="a" />
-          <Counter name="b" />
-        </Slide>
-        <Slide title="Second" />
-      </Deck>,
+      <SlideStateContext value={new SlideStateStore()}>
+        <div data-testid="presented">
+          <SlideViewProvider
+            view={{ index: 0, kind: 'audience', interactive: true }}
+          >
+            <Counter name="a" />
+            <Counter name="b" />
+          </SlideViewProvider>
+        </div>
+        <div data-testid="mirror">
+          <SlideViewProvider
+            view={{ index: 0, kind: 'preview', interactive: false }}
+          >
+            <Counter name="a" />
+            <Counter name="b" />
+          </SlideViewProvider>
+        </div>
+      </SlideStateContext>,
     );
-    await user.click(screen.getByText('b: 0'));
-    await user.click(screen.getByText('b: 1'));
-    await user.keyboard('o');
-    expect(within(overview()).getByText('a: 0')).toBeDefined();
-    expect(within(overview()).getByText('b: 2')).toBeDefined();
+    const presented = within(screen.getByTestId('presented'));
+    await user.click(presented.getByText('b: 0'));
+    await user.click(presented.getByText('b: 1'));
+    const mirror = within(screen.getByTestId('mirror'));
+    expect(mirror.getByText('a: 0')).toBeDefined();
+    expect(mirror.getByText('b: 2')).toBeDefined();
   });
 
   it('keeps state when going to another slide and back', async () => {
@@ -254,8 +268,12 @@ describe('useSlideState', () => {
     await user.click(screen.getByText('Show'));
     await user.click(screen.getByText('late: 0'));
     await user.keyboard('o');
-    expect(within(overview()).getByText('left: 0')).toBeDefined();
-    expect(within(overview()).getByText('right: 1')).toBeDefined();
+    const image = decodeURIComponent(
+      overview().querySelector('img')?.src ?? '',
+    );
+    expect(image).toContain('left: 0');
+    expect(image).toContain('right: 1');
+    expect(image).toContain('late: 1');
     expect(warn).not.toHaveBeenCalled();
   });
 

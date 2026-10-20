@@ -2,8 +2,8 @@
 
 ## Slide state
 
-A slide is rendered in several views at once: for the audience, in the
-presenter view, and as thumbnails in the overview and the previews. Each
+A slide is rendered in several views: for the audience, in the
+presenter view, in previews, and briefly to generate its initial thumbnail. Each
 rendering mounts its own components, so `useState` would give each view its
 own state, and lose it when the slide is left.
 
@@ -67,9 +67,18 @@ Reset deck in the menu resets the state of the deck and of every slide.
 - `presenter`: the slide in the presenter view, while presenting,
 - `audience`: the slide shown to the audience, either in the deck window when
   not presenting, or in the audience window,
-- `thumbnail` and `preview`: the overview and the previews of the next step
-  and slide, and
+- `thumbnail`: an offscreen rendering used to generate an initial image for
+  the overview,
+- `preview`: the previews of the next step and slide, and
 - `probe`: an invisible rendering that finds the steps of a slide.
+
+The overview displays cached images. Initial thumbnails are generated one
+slide at a time during idle time. Once a slide has been shown, its thumbnail
+is captured from the presented view as it changes and when it is left, so
+the overview keeps its last shown appearance, including local component
+state. Components aren't mounted in the overview itself.
+If a capture fails, for example because of external media, the thumbnail
+keeps its last successful image or remains empty until a later capture.
 
 `interactive` is `true` in the one view that the presenter interacts with:
 the deck window, which is the presenter view while presenting. The audience

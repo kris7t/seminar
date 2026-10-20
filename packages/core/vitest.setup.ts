@@ -1,4 +1,13 @@
 import { vi } from 'vitest';
+import type * as ThumbnailCapture from './src/overview/captureThumbnail.ts';
+
+// jsdom cannot rasterize DOM nodes. Thumbnail behavior is tested separately.
+vi.mock('./src/overview/captureThumbnail.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof ThumbnailCapture>()),
+  captureThumbnail: vi.fn((frame: HTMLElement) =>
+    Promise.resolve(`data:image/png,${encodeURIComponent(frame.innerHTML)}`),
+  ),
+}));
 
 // jsdom does not implement layout, so ResizeObserver is missing.
 vi.stubGlobal(

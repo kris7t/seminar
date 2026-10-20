@@ -15,6 +15,7 @@ import { defineCache, defineResource } from './definitions.ts';
 import { SharedWorkProvider } from './SharedWorkProvider.tsx';
 import { SharedWorkStore } from './SharedWorkStore.ts';
 import { useCached, useResource } from './useSharedWork.ts';
+import * as thumbnailIdle from '../overview/whenIdle.ts';
 
 function View({
   index = 0,
@@ -577,6 +578,10 @@ describe('shared resources and caches', () => {
   });
 
   it('preloads through actual slide probes without registering persistent slide state', async () => {
+    // Exercise the probes before background thumbnail views start deriving values.
+    vi.spyOn(thumbnailIdle, 'whenIdle').mockImplementation(
+      () => () => undefined,
+    );
     const load = vi.fn(() => ({}));
     const resource = defineResource({ load });
     const compute = vi.fn(() => 'ready');
