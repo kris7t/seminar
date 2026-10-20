@@ -15,8 +15,8 @@ Components reach decks in three ways:
 
 The pages:
 
-1. [Components on slides](components.md): slide state, views, input,
-   sizes, and naming and measuring elements.
+1. [Components on slides](components.md): slide state, views, shared resources
+   and cached work, input, sizes, and naming and measuring elements.
 2. [Steps in components](steps.md): wrapping content in steps, and reacting
    to the steps of the slide.
 3. [Directives](directives.md): making components available as directives.

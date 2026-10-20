@@ -92,6 +92,80 @@ be owned by the interactive view: it runs the work and keeps the results in
   motion, so that animations should play, see
   [Animations](steps.md#animations).
 
+## Shared resources and cached work
+
+`defineResource` and `defineCache` describe work shared by every slide and
+view in a Deck. Define them outside components. Defining them doesn't load
+anything; each Deck owns its instances and results, independently of slide
+state and its reset buttons.
+
+A resource is something acquired once, like a rendering engine, that may
+need cleanup. A cache computes reusable values from arguments, optionally
+using resources:
+
+```tsx
+import { defineCache, defineResource, useCached } from '@slider/core';
+
+const engine = defineResource({
+  load: async () => {
+    const { createEngine } = await import('./engine.ts');
+    return createEngine();
+  },
+  dispose: (engine) => engine.dispose(),
+  transitionHold: 1000,
+});
+
+const renderedText = defineCache(
+  (args: { text: string }, { engine }) => engine.render(args.text),
+  {
+    resources: { engine },
+    transitionHold: 1000,
+    maxUnusedEntries: 8,
+  },
+);
+
+export function RenderedText({ text }: { text: string }) {
+  const result = useCached(renderedText, { text });
+  if (result.status === 'error') return <span>Cannot render text</span>;
+  return <span>{result.value}</span>;
+}
+```
+
+`useResource(engine)` acquires a resource directly. Both hooks require a
+Deck and return `{ status, pending, value, error }`. The status is `pending`,
+`success`, or `error`; `value` is available on success. Work starts after
+commit, and identical requests share their pending work as well as results.
+Changing arguments requests a new result, with `value` undefined while it
+is pending.
+
+Cache arguments are compared structurally for plain objects and arrays,
+including object properties regardless of their order. Other objects and
+functions are compared by identity. A cache can provide `key: (args) => …`
+to derive a key instead. Cyclic data requires a custom key. All changing
+inputs must participate in the key. Injected resource instances are kept
+separately and never normalized into argument keys.
+
+By default, caches have `enabled: 'visible'`: probes load their resources
+in the background, but leave computation for a visible view. Set
+`enabled: 'always'` to compute in probes too. Probes never hold transitions.
+
+Both definitions accept `transitionHold`: `true`, the default, uses the
+normal transition deadline; a number sets the deadline in milliseconds;
+and `false` disables the hold. Injected resources keep their own hold
+settings. The deadline limits how long a transition waits, and doesn't
+cancel the work.
+
+Resources stay loaded until the Deck unmounts. Their optional `dispose`
+function may be async and runs after outstanding computations using them
+finish. Acquisitions that finish after unmount are also disposed.
+
+Cache results remain available while any view of a slide that used them is
+rendered, including across step changes. After those slides leave, the
+cache retains up to `maxUnusedEntries` results in least-recently-used order,
+defaulting to 8. Set it to `0` to evict unused entries promptly, or `Infinity`
+to retain them until the Deck unmounts. Pending work remains shareable until
+it finishes. Evicting results doesn't dispose resources.
+
 ## Input
 
 Clicks on a slide, and keys like Space and the arrow keys, go to the next or

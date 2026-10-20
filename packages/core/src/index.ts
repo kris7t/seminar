@@ -10,6 +10,19 @@ export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
 export { useDeckState } from './state/useDeckState.ts';
 export {
+  defineCache,
+  defineResource,
+  type CacheDefinition,
+  type CacheOptions,
+  type LoadResult,
+  type ResourceDefinition,
+  type ResourceDependencies,
+  type ResourceOptions,
+  type ResourceValues,
+  type TransitionHold,
+} from './shared/definitions.ts';
+export { useCached, useResource } from './shared/useSharedWork.ts';
+export {
   useSliderOptions,
   type SliderOptions,
 } from './deck/SliderOptionsContext.ts';

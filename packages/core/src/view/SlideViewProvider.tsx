@@ -1,5 +1,6 @@
-import type { JSX, ReactNode } from 'react';
+import { use, useEffect, type JSX, type ReactNode } from 'react';
 
+import { SharedWorkContext } from '../shared/SharedWorkContext.ts';
 import { StateScopeProvider } from '../state/SlideStateScope.tsx';
 import { SlideViewContext, type SlideView } from './SlideViewContext.ts';
 
@@ -16,6 +17,12 @@ export function SlideViewProvider({
   view,
   children,
 }: SlideViewProviderProps): JSX.Element {
+  const sharedWork = use(SharedWorkContext);
+  useEffect(
+    () =>
+      view.kind === 'probe' ? undefined : sharedWork?.mountSlide(view.index),
+    [sharedWork, view.index, view.kind],
+  );
   return (
     <SlideViewContext value={view}>
       <StateScopeProvider path="">{children}</StateScopeProvider>

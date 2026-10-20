@@ -88,6 +88,7 @@ import { SlideStateContext } from '../state/SlideStateContext.ts';
 import { DeckStateContext } from '../state/DeckStateContext.ts';
 import { DeckStateStore } from '../state/DeckStateStore.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
+import { SharedWorkProvider } from '../shared/SharedWorkProvider.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { resolveToc, type TocEntry } from './tableOfContents.ts';
 import type { UiLocale } from '../i18n/messages.ts';
@@ -689,7 +690,7 @@ export function Deck({
     menuPosition !== undefined || showOverview || goToSlideOpen,
   );
 
-  return (
+  const content = (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <SlideTransitionStyles />
@@ -1058,4 +1059,5 @@ export function Deck({
       </UiLanguageContext>
     </ThemeProvider>
   );
+  return <SharedWorkProvider>{content}</SharedWorkProvider>;
 }
