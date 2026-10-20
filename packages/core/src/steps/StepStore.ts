@@ -274,6 +274,29 @@ function pathsEqual(a: StepPath, b: StepPath): boolean {
 }
 
 /**
+ * How much the texts of two steps overlap, from 0 for none to 1 for the same
+ * texts, counting repeated texts as often as they appear in both.
+ */
+function overlapOf(a: readonly string[], b: readonly string[]): number {
+  if (a.length + b.length === 0) {
+    return 0;
+  }
+  const counts = new Map<string, number>();
+  for (const text of a) {
+    counts.set(text, (counts.get(text) ?? 0) + 1);
+  }
+  let common = 0;
+  for (const text of b) {
+    const count = counts.get(text) ?? 0;
+    if (count > 0) {
+      counts.set(text, count - 1);
+      common += 1;
+    }
+  }
+  return (2 * common) / (a.length + b.length);
+}
+
+/**
  * Keeps track of the steppers of a slide in a view, and resolves the position
  * in the steps of the slide, which may be shared with other views, against
  * them.
@@ -493,10 +516,49 @@ export class StepStore {
    *   `target` isn't in it.
    */
   reset(target: StepPath = [], toEnd = false, inRange = false): void {
-    this.#position.set({ path: target, toEnd, inRange });
+    // Refer to the step by its group if possible, so that it stays shown when
+    // steps are added before it, e.g., when the slide is edited.
+    const { group, path } = this.describePath(target);
+    const texts = this.#textsOf(target);
+    this.#position.set(
+      group === undefined
+        ? { path: target, texts, toEnd, inRange }
+        : { path, group, fallback: target, texts, toEnd, inRange },
+    );
     if (this.#unsubscribePosition === undefined) {
       // Nobody follows the position, so we have to forget the path ourselves.
       this.#invalidatePath();
+    }
+  }
+
+  /**
+   * Remembers where the step shown for the position is, and its texts, if the
+   * position doesn't say yet, e.g., if it comes from a link, so that the step
+   * stays shown if steps are added before it, or its group is renamed or
+   * removed.
+   */
+  rememberPath(): void {
+    const target = this.#position.get();
+    if (target.toEnd || target.texts !== undefined) {
+      return;
+    }
+    const path = this.getPath();
+    if (target.group === undefined) {
+      if (pathsEqual(path, trimPath([...target.path]))) {
+        const texts = this.#textsOf(path);
+        if (texts !== undefined) {
+          this.#position.set({ ...target, texts });
+        }
+      }
+    } else if (
+      target.fallback === undefined &&
+      this.#groupPath(target.group) !== undefined
+    ) {
+      this.#position.set({
+        ...target,
+        fallback: path,
+        texts: this.#textsOf(path),
+      });
     }
   }
 
@@ -694,6 +756,75 @@ export class StepStore {
       });
     }
     return entries;
+  }
+
+  /**
+   * Returns the texts shown by the step at `path`: the text of each element of
+   * each stepper that shows it, without the steps nested in them, along with
+   * which step of the stepper it is. Each element counts on its own, so that
+   * steps still match in part if elements move between steppers.
+   *
+   * @returns The texts in order, or `undefined` if the step shows no text, or
+   *   the slide has no such step.
+   */
+  #textsOf(path: StepPath): readonly string[] | undefined {
+    const step = path.at(-1);
+    if (step === undefined || step === 0) {
+      return undefined;
+    }
+    const key = levelKey(path.slice(0, -1));
+    const texts: string[] = [];
+    for (const [node, { level, first, last }] of this.#getLayout().placements) {
+      if (levelKey(level) !== key || step < first || step > last) {
+        continue;
+      }
+      for (const element of node.elements.keys()) {
+        const text = textOf(element, (descendant) => {
+          const owner = this.#owners.get(descendant);
+          return owner !== undefined && owner !== node;
+        });
+        if (text !== '') {
+          texts.push(`${String(step - first)}\u0000${text}`);
+        }
+      }
+    }
+    return texts.length === 0 ? undefined : texts.sort();
+  }
+
+  /**
+   * Finds the step that shows the most of `texts`, preferring `path`, and
+   * then the steps closest to it. Returns `path` if no step shows any of them.
+   */
+  #findByTexts(path: StepPath, texts: readonly string[]): StepPath {
+    const own = this.#textsOf(path);
+    if (own !== undefined && overlapOf(own, texts) === 1) {
+      return path;
+    }
+    const positions = this.#positions();
+    const index = positions.findIndex(
+      (position) => compareStepPaths(position, path) >= 0,
+    );
+    const origin = index === -1 ? positions.length : index;
+    let best = path;
+    let bestOverlap = own === undefined ? 0 : overlapOf(own, texts);
+    let bestDistance = 0;
+    for (const [position, candidate] of positions.entries()) {
+      const candidateTexts = this.#textsOf(candidate);
+      if (candidateTexts === undefined) {
+        continue;
+      }
+      const overlap = overlapOf(candidateTexts, texts);
+      const distance = Math.abs(position - origin);
+      if (
+        overlap > bestOverlap ||
+        (overlap === bestOverlap && overlap > 0 && distance < bestDistance)
+      ) {
+        best = candidate;
+        bestOverlap = overlap;
+        bestDistance = distance;
+      }
+    }
+    return best;
   }
 
   /** Returns the text of the elements of `node`, in document order. */
@@ -992,10 +1123,24 @@ export class StepStore {
 
   #resolvePath(): StepPath {
     const { levelSizes } = this.#getLayout();
-    const { path: relative, group, toEnd, inRange } = this.#position.get();
+    const {
+      path: relative,
+      group,
+      fallback = [],
+      texts,
+      toEnd,
+      inRange,
+    } = this.#position.get();
     const groupPath = group === undefined ? [] : this.#groupPath(group);
-    // Without the group, show the beginning of the slide.
-    const target = groupPath === undefined ? [] : [...groupPath, ...relative];
+    let target =
+      groupPath === undefined ? fallback : [...groupPath, ...relative];
+    // Steps without their group are found by their texts instead.
+    if (
+      texts !== undefined &&
+      (group === undefined || groupPath === undefined)
+    ) {
+      target = this.#findByTexts(target, texts);
+    }
     const path: number[] = [];
     for (const position of target) {
       const size = levelSizes.get(levelKey(path)) ?? 0;

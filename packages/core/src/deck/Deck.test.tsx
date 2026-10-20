@@ -6,6 +6,7 @@ import { Deck } from './Deck.tsx';
 import { useSliderOptions } from './SliderOptionsContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
+import { Together } from '../steps/Together.tsx';
 
 function renderDeck() {
   return render(
@@ -208,6 +209,195 @@ describe('Deck', () => {
     expect(currentTitle()).toBe('Third');
     navigateTo('#second');
     expect(currentTitle()).toBe('Second');
+  });
+
+  it('stays on the current slide when slides are added before it', () => {
+    window.history.replaceState(null, '', '#second');
+    const { rerender } = renderDeck();
+    rerender(
+      <Deck>
+        <Slide title="Added" />
+        <Slide title="First" />
+        <Slide id="second" title="Second" />
+      </Deck>,
+    );
+    expect(currentTitle()).toBe('Second');
+    expect(window.location.hash).toBe('#second');
+  });
+
+  it('stays on the current slide when its id changes', () => {
+    window.history.replaceState(null, '', '#second');
+    const { rerender } = render(
+      <Deck>
+        <Slide id="first" title="First" />
+        <Slide id="second" title="Second" />
+        <Slide id="third" title="Third" />
+      </Deck>,
+    );
+    rerender(
+      <Deck>
+        <Slide id="added" title="Added" />
+        <Slide id="first" title="First" />
+        <Slide id="renamed" title="Renamed" />
+        <Slide id="third" title="Third" />
+      </Deck>,
+    );
+    expect(currentTitle()).toBe('Renamed');
+    expect(window.location.hash).toBe('#renamed');
+  });
+
+  it('stays on a named step when steps are added before it', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Deck>
+        <Slide title="Steps">
+          <Step>a</Step>
+          <Step group="named">b</Step>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=named');
+    rerender(
+      <Deck>
+        <Slide title="Steps">
+          <Step>added</Step>
+          <Step>a</Step>
+          <Step group="named">b</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(window.location.hash).toBe('#slide=1&step=named');
+    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+  });
+
+  it('stays on a named step when its group is renamed', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Deck>
+        <Slide title="Steps">
+          <Step>a</Step>
+          <Step group="named">b</Step>
+          <Step>c</Step>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    rerender(
+      <Deck>
+        <Slide title="Steps">
+          <Step>a</Step>
+          <Step group="renamed">b</Step>
+          <Step>c</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(window.location.hash).toBe('#slide=1&step=renamed');
+    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+  });
+
+  it('stays on an unnamed step when steps are added before it', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Deck>
+        <Slide title="Steps">
+          <Step>a</Step>
+          <Step>b</Step>
+          <Step>c</Step>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    rerender(
+      <Deck>
+        <Slide title="Steps">
+          <Step>added</Step>
+          <Step>a</Step>
+          <Step>b</Step>
+          <Step>c</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(window.location.hash).toBe('#slide=1&step=3');
+    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+  });
+
+  it('stays on the step that keeps the most of its text', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Deck>
+        <Slide title="Steps">
+          <Step>a</Step>
+          <Together>
+            <Step>b</Step>
+            <Step>c</Step>
+            <Step>d</Step>
+          </Together>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    // One element of the step moved to a step of its own before it.
+    rerender(
+      <Deck>
+        <Slide title="Steps">
+          <Step>added</Step>
+          <Step>a</Step>
+          <Step>c</Step>
+          <Together>
+            <Step>b</Step>
+            <Step>d</Step>
+            <Step>edited</Step>
+          </Together>
+        </Slide>
+      </Deck>,
+    );
+    expect(window.location.hash).toBe('#slide=1&step=4');
+    expect(screen.getByText('b').classList).toContain('SliderStep-current');
+  });
+
+  it('stays on a step from the location hash when steps are added', () => {
+    window.history.replaceState(null, '', '#slide=1&step=2');
+    const { rerender } = render(
+      <Deck>
+        <Slide title="Steps">
+          <Step>a</Step>
+          <Step>b</Step>
+        </Slide>
+      </Deck>,
+    );
+    rerender(
+      <Deck>
+        <Slide title="Steps">
+          <Step>added</Step>
+          <Step>a</Step>
+          <Step>b</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(window.location.hash).toBe('#slide=1&step=3');
+  });
+
+  it('stays on a named step from the location hash when it is renamed', () => {
+    window.history.replaceState(null, '', '#slide=1&step=named');
+    const { rerender } = render(
+      <Deck>
+        <Slide title="Steps">
+          <Step>a</Step>
+          <Step group="named">b</Step>
+        </Slide>
+      </Deck>,
+    );
+    rerender(
+      <Deck>
+        <Slide title="Steps">
+          <Step>a</Step>
+          <Step group="renamed">b</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(window.location.hash).toBe('#slide=1&step=renamed');
+    expect(screen.getByText('b').classList).toContain('SliderStep-current');
   });
 
   it('accepts slide numbers for slides with an id', () => {

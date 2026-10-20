@@ -19,6 +19,7 @@ import {
   parseLocation,
   type DeckLocation,
 } from './location.ts';
+import { alignSlides } from './slideAlignment.ts';
 import {
   findFirstSlide,
   findLastSlide,
@@ -196,7 +197,6 @@ export function useDeckNavigation(
     () => new StepStore({ position: slideState.stepPosition(slideIndex) }),
     [slideState, slideIndex],
   );
-  const step = useSyncExternalStore(stepStore.subscribe, stepStore.getPath);
   // Steps may appear without the path changing, so these are followed on their
   // own.
   const atFirstStep = useSyncExternalStore(
@@ -368,15 +368,50 @@ export function useDeckNavigation(
     };
   }, []);
 
-  const hash = formatLocation(
-    locationOf(slideIndex, stepStore, step),
-    slideIds,
+  // Follows the slides when slides are added, removed, or get other ids
+  // before the current one, e.g., when the deck is updated in place during
+  // development, along with their state (see `alignSlides`).
+  const onSlidesChange = useEffectEvent(
+    (previousIds: readonly (string | undefined)[]) => {
+      const indices = alignSlides(previousIds, slideIds);
+      if (indices.every((index, slide) => index === slide)) {
+        return;
+      }
+      slideState.move(indices);
+      const newIndex = indices[slideIndex];
+      if (newIndex !== undefined && newIndex !== slideIndex) {
+        // Along with the state of the slides, which can't move while
+        // rendering.
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
+        setRequestedIndex(newIndex);
+      }
+    },
+  );
+  const shownSlideIdsRef = useRef(slideIds);
+  useLayoutEffect(() => {
+    const previousIds = shownSlideIdsRef.current;
+    if (previousIds !== slideIds) {
+      shownSlideIdsRef.current = slideIds;
+      onSlidesChange(previousIds);
+    }
+  }, [slideIds]);
+
+  // Groups may get other names without the path changing, too.
+  const hash = useSyncExternalStore(stepStore.subscribe, () =>
+    formatLocation(
+      locationOf(slideIndex, stepStore, stepStore.getPath()),
+      slideIds,
+    ),
   );
   useEffect(() => {
     if (window.location.hash !== hash) {
       window.history.replaceState(window.history.state, '', hash);
     }
   }, [hash]);
+  // Once the steps of the slide are known.
+  useEffect(() => {
+    stepStore.rememberPath();
+  }, [stepStore, hash]);
 
   return {
     slideIndex,

@@ -78,6 +78,23 @@ describe('SlideStateStore', () => {
     expect(store.stepPosition(0).get().path).toEqual([1]);
   });
 
+  it('moves the state of slides to other indices', () => {
+    const store = new SlideStateStore();
+    store.set(0, 'a', 'first');
+    store.set(1, 'a', 'second');
+    store.stepPosition(1).set({ path: [2], toEnd: false });
+    const listener = vi.fn();
+    store.subscribe(2, 'a', listener);
+    // A slide was added before the second one, and the first was removed.
+    store.move([undefined, 2]);
+    expect(store.has(0, 'a')).toBe(false);
+    expect(store.has(1, 'a')).toBe(false);
+    expect(store.get(2, 'a')).toBe('second');
+    expect(store.stepPosition(2).get().path).toEqual([2]);
+    expect([...store.getChanged()]).toEqual([2]);
+    expect(listener).toHaveBeenCalled();
+  });
+
   it('shares the position in the steps between step stores', () => {
     const position = new SlideStateStore().stepPosition(0);
     const a = new StepStore({ position });

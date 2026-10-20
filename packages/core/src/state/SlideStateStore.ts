@@ -132,6 +132,40 @@ export class SlideStateStore {
     }
   }
 
+  /**
+   * Moves the state of each slide to the index in `indices`, or removes it if
+   * that is `undefined`, e.g., when slides were added or removed before it.
+   */
+  move(indices: readonly (number | undefined)[]): void {
+    const ids = new Set<string>();
+    const values = new Map<string, unknown>();
+    for (const [id, value] of this.#values) {
+      ids.add(id);
+      const separator = id.indexOf('\u0000');
+      const index = indices[Number(id.slice(0, separator))];
+      if (index !== undefined) {
+        const newId = `${String(index)}${id.slice(separator)}`;
+        ids.add(newId);
+        values.set(newId, value);
+      }
+    }
+    this.#values.clear();
+    for (const [id, value] of values) {
+      this.#values.set(id, value);
+    }
+    this.#setChanged(
+      new Set(
+        [...this.#changed].flatMap((slideIndex) => {
+          const index = indices[slideIndex];
+          return index === undefined ? [] : [index];
+        }),
+      ),
+    );
+    for (const id of ids) {
+      this.#notify(id);
+    }
+  }
+
   #keysOf(slideIndex: number): string[] {
     const prefix = this.#id(slideIndex, '');
     const steps = this.#id(slideIndex, STEP_KEY);

@@ -10,9 +10,20 @@ export interface StepTarget {
   /**
    * Name of a step group whose first step `path` is relative to, e.g., the
    * second step nested in it for the path `[2]`. If the slide has no such
-   * group, the beginning of the slide is shown.
+   * group, `fallback` is shown.
    */
   group?: string | undefined;
+  /**
+   * The path to show instead if the slide has no group `group`, e.g., after
+   * the group was renamed. Defaults to the beginning of the slide.
+   */
+  fallback?: StepPath | undefined;
+  /**
+   * The texts shown by the step at `path`, or at `fallback` with a group, to
+   * find the step by if steps were added or removed before it, e.g., when the
+   * slide is edited (see `StepStore`).
+   */
+  texts?: readonly string[] | undefined;
   /** Whether to also show all steps nested in `path`. */
   toEnd: boolean;
   /**
