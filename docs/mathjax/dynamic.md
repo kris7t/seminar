@@ -19,9 +19,9 @@ math:
 Dynamic formulas use the font, the macros, and the `tags` of the deck, see
 [Options](README.md#options).
 
-Only decks that enable `dynamic` contain MathJax. They load it when the
-first `DynamicFormula` is shown. Until then, the formula is empty. When
-`tex` changes, the previous formula stays until the new one is ready.
+Only decks that enable `dynamic` contain MathJax. The formula is empty until
+its first result is ready. When `tex` changes, the previous formula stays
+until the new one is ready.
 
 Changes of the slide wait up to a second for dynamic formulas to render, so
 the slide doesn't shift when they appear. So do updates made with

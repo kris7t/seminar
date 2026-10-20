@@ -1,7 +1,7 @@
 /**
  * Renders math in the browser. Decks with dynamic math import this module
- * when a `DynamicFormula` is first shown, so that other decks don't contain
- * MathJax.
+ * when a `DynamicFormula` is first probed or shown, so that other decks don't
+ * contain MathJax.
  */
 
 import type {

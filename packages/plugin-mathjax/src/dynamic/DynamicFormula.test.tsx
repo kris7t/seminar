@@ -2,28 +2,60 @@ import { readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { cleanup, render, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  render as renderReact,
+  waitFor,
+} from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SliderOptionsContext } from '../../../core/src/deck/SliderOptionsContext.ts';
+import { SharedWorkProvider } from '../../../core/src/shared/SharedWorkProvider.tsx';
+import {
+  SlideTransitions,
+  SlideTransitionsContext,
+} from '../../../core/src/transitions/SlideTransitions.ts';
+import { SlideViewProvider } from '../../../core/src/view/SlideViewProvider.tsx';
+import type { SlideViewKind } from '../../../core/src/view/SlideViewContext.ts';
 import { formulaClasses } from '../Formula.tsx';
 import { DynamicFormula } from './DynamicFormula.tsx';
 import { defineMathFont } from './fonts.ts';
-import { renderFormula } from './render.ts';
+import { renderFormula, type RenderedFormula } from './render.ts';
 import type { RuntimeMathOptions } from './runtimeOptions.ts';
 
-const sliderOptions = vi.hoisted((): { math: unknown } => ({
+const sliderOptions: { math: unknown } = {
   math: undefined,
-}));
+};
 
-const transitionHold = vi.hoisted(() => vi.fn());
-const slideView = vi.hoisted(() => ({ visible: true }));
+let transitions: SlideTransitions;
+let slideKind: SlideViewKind;
+const activeHolds = new Set<object>();
 
-vi.mock('@slider/core', () => ({
-  useSlideView: () => slideView,
-  useSliderOptions: (name: string) =>
-    name === 'math' ? sliderOptions.math : undefined,
-  useTransitionHold: transitionHold,
-}));
+function TestContext({ children }: { children: ReactNode }) {
+  return (
+    <SharedWorkProvider>
+      <SliderOptionsContext value={sliderOptions}>
+        <SlideTransitionsContext value={transitions}>
+          <SlideViewProvider
+            view={{
+              index: 0,
+              kind: slideKind,
+              interactive: slideKind === 'audience',
+            }}
+          >
+            {children}
+          </SlideViewProvider>
+        </SlideTransitionsContext>
+      </SliderOptionsContext>
+    </SharedWorkProvider>
+  );
+}
+
+function render(ui: ReactNode) {
+  return renderReact(ui, { wrapper: TestContext });
+}
 
 const FIRA = path.dirname(
   createRequire(import.meta.filename).resolve(
@@ -125,45 +157,62 @@ describe('DynamicFormula', () => {
 
   beforeEach(() => {
     sliderOptions.math = deckOptions;
-    slideView.visible = true;
-    transitionHold.mockClear();
+    slideKind = 'audience';
+    transitions = new SlideTransitions();
+    activeHolds.clear();
+    vi.spyOn(transitions, 'hold').mockImplementation(() => {
+      const hold = {};
+      activeHolds.add(hold);
+      return () => {
+        activeHolds.delete(hold);
+      };
+    });
   });
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
-  it('skips loading math and holding transitions until the view is visible', async () => {
-    const loadRenderer = vi.fn(() => import('./render.ts'));
+  it('preloads MathJax in probes and waits for visibility before typesetting', async () => {
+    const typeset = vi.fn(renderFormula);
+    const loadRenderer = vi.fn(() =>
+      Promise.resolve({ renderFormula: typeset }),
+    );
     sliderOptions.math = {
       ...deckOptions,
       dynamic: { font: firaFont, loadRenderer },
     };
-    slideView.visible = false;
+    slideKind = 'probe';
     const { container, rerender } = render(<DynamicFormula tex="x" />);
-    expect(loadRenderer).not.toHaveBeenCalled();
-    expect(transitionHold.mock.lastCall?.[0]).toBe(false);
+    await waitFor(() => {
+      expect(loadRenderer).toHaveBeenCalledOnce();
+    });
+    expect(typeset).not.toHaveBeenCalled();
+    expect(activeHolds.size).toBe(0);
     expect(container.querySelector('svg')).toBeNull();
 
-    slideView.visible = true;
+    slideKind = 'audience';
     rerender(<DynamicFormula tex="x" />);
     expect(loadRenderer).toHaveBeenCalledOnce();
-    expect(transitionHold.mock.lastCall?.[0]).toBe(true);
+    expect(activeHolds.size).toBeGreaterThan(0);
     await waitFor(() => {
       expect(container.querySelector('math')?.getAttribute('data-latex')).toBe(
         'x',
       );
     });
-    expect(transitionHold.mock.lastCall?.[0]).toBe(false);
+    expect(activeHolds.size).toBe(0);
   });
 
   it.each([undefined, { ...deckOptions, dynamic: undefined }])(
     'does not report configuration errors in probe views with options %j',
     (options) => {
       sliderOptions.math = options;
-      slideView.visible = false;
+      slideKind = 'probe';
       const onError = vi.fn();
       render(<DynamicFormula tex="x" onError={onError} />);
       expect(onError).not.toHaveBeenCalled();
-      expect(transitionHold.mock.lastCall?.[0]).toBe(false);
+      expect(activeHolds.size).toBe(0);
     },
   );
 
@@ -207,7 +256,7 @@ describe('DynamicFormula', () => {
   });
 
   it('holds the change of the slide until the formula is rendered', async () => {
-    const pending = () => transitionHold.mock.lastCall?.[0] as boolean;
+    const pending = () => activeHolds.size > 0;
     const { container, rerender } = render(<DynamicFormula tex="x" />);
     expect(pending()).toBe(true);
     await waitFor(() => {
@@ -224,7 +273,7 @@ describe('DynamicFormula', () => {
   it('does not hold the change if it cannot render', () => {
     sliderOptions.math = { ...deckOptions, dynamic: undefined };
     render(<DynamicFormula tex="x" />);
-    expect(transitionHold.mock.lastCall?.[0]).toBe(false);
+    expect(activeHolds.size).toBe(0);
   });
 
   it('reports errors', async () => {
@@ -233,5 +282,209 @@ describe('DynamicFormula', () => {
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Undefined control sequence \\nope');
     });
+  });
+
+  it('shares typesetting across views with differently ordered formula arrays', async () => {
+    const typeset = vi.fn(renderFormula);
+    const loadRenderer = vi.fn(() =>
+      Promise.resolve({ renderFormula: typeset }),
+    );
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: { font: firaFont, loadRenderer },
+    };
+    const tree = (first: string[], second: string[]) => (
+      <>
+        <SlideViewProvider
+          view={{ index: 0, kind: 'audience', interactive: true }}
+        >
+          {first.map((tex) => (
+            <DynamicFormula key={tex} tex={tex} />
+          ))}
+        </SlideViewProvider>
+        <SlideViewProvider
+          view={{ index: 0, kind: 'preview', interactive: false }}
+        >
+          {second.map((tex) => (
+            <DynamicFormula key={tex} tex={tex} />
+          ))}
+        </SlideViewProvider>
+      </>
+    );
+    const { container, rerender } = render(tree(['x', 'y'], ['y', 'x']));
+    await waitFor(() => {
+      expect(container.querySelectorAll('math')).toHaveLength(4);
+    });
+    expect(typeset).toHaveBeenCalledTimes(2);
+    expect(loadRenderer).toHaveBeenCalledOnce();
+    rerender(tree(['y', 'x'], ['x']));
+    await waitFor(() => {
+      expect(container.querySelectorAll('math')).toHaveLength(3);
+    });
+    expect(typeset).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the previous formula while the new one is pending', async () => {
+    const next = Promise.withResolvers<RenderedFormula>();
+    const typeset = vi.fn(
+      (tex: string, options: Parameters<typeof renderFormula>[1]) =>
+        tex === 'y' ? next.promise : renderFormula(tex, options),
+    );
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: {
+        font: firaFont,
+        loadRenderer: () => Promise.resolve({ renderFormula: typeset }),
+      },
+    };
+    const { container, rerender } = render(<DynamicFormula tex="x" />);
+    await waitFor(() => {
+      expect(container.querySelector('math')?.getAttribute('data-latex')).toBe(
+        'x',
+      );
+    });
+    rerender(<DynamicFormula tex="y" />);
+    expect(container.querySelector('math')?.getAttribute('data-latex')).toBe(
+      'x',
+    );
+    await act(async () => {
+      next.resolve(await renderFormula('y', OPTIONS));
+    });
+    expect(container.querySelector('math')?.getAttribute('data-latex')).toBe(
+      'y',
+    );
+  });
+
+  it('includes display mode, macros, and numbering in the cache key', async () => {
+    const typeset = vi.fn(renderFormula);
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: {
+        font: firaFont,
+        loadRenderer: () => Promise.resolve({ renderFormula: typeset }),
+      },
+    };
+    const { container } = render(
+      <>
+        <DynamicFormula tex={'\\A'} macros={{ A: 'a', B: 'b' }} />
+        <DynamicFormula tex={'\\A'} macros={{ B: 'b', A: 'a' }} />
+        <DynamicFormula tex={'\\A'} macros={{ A: 'a', B: 'b' }} display />
+        <DynamicFormula tex={'\\A'} macros={{ A: 'c', B: 'b' }} />
+        <DynamicFormula tex={'\\A'} macros={{ A: 'a', B: 'b' }} tags="ams" />
+      </>,
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll('math')).toHaveLength(5);
+    });
+    expect(typeset).toHaveBeenCalledTimes(4);
+  });
+
+  it('keeps caches separate when the runtime font configuration changes', async () => {
+    const typeset = vi.fn(renderFormula);
+    const loadRenderer = () => Promise.resolve({ renderFormula: typeset });
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: { font: firaFont, loadRenderer },
+    };
+    const { container, rerender } = render(<DynamicFormula tex="x" />);
+    await waitFor(() => {
+      expect(container.querySelector('svg')).not.toBeNull();
+    });
+    const otherFont = { ...firaFont };
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: { font: otherFont, loadRenderer },
+    };
+    rerender(<DynamicFormula tex="x" />);
+    await waitFor(() => {
+      expect(typeset).toHaveBeenCalledTimes(2);
+    });
+    expect(typeset.mock.calls[0]?.[1].font).toBe(firaFont);
+    expect(typeset.mock.calls[1]?.[1].font).toBe(otherFont);
+    await waitFor(() => {
+      expect(activeHolds.size).toBe(0);
+    });
+  });
+
+  it('reports cached TeX errors to each consumer, including consumers mounted later', async () => {
+    const typeset = vi.fn(renderFormula);
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: {
+        font: firaFont,
+        loadRenderer: () => Promise.resolve({ renderFormula: typeset }),
+      },
+    };
+    const firstError = vi.fn();
+    const secondError = vi.fn();
+    const tree = (second: boolean) => (
+      <>
+        <DynamicFormula key="first" tex={'\\nope'} onError={firstError} />
+        {second && (
+          <DynamicFormula key="second" tex={'\\nope'} onError={secondError} />
+        )}
+      </>
+    );
+    const { rerender } = render(tree(false));
+    await waitFor(() => {
+      expect(firstError).toHaveBeenCalledExactlyOnceWith(
+        'Undefined control sequence \\nope',
+      );
+    });
+    rerender(tree(true));
+    await waitFor(() => {
+      expect(secondError).toHaveBeenCalledExactlyOnceWith(
+        'Undefined control sequence \\nope',
+      );
+    });
+    expect(firstError).toHaveBeenCalledOnce();
+    expect(typeset).toHaveBeenCalledOnce();
+  });
+
+  it('reports loader failures and releases transition holds', async () => {
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: {
+        font: firaFont,
+        loadRenderer: () => Promise.reject(new Error('unavailable')),
+      },
+    };
+    const onError = vi.fn();
+    const { container } = render(<DynamicFormula tex="x" onError={onError} />);
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledExactlyOnceWith(
+        'Cannot render math: Error: unavailable',
+      );
+    });
+    expect(container.textContent).toBe('x');
+    expect(activeHolds.size).toBe(0);
+  });
+
+  it('uses the latest error callback without restarting pending work', async () => {
+    const renderer = Promise.withResolvers<{
+      renderFormula: typeof renderFormula;
+    }>();
+    const typeset = vi.fn(renderFormula);
+    sliderOptions.math = {
+      ...deckOptions,
+      dynamic: { font: firaFont, loadRenderer: () => renderer.promise },
+    };
+    const previousError = vi.fn();
+    const currentError = vi.fn();
+    const { rerender } = render(
+      <DynamicFormula tex={'\\nope'} onError={previousError} />,
+    );
+    rerender(<DynamicFormula tex={'\\nope'} onError={currentError} />);
+    await act(async () => {
+      renderer.resolve({ renderFormula: typeset });
+      await renderer.promise;
+    });
+    await waitFor(() => {
+      expect(currentError).toHaveBeenCalledExactlyOnceWith(
+        'Undefined control sequence \\nope',
+      );
+    });
+    expect(previousError).not.toHaveBeenCalled();
+    expect(typeset).toHaveBeenCalledOnce();
   });
 });
