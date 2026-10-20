@@ -24,6 +24,8 @@ Workspace packages resolve to their TypeScript sources through the
 - `npm test`, or `npx vitest run <path>` for some of the tests.
 - `npm run lint`, `npm run format`, `npm run typecheck`.
 - `npm run check` runs everything before a commit.
+- `scripts/android/`: reproduce bugs of Chrome on Android in an emulator, see
+  its `README.md`.
 
 ## Conventions
 
