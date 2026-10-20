@@ -1,4 +1,4 @@
-import { useLayoutEffect, type ReactNode } from 'react';
+import { useEffect } from 'react';
 
 import type { ThumbnailCache } from './ThumbnailCache.ts';
 import { whenIdle } from './whenIdle.ts';
@@ -7,39 +7,43 @@ interface ThumbnailCaptureProps {
   cache: ThumbnailCache;
   index: number;
   frame: HTMLElement | null;
-  children: ReactNode;
+  active: boolean;
+  onCaptured: () => void;
 }
 
-/** Tracks the appearance of the interactive slide, including its final frame. */
+/** Captures a live slide without requiring a synchronous snapshot at unmount. */
 export function ThumbnailCapture({
   cache,
   index,
   frame,
-  children,
-}: ThumbnailCaptureProps): ReactNode {
-  useLayoutEffect(() => {
-    if (frame === null) {
-      return undefined;
-    }
+  active,
+  onCaptured,
+}: ThumbnailCaptureProps): null {
+  useEffect(() => {
+    if (frame === null) return undefined;
     cache.shown(index);
+    const controller = new AbortController();
+    if (!active) {
+      void cache.capture(index, frame, true, controller.signal).then(() => {
+        if (!controller.signal.aborted) onCaptured();
+      });
+      return () => {
+        controller.abort();
+      };
+    }
     let cancel: (() => void) | undefined;
     let running = false;
-    let dirty = true;
-    let mounted = true;
+    let dirty = false;
     const schedule = () => {
       dirty = true;
-      if (cancel !== undefined || running || !mounted) {
-        return;
-      }
+      if (cancel !== undefined || running || controller.signal.aborted) return;
       cancel = whenIdle(() => {
         cancel = undefined;
         running = true;
         dirty = false;
-        void cache.capture(index, frame, true).then(() => {
+        void cache.capture(index, frame, true, controller.signal).then(() => {
           running = false;
-          if (dirty) {
-            schedule();
-          }
+          if (dirty) schedule();
         });
       });
     };
@@ -59,13 +63,9 @@ export function ThumbnailCapture({
       'transitionend',
       'animationend',
     ];
-    for (const event of events) {
-      frame.addEventListener(event, schedule, true);
-    }
-    if ('fonts' in document) {
+    for (const event of events) frame.addEventListener(event, schedule, true);
+    if ('fonts' in document)
       document.fonts.addEventListener('loadingdone', schedule);
-    }
-    // Canvas drawing and media playback don't change the DOM.
     const timer = setInterval(() => {
       if (
         frame.querySelector('canvas, video') !== null ||
@@ -73,26 +73,20 @@ export function ThumbnailCapture({
           frame
             .getAnimations({ subtree: true })
             .some((animation) => animation.playState === 'running'))
-      ) {
+      )
         schedule();
-      }
     }, 1000);
     schedule();
     return () => {
-      mounted = false;
+      controller.abort();
       cancel?.();
       observer.disconnect();
       clearInterval(timer);
-      if ('fonts' in document) {
-        document.fonts.removeEventListener('loadingdone', schedule);
-      }
-      for (const event of events) {
+      for (const event of events)
         frame.removeEventListener(event, schedule, true);
-      }
-      // Layout cleanup runs before React removes this subtree. Freeze it now,
-      // even when navigation happened before its idle capture could run.
-      void cache.capture(index, frame, true);
+      if ('fonts' in document)
+        document.fonts.removeEventListener('loadingdone', schedule);
     };
-  }, [cache, index, frame]);
-  return children;
+  }, [cache, index, frame, active, onCaptured]);
+  return null;
 }

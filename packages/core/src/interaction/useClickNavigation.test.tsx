@@ -247,7 +247,7 @@ describe('click navigation', () => {
     // frame of the slide.
     const root =
       container.querySelector('[data-seminar-view]')?.parentElement
-        ?.parentElement?.parentElement?.parentElement ?? null;
+        ?.parentElement?.parentElement?.parentElement?.parentElement ?? null;
     expect(root).not.toBeNull();
     if (root !== null) {
       expect(getComputedStyle(root).userSelect).toBe('none');

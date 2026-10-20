@@ -77,6 +77,11 @@ slide at a time during idle time. Once a slide has been shown, its thumbnail
 is captured from the presented view as it changes and when it is left, so
 the overview keeps its last shown appearance, including local component
 state. Components aren't mounted in the overview itself.
+After navigation, the departing slide stays mounted behind the current one
+until its capture finishes. It is inert and has `interactive: false` during
+capture. Style copying yields between short batches so navigation, swipes,
+and the overview can respond while thumbnails are generated. At most one
+departed slide is retained; rapid navigation cancels older captures.
 If a capture fails, for example because of external media, the thumbnail
 keeps its last successful image or remains empty until a later capture.
 
@@ -169,11 +174,18 @@ function may be async and runs after outstanding computations using them
 finish. Acquisitions that finish after unmount are also disposed.
 
 Cache results remain available while any view of a slide that used them is
-rendered, including across step changes. After those slides leave, the
-cache retains up to `maxUnusedEntries` results in least-recently-used order,
-defaulting to 8. Set it to `0` to evict unused entries promptly, or `Infinity`
-to retain them until the Deck unmounts. Pending work remains shareable until
-it finishes. Evicting results doesn't dispose resources.
+rendered, including across step changes. Each cache also keeps the complete
+working sets of its two most recently unmounted slides, even if a slide
+uses hundreds of entries. This lets a slide remount or switch views without
+recomputing most of its content. `maxUnusedSlides` changes this history
+limit; `0` disables it, and `Infinity` retains every slide's results.
+
+Outside these working sets, the cache retains up to `maxUnusedEntries`
+individual results in least-recently-used order, defaulting to 8. Set it to
+`0` to evict these extra entries promptly, or `Infinity` to retain all
+results until the Deck unmounts. Set both limits to `0` to evict results
+once their last view leaves. Pending work remains shareable until it
+finishes. Evicting results doesn't dispose resources.
 
 ## Input
 

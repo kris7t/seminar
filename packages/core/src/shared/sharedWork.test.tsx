@@ -253,7 +253,10 @@ describe('shared resources and caches', () => {
 
   it('retains earlier results while their slide has any rendered view', async () => {
     const compute = vi.fn((args: { text: string }) => args.text);
-    const cache = defineCache(compute, { maxUnusedEntries: 0 });
+    const cache = defineCache(compute, {
+      maxUnusedEntries: 0,
+      maxUnusedSlides: 0,
+    });
     function Formula({ text }: { text: string }) {
       const result = useCached(cache, { text });
       return <span>{result.value}</span>;
@@ -284,7 +287,10 @@ describe('shared resources and caches', () => {
 
   it('keeps a configurable number of unused results in least-recently-used order', async () => {
     const compute = vi.fn((args: { text: string }) => args.text);
-    const cache = defineCache(compute, { maxUnusedEntries: 1 });
+    const cache = defineCache(compute, {
+      maxUnusedEntries: 1,
+      maxUnusedSlides: 0,
+    });
     function Formula({ text }: { text: string }) {
       const result = useCached(cache, { text });
       return <span>{result.value}</span>;
@@ -353,7 +359,10 @@ describe('shared resources and caches', () => {
 
   it('retains results until the last view of an associated slide leaves', async () => {
     const compute = vi.fn(() => 'ready');
-    const cache = defineCache(compute, { maxUnusedEntries: 0 });
+    const cache = defineCache(compute, {
+      maxUnusedEntries: 0,
+      maxUnusedSlides: 0,
+    });
     function Reader() {
       const result = useCached(cache, {});
       return <span>{result.value}</span>;
@@ -382,6 +391,148 @@ describe('shared resources and caches', () => {
     rerender(tree(true, false));
     await screen.findByText('ready');
     expect(compute).toHaveBeenCalledTimes(2);
+  });
+
+  it('retains a recent slide’s whole working set across a gap between views', async () => {
+    const compute = vi.fn((args: { digit: number }) => args.digit);
+    const cache = defineCache(compute, { maxUnusedEntries: 2 });
+    function Reader({ digit }: { digit: number }) {
+      const result = useCached(cache, { digit });
+      return <span>{result.value ?? 'pending'}</span>;
+    }
+    const tree = (kind?: SlideViewKind) => (
+      <SharedWorkProvider>
+        {kind !== undefined && (
+          <View kind={kind}>
+            {Array.from({ length: 32 }, (_, digit) => (
+              <Reader key={digit} digit={digit} />
+            ))}
+          </View>
+        )}
+      </SharedWorkProvider>
+    );
+    const { rerender } = render(tree('audience'));
+    await waitFor(() => {
+      expect(screen.queryAllByText('pending')).toHaveLength(0);
+    });
+    expect(compute).toHaveBeenCalledTimes(32);
+    await flush(() => {
+      rerender(tree());
+    });
+    rerender(tree('thumbnail'));
+    expect(screen.queryAllByText('pending')).toHaveLength(0);
+    await flush(() => undefined);
+    expect(compute).toHaveBeenCalledTimes(32);
+    await flush(() => {
+      rerender(tree());
+    });
+    rerender(tree('presenter'));
+    expect(screen.queryAllByText('pending')).toHaveLength(0);
+    await flush(() => undefined);
+    expect(compute).toHaveBeenCalledTimes(32);
+  });
+
+  it('bounds complete working sets by slide recency, independently of their entry count', async () => {
+    const store = new SharedWorkStore();
+    const compute = vi.fn(
+      (args: { slide: number; digit: number }) => args.digit,
+    );
+    const cache = defineCache(compute, {
+      maxUnusedEntries: 0,
+      maxUnusedSlides: 2,
+    });
+    const read = (slide: number, digit: number) =>
+      store.readCached(cache, store.cacheKey(cache, { slide, digit }));
+    const show = async (slide: number) => {
+      const leave = store.mountSlide(slide);
+      for (let digit = 0; digit < 12; digit += 1) {
+        const args = { slide, digit };
+        store.request(cache, store.cacheKey(cache, args), args, slide, true);
+      }
+      await waitFor(() => {
+        expect(read(slide, 11).status).toBe('success');
+      });
+      await flush(leave);
+    };
+    await show(0);
+    await show(1);
+    await show(0);
+    await show(2);
+    expect(compute).toHaveBeenCalledTimes(36);
+    for (let digit = 0; digit < 12; digit += 1) {
+      expect(read(0, digit).status).toBe('success');
+      expect(read(1, digit).status).toBe('pending');
+      expect(read(2, digit).status).toBe('success');
+    }
+    await show(3);
+    for (let digit = 0; digit < 12; digit += 1) {
+      expect(read(0, digit).status).toBe('pending');
+      expect(read(2, digit).status).toBe('success');
+      expect(read(3, digit).status).toBe('success');
+    }
+  });
+
+  it('keeps shared entries when one of their slides falls outside the history', async () => {
+    const store = new SharedWorkStore();
+    const cache = defineCache((args: string) => args, {
+      maxUnusedEntries: 0,
+      maxUnusedSlides: 1,
+    });
+    const request = async (slide: number, args: string) => {
+      const key = store.cacheKey(cache, args);
+      store.request(cache, key, args, slide, true);
+      await waitFor(() => {
+        expect(store.readCached(cache, key).status).toBe('success');
+      });
+    };
+    const leave0 = store.mountSlide(0);
+    await request(0, 'shared');
+    await request(0, 'only 0');
+    await flush(leave0);
+    const leave1 = store.mountSlide(1);
+    await request(1, 'shared');
+    await request(1, 'only 1');
+    await flush(leave1);
+    expect(
+      store.readCached(cache, store.cacheKey(cache, 'only 0')).status,
+    ).toBe('pending');
+    expect(
+      store.readCached(cache, store.cacheKey(cache, 'shared')).status,
+    ).toBe('success');
+    expect(
+      store.readCached(cache, store.cacheKey(cache, 'only 1')).status,
+    ).toBe('success');
+  });
+
+  it('does not count slides that only use other caches against a cache’s history', async () => {
+    const store = new SharedWorkStore();
+    const cache = defineCache((args: number) => args, {
+      maxUnusedEntries: 0,
+      maxUnusedSlides: 1,
+    });
+    const other = defineCache((args: number) => args, {
+      maxUnusedEntries: 0,
+      maxUnusedSlides: 1,
+    });
+    for (let slide = 0; slide < 5; slide += 1) {
+      const definition = slide === 0 ? cache : other;
+      const leave = store.mountSlide(slide);
+      const key = store.cacheKey(definition, slide);
+      store.request(definition, key, slide, slide, true);
+      await waitFor(() => {
+        expect(store.readCached(definition, key).status).toBe('success');
+      });
+      await flush(leave);
+    }
+    expect(store.readCached(cache, store.cacheKey(cache, 0)).status).toBe(
+      'success',
+    );
+    expect(store.readCached(other, store.cacheKey(other, 1)).status).toBe(
+      'pending',
+    );
+    expect(store.readCached(other, store.cacheKey(other, 4)).status).toBe(
+      'success',
+    );
   });
 
   it('distinguishes argument types, array order, and opaque identities', () => {

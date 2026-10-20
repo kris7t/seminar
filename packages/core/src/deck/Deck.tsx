@@ -66,7 +66,6 @@ import {
   SlideTransitionsContext,
 } from '../transitions/SlideTransitions.ts';
 import { SlideTransitionStyles } from '../transitions/SlideTransitionStyles.tsx';
-import { SelectionFrame } from '../view/SelectionFrame.tsx';
 import {
   FITTED_SLIDE_FRAME_STYLES,
   pixelBoxStyles,
@@ -100,7 +99,7 @@ import { useSlideProbe } from '../view/SlideProbe.tsx';
 import { TocList } from '../sidebar/TocList.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
 import { ThumbnailCache } from '../overview/ThumbnailCache.ts';
-import { ThumbnailCapture } from '../overview/ThumbnailCapture.tsx';
+import { PresentedSlides } from '../overview/PresentedSlides.tsx';
 import { ThumbnailRenderer } from '../overview/ThumbnailRenderer.tsx';
 import { getSlideNotes } from '../notes/Notes.tsx';
 import { NotesDisplay } from '../notes/NotesDisplay.tsx';
@@ -108,7 +107,6 @@ import {
   SLIDE_VIEW_ATTRIBUTE,
   type SlideView,
 } from '../view/SlideViewContext.ts';
-import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
 
 export interface DeckProps {
   /**
@@ -780,8 +778,6 @@ export function Deck({
                             >
                               {/* Moves the slides together while swiping. */}
                               <Box
-                                // Restarts the animation of sliding in on another slide.
-                                key={`slides-${String(slideIndex)}`}
                                 onTransitionEnd={(event) => {
                                   if (event.target === event.currentTarget) {
                                     swipe.onTransitionEnd();
@@ -870,34 +866,24 @@ export function Deck({
                                       </Box>
                                     ))}
                                 <div style={pixelBoxStyles(slideFit)}>
-                                  <SelectionFrame
-                                    ref={setPresenterFrame}
-                                    sx={FITTED_SLIDE_FRAME_STYLES}
-                                    style={{
-                                      ...slideScaleStyles(slideFit.scale),
-                                      // The laser pointer replaces the mouse cursor.
-                                      ...(presenting && pointerMode === 'laser'
-                                        ? { cursor: 'none' }
-                                        : {}),
+                                  <PresentedSlides
+                                    view={view}
+                                    slide={slides[slideIndex]}
+                                    cache={thumbnails}
+                                    overview={showOverview}
+                                    onFrame={setPresenterFrame}
+                                    frameProps={{
+                                      sx: FITTED_SLIDE_FRAME_STYLES,
+                                      style: {
+                                        ...slideScaleStyles(slideFit.scale),
+                                        ...(presenting &&
+                                        pointerMode === 'laser'
+                                          ? { cursor: 'none' }
+                                          : {}),
+                                      },
+                                      ...(presenting ? pointerHandlers : {}),
                                     }}
-                                    {...{ [SLIDE_VIEW_ATTRIBUTE]: view.kind }}
-                                    // Show the pointer of the presenter to the audience.
-                                    {...(presenting ? pointerHandlers : {})}
-                                  >
-                                    {/* The overview shows the slide instead. */}
-                                    {!showOverview && (
-                                      <ThumbnailCapture
-                                        key={slideIndex}
-                                        cache={thumbnails}
-                                        index={slideIndex}
-                                        frame={presenterFrame}
-                                      >
-                                        <SlideViewProvider view={view}>
-                                          {slides[slideIndex]}
-                                        </SlideViewProvider>
-                                      </ThumbnailCapture>
-                                    )}
-                                  </SelectionFrame>
+                                  />
                                 </div>
                               </Box>
                               {/* Doesn't move with the slides. */}

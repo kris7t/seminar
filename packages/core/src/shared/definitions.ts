@@ -60,8 +60,16 @@ export interface CacheOptions<
   /** Holds visible consumers while computing. Defaults to `true`. */
   transitionHold?: TransitionHold | undefined;
   /**
-   * Maximum retained entries unused by rendered slides, in least-recently-used
-   * order. Defaults to 8; `0` evicts promptly, and `Infinity` retains all.
+   * Number of recently unmounted slides whose complete working sets are
+   * retained in addition to mounted slides. Defaults to 2. Set to `0` to
+   * retain only individual unused entries, or `Infinity` to keep every slide.
+   */
+  maxUnusedSlides?: number | undefined;
+  /**
+   * Additional entries retained outside mounted and recently unmounted
+   * slides, in least-recently-used order. Defaults to 8; `0` evicts these
+   * entries promptly, and `Infinity` retains all. Set both retention limits
+   * to `0` to evict results as soon as their last view leaves.
    */
   maxUnusedEntries?: number | undefined;
 }

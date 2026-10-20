@@ -59,6 +59,7 @@ function BackgroundThumbnail({
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
     let cancel: (() => void) | undefined;
     const frame = ref.current;
     if (frame === null) {
@@ -74,7 +75,7 @@ function BackgroundThumbnail({
       ready = true;
       clearTimeout(timeout);
       cancel = whenIdle(() => {
-        void cache.capture(index, frame).then(() => {
+        void cache.capture(index, frame, false, controller.signal).then(() => {
           if (mounted) {
             onDone();
           }
@@ -90,6 +91,7 @@ function BackgroundThumbnail({
     ]).then(capture);
     return () => {
       mounted = false;
+      controller.abort();
       cancel?.();
       clearTimeout(timeout);
     };

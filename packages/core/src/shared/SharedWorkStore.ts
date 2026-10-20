@@ -30,7 +30,20 @@ interface CacheEntry extends Entry {
 
 interface CacheState {
   entries: Map<string, CacheEntry>;
+  slides: Map<number, number>;
+  maxUnusedSlides: number;
   maxUnusedEntries: number;
+}
+
+interface RetentionOptions {
+  maxUnusedSlides?: number | undefined;
+  maxUnusedEntries?: number | undefined;
+}
+
+function retentionLimit(value: number | undefined, fallback: number): number {
+  return value === undefined || Number.isNaN(value)
+    ? fallback
+    : Math.max(0, Math.floor(value));
 }
 
 function entry(): Entry {
@@ -74,12 +87,21 @@ export class SharedWorkStore {
 
   mountSlide(index: number): () => void {
     this.#slides.set(index, (this.#slides.get(index) ?? 0) + 1);
+    this.#touchSlide(index);
     return () => {
       const remaining = (this.#slides.get(index) ?? 1) - 1;
-      if (remaining === 0) this.#slides.delete(index);
-      else this.#slides.set(index, remaining);
+      if (remaining === 0) {
+        this.#slides.delete(index);
+        this.#touchSlide(index);
+      } else this.#slides.set(index, remaining);
       this.#pruneLater();
     };
+  }
+
+  #touchSlide(index: number): void {
+    for (const cache of this.#caches.values()) {
+      if (cache.slides.has(index)) cache.slides.set(index, ++this.#clock);
+    }
   }
 
   readResource<T>(definition: ResourceDefinition<T>): LoadResult<T> {
@@ -118,25 +140,21 @@ export class SharedWorkStore {
     }
   }
 
-  #cache(definition: { maxUnusedEntries?: number | undefined }): CacheState {
+  #cache(definition: RetentionOptions): CacheState {
     let state = this.#caches.get(definition);
     if (state === undefined) {
-      const limit = definition.maxUnusedEntries ?? 8;
       state = {
         entries: new Map(),
-        maxUnusedEntries: Number.isNaN(limit)
-          ? 8
-          : Math.max(0, Math.floor(limit)),
+        slides: new Map(),
+        maxUnusedSlides: retentionLimit(definition.maxUnusedSlides, 2),
+        maxUnusedEntries: retentionLimit(definition.maxUnusedEntries, 8),
       };
       this.#caches.set(definition, state);
     }
     return state;
   }
 
-  #cacheEntry(
-    definition: { maxUnusedEntries?: number | undefined },
-    key: string,
-  ): CacheEntry {
+  #cacheEntry(definition: RetentionOptions, key: string): CacheEntry {
     const cache = this.#cache(definition);
     let state = cache.entries.get(key);
     if (state === undefined) {
@@ -152,7 +170,7 @@ export class SharedWorkStore {
   }
 
   subscribeCached(
-    definition: { maxUnusedEntries?: number | undefined },
+    definition: RetentionOptions,
     key: string,
     listener: () => void,
   ): () => void {
@@ -175,8 +193,12 @@ export class SharedWorkStore {
     this.preload(resources);
     if (!visible && definition.enabled !== 'always') return;
     const state = this.#cacheEntry(definition, key);
-    if (visible) state.slides.add(slide);
+    if (visible) {
+      state.slides.add(slide);
+      this.#cache(definition).slides.set(slide, ++this.#clock);
+    }
     state.usedAt = ++this.#clock;
+    this.#pruneLater();
     if (state.promise !== undefined) return;
     const dependencies = Object.entries(resources);
     const loading = dependencies.map(([, resource]) =>
@@ -237,12 +259,29 @@ export class SharedWorkStore {
     queueMicrotask(() => {
       this.#pruning = false;
       for (const cache of this.#caches.values()) {
+        const recentSlides = new Set(
+          [...cache.slides]
+            .filter(([slide]) => !this.#slides.has(slide))
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, cache.maxUnusedSlides)
+            .map(([slide]) => slide),
+        );
+        for (const slide of cache.slides.keys()) {
+          if (!this.#slides.has(slide) && !recentSlides.has(slide)) {
+            cache.slides.delete(slide);
+          }
+        }
+        for (const state of cache.entries.values()) {
+          for (const slide of state.slides) {
+            if (!cache.slides.has(slide)) state.slides.delete(slide);
+          }
+        }
         const unused = [...cache.entries]
           .filter(
             ([, state]) =>
               state.listeners.size === 0 &&
               !(state.promise !== undefined && state.result.pending) &&
-              ![...state.slides].some((slide) => this.#slides.has(slide)),
+              state.slides.size === 0,
           )
           .sort((a, b) => b[1].usedAt - a[1].usedAt);
         for (const [key] of unused.slice(cache.maxUnusedEntries))

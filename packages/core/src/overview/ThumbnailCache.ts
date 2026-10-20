@@ -43,6 +43,7 @@ export class ThumbnailCache {
     index: number,
     frame: HTMLElement,
     shown = false,
+    signal?: AbortSignal,
   ): Promise<void> {
     if (!shown && this.#shown.has(index)) {
       return;
@@ -51,8 +52,8 @@ export class ThumbnailCache {
     const version = (this.#versions.get(index) ?? 0) + 1;
     this.#versions.set(index, version);
     try {
-      const image = await captureThumbnail(frame);
-      if (this.#versions.get(index) === version) {
+      const image = await captureThumbnail(frame, signal);
+      if (!signal?.aborted && this.#versions.get(index) === version) {
         this.#images.set(index, image);
         for (const listener of this.#listeners) {
           listener();

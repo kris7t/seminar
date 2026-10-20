@@ -107,7 +107,9 @@ describe('SlideOverview', () => {
     await user.keyboard('o');
     expect(isShown()).toBe(false);
     await user.keyboard('{Escape}{ArrowRight}{PageDown}o');
-    expect(isShown()).toBe(true);
+    await waitFor(() => {
+      expect(isShown()).toBe(true);
+    });
     // Moving through the overview doesn't change the steps.
     await user.keyboard('{ArrowLeft}{ArrowRight}{ArrowLeft}{Home}{End}');
     expect(isShown()).toBe(true);
