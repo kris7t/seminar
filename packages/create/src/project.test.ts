@@ -49,6 +49,13 @@ for (let mask = 0; mask < 8; mask++) {
       expect(manifest.name).toBe('my-talk');
       const config = read(directory, 'vite.config.ts');
       expect(config).toContain("root: 'decks'");
+      expect(config).toContain(
+        "'@': fileURLToPath(new URL('./src', import.meta.url))",
+      );
+      const tsconfig = JSON.parse(read(directory, 'tsconfig.json')) as {
+        compilerOptions: { paths: Record<string, string[]> };
+      };
+      expect(tsconfig.compilerOptions.paths['@/*']).toEqual(['./src/*']);
       expect(config).toContain("outDir: '../dist'");
       expect(config).toContain('emptyOutDir: true');
       const deck = read(directory, 'decks/index.deck.mdx');
@@ -73,7 +80,8 @@ for (let mask = 0; mask < 8; mask++) {
         expect(manifest.dependencies).not.toHaveProperty(
           '@seminar/theme-default',
         );
-        expect(deck).toContain('theme: ../src/theme.ts');
+        expect(deck).not.toContain('theme:');
+        expect(config).toContain("defaultTheme: '@/theme.ts'");
         const source = read(directory, 'src/theme.ts');
         expect(source).toContain('createSlideTheme');
         for (const weight of [300, 400, 500, 700]) {

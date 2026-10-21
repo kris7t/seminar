@@ -8,6 +8,7 @@ import {
   importWithNode,
   loadSeminarConfig,
   type ModuleImporter,
+  type ModuleResolver,
 } from './themeConfig.ts';
 
 /** The stages of compiling decks that configs can add plugins to. */
@@ -41,6 +42,8 @@ export interface DeckSetup {
 }
 
 export interface DeckSetupOptions {
+  /** Resolves aliases before loading configs and compiler plugins. */
+  resolveModule?: ModuleResolver | undefined;
   /** Plugins of the integration, e.g., `['@seminar/elements']`. */
   plugins?: readonly string[] | undefined;
   /** The theme of the deck, if any, as written in the frontmatter. */
@@ -109,6 +112,7 @@ export async function loadDeckSetup({
   themeImporter,
   importModule = importWithNode,
   importPlugin = importWithNode,
+  resolveModule = (source) => source,
 }: DeckSetupOptions): Promise<DeckSetup> {
   const setup: DeckSetup = {
     seminarConfigs: [],
@@ -120,7 +124,11 @@ export async function loadDeckSetup({
   const visit = async (source: string, importer: string): Promise<void> => {
     let loaded;
     try {
-      loaded = await loadSeminarConfig(source, importer, importModule);
+      loaded = await loadSeminarConfig(
+        await resolveModule(source, importer),
+        importer,
+        importModule,
+      );
     } catch (error) {
       setup.warnings.push(
         `Cannot load the config of ${source}: ${String(error)}`,
@@ -156,7 +164,7 @@ export async function loadDeckSetup({
     await visit(theme, themeImporter);
   }
   for (const entry of setup.seminarConfigs) {
-    await importMdxPlugins(entry, setup, importPlugin);
+    await importMdxPlugins(entry, setup, importPlugin, resolveModule);
   }
   return setup;
 }
@@ -166,6 +174,7 @@ async function importMdxPlugins(
   { source, config, base }: LoadedSeminarConfigEntry,
   setup: DeckSetup,
   importModule: ModuleImporter,
+  resolveModule: ModuleResolver,
 ): Promise<void> {
   const mdx = isRecord(config) ? config['mdx'] : undefined;
   if (mdx === undefined) {
@@ -204,6 +213,7 @@ async function importMdxPlugins(
           base,
           setup,
           importModule,
+          resolveModule,
         );
         if (attacher !== undefined) {
           setup.mdxPlugins[stage][place].push(attacher);
@@ -219,6 +229,7 @@ async function importPlugin(
   base: string,
   setup: DeckSetup,
   importModule: ModuleImporter,
+  resolveModule: ModuleResolver,
 ): Promise<Pluggable | undefined> {
   if (
     !isRecord(plugin) ||
@@ -234,7 +245,10 @@ async function importPlugin(
   }
   const { source, exportName } = plugin;
   try {
-    const { module, dependencies = [] } = await importModule(source, base);
+    const { module, dependencies = [] } = await importModule(
+      await resolveModule(source, base),
+      base,
+    );
     setup.dependencies.push(...dependencies);
     const attacher = module[exportName];
     if (typeof attacher !== 'function') {

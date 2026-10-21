@@ -42,8 +42,8 @@ The starter deck is `decks/index.deck.mdx`. The Vite configuration uses
 `root: 'decks'` and `build: { outDir: '../dist', emptyOutDir: true }`, so deck
 discovery stays inside `decks/` and output goes to the project's `dist/`.
 Components, themes, and test fixtures can live in `src/` without being picked
-up as presentation entries. Custom decks reference the generated theme with
-`theme: ../src/theme.ts` in their frontmatter.
+up as presentation entries. The configuration selects a custom theme once
+with `defaultTheme: '@/theme.ts'`, so decks need no theme frontmatter.
 
 The generated project has `dev`, `build`, `preview`, and `typecheck` scripts.
 `build` checks TypeScript and produces a self-contained `dist/index.html`.
@@ -131,6 +131,40 @@ Each deck gets its own page; you don't need to write an HTML entry point:
 
 The paths are relative to the Vite project root. For generated projects, that
 is `decks/`; for the repository's example, it is `packages/example`.
+
+## Aliases and a default theme
+
+Generated projects map `@/` to `src/` in both Vite and TypeScript. A deck in
+`decks/` can import a component with `import Example from '@/Example'`, and
+the configuration can select a theme for all decks:
+
+```ts
+import { fileURLToPath } from 'node:url';
+import seminar from '@seminar/vite-plugin';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  root: 'decks',
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
+  plugins: [seminar({ defaultTheme: '@/theme.ts' }), react()],
+  build: { outDir: '../dist', emptyOutDir: true },
+});
+```
+
+For TypeScript to check those imports, add the matching paths to
+`tsconfig.json`. The initializer includes this setting:
+
+```json
+{ "compilerOptions": { "paths": { "@/*": ["./src/*"] } } }
+```
+
+Seminar respects Vite aliases when loading theme and plugin configs, their
+nested plugin references, and compiler plugin sources. Package aliases keep
+using the package's `seminar` metadata. A deck can override `defaultTheme`
+with `theme: '@/another-theme.ts'` in its frontmatter.
 
 ## Add presentation features
 

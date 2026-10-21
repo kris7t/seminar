@@ -183,6 +183,24 @@ export const deck = Deck;
     );
     mkdirSync(path.join(starter, 'src/fixtures'), { recursive: true });
     writeFileSync(
+      path.join(starter, 'src/message.ts'),
+      "export const message = 'Aliased source import';\n",
+    );
+    writeFileSync(
+      path.join(starter, 'src/AliasProbe.tsx'),
+      "import { message } from '@/message';\nexport default function AliasProbe() { return <p>{message}</p>; }\n",
+    );
+    const deckFile = path.join(starter, 'decks/index.deck.mdx');
+    const source = readFileSync(deckFile, 'utf8');
+    assert.ok(
+      !source.includes('theme:'),
+      'The generated default theme must be configured once in Vite',
+    );
+    writeFileSync(
+      deckFile,
+      `import AliasProbe from '@/AliasProbe';\n\n${source}\n\n<AliasProbe />\n`,
+    );
+    writeFileSync(
       path.join(starter, 'src/fixtures/example.deck.mdx'),
       'import {\n',
     );

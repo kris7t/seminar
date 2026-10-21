@@ -26,6 +26,11 @@ the project's `dist/` directory. Components and fixtures can live in `src/`.
 A custom theme uses `createSlideTheme` and imports Roboto's normal and italic
 weights explicitly. The project depends directly on `@fontsource/roboto`.
 The default-theme option uses `@seminar/theme-default`, which bundles Roboto.
+A custom theme is selected once with `defaultTheme: '@/theme.ts'` in the
+Seminar options of `vite.config.ts`; decks need no theme frontmatter.
+
+Vite and TypeScript both map `@/` to `src/`. For example, a deck can import
+`@/MyComponent` from `src/MyComponent.tsx`.
 
 ## Command-line options
 

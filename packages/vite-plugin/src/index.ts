@@ -3,11 +3,12 @@ import rollupSeminar, {
   type SeminarPluginOptions as RollupSeminarPluginOptions,
 } from '@seminar/rollup-plugin';
 
-import type { Plugin } from 'vite';
+import type { Alias, Plugin } from 'vite';
 
 import { seminarEntries } from './entries.ts';
 import { seminarHotReload } from './hotReload.ts';
 import { createViteImporter } from './importModule.ts';
+import { resolveAlias } from './aliases.ts';
 import {
   seminarSelfContained,
   type SelfContainedOptions,
@@ -50,9 +51,11 @@ export default function seminar({
   ...options
 }: SeminarPluginOptions = {}): Plugin[] {
   let root = process.cwd();
+  let alias: readonly Alias[] = [];
   const rollupPlugin: RollupSeminarPlugin = rollupSeminar({
     // Theme modules may be written in TypeScript and import style sheets.
-    importModule: createViteImporter(() => root),
+    importModule: createViteImporter(() => ({ root, alias })),
+    resolveModule: (source) => resolveAlias(source, alias),
     ...options,
   });
   const mdx = rollupPlugin as unknown as Plugin;
@@ -60,6 +63,7 @@ export default function seminar({
     name: 'seminar:root',
     configResolved(config) {
       root = config.root;
+      alias = config.resolve.alias;
     },
   };
   const hotReload = seminarHotReload({ include: options.include });

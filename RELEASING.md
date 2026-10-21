@@ -106,7 +106,9 @@ imports and TypeScript declarations without `skipLibCheck`, then builds a
 self-contained Vite deck using the theme, elements, MathJax, Shiki, and a
 dynamic formula. It also runs the packed `create-seminar` command and builds
 isolated starters with a custom theme and all plugins, and the default theme
-without plugins. Generated projects use the tested local tarballs for Seminar
+without plugins. The smoke test checks source aliases in development and
+typechecking and keeps source fixtures out of deck discovery. Generated
+projects use the tested local tarballs for Seminar
 dependencies. It needs registry access for external dependencies. Successful
 fixtures are removed; failed fixtures are kept for inspection. Regular CI runs
 the package checks too.

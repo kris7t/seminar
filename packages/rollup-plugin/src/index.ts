@@ -9,6 +9,7 @@ import {
   seminarMdxOptions,
   type DeckSetup,
   type ModuleImporter,
+  type ModuleResolver,
   type SeminarMdxOptions,
 } from '@seminar/mdx';
 import type { PluggableList } from 'unified';
@@ -50,6 +51,8 @@ export interface SeminarPluginOptions
    * their `seminar` export. Defaults to importing with Node.
    */
   importModule?: ModuleImporter | undefined;
+  /** Resolves integration-specific aliases for themes and plugins. */
+  resolveModule?: ModuleResolver | undefined;
   /**
    * Files to compile as decks. Defaults to files ending in `.deck.mdx`.
    */
@@ -109,6 +112,7 @@ export default function seminar({
   include = /\.deck\.mdx$/,
   importSource,
   importModule,
+  resolveModule,
   plugins = [],
   remarkPlugins = [],
   rehypePlugins = [],
@@ -144,6 +148,7 @@ export default function seminar({
       pluginsImporter: path.join(root, 'deck.mdx'),
       themeImporter: deckPath,
       importModule,
+      resolveModule,
     });
     const seminarOptions = seminarMdxOptions({
       importSource,

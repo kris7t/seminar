@@ -17,7 +17,15 @@ export interface ImportedModule {
   module: Record<string, unknown>;
   /** Files the module was loaded from, which should be watched for changes. */
   dependencies?: string[] | undefined;
+  /** Resolved entry file to use as the base of relative config references. */
+  base?: string | undefined;
 }
+
+/** Resolves integration-specific aliases before config lookup or imports. */
+export type ModuleResolver = (
+  specifier: string,
+  importer: string,
+) => string | Promise<string>;
 
 /**
  * Imports the module `specifier` relative to the file `importer` at compile
@@ -108,10 +116,17 @@ export async function loadSeminarConfig(
       };
     }
   }
-  const { module, dependencies = [] } = await importModule(source, deckPath);
+  const {
+    module,
+    dependencies = [],
+    base,
+  } = await importModule(source, deckPath);
   return {
     config: module['seminar'],
-    base: installed?.directory ?? path.resolve(path.dirname(deckPath), source),
+    base:
+      base ??
+      installed?.directory ??
+      path.resolve(path.dirname(deckPath), source),
     dependencies,
   };
 }

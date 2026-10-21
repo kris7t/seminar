@@ -16,7 +16,7 @@ import {
   type DeckSetup,
   type MdxPlugins,
 } from './config/deckSetup.ts';
-import type { ModuleImporter } from './config/themeConfig.ts';
+import type { ModuleImporter, ModuleResolver } from './config/themeConfig.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
 import { rehypeSlideElements } from './content/rehypeSlideElements.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
@@ -108,6 +108,8 @@ export interface DeckMdxOptions extends Omit<
   SeminarMdxOptions,
   'seminarConfigs' | 'mdxPlugins'
 > {
+  /** Resolves integration-specific aliases for configs and compiler plugins. */
+  resolveModule?: ModuleResolver | undefined;
   /** Seminar plugins of the integration, e.g., `['@seminar/elements']`. */
   plugins?: readonly string[] | undefined;
   /** Path to resolve `plugins` from. Defaults to the deck. */
@@ -140,6 +142,7 @@ export async function deckMdxOptions(
     pluginsImporter = deckPath,
     importModule,
     importPlugin,
+    resolveModule,
     ...options
   }: DeckMdxOptions = {},
 ): Promise<{
@@ -153,6 +156,7 @@ export async function deckMdxOptions(
     themeImporter: deckPath,
     importModule,
     importPlugin,
+    resolveModule,
   });
   return {
     options: seminarMdxOptions({

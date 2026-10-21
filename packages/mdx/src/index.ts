@@ -27,6 +27,7 @@ export {
   type LoadedSeminarConfig,
   type LoadedThemeConfig,
   type ModuleImporter,
+  type ModuleResolver,
 } from './config/themeConfig.ts';
 export {
   deckMdxOptions,

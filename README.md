@@ -40,14 +40,12 @@ shows most of the features below.
 ## Writing decks
 
 A deck is an MDX file whose name ends in `.deck.mdx`. Starter projects keep
-them in `decks/`, with components and custom themes in `src/`:
+them in `decks/`, with components and custom themes in `src/`. The `@/`
+alias points to `src/`, and a custom theme is selected for all decks in the
+Vite configuration:
 
 ```mdx
----
-theme: ../src/theme.ts
----
-
-import { Calculator } from '../src/Calculator.tsx';
+import { Calculator } from '@/Calculator.tsx';
 
 # My talk
 

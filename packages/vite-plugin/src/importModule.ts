@@ -2,7 +2,7 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ImportedModule, ModuleImporter } from '@seminar/mdx';
-import { isCSSRequest, runnerImport, type Plugin } from 'vite';
+import { isCSSRequest, runnerImport, type Alias, type Plugin } from 'vite';
 
 const EMPTY_MODULE = '\0seminar-empty-module';
 
@@ -62,11 +62,13 @@ async function isFresh({ mtimes }: CachedModule): Promise<boolean> {
  *
  * - Style sheets are replaced with empty modules, since the CSS plugin of Vite
  *   fails in the environment of `runnerImport`.
- * - Bare imports are externalized, i.e., loaded by Node. Thus, the aliases,
- *   resolve conditions, and plugins of the project don't apply to them, and
- *   packages in a workspace must be built.
+ * - Bare package imports are externalized, i.e., loaded by Node. Packages in
+ *   a workspace must be built. Aliases apply to local imports, including
+ *   dependencies of the theme or config module.
  */
-export function createViteImporter(getRoot: () => string): ModuleImporter {
+export function createViteImporter(
+  getOptions: () => { root: string; alias: readonly Alias[] },
+): ModuleImporter {
   const cache = new Map<string, CachedModule>();
   return async (specifier, importer) => {
     const id =
@@ -77,19 +79,29 @@ export function createViteImporter(getRoot: () => string): ModuleImporter {
     if (cached !== undefined && (await isFresh(cached))) {
       return cached.imported;
     }
+    const files = new Set<string>();
+    let base: string | undefined;
+    const trackFiles: Plugin = {
+      name: 'seminar:config-dependencies',
+      load(file) {
+        if (path.isAbsolute(file)) {
+          base ??= file;
+          files.add(file);
+        }
+      },
+    };
+    const { root, alias } = getOptions();
     const { module, dependencies } = await runnerImport<
       Record<string, unknown>
     >(id, {
-      root: getRoot(),
+      root,
+      resolve: { alias: [...alias] },
       logLevel: 'silent',
-      plugins: [stubStyles],
+      plugins: [stubStyles, trackFiles],
     });
-    const files = [
-      ...(path.isAbsolute(id) ? [id] : []),
-      ...dependencies.filter((file) => path.isAbsolute(file)),
-    ];
-    const imported = { module, dependencies: files };
-    cache.set(id, { imported, mtimes: await getMtimes(files) });
+    for (const file of dependencies) if (path.isAbsolute(file)) files.add(file);
+    const imported = { module, base, dependencies: [...files] };
+    cache.set(id, { imported, mtimes: await getMtimes([...files]) });
     return imported;
   };
 }

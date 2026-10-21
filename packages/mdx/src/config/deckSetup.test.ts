@@ -110,4 +110,35 @@ describe('loadDeckSetup', () => {
       ) as unknown,
     ]);
   });
+
+  it('resolves aliases before package config lookup and compiler plugin imports', async () => {
+    await createPackage('alias-package', {
+      plugins: ['alias-base'],
+      mdx: { remarkPlugins: { after: [plugin('alias-attacher')] } },
+    });
+    const aliases: Record<string, string> = {
+      'alias-theme': 'alias-package',
+      'alias-base': 'base-plugin',
+      'alias-attacher': 'remark-before',
+    };
+    const deckPath = path.join(root, 'talk.deck.mdx');
+    const setup = await loadDeckSetup({
+      theme: 'alias-theme',
+      pluginsImporter: deckPath,
+      themeImporter: deckPath,
+      resolveModule: (source) => aliases[source] ?? source,
+      importPlugin,
+    });
+    expect(setup.warnings).toEqual([]);
+    expect(setup.seminarConfigs.map(({ source }) => source)).toEqual([
+      'alias-base',
+      'alias-theme',
+    ]);
+    expect(setup.mdxPlugins.remarkPlugins.after).toEqual(
+      setup.mdxPlugins.remarkPlugins.before,
+    );
+    expect(setup.dependencies).toContain(
+      path.join(root, 'node_modules/alias-package/package.json'),
+    );
+  });
 });

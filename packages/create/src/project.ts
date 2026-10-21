@@ -75,8 +75,8 @@ function packageName(directory: string): string {
     : name;
 }
 
-function deck({ plugins, theme }: ProjectOptions): string {
-  return `${theme === 'custom' ? '---\ntheme: ../src/theme.ts\n---\n\n' : ''}# My talk
+function deck({ plugins }: ProjectOptions): string {
+  return `# My talk
 
 A presentation made with Seminar
 
@@ -184,20 +184,30 @@ export function createProject(options: ProjectOptions): void {
       '@types/react-dom',
     ]),
   };
-  const config = `import seminar from '@seminar/vite-plugin';
+  const seminarOptions = [
+    ...(options.theme === 'custom'
+      ? ["      defaultTheme: '@/theme.ts',"]
+      : []),
+    ...(selected.length === 0
+      ? []
+      : [
+          `      plugins: [\n${selected.map((plugin) => `        '${plugin.package}',`).join('\n')}\n      ],`,
+        ]),
+  ];
+  const config = `import { fileURLToPath } from 'node:url';
+import seminar from '@seminar/vite-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: 'decks',
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   plugins: [
     ${
-      selected.length === 0
+      seminarOptions.length === 0
         ? 'seminar()'
         : `seminar({
-      plugins: [
-${selected.map((plugin) => `        '${plugin.package}',`).join('\n')}
-      ],
+${seminarOptions.join('\n')}
     })`
     },
     react(),
@@ -217,6 +227,7 @@ ${selected.map((plugin) => `        '${plugin.package}',`).join('\n')}
       allowImportingTsExtensions: true,
       resolveJsonModule: true,
       types: ['node', 'vite/client', '@seminar/mdx/client'],
+      paths: { '@/*': ['./src/*'] },
     },
     include: ['**/*.ts', '**/*.tsx'],
   };
@@ -237,7 +248,8 @@ npm run dev
 \`\`\`
 
 Edit \`decks/index.deck.mdx\` while the development server is running.
-${options.theme === 'custom' ? '\nEdit `src/theme.ts` to customize the theme and fonts.\n' : ''}
+Imports such as \`@/MyComponent\` resolve to \`src/MyComponent\` in Vite and TypeScript.
+${options.theme === 'custom' ? '\nEdit `src/theme.ts` to customize the theme and fonts. The Vite configuration selects it as the default theme for every deck.\n' : ''}
 Run \`npm run build\` to create \`dist/index.html\`, a self-contained presentation
 that you can open in a browser or share. Run \`npm run preview\` to preview the build.
 
