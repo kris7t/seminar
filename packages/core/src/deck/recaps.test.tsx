@@ -118,6 +118,42 @@ describe('recaps in a deck', () => {
     cleanup();
   });
 
+  it('shares persistent state with recaps but starts transient state afresh', async () => {
+    const user = userEvent.setup();
+    function State() {
+      const [saved, setSaved] = useSlideState(0);
+      const [mirror, setMirror] = useSlideState(0, { transient: true });
+      return (
+        <button
+          onClick={() => {
+            setSaved(saved + 1);
+            setMirror(mirror + 1);
+          }}
+        >
+          Saved {saved}, mirror {mirror}
+        </button>
+      );
+    }
+    render(
+      <Deck defaultMouseNavigation={false}>
+        <Slide id="a" title="A">
+          <State />
+        </Slide>
+        <Slide recap="a" />
+      </Deck>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Saved 0, mirror 0' }));
+    await user.keyboard('{PageDown}');
+    expect(window.location.hash).toBe('#a-recap');
+    expect(
+      screen.getByRole('button', { name: 'Saved 1, mirror 0' }),
+    ).toBeDefined();
+    await user.keyboard('{PageUp}');
+    expect(
+      screen.getByRole('button', { name: 'Saved 1, mirror 0' }),
+    ).toBeDefined();
+  });
+
   it('share the state but not the steps of the recapped slide', async () => {
     const user = userEvent.setup();
     render(

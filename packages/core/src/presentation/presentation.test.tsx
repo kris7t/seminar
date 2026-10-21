@@ -18,6 +18,7 @@ import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import { cursorShape, POINTER_IDLE_TIMEOUT } from './mirror/pointer.tsx';
 import { formatElapsed } from './PresenterToolbar.tsx';
 import { useSlideView } from '../view/SlideViewContext.ts';
+import { useSlideState } from '../state/useSlideState.ts';
 
 function fakeScreen(label: string, isInternal: boolean) {
   return {
@@ -749,6 +750,53 @@ describe('mirroring the interaction', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it('shares transient state with the audience for one visit, including presenter-view toggles', async () => {
+    const { audience, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    function Counter() {
+      const [value, setValue] = useSlideState(0, { transient: true });
+      return (
+        <button
+          onClick={() => {
+            setValue(value + 1);
+          }}
+        >
+          Mirror {value}
+        </button>
+      );
+    }
+    render(
+      <Deck defaultMouseNavigation={false}>
+        <Slide title="First">
+          <Counter />
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Mirror 0' }));
+    await user.keyboard('{Shift>}P{/Shift}');
+    expect(audience.document.querySelector('button')?.textContent).toBe(
+      'Mirror 1',
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    expect(
+      document.querySelector('[data-seminar-view="presenter"]'),
+    ).toBeNull();
+    expect(screen.getByRole('button', { name: 'Mirror 1' })).toBeDefined();
+    await user.keyboard('{Shift>}P{/Shift}');
+    expect(audience.document.querySelector('button')?.textContent).toBe(
+      'Mirror 1',
+    );
+    await user.keyboard('{PageDown}');
+    expect(screen.getByRole('heading', { name: 'Second' })).toBeDefined();
+    await user.keyboard('{PageUp}');
+    expect(screen.getByRole('button', { name: 'Mirror 0' })).toBeDefined();
+    expect(audience.document.querySelector('button')?.textContent).toBe(
+      'Mirror 0',
+    );
+    remove();
   });
 
   it('lets virtualized inputs follow pointer mirroring in the audience view', async () => {

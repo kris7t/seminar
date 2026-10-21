@@ -11,6 +11,8 @@ import {
 import { DeckContext, useDeck, type DeckState } from '../deck/DeckContext.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import type { StepStore } from '../steps/StepStore.ts';
+import { TransientSlideStateContext } from '../state/SlideStateContext.ts';
+import type { SlideStateStore } from '../state/SlideStateStore.ts';
 import {
   SelectionFrame,
   type SelectionFrameProps,
@@ -30,6 +32,7 @@ interface Layer {
   steps: StepStore;
   deck: DeckState;
   cache: ThumbnailCache;
+  transientState: SlideStateStore | undefined;
 }
 
 interface PresentedSlidesProps {
@@ -98,7 +101,9 @@ function PresentedLayer({
             active={active}
             onCaptured={done}
           />
-          <SlideViewProvider view={view}>{layer.slide}</SlideViewProvider>
+          <TransientSlideStateContext value={layer.transientState}>
+            <SlideViewProvider view={view}>{layer.slide}</SlideViewProvider>
+          </TransientSlideStateContext>
         </StepStoreContext>
       </DeckContext>
     </SelectionFrame>
@@ -116,17 +121,26 @@ export function PresentedSlides({
 }: PresentedSlidesProps): JSX.Element {
   const steps = use(StepStoreContext);
   const deck = useDeck();
+  const transientState = use(TransientSlideStateContext);
   const [state, setState] = useState<{
     current: Layer;
     retired?: Layer | undefined;
     nextKey: number;
   }>(() => ({
-    current: { key: 0, view, slide, steps, deck, cache },
+    current: { key: 0, view, slide, steps, deck, cache, transientState },
     nextKey: 1,
   }));
   if (state.current.view.index !== view.index) {
     setState({
-      current: { key: state.nextKey, view, slide, steps, deck, cache },
+      current: {
+        key: state.nextKey,
+        view,
+        slide,
+        steps,
+        deck,
+        cache,
+        transientState,
+      },
       retired: state.current,
       nextKey: state.nextKey + 1,
     });
@@ -135,11 +149,20 @@ export function PresentedSlides({
     state.current.slide !== slide ||
     state.current.steps !== steps ||
     state.current.deck !== deck ||
-    state.current.cache !== cache
+    state.current.cache !== cache ||
+    state.current.transientState !== transientState
   ) {
     setState({
       ...state,
-      current: { key: state.current.key, view, slide, steps, deck, cache },
+      current: {
+        key: state.current.key,
+        view,
+        slide,
+        steps,
+        deck,
+        cache,
+        transientState,
+      },
       ...(state.current.cache !== cache ? { retired: undefined } : {}),
     });
   }

@@ -9,7 +9,10 @@ import {
 } from 'react';
 
 import { useSlideView } from '../view/SlideViewContext.ts';
-import { SlideStateContext } from './SlideStateContext.ts';
+import {
+  SlideStateContext,
+  TransientSlideStateContext,
+} from './SlideStateContext.ts';
 import { StateScope, StateScopeContext } from './StateScope.ts';
 
 export interface SlideStateOptions {
@@ -25,8 +28,9 @@ export interface SlideStateOptions {
   key?: string | undefined;
   /**
    * Shares internal state, e.g., for mirroring, without a state marker or
-   * reset button on the slide. Transient values aren't marked as changed
-   * and are kept when the slide or deck is reset. Defaults to `false`.
+   * reset button on the slide. Transient values start over on each visit,
+   * aren't marked as changed, and are kept when the current slide or deck
+   * is reset. Defaults to `false`.
    */
   transient?: boolean | undefined;
 }
@@ -37,8 +41,9 @@ const DETACHED_SCOPE = new StateScope('detached');
 /**
  * Like `useState`, but the state belongs to the slide instead of the
  * component, so it is shared by every view of the slide, e.g., by the slide
- * shown to the audience and its thumbnail in the overview, and it is kept when
- * the slide is rendered again later.
+ * shown to the audience and its thumbnail in the overview. Non-transient
+ * state is kept when the slide is rendered again later; transient state
+ * lasts for one visit.
  *
  * The state may be of any type, including objects that only exist while the
  * presentation runs, like a media stream that one view produces for the
@@ -48,10 +53,13 @@ export function useSlideState<T>(
   initial: T | (() => T),
   { key, transient = false }: SlideStateOptions = {},
 ): [T, Dispatch<SetStateAction<T>>] {
-  const store = use(SlideStateContext);
+  const persistentStore = use(SlideStateContext);
+  const store =
+    (transient ? use(TransientSlideStateContext) : undefined) ??
+    persistentStore;
   const { index: viewIndex, stateIndex } = useSlideView();
-  // Recaps share the state of the slide they recap.
-  const index = stateIndex ?? viewIndex;
+  // Recaps share persistent state, but each visit has its own transient values.
+  const index = transient ? viewIndex : (stateIndex ?? viewIndex);
   const scope = use(StateScopeContext) ?? DETACHED_SCOPE;
   const instanceId = useId();
   const stateKey =

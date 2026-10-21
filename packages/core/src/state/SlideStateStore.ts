@@ -29,7 +29,7 @@ export class SlideStateStore {
   readonly #generations = new Map<number, number>();
   #changed: ReadonlySet<number> = new Set();
 
-  /** Counts changes and resets of a slide's state, excluding its steps and initialization. */
+  /** Counts non-transient changes and resets, excluding steps and initialization. */
   getGeneration(slideIndex: number): number {
     return this.#generations.get(slideIndex) ?? 0;
   }
@@ -77,7 +77,8 @@ export class SlideStateStore {
       return;
     }
     this.#values.set(id, { value, transient: previous?.transient ?? false });
-    if (key !== STEP_KEY) this.#advanceGeneration(slideIndex);
+    if (key !== STEP_KEY && previous?.transient !== true)
+      this.#advanceGeneration(slideIndex);
     if (
       key !== STEP_KEY &&
       previous?.transient !== true &&
@@ -188,6 +189,8 @@ export class SlideStateStore {
     for (const id of ids) {
       if (
         !id.endsWith(`\u0000${STEP_KEY}`) &&
+        (this.#values.get(id)?.transient === false ||
+          values.get(id)?.transient === false) &&
         (this.#values.has(id) !== values.has(id) ||
           !Object.is(this.#values.get(id)?.value, values.get(id)?.value))
       )

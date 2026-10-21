@@ -83,7 +83,10 @@ import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
 import { useDeckNavigation } from './useDeckNavigation.ts';
-import { SlideStateContext } from '../state/SlideStateContext.ts';
+import {
+  SlideStateContext,
+  TransientSlideStateContext,
+} from '../state/SlideStateContext.ts';
 import { DeckStateContext } from '../state/DeckStateContext.ts';
 import { DeckStateUsageContext } from '../state/DeckStateUsageContext.ts';
 import { DeckStateStore } from '../state/DeckStateStore.ts';
@@ -333,6 +336,12 @@ export function Deck({
     stepFade,
     slideFade,
   });
+  const transientState = useMemo(
+    () => new SlideStateStore(),
+    // Each visit starts fresh; retained frames keep the previous store.
+    // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
+    [slideIndex],
+  );
   const { probed, probe } = useSlideProbe(slides);
   useEffect(() => {
     for (const [index, slide] of probed.entries()) {
@@ -1077,9 +1086,13 @@ export function Deck({
   return (
     <DeckStateUsageContext value={thumbnails.recordDeckStateUse}>
       <SharedWorkProvider>
-        <PointerMirroringContext value={presenting && pointerMode === 'mirror'}>
-          {content}
-        </PointerMirroringContext>
+        <TransientSlideStateContext value={transientState}>
+          <PointerMirroringContext
+            value={presenting && pointerMode === 'mirror'}
+          >
+            {content}
+          </PointerMirroringContext>
+        </TransientSlideStateContext>
       </SharedWorkProvider>
     </DeckStateUsageContext>
   );

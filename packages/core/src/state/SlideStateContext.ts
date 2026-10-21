@@ -9,3 +9,7 @@ import { SlideStateStore } from './SlideStateStore.ts';
 export const SlideStateContext: Context<SlideStateStore> = createContext(
   new SlideStateStore(),
 );
+
+/** State shared by the views of one visit to a slide. */
+export const TransientSlideStateContext: Context<SlideStateStore | undefined> =
+  createContext<SlideStateStore | undefined>(undefined);

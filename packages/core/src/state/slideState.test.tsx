@@ -45,7 +45,7 @@ function Counter({
 const overview = () => screen.getByRole('region', { name: 'Slide overview' });
 
 describe('SlideStateStore', () => {
-  it('notifies transient state changes without marking the slide, while advancing its generation', () => {
+  it('notifies transient state changes without marking the slide or advancing its generation', () => {
     const store = new SlideStateStore();
     const changed = vi.fn();
     const listener = vi.fn();
@@ -57,12 +57,12 @@ describe('SlideStateStore', () => {
     expect(listener).toHaveBeenCalledOnce();
     expect(changed).not.toHaveBeenCalled();
     expect(store.getChanged().size).toBe(0);
-    expect(store.getGeneration(0)).toBe(1);
+    expect(store.getGeneration(0)).toBe(0);
     store.set(0, 'mirror', 1);
     store.reset(0);
     store.resetAll();
     expect(store.get(0, 'mirror')).toBe(1);
-    expect(store.getGeneration(0)).toBe(1);
+    expect(store.getGeneration(0)).toBe(0);
     expect(listener).toHaveBeenCalledOnce();
   });
 
@@ -98,7 +98,7 @@ describe('SlideStateStore', () => {
     expect(store.has(1, 'mirror')).toBe(false);
     expect(store.get(2, 'mirror')).toBe('moved');
     expect(store.hasState(2)).toBe(false);
-    expect(store.getGeneration(2)).toBe(1);
+    expect(store.getGeneration(2)).toBe(0);
     store.resetAll();
     expect(store.get(2, 'mirror')).toBe('moved');
     store.getOrInit(0, 'mirror', () => 'regular');
@@ -286,12 +286,42 @@ describe('useSlideState', () => {
         .getByRole('menuitem', { name: 'Reset deck' })
         .getAttribute('aria-disabled'),
     ).toBe('true');
-    await user.keyboard('{Escape}{PageDown}{PageUp}');
-    expect(screen.getByRole('button', { name: 'Mirror: 1' })).toBeDefined();
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+    await user.click(nav.getByRole('button', { name: 'Second' }));
+    expect(screen.getByRole('heading', { name: 'Second' })).toBeDefined();
+    await user.click(nav.getByRole('button', { name: 'First' }));
+    expect(screen.getByRole('button', { name: 'Mirror: 0' })).toBeDefined();
     await user.keyboard('o');
     expect(
       within(overview()).getByRole('button', { name: 'Slide 1: First' }),
     ).toBeDefined();
+  });
+
+  it('keeps transient state through steps and the overview, but resets it on the next visit', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck defaultMouseNavigation={false}>
+        <Slide title="First">
+          <Counter name="Saved" />
+          <Counter name="Mirror" transient />
+          <Step>Later</Step>
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Saved: 0' }));
+    await user.click(screen.getByRole('button', { name: 'Mirror: 0' }));
+    await user.keyboard('{ArrowRight}o{Escape}');
+    expect(screen.getByRole('button', { name: 'Mirror: 1' })).toBeDefined();
+    await user.keyboard('{PageDown}');
+    expect(screen.getByRole('heading', { name: 'Second' })).toBeDefined();
+    await user.keyboard('{PageUp}');
+    expect(screen.getByRole('button', { name: 'Mirror: 0' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Saved: 1' })).toBeDefined();
+    expect(window.location.hash).toBe('#slide=1&step=1');
   });
 
   it('lets slides reset their own state', async () => {

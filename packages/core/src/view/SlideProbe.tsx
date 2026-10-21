@@ -11,7 +11,10 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import { SlideStateContext } from '../state/SlideStateContext.ts';
+import {
+  SlideStateContext,
+  TransientSlideStateContext,
+} from '../state/SlideStateContext.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
@@ -88,27 +91,29 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
   }, [probes, slideState, onProbe]);
   return createPortal(
     <SlideStateContext value={slideState}>
-      {probes.map(({ slide, store }, index) => (
-        // Slides are positional, see `Deck`.
-        // eslint-disable-next-line @eslint-react/no-array-index-key
-        <ProbeBoundary key={index}>
-          <Suspense fallback={null}>
-            <StepStoreContext value={store}>
-              <SlideViewProvider
-                view={{ index, kind: 'probe', interactive: false }}
-              >
-                <div
-                  ref={(element) => {
-                    framesRef.current[index] = element;
-                  }}
+      <TransientSlideStateContext value={slideState}>
+        {probes.map(({ slide, store }, index) => (
+          // Slides are positional, see `Deck`.
+          // eslint-disable-next-line @eslint-react/no-array-index-key
+          <ProbeBoundary key={index}>
+            <Suspense fallback={null}>
+              <StepStoreContext value={store}>
+                <SlideViewProvider
+                  view={{ index, kind: 'probe', interactive: false }}
                 >
-                  {slide}
-                </div>
-              </SlideViewProvider>
-            </StepStoreContext>
-          </Suspense>
-        </ProbeBoundary>
-      ))}
+                  <div
+                    ref={(element) => {
+                      framesRef.current[index] = element;
+                    }}
+                  >
+                    {slide}
+                  </div>
+                </SlideViewProvider>
+              </StepStoreContext>
+            </Suspense>
+          </ProbeBoundary>
+        ))}
+      </TransientSlideStateContext>
     </SlideStateContext>,
     container,
   );

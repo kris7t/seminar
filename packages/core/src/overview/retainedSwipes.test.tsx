@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { captureThumbnail } from './captureThumbnail.ts';
+import { useSlideState } from '../state/useSlideState.ts';
 
 const originalCapture = vi.mocked(captureThumbnail).getMockImplementation();
 const pending: {
@@ -98,6 +99,49 @@ describe('swiping while capturing a departed slide', () => {
     expect(container.querySelectorAll('[data-seminar-retained]')).toHaveLength(
       1,
     );
+  });
+
+  it('keeps departing transient values for capture and starts fresh on an immediate return', async () => {
+    function Counter() {
+      const [count, setCount] = useSlideState(0, { transient: true });
+      return (
+        <button
+          onClick={() => {
+            setCount(count + 1);
+          }}
+        >
+          Count {count}
+        </button>
+      );
+    }
+    render(
+      <Deck defaultMouseNavigation={false}>
+        <Slide title="First">
+          <Counter />
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Count 0' }));
+    const first = screen.getByRole('heading', { name: 'First' });
+    swipe(first, -1);
+    const job = pending.find((job) => job.frame.contains(first));
+    expect(job?.frame.textContent).toContain('Count 1');
+    swipe(screen.getByRole('heading', { name: 'Second' }), 1);
+    expect(screen.getByRole('button', { name: 'Count 0' })).toBeDefined();
+    expect(job?.signal?.aborted).toBe(true);
+    await act(() => {
+      job?.resolve('data:image/png,obsolete');
+      return Promise.resolve();
+    });
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Count 0' }), {
+      pointerType: 'mouse',
+      isPrimary: true,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Count 0' }));
+    expect(screen.getByRole('button', { name: 'Count 1' })).toBeDefined();
+    swipe(screen.getByRole('heading', { name: 'First' }), -1, true);
+    expect(screen.getByRole('button', { name: 'Count 1' })).toBeDefined();
   });
 
   it('bounds retained DOM and cancels obsolete captures on rapid and reversed swipes', async () => {

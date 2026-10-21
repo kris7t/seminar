@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
@@ -138,6 +138,27 @@ describe('useSlideProbe', () => {
     });
     // The slide sets up its own state, rather than the one of the probe.
     expect(await screen.findByText('Count 2')).toBeDefined();
+  });
+
+  it('keeps probe transient values separate from the currently presented slide', async () => {
+    function Mirrored(): JSX.Element {
+      const { kind } = useSlideView();
+      const [value, setValue] = useSlideState('live', { transient: true });
+      useEffect(() => {
+        if (kind === 'probe') setValue('probe');
+      }, [kind, setValue]);
+      return <span>{value}</span>;
+    }
+    render(
+      <Deck>
+        <Slide title="First">
+          <Mirrored />
+        </Slide>
+      </Deck>,
+    );
+    await idle();
+    expect(screen.getByText('live')).toBeDefined();
+    expect(screen.queryByText('probe')).toBeNull();
   });
 
   it('leaves out slides that fail in the probe', async () => {

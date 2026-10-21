@@ -275,6 +275,43 @@ describe('cached slide thumbnails', () => {
     expect(capture).not.toHaveBeenCalled();
   });
 
+  it('reuses captured step paths after transient state resets and reconstructs on another visit', async () => {
+    function Mirrored(): JSX.Element {
+      const [value, setValue] = useSlideState(0, { transient: true });
+      useEffect(() => {
+        setValue((previous) => previous + 1);
+      }, [setValue]);
+      return <span>Mirror {value}</span>;
+    }
+    render(
+      <Deck>
+        <Slide title="First">
+          <Mirrored />
+          <Step>Later</Step>
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    await finish();
+    key('ArrowRight');
+    await finish();
+    key('ArrowLeft');
+    await finish();
+    key('PageDown');
+    await finish();
+    capture.mockClear();
+    key('PageUp');
+    await finish();
+    expect(screen.getByText('Mirror 1')).toBeDefined();
+    key('ArrowRight');
+    await finish();
+    expect(
+      capture.mock.calls.filter(([frame]) =>
+        frame.textContent.includes('First'),
+      ),
+    ).toHaveLength(0);
+  });
+
   it('recaptures for deck and shared slide state generations, and changed step paths', async () => {
     function State(): JSX.Element {
       const [slide, setSlide] = useSlideState(0);

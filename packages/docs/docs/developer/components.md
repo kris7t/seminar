@@ -51,9 +51,12 @@ const [mirroredValue, setMirroredValue] = useSlideState('', {
 });
 ```
 
-Transient state is shared and kept across visits like other slide state, but
-doesn't add a state marker or reset button to the slide. Updating it doesn't
-mark the slide or deck as changed. Slide and deck resets leave it alone.
+Transient state is shared between views for the current visit and starts
+over when the presenter returns to the slide. Steps, the overview, and
+opening or closing the presenter view keep the current visit's values.
+Transient state doesn't add a state marker or reset button to the slide,
+and updating it doesn't mark the slide or deck as changed. Slide and deck
+resets leave it alone.
 
 ## Deck state
 
