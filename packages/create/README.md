@@ -1,0 +1,61 @@
+# create-seminar
+
+Create a [Seminar](https://seminar.run) presentation project with Vite.
+Requires Node.js 24 or newer.
+
+```sh
+npm create seminar@latest my-talk
+cd my-talk
+npm install
+npm run dev
+```
+
+Choose which plugins to enable: Elements (callouts and columns), MathJax
+(math formulas), and Shiki (syntax highlighting). All three are selected by
+default. Then choose the default theme or an editable `src/theme.ts`.
+
+The starter includes `decks/index.deck.mdx` with examples of the selected
+features, Vite and TypeScript configuration, and commands to develop, build,
+preview, and check types. Vite's root is `decks/`, so deck discovery only
+searches that directory.
+`npm run build` produces a self-contained `dist/index.html`.
+
+`build.outDir` is `../dist` relative to the Vite root, keeping build output in
+the project's `dist/` directory. Components and fixtures can live in `src/`.
+
+A custom theme uses `createSlideTheme` and imports Roboto's normal and italic
+weights explicitly. The project depends directly on `@fontsource/roboto`.
+The default-theme option uses `@seminar/theme-default`, which bundles Roboto.
+
+## Command-line options
+
+Supply all choices to skip interactive prompts:
+
+```sh
+npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom
+```
+
+| Option                             | Meaning                                                                 |
+| ---------------------------------- | ----------------------------------------------------------------------- |
+| `--plugins elements,mathjax,shiki` | Enable the listed plugins; use `none` or an empty string for no plugins |
+| `--theme default`                  | Use `@seminar/theme-default`                                            |
+| `--theme custom`                   | Create an editable `src/theme.ts` with Roboto imports                   |
+| `-y`, `--yes`                      | Use defaults for missing choices: `my-talk`, all plugins, default theme |
+| `-h`, `--help`                     | Show usage                                                              |
+| `-v`, `--version`                  | Show the initializer version                                            |
+
+Use `.` as the directory to initialize the current directory. The destination
+must be new or empty; an existing `.git` directory or file is preserved.
+Existing project files are never overwritten. Dependencies are installed
+when you run `npm install`; the initializer only creates files.
+
+## Developing the initializer
+
+From the Seminar repository, build it with `npm run build:packages`, then run:
+
+```sh
+node packages/create/dist/index.js /tmp/my-talk --plugins elements --theme custom
+```
+
+Before the first npm release, generated projects refer to unpublished package
+versions. `npm run release:smoke` tests them against local release tarballs.

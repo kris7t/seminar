@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { artifacts, checkRelease, root, verifyArtifact } from './release.mjs';
@@ -13,6 +19,7 @@ const lock = JSON.parse(
   readFileSync(path.join(root, 'package-lock.json'), 'utf8'),
 );
 const directory = mkdtempSync(path.join(os.tmpdir(), 'seminar-release-'));
+const starters = [];
 const write = (name, content) =>
   writeFileSync(path.join(directory, name), content);
 let passed = false;
@@ -163,11 +170,109 @@ export const deck = Deck;
     !/<script[^>]*\bsrc=/.test(html),
     'The deck must contain its own scripts',
   );
+  for (const options of [
+    { plugins: 'elements,mathjax,shiki', theme: 'custom' },
+    { plugins: 'none', theme: 'default' },
+  ]) {
+    const starter = mkdtempSync(path.join(os.tmpdir(), 'seminar-starter-'));
+    starters.push(starter);
+    execFileSync(
+      path.join(directory, 'node_modules/.bin/create-seminar'),
+      [starter, '--plugins', options.plugins, '--theme', options.theme],
+      { cwd: starter, stdio: 'inherit' },
+    );
+    mkdirSync(path.join(starter, 'src/fixtures'), { recursive: true });
+    writeFileSync(
+      path.join(starter, 'src/fixtures/example.deck.mdx'),
+      'import {\n',
+    );
+    const file = path.join(starter, 'package.json');
+    const consumer = JSON.parse(readFileSync(file, 'utf8'));
+    // Resolve unpublished transitive packages to the tested tarballs too.
+    const required = new Set([
+      ...Object.keys(consumer.dependencies),
+      ...Object.keys(consumer.devDependencies),
+    ]);
+    for (const name of required) {
+      const pkg = packages.find((entry) => entry.name === name);
+      if (pkg === undefined) continue;
+      for (const dependency of Object.keys({
+        ...pkg.dependencies,
+        ...pkg.peerDependencies,
+      }))
+        if (dependency in dependencies) required.add(dependency);
+    }
+    for (const name of required) {
+      if (!(name in dependencies)) continue;
+      const target =
+        name in consumer.dependencies
+          ? consumer.dependencies
+          : consumer.devDependencies;
+      target[name] = dependencies[name];
+    }
+    writeFileSync(file, `${JSON.stringify(consumer, null, 2)}\n`);
+    writeFileSync(
+      path.join(starter, 'deck-types.ts'),
+      "import Deck from './decks/index.deck.mdx';\nexport const deck = Deck;\n",
+    );
+    execFileSync(
+      'npm',
+      ['install', '--ignore-scripts', '--no-audit', '--no-fund'],
+      {
+        cwd: starter,
+        stdio: 'inherit',
+      },
+    );
+    execFileSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `
+      import assert from 'node:assert/strict';
+      import path from 'node:path';
+      import { createServer } from 'vite';
+      const server = await createServer({ server: { host: '127.0.0.1', port: 0 } });
+      try {
+        await server.listen();
+        const base = server.resolvedUrls.local[0];
+        const deck = await fetch(new URL('index.deck.mdx', base));
+        assert.equal(deck.status, 200, await deck.text());
+        if (${JSON.stringify(options.theme)} === 'custom') {
+          const theme = await fetch(new URL('/@fs/' + path.join(process.cwd(), 'src/theme.ts'), base));
+          assert.equal(theme.status, 200, await theme.text());
+        }
+      } finally {
+        await server.close();
+      }
+    `,
+      ],
+      { cwd: starter, stdio: 'inherit' },
+    );
+    execFileSync('npm', ['run', 'build'], { cwd: starter, stdio: 'inherit' });
+    const built = readFileSync(path.join(starter, 'dist/index.html'), 'utf8');
+    assert.ok(
+      built.includes('My talk'),
+      'The generated starter must build its deck',
+    );
+    assert.ok(
+      !/<script[^>]*\bsrc=/.test(built),
+      'The generated deck must be self-contained',
+    );
+    console.log(
+      `Packed initializer builds a ${options.theme} theme starter with ${options.plugins} plugins.`,
+    );
+  }
   passed = true;
   console.log(
     'Packed packages pass Node imports, TypeScript checking, and a self-contained Vite build.',
   );
 } finally {
-  if (passed) rmSync(directory, { recursive: true, force: true });
-  else console.error(`Release smoke fixture kept at ${directory}`);
+  if (passed) {
+    for (const fixture of [directory, ...starters])
+      rmSync(fixture, { recursive: true, force: true });
+  } else
+    console.error(
+      `Release smoke fixtures kept at ${[directory, ...starters].join(', ')}`,
+    );
 }

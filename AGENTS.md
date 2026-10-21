@@ -13,6 +13,7 @@ React presentations. See `README.md` for the features and the syntax of decks.
   them in place in the dev server.
 - `elements`, `plugin-mathjax`, `plugin-shiki`, `theme-default`: components,
   plugins, and the default theme.
+- `create`: the `create-seminar` initializer, released with the libraries.
 - `example`: the example deck, also used for trying out changes by hand.
 - `docs`: the Docusaurus site, with guides in `packages/docs/docs/`.
 

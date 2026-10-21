@@ -25,6 +25,7 @@ export const libraries = [
   'rollup-plugin',
   'vite-plugin',
 ];
+export const releaseWorkspaces = [...libraries, 'create'];
 const registry = 'https://registry.npmjs.org/';
 const dependencyFields = [
   'dependencies',
@@ -36,7 +37,7 @@ const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const writeJson = (file, value) =>
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 const manifests = () =>
-  libraries.map((directory) => ({
+  releaseWorkspaces.map((directory) => ({
     directory,
     ...readJson(path.join(root, 'packages', directory, 'package.json')),
   }));
@@ -118,7 +119,7 @@ export function checkRelease(tag) {
     }
   }
   const names = new Set(packages.map((pkg) => pkg.name));
-  for (const directory of [...libraries, 'example', 'docs']) {
+  for (const directory of [...releaseWorkspaces, 'example', 'docs']) {
     const pkg = readJson(
       path.join(root, 'packages', directory, 'package.json'),
     );
@@ -139,7 +140,7 @@ function setVersion(version) {
     version = bumpVersion(checkRelease()[0].version, version);
   validateVersion(version);
   const names = new Set(manifests().map((pkg) => pkg.name));
-  for (const directory of [...libraries, 'example', 'docs']) {
+  for (const directory of [...releaseWorkspaces, 'example', 'docs']) {
     const file = path.join(root, 'packages', directory, 'package.json');
     const pkg = readJson(file);
     if (names.has(pkg.name)) pkg.version = version;
@@ -176,13 +177,13 @@ function prepare(directory) {
 }
 
 function build() {
-  for (const directory of libraries)
+  for (const directory of releaseWorkspaces)
     rmSync(path.join(root, 'packages', directory, 'dist'), {
       recursive: true,
       force: true,
     });
-  tsc(...libraries.map(config));
-  for (const directory of libraries)
+  tsc(...releaseWorkspaces.map(config));
+  for (const directory of releaseWorkspaces)
     copyFileSync(
       path.join(root, 'LICENSE'),
       path.join(root, 'packages', directory, 'LICENSE'),
@@ -219,6 +220,7 @@ export function validatePack(pkg, packed) {
       Object.values(entry).forEach(checkExports);
   };
   checkExports(pkg.exports);
+  checkExports(pkg.bin);
 }
 
 function pack(tag) {
@@ -439,10 +441,10 @@ if (
     case 'prepare': {
       const directory = path.basename(process.cwd());
       if (
-        !libraries.includes(directory) ||
+        !releaseWorkspaces.includes(directory) ||
         path.resolve(process.cwd()) !== path.join(root, 'packages', directory)
       )
-        throw new Error('Run prepare from a library workspace');
+        throw new Error('Run prepare from a release workspace');
       prepare(directory);
       break;
     }

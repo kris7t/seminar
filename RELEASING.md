@@ -1,8 +1,8 @@
 # Releasing Seminar
 
-The eight library packages share a version. The repository root,
-documentation site, and example stay private. Internal dependencies use the
-exact shared version.
+The eight library packages and `create-seminar` share a version. The repository
+root, documentation site, and example stay private. Internal dependencies use
+the exact shared version.
 
 ## Run a release
 
@@ -12,7 +12,7 @@ In GitHub Actions, select **Release npm packages → Run workflow**, choose
 - **bump**: `patch`, `minor`, or `major`.
 - **mode**: `staged` (the default) or `direct`.
 
-The workflow increments all library versions and workspace references, updates
+The workflow increments all package versions and workspace references, updates
 the lockfile, runs `npm run check`, and smoke-tests the packed packages in an
 isolated consumer project. It then commits the verified version changes on
 `main`, pushes an annotated `v…` tag, creates a draft GitHub release with the
@@ -23,7 +23,7 @@ release. No manual version commit or tag is needed.
 In **staged** mode, packages wait on npm for a maintainer to approve them with
 2FA. The Actions summary and GitHub release notes list each package's stage ID.
 Use npm's staged-publishing interface, or `npm stage approve <stage-id>`, to
-approve them in the listed dependency order. Once all eight are approved,
+approve them in the listed dependency order. Once all nine are approved,
 publish the draft GitHub release. Approval cannot be automated using OIDC.
 
 In **direct** mode, packages become available on npm during the workflow, and
@@ -37,8 +37,9 @@ and tags.
 
 ## Configure publishing once
 
-Create the `npm` GitHub environment. For each library, configure an
-[npm trusted publisher](https://docs.npmjs.com/trusted-publishers/) with:
+Create the `npm` GitHub environment. For each library and `create-seminar`,
+configure an [npm trusted publisher](https://docs.npmjs.com/trusted-publishers/)
+with:
 
 - Organization or user: `kris7t`
 - Repository: `seminar`
@@ -53,10 +54,11 @@ without publishing credentials.
 
 New packages need a first upload before their npm trusted publisher can be
 configured. Add an `NPM_TOKEN` secret in the `npm` GitHub environment with
-permission to create and publish packages in the `@seminar` scope, and run the
-workflow in staged mode. Staging creates a public `0.0.0-stage` placeholder for
+permission to create and publish packages in the `@seminar` scope and the
+unscoped `create-seminar` package, and run the workflow in staged mode.
+Staging creates a public `0.0.0-stage` placeholder for
 new packages, so their publisher settings become available before the actual
-release is approved. Configure OIDC for all eight packages, then remove the
+release is approved. Configure OIDC for all nine packages, then remove the
 secret. A token used for a direct bootstrap also needs npm's 2FA bypass.
 
 ## Recover a partial release
@@ -93,16 +95,19 @@ npm run release:smoke
 doesn't commit or tag anything. Stable versions use npm's `latest` tag;
 prerelease versions use `next`.
 
-`release:pack` starts from clean library build directories and produces eight
+`release:pack` starts from clean package build directories and produces nine
 tarballs plus an integrity manifest in `artifacts/npm/`. It checks public
 exports, README files, licenses, and excludes tests and build metadata. Each
-library's `prepack` hook also builds that package and copies the root license
+package's `prepack` hook also builds that package and copies the root license
 when packing it directly.
 
 `release:smoke` installs those tarballs outside the workspaces, checks Node
 imports and TypeScript declarations without `skipLibCheck`, then builds a
 self-contained Vite deck using the theme, elements, MathJax, Shiki, and a
-dynamic formula. It needs registry access for external dependencies. Successful
+dynamic formula. It also runs the packed `create-seminar` command and builds
+isolated starters with a custom theme and all plugins, and the default theme
+without plugins. Generated projects use the tested local tarballs for Seminar
+dependencies. It needs registry access for external dependencies. Successful
 fixtures are removed; failed fixtures are kept for inspection. Regular CI runs
 the package checks too.
 

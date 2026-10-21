@@ -7,7 +7,48 @@ sidebar_position: 2
 [Vite](https://vite.dev/guide/) serves your deck while you edit it and builds
 the HTML file you present or share. Seminar needs Node.js 24 or newer.
 
-## Install in a project
+## Create a project
+
+The initializer creates a working project and asks which plugins to enable and
+whether to use the default theme or create an editable `src/theme.ts`:
+
+```sh
+npm create seminar@latest my-talk
+cd my-talk
+npm install
+npm run dev
+```
+
+Elements, MathJax, and Shiki are selected by default. The starter deck includes
+examples of the features you choose. A custom theme uses `createSlideTheme`,
+imports Roboto's normal and italic weights, and adds `@fontsource/roboto` as a
+direct dependency. Edit `src/theme.ts` to change its palette, fonts, or
+components.
+
+To skip the prompts, supply all choices:
+
+```sh
+npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom
+```
+
+`--plugins` accepts `elements`, `mathjax`, and `shiki`, separated by commas, or
+`none` to omit all optional plugins. `--theme` accepts `default` or `custom`.
+`--yes` uses defaults for any missing choices: `my-talk`, all plugins, and the
+default theme. Use `.` as the directory to initialize the current directory.
+The destination must be empty apart from any `.git` metadata; existing project
+files are preserved.
+
+The starter deck is `decks/index.deck.mdx`. The Vite configuration uses
+`root: 'decks'` and `build: { outDir: '../dist', emptyOutDir: true }`, so deck
+discovery stays inside `decks/` and output goes to the project's `dist/`.
+Components, themes, and test fixtures can live in `src/` without being picked
+up as presentation entries. Custom decks reference the generated theme with
+`theme: ../src/theme.ts` in their frontmatter.
+
+The generated project has `dev`, `build`, `preview`, and `typecheck` scripts.
+`build` checks TypeScript and produces a self-contained `dist/index.html`.
+
+## Install manually
 
 Create a project and install Seminar with its React and Material UI peers:
 
@@ -88,8 +129,8 @@ Each deck gets its own page; you don't need to write an HTML entry point:
 | `talk.deck.mdx`           | `/talk.html`           | `dist/talk.html`           |
 | `lectures/intro.deck.mdx` | `/lectures/intro.html` | `dist/lectures/intro.html` |
 
-The paths are relative to the Vite project root. For the repository's
-example, that is `packages/example`.
+The paths are relative to the Vite project root. For generated projects, that
+is `decks/`; for the repository's example, it is `packages/example`.
 
 ## Add presentation features
 

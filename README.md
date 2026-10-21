@@ -11,8 +11,18 @@ build is a single, self-contained HTML file that works offline.
 
 ## Getting started
 
-Seminar needs Node.js 24 or newer. See [Vite setup](packages/docs/docs/guide/vite.md)
-for installing the library packages in a presentation project.
+Seminar needs Node.js 24 or newer. Create a presentation project with:
+
+```sh
+npm create seminar@latest my-talk
+cd my-talk
+npm install
+npm run dev
+```
+
+Choose plugins and either the default theme or an editable theme with Roboto.
+See [Vite setup](packages/docs/docs/guide/vite.md) for initializer options and
+manual installation.
 
 To work on Seminar itself:
 
@@ -29,14 +39,15 @@ shows most of the features below.
 
 ## Writing decks
 
-A deck is an MDX file whose name ends in `.deck.mdx`:
+A deck is an MDX file whose name ends in `.deck.mdx`. Starter projects keep
+them in `decks/`, with components and custom themes in `src/`:
 
 ```mdx
 ---
-theme: ./src/theme.tsx
+theme: ../src/theme.ts
 ---
 
-import { Calculator } from './src/Calculator.tsx';
+import { Calculator } from '../src/Calculator.tsx';
 
 # My talk
 
@@ -136,18 +147,19 @@ and selection of text fields, selected text, and the ripples of buttons.
 
 ## Packages
 
-| Package                                              | Description                                           |
-| ---------------------------------------------------- | ----------------------------------------------------- |
-| [`@seminar/core`](packages/core)                     | Deck, slides, steps, themes, and the presenter view   |
-| [`@seminar/elements`](packages/elements)             | Reusable presentation elements and MDX directives     |
-| [`@seminar/mdx`](packages/mdx)                       | Compiles decks written in MDX                         |
-| [`@seminar/plugin-mathjax`](packages/plugin-mathjax) | Math typeset with MathJax                             |
-| [`@seminar/plugin-shiki`](packages/plugin-shiki)     | Syntax highlighting of code blocks with Shiki         |
-| [`@seminar/rollup-plugin`](packages/rollup-plugin)   | Rollup and Vite plugin for `.deck.mdx` files          |
-| [`@seminar/vite-plugin`](packages/vite-plugin)       | Vite plugin with HTML pages and self-contained builds |
-| [`@seminar/theme-default`](packages/theme-default)   | Default theme with the Roboto font                    |
-| [`@seminar/docs`](packages/docs)                     | Documentation site                                    |
-| [`@seminar/example`](packages/example)               | Example deck                                          |
+| Package                                              | Description                                                    |
+| ---------------------------------------------------- | -------------------------------------------------------------- |
+| [`create-seminar`](packages/create)                  | Creates a presentation project with Vite, plugins, and a theme |
+| [`@seminar/core`](packages/core)                     | Deck, slides, steps, themes, and the presenter view            |
+| [`@seminar/elements`](packages/elements)             | Reusable presentation elements and MDX directives              |
+| [`@seminar/mdx`](packages/mdx)                       | Compiles decks written in MDX                                  |
+| [`@seminar/plugin-mathjax`](packages/plugin-mathjax) | Math typeset with MathJax                                      |
+| [`@seminar/plugin-shiki`](packages/plugin-shiki)     | Syntax highlighting of code blocks with Shiki                  |
+| [`@seminar/rollup-plugin`](packages/rollup-plugin)   | Rollup and Vite plugin for `.deck.mdx` files                   |
+| [`@seminar/vite-plugin`](packages/vite-plugin)       | Vite plugin with HTML pages and self-contained builds          |
+| [`@seminar/theme-default`](packages/theme-default)   | Default theme with the Roboto font                             |
+| [`@seminar/docs`](packages/docs)                     | Documentation site                                             |
+| [`@seminar/example`](packages/example)               | Example deck                                                   |
 
 To use Seminar in a Vite project, add the plugin along with the React plugin:
 
@@ -174,7 +186,7 @@ seminar({ plugins: ['@seminar/elements'] });
 
 ## Releases
 
-The library packages share a release version; the docs and example remain
+The library packages and `create-seminar` share a release version; the docs and example remain
 private. See [Releasing Seminar](RELEASING.md) for package checks, npm trusted
 publishing setup, and the GitHub Actions release workflow.
 

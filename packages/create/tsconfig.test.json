@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "isolatedDeclarations": false,
+    "rewriteRelativeImportExtensions": false,
+    "allowImportingTsExtensions": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsc/create-test.tsbuildinfo"
+  },
+  "include": ["src/**/*.test.ts"],
+  "references": [{ "path": "./tsconfig.lib.json" }]
+}

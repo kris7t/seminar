@@ -83,6 +83,27 @@ test('publication verifies artifact contents before contacting npm', () => {
   }
 });
 
+test('initializer tarballs must include their executable entry point', () => {
+  const files = [
+    'package.json',
+    'README.md',
+    'LICENSE',
+    'dist/index.js',
+    'dist/index.d.ts',
+  ];
+  const packed = { files: files.map((file) => ({ path: file })) };
+  validatePack(
+    { name: 'create-seminar', bin: { 'create-seminar': './dist/index.js' } },
+    packed,
+  );
+  assert.throws(() =>
+    validatePack(
+      { name: 'create-seminar', bin: { 'create-seminar': './bin/missing.js' } },
+      packed,
+    ),
+  );
+});
+
 test('release retries accept the integrity response shapes of npm 11 and 12', () => {
   assert.equal(publishedIntegrity('sha512-verified'), 'sha512-verified');
   assert.equal(publishedIntegrity(['sha512-verified']), 'sha512-verified');
