@@ -11,6 +11,9 @@ const config: Config = {
   markdown: {
     format: 'detect',
     hooks: { onBrokenMarkdownLinks: 'throw' },
+    // The escaping of heading IDs also applies inside code blocks, where it
+    // adds a backslash to deck headings like `## Title {#id}`.
+    mdx1Compat: { headingIds: false },
   },
   presets: [
     [
