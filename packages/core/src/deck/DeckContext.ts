@@ -59,8 +59,9 @@ export interface DeckState {
    */
   deckChanged: boolean;
   /**
-   * Resets the state of the deck and the non-transient state of every slide,
-   * and goes to the first step of the current slide.
+   * Resets all deck and slide state, including transient values and the step
+   * position of every occurrence, and shows the first non-spare slide (or the
+   * first slide if all are spare) at the beginning of its step range.
    */
   resetDeck: () => void;
   /**

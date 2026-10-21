@@ -61,7 +61,6 @@ describe('SlideStateStore', () => {
     expect(store.getChanged().size).toBe(0);
     store.set(0, 'mirror', 1);
     store.reset(0);
-    store.resetAll();
     expect(store.get(0, 'mirror')).toBe(1);
     expect(listener).toHaveBeenCalledOnce();
     expect(invalidated).not.toHaveBeenCalled();
@@ -82,12 +81,45 @@ describe('SlideStateStore', () => {
     expect(store.get(0, 'mirror')).toBe(1);
     expect(store.hasState(0)).toBe(false);
     expect([...store.getChanged()]).toEqual([1]);
-    store.resetAll();
+    store.reset(1);
     expect(store.get(1, 'answer')).toBeUndefined();
     expect(store.get(1, 'mirror')).toBe(2);
     expect(store.hasState(1)).toBe(false);
     expect(store.getChanged().size).toBe(0);
     expect(store.stepPosition(0).get().path).toEqual([1]);
+  });
+
+  it('clears all slide state and restores every saved step target on a full reset', () => {
+    const store = new SlideStateStore();
+    const position = store.stepPosition(0);
+    store.getOrInit(0, 'answer', () => 0);
+    store.getOrInit(0, 'mirror', () => 0, true);
+    store.set(0, 'answer', 1);
+    store.set(0, 'mirror', 2);
+    position.set({ path: [2], toEnd: false, group: 'later', texts: ['old'] });
+    store.stepPosition(1).set({ path: [3, 1], toEnd: true });
+    const value = vi.fn();
+    const mirror = vi.fn();
+    const steps = vi.fn();
+    const invalidated = vi.fn();
+    store.subscribe(0, 'answer', value);
+    store.subscribe(0, 'mirror', mirror);
+    position.subscribe(steps);
+    store.subscribeState(invalidated);
+    store.resetAll();
+    expect(store.get(0, 'answer')).toBeUndefined();
+    expect(store.get(0, 'mirror')).toBeUndefined();
+    expect(store.getChanged().size).toBe(0);
+    expect(store.stepPosition(0)).toBe(position);
+    expect(position.get()).toEqual({ path: [], toEnd: false, inRange: true });
+    expect(store.stepPosition(1).get()).toEqual(position.get());
+    expect(value).toHaveBeenCalledOnce();
+    expect(mirror).toHaveBeenCalledOnce();
+    expect(steps).toHaveBeenCalledOnce();
+    expect(invalidated.mock.calls).toEqual([[[0]]]);
+    store.resetAll();
+    expect(steps).toHaveBeenCalledOnce();
+    expect(invalidated).toHaveBeenCalledOnce();
   });
 
   it('moves transient state with its slide and removes its metadata with removed slides', () => {
@@ -102,7 +134,7 @@ describe('SlideStateStore', () => {
     expect(store.get(2, 'mirror')).toBe('moved');
     expect(store.hasState(2)).toBe(false);
     expect(invalidated).not.toHaveBeenCalled();
-    store.resetAll();
+    store.reset(2);
     expect(store.get(2, 'mirror')).toBe('moved');
     store.getOrInit(0, 'mirror', () => 'regular');
     expect(store.hasState(0)).toBe(true);
@@ -120,7 +152,8 @@ describe('SlideStateStore', () => {
     expect(invalidated).not.toHaveBeenCalled();
     expect(store.hasState(0)).toBe(true);
     expect(store.hasState(1)).toBe(false);
-    store.resetAll();
+    store.reset(0);
+    store.reset(1);
     expect(store.has(0, 'value')).toBe(false);
     expect(store.get(1, 'value')).toBe(1);
   });
@@ -286,7 +319,7 @@ describe('useSlideState', () => {
       menu
         .getByRole('menuitem', { name: 'Reset deck' })
         .getAttribute('aria-disabled'),
-    ).toBe('true');
+    ).toBeNull();
     await user.keyboard('{Escape}');
     await waitFor(() => {
       expect(screen.queryByRole('menu')).toBeNull();
@@ -381,8 +414,8 @@ describe('useSlideState', () => {
         name: 'Reset slide',
       });
     };
-    // Nothing to reset yet.
-    expect((await resetItem()).getAttribute('aria-disabled')).toBe('true');
+    // Slides with steps can always be restarted.
+    expect((await resetItem()).getAttribute('aria-disabled')).toBeNull();
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: 'A: 0' }));
     await user.keyboard('{ArrowRight}');

@@ -96,6 +96,7 @@ function PresentedLayer({
             kind={layer.view.kind}
             frame={frame}
             active={active}
+            current={current}
             onCaptured={done}
           />
           <TransientSlideStateContext value={layer.transientState}>

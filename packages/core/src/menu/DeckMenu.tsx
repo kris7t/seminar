@@ -171,6 +171,7 @@ export function DeckMenu({
     showSteps,
     setShowSteps,
     stateChanged,
+    hasSteps,
   } = deck;
   // Touch screens have no keyboard shortcuts, and a menu at the finger would
   // be partly hidden by it.
@@ -242,7 +243,8 @@ export function DeckMenu({
         action: () => {
           deck.resetSlide(slideIndex);
         },
-        disabled: stateChanged[slideIndex] !== true,
+        disabled:
+          hasSteps[slideIndex] !== true && stateChanged[slideIndex] !== true,
       },
     ],
     [
@@ -286,7 +288,6 @@ export function DeckMenu({
         label: t('resetDeck'),
         icon: RestorePageIcon,
         action: deck.resetDeck,
-        disabled: !deck.deckChanged,
       },
     ],
     [

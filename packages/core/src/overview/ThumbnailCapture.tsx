@@ -12,6 +12,7 @@ interface ThumbnailCaptureProps {
   kind: SlideViewKind;
   frame: HTMLElement | null;
   active: boolean;
+  current: boolean;
   onCaptured: () => void;
 }
 
@@ -22,6 +23,7 @@ export function ThumbnailCapture({
   kind,
   frame,
   active,
+  current,
   onCaptured,
 }: ThumbnailCaptureProps): null {
   const steps = use(StepStoreContext);
@@ -52,6 +54,11 @@ export function ThumbnailCapture({
       const unsubscribe = cache.subscribeInvalidation(index, () => {
         captureController?.abort();
         cancel?.();
+        if (!current) {
+          // A departed visit can retain transient values from before a reset.
+          onCaptured();
+          return;
+        }
         // State notifications precede React's commit of the updated slide.
         cancel = whenIdle(capture);
       });
@@ -180,6 +187,6 @@ export function ThumbnailCapture({
       if ('fonts' in document)
         document.fonts.removeEventListener('loadingdone', onFonts);
     };
-  }, [cache, index, frame, active, onCaptured, getState, steps]);
+  }, [cache, index, frame, active, current, onCaptured, getState, steps]);
   return null;
 }

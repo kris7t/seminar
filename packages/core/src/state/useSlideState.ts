@@ -30,8 +30,8 @@ export interface SlideStateOptions {
   /**
    * Shares internal state, e.g., for mirroring, without a state marker or
    * reset button on the slide. Transient values start over on each visit,
-   * aren't marked as changed, and are kept when the current slide or deck
-   * is reset. Defaults to `false`.
+   * aren't marked as changed, and are kept when the current slide is reset.
+   * Reset deck clears them along with all other slide state. Defaults to `false`.
    */
   transient?: boolean | undefined;
 }

@@ -55,8 +55,8 @@ Transient state is shared between views for the current visit and starts
 over when the presenter returns to the slide. Steps, the overview, and
 opening or closing the presenter view keep the current visit's values.
 Transient state doesn't add a state marker or reset button to the slide,
-and updating it doesn't mark the slide or deck as changed. Slide and deck
-resets leave it alone.
+and updating it doesn't mark the slide or deck as changed. Reset slide
+leaves it alone; Reset deck clears it.
 
 ## Deck state
 
@@ -79,8 +79,9 @@ The state is `undefined` until it is set. There is no initial value, since
 the slides that share the state could give different ones. Setting it to
 `undefined` resets it.
 
-Reset deck in the menu resets the state of the deck and the non-transient
-state of every slide.
+Reset deck in the menu clears all deck and slide state, including transient
+values, resets every slide and recap to the first step of its own range, and
+shows the first non-spare slide (or the first slide if all are spare).
 
 ## Views
 

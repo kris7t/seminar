@@ -163,6 +163,56 @@ describe('DeckMenu', () => {
     expect(window.location.hash).toBe('#slide=3');
   });
 
+  it('offers reset on slides with steps, including at their first step and without modified state', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    await openMenu(user);
+    expect(
+      screen
+        .getByRole('menuitem', { name: 'Reset slide' })
+        .getAttribute('aria-disabled'),
+    ).toBeNull();
+    await user.click(screen.getByRole('menuitem', { name: 'Reset slide' }));
+    expect(window.location.hash).toBe('#slide=1');
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=2');
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitem', { name: 'Reset slide' }));
+    expect(window.location.hash).toBe('#slide=1');
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+    await user.keyboard('{PageDown}');
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    expect(
+      screen
+        .getByRole('menuitem', { name: 'Reset slide' })
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
+  });
+
+  it('resets a recap without modified state to the start of its own step range', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide id="original" title="Original" to="1">
+          <Step>One</Step>
+          <Step>Two</Step>
+          <Step>Three</Step>
+        </Slide>
+        <Slide recap="original" />
+      </Deck>,
+    );
+    await user.keyboard('{PageDown}{ArrowRight}');
+    expect(window.location.hash).toBe('#original-recap&step=3');
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Reset slide' }));
+    expect(window.location.hash).toBe('#original-recap&step=2');
+  });
+
   it('disables unavailable navigation actions', async () => {
     const user = userEvent.setup();
     renderDeck();
@@ -173,10 +223,7 @@ describe('DeckMenu', () => {
         .map((item) => item.querySelector('.MuiListItemText-root')?.textContent)
         // The deck has no table of contents, and no state.
         .filter(
-          (label) =>
-            label !== 'Table of contents' &&
-            label !== 'Reset slide' &&
-            label !== 'Reset deck',
+          (label) => label !== 'Table of contents' && label !== 'Reset slide',
         );
       await user.keyboard('{Escape}');
       await waitFor(() => {

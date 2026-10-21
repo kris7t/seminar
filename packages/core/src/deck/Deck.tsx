@@ -402,11 +402,6 @@ export function Deck({
     deckState.getChanged,
   );
   const deckChanged = deckStateChanged || changedStates.size > 0;
-  const resetDeck = useCallback(() => {
-    deckState.reset();
-    slideState.resetAll();
-    goTo(slideIndex);
-  }, [deckState, slideState, goTo, slideIndex]);
   const toc = useMemo(
     () =>
       resolveToc(tocEntries ?? [], slides, slideIds, {
@@ -429,6 +424,27 @@ export function Deck({
     },
     [slideIndex, setOverviewIndex, setOverviewShown],
   );
+  const resetDeck = useCallback(() => {
+    // Apply pending navigation before clearing the positions it may write.
+    transitions.skip();
+    deckState.reset();
+    slideState.resetAll();
+    transientState.resetAll();
+    for (let index = 0; index < slideCount; index += 1)
+      thumbnails.invalidate(index);
+    setShowOverview(false);
+    goTo(firstSlideIndex, 'start', { transition: false });
+  }, [
+    transitions,
+    deckState,
+    slideState,
+    transientState,
+    slideCount,
+    thumbnails,
+    setShowOverview,
+    goTo,
+    firstSlideIndex,
+  ]);
   const presenterView = usePresenterView(t('presenterView'));
   const presenting = presenterView.audience !== undefined;
   const [presenterAreaRef, , presenterAreaSize] = useFitScale(

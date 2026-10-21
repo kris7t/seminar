@@ -152,26 +152,24 @@ export class SlideStateStore {
   }
 
   /**
-   * Removes the non-transient state of every slide, keeping step positions.
+   * Removes every value, including transient state and saved step positions.
+   * Each slide and recap starts at the beginning of its own step range.
    */
   resetAll(): void {
-    const steps = `\u0000${STEP_KEY}`;
-    const ids = [...this.#values.keys()].filter(
-      (id) => !id.endsWith(steps) && this.#values.get(id)?.transient !== true,
-    );
+    const ids = [...this.#values.keys()];
     const slides = new Set(
-      ids.map((id) => Number(id.slice(0, id.indexOf('\u0000')))),
+      ids
+        .filter(
+          (id) =>
+            !id.endsWith(`\u0000${STEP_KEY}`) &&
+            this.#values.get(id)?.transient !== true,
+        )
+        .map((id) => Number(id.slice(0, id.indexOf('\u0000')))),
     );
-    for (const id of ids) {
-      this.#values.delete(id);
-    }
+    this.#values.clear();
     this.#notifyState([...slides]);
-    if (this.#changed.size > 0) {
-      this.#setChanged(new Set());
-    }
-    for (const id of ids) {
-      this.#notify(id);
-    }
+    if (this.#changed.size > 0) this.#setChanged(new Set());
+    for (const id of ids) this.#notify(id);
   }
 
   /**

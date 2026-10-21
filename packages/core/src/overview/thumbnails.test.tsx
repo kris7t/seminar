@@ -6,9 +6,17 @@ import {
   screen,
   within,
 } from '@testing-library/react';
-import { useEffect, useState, type JSX } from 'react';
+import {
+  use,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type JSX,
+} from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useDeck } from '../deck/DeckContext.ts';
+import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { useSlideView } from '../view/SlideViewContext.ts';
@@ -721,6 +729,111 @@ describe('cached slide thumbnails', () => {
     });
     await finish();
     expect(image(1)).toBe('data:image/png,updated');
+  });
+
+  it('refreshes thumbnails at each occurrence’s first step after a full deck reset', async () => {
+    function Position(): JSX.Element {
+      const store = use(StepStoreContext);
+      const path = useSyncExternalStore(
+        store.subscribe,
+        () => store.getPath().join('.') || 'start',
+      );
+      const { resetDeck } = useDeck();
+      return (
+        <>
+          <span>Path {path}</span>
+          <button onClick={resetDeck}>Restart</button>
+        </>
+      );
+    }
+    render(
+      <Deck defaultMouseNavigation={false}>
+        <Slide title="First">
+          <Position />
+          <Step>Later</Step>
+        </Slide>
+        <Slide title="Second">
+          <Position />
+          <Step>Later</Step>
+        </Slide>
+      </Deck>,
+    );
+    await finish();
+    key('ArrowRight');
+    await finish();
+    key('PageDown');
+    key('ArrowRight');
+    await finish();
+    key('o');
+    await finish();
+    expect(decodeURIComponent(image(0) ?? '')).toContain('Path 1');
+    expect(decodeURIComponent(image(1) ?? '')).toContain('Path 1');
+    key('Escape');
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+    expect(window.location.hash).toBe('#slide=1');
+    key('o');
+    await finish();
+    expect(decodeURIComponent(image(0) ?? '')).toContain('Path start');
+    expect(decodeURIComponent(image(1) ?? '')).toContain('Path start');
+  });
+
+  it('discards retained visit state when a deck reset supersedes its pending capture', async () => {
+    function State(): JSX.Element {
+      const [mirror, setMirror] = useSlideState(0, { transient: true });
+      const { resetDeck } = useDeck();
+      return (
+        <>
+          <button
+            data-seminar-interactive
+            onClick={() => {
+              setMirror(mirror + 1);
+            }}
+          >
+            Mirror {mirror}
+          </button>
+          <button onClick={resetDeck}>Restart</button>
+        </>
+      );
+    }
+    render(
+      <Deck defaultMouseNavigation={false}>
+        <Slide title="First">
+          <State />
+        </Slide>
+        <Slide title="Second">
+          <State />
+        </Slide>
+      </Deck>,
+    );
+    await finish();
+    key('PageDown');
+    await finish();
+    fireEvent.click(screen.getByRole('button', { name: 'Mirror 0' }));
+    const pending = Promise.withResolvers<string>();
+    capture.mockImplementation((frame) =>
+      frame.textContent.includes('Second')
+        ? pending.promise
+        : Promise.resolve(
+            `data:image/png,${encodeURIComponent(frame.innerHTML)}`,
+          ),
+    );
+    key('PageUp');
+    const old = capture.mock.calls.at(-1);
+    expect(old?.[0].textContent).toContain('Second');
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+    capture.mockImplementation((frame) =>
+      Promise.resolve(`data:image/png,${encodeURIComponent(frame.innerHTML)}`),
+    );
+    key('o');
+    await finish();
+    expect(decodeURIComponent(image(1) ?? '')).toContain('Mirror 0');
+    expect(old?.[1]?.aborted).toBe(true);
+    const fresh = image(1);
+    await act(async () => {
+      pending.resolve('data:image/png,obsolete');
+      await pending.promise;
+    });
+    expect(image(1)).toBe(fresh);
   });
 
   it('cancels background work when the deck unmounts', async () => {

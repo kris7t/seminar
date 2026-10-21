@@ -130,7 +130,7 @@ describe('useDeckState', () => {
         name: 'Reset deck',
       });
     };
-    expect((await resetItem()).getAttribute('aria-disabled')).toBe('true');
+    expect((await resetItem()).getAttribute('aria-disabled')).toBeNull();
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: 'First: undefined' }));
     await user.keyboard('{PageDown}');
@@ -138,12 +138,14 @@ describe('useDeckState', () => {
     await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=2&step=1');
     await user.click(await resetItem());
+    expect(window.location.hash).toBe('#slide=1');
+    await user.keyboard('{PageDown}');
     expect(screen.getByRole('button', { name: 'Count: 0' })).toBeDefined();
     expect(window.location.hash).toBe('#slide=2');
     await user.keyboard('{PageUp}');
     expect(
       screen.getByRole('button', { name: 'First: undefined' }),
     ).toBeDefined();
-    expect((await resetItem()).getAttribute('aria-disabled')).toBe('true');
+    expect((await resetItem()).getAttribute('aria-disabled')).toBeNull();
   });
 });

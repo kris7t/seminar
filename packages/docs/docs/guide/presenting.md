@@ -96,8 +96,13 @@ return to click navigation.
 ## Reset state and choose a language
 
 Choose **Reset slide** in the menu to restore the current slide's shared
-state, or **Reset deck** to reset deck state and the shared state of every
-slide. These actions are available when the state has changed.
+state and return to the first step of its range. It is available when the
+slide has steps or modified slide state.
+
+**Reset deck** starts the deck over: it clears all deck and slide state,
+including transient values, resets every slide and recap to the first step
+of its own range, and shows the first non-spare slide (or the first slide if
+all are spare). It is available even if only the navigation position changed.
 
 If the deck offers several interface languages, choose **Language** in the
 menu to switch between them. This changes menus and tooltips, while the
