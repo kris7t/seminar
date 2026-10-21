@@ -52,8 +52,18 @@ const DEFAULT_VIEW: SlideView = {
 export const SlideViewContext: Context<SlideView> =
   createContext<SlideView>(DEFAULT_VIEW);
 
+/** Whether the deck mirrors presenter interaction to its audience window. */
+export const PointerMirroringContext: Context<boolean> = createContext(false);
+
 /** A rendering of a slide, with flags for what it's for. */
 export interface SlideViewState extends SlideView {
+  /**
+   * Whether the presenter's pointer, hover, focus, and caret are mirrored
+   * between the presenter and audience views. Components with virtualized
+   * inputs can render them when `interactive || mirrorPointer`. False in
+   * other views, when not presenting, and in laser pointer mode.
+   */
+  mirrorPointer: boolean;
   /**
    * Whether the slide is being presented in this view, at the current step,
    * i.e., in the `audience` or `presenter` view, which should show it in full
@@ -105,8 +115,10 @@ export function useSlideView(): SlideViewState {
     () => false,
   );
   const presented = view.kind === 'audience' || view.kind === 'presenter';
+  const mirrorPointer = presented && use(PointerMirroringContext);
   return {
     ...view,
+    mirrorPointer,
     presented,
     visible: view.kind !== 'probe',
     animated: presented && !reducedMotion,

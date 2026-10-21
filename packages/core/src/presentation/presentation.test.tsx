@@ -17,6 +17,7 @@ import { Step } from '../steps/Step.tsx';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import { cursorShape, POINTER_IDLE_TIMEOUT } from './mirror/pointer.tsx';
 import { formatElapsed } from './PresenterToolbar.tsx';
+import { useSlideView } from '../view/SlideViewContext.ts';
 
 function fakeScreen(label: string, isInternal: boolean) {
   return {
@@ -748,6 +749,87 @@ describe('mirroring the interaction', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it('lets virtualized inputs follow pointer mirroring in the audience view', async () => {
+    const { audience, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    function VirtualizedField() {
+      const { interactive, mirrorPointer } = useSlideView();
+      return interactive || mirrorPointer ? (
+        <input aria-label="Virtual field" />
+      ) : (
+        <span>Static field</span>
+      );
+    }
+    render(
+      <Deck>
+        <Slide title="First">
+          <VirtualizedField />
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    expect(audience.document.querySelector('input')).toBeNull();
+    await user.keyboard('m');
+    expect(audience.document.querySelector('input')).not.toBeNull();
+    await user.click(screen.getByRole('textbox', { name: 'Virtual field' }));
+    await waitFor(() => {
+      expect(
+        audience.document
+          .querySelector('input')
+          ?.hasAttribute('data-mirror-focus'),
+      ).toBe(true);
+    });
+    await user.click(screen.getByRole('button', { name: 'Laser pointer' }));
+    expect(audience.document.querySelector('input')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Laser pointer' }));
+    expect(audience.document.querySelector('input')).not.toBeNull();
+    await waitFor(() => {
+      expect(
+        audience.document
+          .querySelector('input')
+          ?.hasAttribute('data-mirror-focus'),
+      ).toBe(true);
+    });
+    await user.click(
+      screen.getByRole('button', { name: 'Show pointer to the audience' }),
+    );
+    expect(audience.document.querySelector('input')).toBeNull();
+    expect(
+      screen.getByRole('textbox', { name: 'Virtual field' }),
+    ).toBeDefined();
+    remove();
+  });
+
+  it('exposes active pointer mirroring to both presented views only while presenting', async () => {
+    const { audience, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    function MirroringState() {
+      const { mirrorPointer } = useSlideView();
+      return <output data-testid="mirroring">{String(mirrorPointer)}</output>;
+    }
+    render(
+      <Deck defaultMirrorPointer>
+        <Slide title="First">
+          <MirroringState />
+        </Slide>
+      </Deck>,
+    );
+    expect(screen.getByTestId('mirroring').textContent).toBe('false');
+    await user.keyboard('{Shift>}P{/Shift}');
+    expect(screen.getByTestId('mirroring').textContent).toBe('true');
+    expect(audience.document.querySelector('output')?.textContent).toBe('true');
+    await user.keyboard('l');
+    expect(screen.getByTestId('mirroring').textContent).toBe('false');
+    expect(audience.document.querySelector('output')?.textContent).toBe(
+      'false',
+    );
+    await user.keyboard('l');
+    expect(screen.getByTestId('mirroring').textContent).toBe('true');
+    await user.keyboard('{Escape}');
+    expect(screen.getByTestId('mirroring').textContent).toBe('false');
+    remove();
   });
 
   it('mirrors the ripple of buttons without clicking them', async () => {

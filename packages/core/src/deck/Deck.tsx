@@ -105,6 +105,7 @@ import { ThumbnailRenderer } from '../overview/ThumbnailRenderer.tsx';
 import { getSlideNotes } from '../notes/Notes.tsx';
 import { NotesDisplay } from '../notes/NotesDisplay.tsx';
 import {
+  PointerMirroringContext,
   SLIDE_VIEW_ATTRIBUTE,
   type SlideView,
 } from '../view/SlideViewContext.ts';
@@ -1075,7 +1076,11 @@ export function Deck({
   );
   return (
     <DeckStateUsageContext value={thumbnails.recordDeckStateUse}>
-      <SharedWorkProvider>{content}</SharedWorkProvider>
+      <SharedWorkProvider>
+        <PointerMirroringContext value={presenting && pointerMode === 'mirror'}>
+          {content}
+        </PointerMirroringContext>
+      </SharedWorkProvider>
     </DeckStateUsageContext>
   );
 }

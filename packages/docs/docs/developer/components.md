@@ -86,6 +86,9 @@ be owned by the interactive view: it runs the work and keeps the results in
 
 `useSlideView` also has flags for common checks:
 
+- `mirrorPointer`: the presenter's pointer, hover, focus, and caret are mirrored
+  between the presenter and audience views. It is false when not presenting,
+  in laser pointer mode, and in other views.
 - `presented`: the slide is being presented, in the `audience` or
   `presenter` view, so it should render in full fidelity. Thumbnails,
   previews, and probes can render a lighter version.
@@ -95,6 +98,10 @@ be owned by the interactive view: it runs the work and keeps the results in
 - `animated`: the slide is presented, and the viewer doesn't prefer reduced
   motion, so that animations should play, see
   [Animations](steps.md#animations).
+
+Components that virtualize inputs can use `interactive || mirrorPointer` to
+render matching controls in the audience window while mirroring is enabled.
+The audience window remains inert; the presenter view handles input.
 
 ## Shared resources and cached work
 

@@ -102,6 +102,7 @@ describe('useSlideProbe', () => {
           index: 1,
           kind: 'probe',
           interactive: false,
+          mirrorPointer: false,
           presented: false,
           visible: false,
           animated: false,
