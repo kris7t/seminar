@@ -14,7 +14,7 @@ import {
 } from 'shiki';
 
 /** Theme of code blocks without a `theme` option. */
-export const DEFAULT_THEME = 'github-light';
+export const DEFAULT_THEME = 'github-dark';
 
 /** Languages that need no grammar. */
 const PLAIN_LANGUAGES: ReadonlySet<string> = new Set([

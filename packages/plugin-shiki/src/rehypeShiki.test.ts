@@ -49,23 +49,23 @@ describe('rehypeShiki', () => {
       'import {Code as _SeminarShikiCode} from "@seminar/plugin-shiki";',
     );
     expect(code).toContain('lang: "ts"');
-    expect(code).toContain('className: "shiki github-light"');
+    expect(code).toContain('className: "shiki github-dark"');
   });
 
   it('takes the theme from the options of the theme and the frontmatter', async () => {
     expect(
       (
         await compileDeck('```ts\nx\n```', {
-          options: { code: { theme: 'github-dark' } },
+          options: { code: { theme: 'github-light' } },
         })
       ).code,
-    ).toContain('className: "shiki github-dark"');
+    ).toContain('className: "shiki github-light"');
     expect(
       (
         await compileDeck(
           '---\ncode:\n  theme: min-light\n---\n\n```ts\nx\n```',
           {
-            options: { code: { theme: 'github-dark' } },
+            options: { code: { theme: 'github-light' } },
           },
         )
       ).code,
@@ -111,7 +111,7 @@ describe('rehypeShiki', () => {
     );
     expect(messages).toEqual([]);
     expect(code).toContain('lang: "ld"');
-    expect(code).toContain('color: "#D73A49"');
+    expect(code).toContain('color: "#F97583"');
   });
 
   it('reports files that cannot be read', async () => {
@@ -154,6 +154,6 @@ describe('rehypeShiki', () => {
       },
     });
     expect(messages).toEqual([]);
-    expect(code).toContain('color: "#D73A49"');
+    expect(code).toContain('color: "#F97583"');
   });
 });

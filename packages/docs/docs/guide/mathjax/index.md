@@ -62,8 +62,8 @@ math:
   tags: ams
 ```
 
-- `font` is a MathJax font. The default is `fira`, which goes well with
-  sans-serif text. `newcm` is New Computer Modern, the font of LaTeX.
+- `font` is a MathJax font. The default is `stix2` (STIX Two).
+  `newcm` is New Computer Modern, based on the Computer Modern fonts of LaTeX.
 - `macros` are TeX macros. A macro with arguments is a pair of its
   definition and the number of its arguments.
 - `tags` says which equations are numbered: `ams` (the default), `all`, or
@@ -83,8 +83,8 @@ The frontmatter wins over the presentation theme. Macros are merged.
 
 ### Other fonts
 
-Fonts other than `fira` and `newcm` are packages, like
-`@mathjax/mathjax-stix2-font` for `stix2`. Add the package to your
+Fonts other than `stix2` and `newcm` are packages, like
+`@mathjax/mathjax-fira-font` for `fira`. Add the package to your
 dependencies to use it.
 
 ## Styling formulas

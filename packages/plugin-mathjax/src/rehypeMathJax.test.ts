@@ -69,7 +69,7 @@ describe('rehypeMathJax', () => {
     // builds don't keep fonts for them.
     expect(display).toContain('&#x3C0;');
     expect(display).not.toMatch(/[\u0080-\u{10FFFF}]/u);
-    expect(fonts(code)).toEqual(['FIRA']);
+    expect(fonts(code)).toEqual(['STX']);
   });
 
   it('numbers equations and resolves references', async () => {
@@ -175,9 +175,9 @@ describe('rehypeMathJax', () => {
 
   it('overrides the theme with the frontmatter', async () => {
     const { code } = await compileDeck(
-      `---\ntheme: ./theme.ts\nmath:\n  font: fira\n  macros:\n    T: \\text{deck}\n---\n\n$\\R \\T$`,
+      `---\ntheme: ./theme.ts\nmath:\n  font: stix2\n  macros:\n    T: \\text{deck}\n---\n\n$\\R \\T$`,
     );
-    expect(fonts(code)).toEqual(['FIRA']);
+    expect(fonts(code)).toEqual(['STX']);
     expect(mathml(code)[0]).toContain('<mtext>deck</mtext>');
   });
 
@@ -245,10 +245,10 @@ describe('rehypeMathJax', () => {
       '---\nmath:\n  dynamic:\n    glyphs: [greek, nope]\n---\n\n$x$',
     );
     expect(messages).toEqual([
-      expect.stringContaining('The font fira has no glyphs `nope`'),
+      expect.stringContaining('The font stix2 has no glyphs `nope`'),
     ]);
     const math = runtimeOptions(code);
-    expect(math).toContain('mathjax-fira-font');
+    expect(math).toContain('mathjax-stix2-font');
     expect(
       [...math.matchAll(/"([\w-]+\.js)": /g)].map(([, name]) => name),
     ).toEqual(['greek.js']);

@@ -57,30 +57,30 @@ function render(ui: ReactNode) {
   return renderReact(ui, { wrapper: TestContext });
 }
 
-const FIRA = path.dirname(
+const STIX2 = path.dirname(
   createRequire(import.meta.filename).resolve(
-    '@mathjax/mathjax-fira-font/package.json',
+    '@mathjax/mathjax-stix2-font/package.json',
   ),
 );
 
-const DYNAMIC_FILES = readdirSync(path.join(FIRA, 'mjs/svg/dynamic')).filter(
+const DYNAMIC_FILES = readdirSync(path.join(STIX2, 'mjs/svg/dynamic')).filter(
   (file) => file.endsWith('.js'),
 );
 
-/** The Fira font, as compiled decks define it. */
-const firaFont = defineMathFont(
-  () => import(path.join(FIRA, 'mjs/svg.js')),
+/** The STIX Two font, as compiled decks define it. */
+const stix2Font = defineMathFont(
+  () => import(path.join(STIX2, 'mjs/svg.js')),
   Object.fromEntries(
     DYNAMIC_FILES.map((file) => [
       file,
-      () => import(path.join(FIRA, 'mjs/svg/dynamic', file)),
+      () => import(path.join(STIX2, 'mjs/svg/dynamic', file)),
     ]),
   ),
 );
 
 const OPTIONS = {
   display: false,
-  font: firaFont,
+  font: stix2Font,
   macros: {},
   tags: 'none',
 } as const;
@@ -149,10 +149,10 @@ describe('defineMathFont', () => {
 
 describe('DynamicFormula', () => {
   const deckOptions: RuntimeMathOptions = {
-    font: 'fira',
+    font: 'stix2',
     macros: { R: '\\mathbb{R}' },
     tags: 'none',
-    dynamic: { font: firaFont, loadRenderer: () => import('./render.ts') },
+    dynamic: { font: stix2Font, loadRenderer: () => import('./render.ts') },
   };
 
   beforeEach(() => {
@@ -181,7 +181,7 @@ describe('DynamicFormula', () => {
     );
     seminarOptions.math = {
       ...deckOptions,
-      dynamic: { font: firaFont, loadRenderer },
+      dynamic: { font: stix2Font, loadRenderer },
     };
     slideKind = 'probe';
     const { container, rerender } = render(<DynamicFormula tex="x" />);
@@ -291,7 +291,7 @@ describe('DynamicFormula', () => {
     );
     seminarOptions.math = {
       ...deckOptions,
-      dynamic: { font: firaFont, loadRenderer },
+      dynamic: { font: stix2Font, loadRenderer },
     };
     const tree = (first: string[], second: string[]) => (
       <>
@@ -333,7 +333,7 @@ describe('DynamicFormula', () => {
     seminarOptions.math = {
       ...deckOptions,
       dynamic: {
-        font: firaFont,
+        font: stix2Font,
         loadRenderer: () => Promise.resolve({ renderFormula: typeset }),
       },
     };
@@ -360,7 +360,7 @@ describe('DynamicFormula', () => {
     seminarOptions.math = {
       ...deckOptions,
       dynamic: {
-        font: firaFont,
+        font: stix2Font,
         loadRenderer: () => Promise.resolve({ renderFormula: typeset }),
       },
     };
@@ -384,13 +384,13 @@ describe('DynamicFormula', () => {
     const loadRenderer = () => Promise.resolve({ renderFormula: typeset });
     seminarOptions.math = {
       ...deckOptions,
-      dynamic: { font: firaFont, loadRenderer },
+      dynamic: { font: stix2Font, loadRenderer },
     };
     const { container, rerender } = render(<DynamicFormula tex="x" />);
     await waitFor(() => {
       expect(container.querySelector('svg')).not.toBeNull();
     });
-    const otherFont = { ...firaFont };
+    const otherFont = { ...stix2Font };
     seminarOptions.math = {
       ...deckOptions,
       dynamic: { font: otherFont, loadRenderer },
@@ -399,7 +399,7 @@ describe('DynamicFormula', () => {
     await waitFor(() => {
       expect(typeset).toHaveBeenCalledTimes(2);
     });
-    expect(typeset.mock.calls[0]?.[1].font).toBe(firaFont);
+    expect(typeset.mock.calls[0]?.[1].font).toBe(stix2Font);
     expect(typeset.mock.calls[1]?.[1].font).toBe(otherFont);
     await waitFor(() => {
       expect(activeHolds.size).toBe(0);
@@ -411,7 +411,7 @@ describe('DynamicFormula', () => {
     seminarOptions.math = {
       ...deckOptions,
       dynamic: {
-        font: firaFont,
+        font: stix2Font,
         loadRenderer: () => Promise.resolve({ renderFormula: typeset }),
       },
     };
@@ -445,7 +445,7 @@ describe('DynamicFormula', () => {
     seminarOptions.math = {
       ...deckOptions,
       dynamic: {
-        font: firaFont,
+        font: stix2Font,
         loadRenderer: () => Promise.reject(new Error('unavailable')),
       },
     };
@@ -467,7 +467,7 @@ describe('DynamicFormula', () => {
     const typeset = vi.fn(renderFormula);
     seminarOptions.math = {
       ...deckOptions,
-      dynamic: { font: firaFont, loadRenderer: () => renderer.promise },
+      dynamic: { font: stix2Font, loadRenderer: () => renderer.promise },
     };
     const previousError = vi.fn();
     const currentError = vi.fn();

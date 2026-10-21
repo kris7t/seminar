@@ -117,7 +117,7 @@ describe('.deck.mdx', () => {
       .closest('[class*="SeminarFormula-root"]')
       ?.querySelector('svg');
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
-    // Glyphs of the Fira font of the default theme.
-    expect(svg?.querySelector('path')?.id).toMatch(/^MJX-\d+-FIRA-/);
+    // Glyphs of the default STIX Two font.
+    expect(svg?.querySelector('path')?.id).toMatch(/^MJX-\d+-STX-/);
   });
 });

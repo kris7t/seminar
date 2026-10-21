@@ -14,7 +14,7 @@ export interface RuntimeDynamicMath {
  * `@seminar/core` returns in decks compiled with this plugin.
  */
 export interface RuntimeMathOptions {
-  /** The name of the font, like `fira`. */
+  /** The name of the font, like `stix2`. */
   font: string;
   macros: Record<string, string | [string, number]>;
   tags: 'none' | 'ams' | 'all';

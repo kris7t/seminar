@@ -15,7 +15,7 @@ import { findPackage } from './packages.ts';
 import { PACKAGES } from './texPackages.ts';
 
 /** Font of math without a `font` option, which this package depends on. */
-export const DEFAULT_FONT = 'fira';
+export const DEFAULT_FONT = 'stix2';
 
 const adaptor = liteAdaptor();
 AssistiveMmlHandler(RegisterHTMLHandler(adaptor));
@@ -41,7 +41,7 @@ interface Font {
 
 const fonts = new Map<string, Promise<Font>>();
 
-/** Returns the name of the package of a MathJax font, e.g., `fira`. */
+/** Returns the name of the package of a MathJax font, e.g., `stix2`. */
 export function getFontPackage(font: string): string {
   return font.includes('/') ? font : `@mathjax/mathjax-${font}-font`;
 }

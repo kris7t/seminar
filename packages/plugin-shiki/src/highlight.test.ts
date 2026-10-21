@@ -38,6 +38,8 @@ describe('highlight', () => {
     const pre = await highlighted('const answer = 42;', 'ts');
     expect(pre.tagName).toBe('pre');
     expect(textOf(pre)).toBe('const answer = 42;');
+    expect(pre.properties['class']).toBe('shiki github-dark');
+    expect(pre.properties.style).toMatch(/background-color:\s*#24292e/i);
     // Keywords and numbers are colored differently from the rest.
     expect(new Set(colorsOf(pre)).size).toBeGreaterThan(2);
   });
@@ -48,9 +50,9 @@ describe('highlight', () => {
   });
 
   it('takes the theme from the options', async () => {
-    const light = await highlighted('x = 1', 'python');
-    const dark = await highlighted('x = 1', 'python', {
-      theme: 'github-dark',
+    const dark = await highlighted('x = 1', 'python');
+    const light = await highlighted('x = 1', 'python', {
+      theme: 'github-light',
     });
     expect(colorsOf(dark)).not.toEqual(colorsOf(light));
   });

@@ -47,13 +47,13 @@ fibonacci(10);
 
 ## Choosing a theme
 
-The default theme is `github-light`. To choose another
+The default theme is `github-dark`. To choose another
 [theme of Shiki](https://shiki.style/themes) for a deck, set it in the
 frontmatter:
 
 ```yaml
 code:
-  theme: github-dark
+  theme: github-light
 ```
 
 To choose a theme for every deck, set it in the config of your presentation
@@ -61,7 +61,7 @@ theme:
 
 ```ts
 export const seminar: SeminarConfig = {
-  options: { code: { theme: 'github-dark' } },
+  options: { code: { theme: 'github-light' } },
 };
 ```
 

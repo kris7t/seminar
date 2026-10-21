@@ -83,7 +83,7 @@ describe('seminarEntries', () => {
         .map((file) => (file.type === 'chunk' ? file.code : ''))
         .join('');
       expect(code).toMatch(/MJX-\d+-NCM-/);
-      expect(code).not.toMatch(/MJX-\d+-FIRA-/);
+      expect(code).not.toMatch(/MJX-\d+-STX-/);
     });
   });
 

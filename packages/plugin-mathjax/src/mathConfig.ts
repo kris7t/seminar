@@ -12,7 +12,7 @@ export interface MathConfig {
   /**
    * MathJax font to render math with, e.g., `newcm` for New Computer Modern
    * of the `@mathjax/mathjax-newcm-font` package, or the name of a MathJax
-   * font package. Defaults to `fira`, which this plugin depends on. Font
+   * font package. Defaults to `stix2`, which this plugin depends on. Font
    * packages are found from the config or the deck that sets the font.
    */
   font?: string | undefined;
