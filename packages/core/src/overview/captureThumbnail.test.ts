@@ -1,4 +1,4 @@
-import { toPng } from 'html-to-image';
+import { getFontEmbedCSS, toPng } from 'html-to-image';
 import { waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,7 +9,10 @@ import {
 } from './captureThumbnail.ts';
 
 vi.unmock('./captureThumbnail.ts');
-vi.mock('html-to-image', () => ({ toPng: vi.fn() }));
+vi.mock('html-to-image', () => ({
+  getFontEmbedCSS: vi.fn(),
+  toPng: vi.fn(),
+}));
 
 const nativeGetComputedStyle = window.getComputedStyle.bind(window);
 
@@ -33,6 +36,7 @@ function frozenStyle(
 
 beforeEach(() => {
   vi.mocked(toPng).mockReset();
+  vi.mocked(getFontEmbedCSS).mockReset().mockResolvedValue('');
   vi.spyOn(window, 'getComputedStyle').mockImplementation((element, pseudo) => {
     // jsdom does not implement computed styles of pseudo-elements.
     if (pseudo) {
@@ -50,6 +54,76 @@ afterEach(() => {
 });
 
 describe('captureThumbnail', () => {
+  it('omits hidden branches and original stylesheets without visiting their contents', async () => {
+    vi.mocked(toPng).mockResolvedValueOnce('image');
+    const frame = document.createElement('div');
+    frame.innerHTML =
+      '<style>.unused { color: red; }</style><div style="display:none"><span>Hidden step</span></div><span>Shown step</span>';
+    const hidden = frame.querySelector('div span');
+    document.body.append(frame);
+    const reads = vi.spyOn(window, 'getComputedStyle');
+    await captureThumbnail(frame);
+    const [clone] = vi.mocked(toPng).mock.calls.at(-1) ?? [];
+    expect(clone?.textContent).not.toContain('Hidden step');
+    expect(clone?.textContent).not.toContain('.unused');
+    expect(clone?.textContent).toContain('Shown step');
+    expect(reads.mock.calls.some(([element]) => element === hidden)).toBe(
+      false,
+    );
+    expect(frame.textContent).toContain('Hidden step');
+  });
+
+  it('preserves children that override an ancestor’s hidden visibility', async () => {
+    vi.mocked(toPng).mockResolvedValueOnce('image');
+    const frame = document.createElement('div');
+    frame.innerHTML =
+      '<div style="visibility:hidden"><span style="visibility:visible">Shown child</span></div>';
+    document.body.append(frame);
+    await captureThumbnail(frame);
+    const [clone] = vi.mocked(toPng).mock.calls.at(-1) ?? [];
+    const child = clone?.querySelector('span');
+    expect(child?.textContent).toBe('Shown child');
+    expect(frozenStyle(clone, child ?? undefined).visibility).toBe('visible');
+  });
+
+  it('keeps hidden SVG definitions that visible glyphs can reference', async () => {
+    vi.mocked(toPng).mockResolvedValueOnce('image');
+    const frame = document.createElement('div');
+    frame.innerHTML =
+      '<svg><defs style="display:none"><path id="glyph" d="M0 0 L10 10" /></defs><use href="#glyph" /></svg>';
+    document.body.append(frame);
+    await captureThumbnail(frame);
+    const [clone] = vi.mocked(toPng).mock.calls.at(-1) ?? [];
+    expect(clone?.querySelector('#glyph')?.getAttribute('d')).toBe(
+      'M0 0 L10 10',
+    );
+    expect(clone?.querySelector('use')?.getAttribute('href')).toBe('#glyph');
+  });
+
+  it('yields while cloning a large visible subtree', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      let time = 0;
+      vi.spyOn(performance, 'now').mockImplementation(() => (time += 3));
+      vi.mocked(toPng).mockResolvedValueOnce('image');
+      const frame = document.createElement('div');
+      frame.innerHTML = '<span>Cell</span>'.repeat(30);
+      document.body.append(frame);
+      const clones = vi.spyOn(Node.prototype, 'cloneNode');
+      const pending = captureThumbnail(frame);
+      let clonedDuringBrowserTask = 0;
+      setTimeout(() => {
+        clonedDuringBrowserTask = clones.mock.calls.length;
+      }, 0);
+      await vi.runAllTimersAsync();
+      await pending;
+      expect(clonedDuringBrowserTask).toBeGreaterThan(0);
+      expect(clonedDuringBrowserTask).toBeLessThan(clones.mock.calls.length);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('yields before capture and between batches so browser tasks can run', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     try {
@@ -123,7 +197,9 @@ describe('captureThumbnail', () => {
     expect(
       frozenStyle(clone, clone?.querySelector('span') ?? undefined).color,
     ).toBe('rgb(0, 0, 255)');
-    expect(clone?.querySelector('span')?.style.viewTransitionName).toBe('none');
+    expect(clone?.querySelector('style')?.textContent).toContain(
+      'view-transition-name:none!important',
+    );
     expect(clone?.style.transform).toBe('none');
     expect(options).toMatchObject({
       canvasWidth: THUMBNAIL_WIDTH,
@@ -214,6 +290,43 @@ describe('captureThumbnail', () => {
     expect(frozenStyle(clone, spans?.[0]).color).toBe('rgb(255, 0, 0)');
     expect(clone?.querySelector('div')?.style.backgroundImage).toContain(
       'https://example.test/image.png',
+    );
+  });
+
+  it('embeds the collected font families without repeated inline declarations', async () => {
+    const mock = vi.spyOn(window, 'getComputedStyle');
+    const original = mock.getMockImplementation();
+    mock.mockImplementation((element, pseudo) => {
+      if (pseudo === '::before' && element.textContent === 'First') {
+        const style = document.createElement('span').style;
+        style.content = '"Icon"';
+        style.fontFamily = 'Icons';
+        return style;
+      }
+      return original?.(element, pseudo) ?? document.createElement('div').style;
+    });
+    vi.mocked(getFontEmbedCSS).mockResolvedValueOnce(
+      '@font-face{font-family:A}',
+    );
+    vi.mocked(toPng).mockResolvedValueOnce('image');
+    const frame = document.createElement('div');
+    frame.innerHTML =
+      '<span style="font-family:A">First</span><span style="font-family:B">Second</span><span style="font-family:A">Third</span>';
+    document.body.append(frame);
+    await captureThumbnail(frame);
+    const [sample] = vi.mocked(getFontEmbedCSS).mock.calls[0] ?? [];
+    expect(sample?.style.fontFamily).toContain('A');
+    expect(sample?.style.fontFamily).toContain('B');
+    expect(sample?.style.fontFamily).toContain('Icons');
+    expect(sample?.children).toHaveLength(0);
+    const [clone, options] = vi.mocked(toPng).mock.calls[0] ?? [];
+    expect(options?.fontEmbedCSS).toBe('@font-face{font-family:A}');
+    expect(clone?.querySelector('span')?.style.fontFamily).toBe('');
+    expect(
+      frozenStyle(clone, clone?.querySelector('span') ?? undefined).fontFamily,
+    ).toBe('A');
+    expect(clone?.querySelector('style')?.textContent).toContain(
+      'animation:none!important;transition:none!important;',
     );
   });
 

@@ -81,19 +81,29 @@ export function ThumbnailCapture({
       reused = false;
       cache.invalidate(index, state);
       dirty = true;
-      if (cancel !== undefined || running) return;
-      cancel = whenIdle(() => {
-        cancel = undefined;
-        running = true;
-        dirty = false;
-        captureController = new AbortController();
-        void cache
-          .capture(index, frame, true, captureController.signal, getState())
-          .then(() => {
-            running = false;
-            if (dirty) schedule();
-          });
-      });
+      captureController?.abort();
+      cancel?.();
+      cancel = undefined;
+      if (running) return;
+      // Wait for typing, animation mutations, and asynchronous formulas to
+      // settle before copying the slide. Departing slides bypass this delay.
+      const timeout = setTimeout(() => {
+        cancel = whenIdle(() => {
+          cancel = undefined;
+          running = true;
+          dirty = false;
+          captureController = new AbortController();
+          void cache
+            .capture(index, frame, true, captureController.signal, getState())
+            .then(() => {
+              running = false;
+              if (dirty) schedule();
+            });
+        });
+      }, 200);
+      cancel = () => {
+        clearTimeout(timeout);
+      };
     };
     const observer = new MutationObserver((records) => {
       // The fitted frame changes scale and interaction flags independently

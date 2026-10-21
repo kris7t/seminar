@@ -1,4 +1,4 @@
-import { toPng } from 'html-to-image';
+import { getFontEmbedCSS, toPng } from 'html-to-image';
 
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 
@@ -9,7 +9,7 @@ export const THUMBNAIL_HEIGHT: number = SLIDE_HEIGHT * THUMBNAIL_SCALE;
 
 let nextSnapshot = 0;
 
-function initialStyles(): Map<string, string> {
+function initialStyles(): Map<string, string | null> {
   const reference = document.createElement('span');
   reference.style.setProperty('all', 'initial', 'important');
   document.body.append(reference);
@@ -18,7 +18,12 @@ function initialStyles(): Map<string, string> {
     return new Map(
       Array.from(style, (property) => [
         property,
-        style.getPropertyValue(property),
+        // These properties are reset by the shared snapshot stylesheet.
+        property.startsWith('animation-') ||
+        property.startsWith('transition-') ||
+        property === 'view-transition-name'
+          ? null
+          : style.getPropertyValue(property),
       ]),
     );
   } finally {
@@ -28,17 +33,18 @@ function initialStyles(): Map<string, string> {
 
 function styleText(
   style: CSSStyleDeclaration,
-  initial: Map<string, string>,
+  initial: Map<string, string | null>,
 ): string {
   const declarations = ['all:initial;'];
   for (const property of style) {
     // Computed properties already resolve variables. Resetting each element
     // lets us omit initial values without accidentally inheriting a parent’s
     // styles, and keeps dense snapshots much smaller to clone and serialize.
-    if (property.startsWith('--')) continue;
+    const defaultValue = initial.get(property);
+    if (property.startsWith('--') || defaultValue === null) continue;
     const value = style.getPropertyValue(property);
     if (
-      value !== initial.get(property) ||
+      value !== defaultValue ||
       property === 'direction' ||
       property === 'unicode-bidi' ||
       // Origins resolve percentages against the element's box. The empty
@@ -63,29 +69,46 @@ async function yieldToBrowser(signal: AbortSignal | undefined): Promise<void> {
 async function freezeSlide(
   frame: HTMLElement,
   signal: AbortSignal | undefined,
-): Promise<HTMLElement> {
+): Promise<{ clone: HTMLElement; fonts: Set<string> }> {
   await yieldToBrowser(signal);
   const initial = initialStyles();
-  const clone = frame.cloneNode(true) as HTMLElement;
-  const sources = [frame, ...frame.querySelectorAll('*')];
-  const copies = [clone, ...clone.querySelectorAll('*')];
+  const clone = frame.cloneNode(false) as HTMLElement;
+  const pending: { source: Element; copy: Element }[] = [
+    { source: frame, copy: clone },
+  ];
+  const selects: [HTMLSelectElement, HTMLSelectElement][] = [];
   const snapshot = ++nextSnapshot;
   const pseudos: string[] = [];
   const styles = new Map<string, string>();
+  const fonts = new Set<string>();
   let started = performance.now();
-  for (const [index, source] of sources.entries()) {
+  let index = 0;
+  for (;;) {
+    const entry = pending.pop();
+    if (entry === undefined) break;
     if (performance.now() - started >= 6) {
       await yieldToBrowser(signal);
       started = performance.now();
     }
     if (!frame.isConnected)
       throw new DOMException('The slide was unmounted', 'AbortError');
-    const copy = copies[index];
+    const { source, copy } = entry;
     if (!(copy instanceof HTMLElement || copy instanceof SVGElement)) {
       continue;
     }
     const style = getComputedStyle(source);
+    // Hidden steps can contain large grids and formulas. SVG definitions may
+    // still be referenced by visible <use> elements, even when hidden.
+    if (
+      source !== frame &&
+      source instanceof HTMLElement &&
+      style.display === 'none'
+    ) {
+      copy.remove();
+      continue;
+    }
     const declarations = styleText(style, initial);
+    if (style.fontFamily) fonts.add(style.fontFamily);
     if (declarations.includes('url(')) {
       // The rasterizer embeds images referenced by inline backgrounds and masks.
       copy.style.cssText = declarations;
@@ -97,23 +120,20 @@ async function freezeSlide(
       }
       copy.setAttribute('data-seminar-thumbnail-style', name);
       copy.style.cssText = '';
-      // Font discovery reads inline declarations on the detached snapshot.
-      copy.style.fontFamily = style.fontFamily;
     }
+    const elementIndex = index++;
     for (const pseudo of ['::before', '::after']) {
       const pseudoStyle = window.getComputedStyle(source, pseudo);
       const content = pseudoStyle.getPropertyValue('content');
       if (content !== '' && content !== 'none' && content !== 'normal') {
-        const name = `${String(snapshot)}-${String(index)}`;
+        if (pseudoStyle.fontFamily) fonts.add(pseudoStyle.fontFamily);
+        const name = `${String(snapshot)}-${String(elementIndex)}`;
         copy.setAttribute('data-seminar-thumbnail-pseudo', name);
         pseudos.push(
           `[data-seminar-thumbnail-pseudo="${name}"]${pseudo}{${styleText(pseudoStyle, initial)}animation:none;transition:none;view-transition-name:none;}`,
         );
       }
     }
-    copy.style.animation = 'none';
-    copy.style.transition = 'none';
-    copy.style.viewTransitionName = 'none';
     if (
       source instanceof HTMLCanvasElement &&
       copy instanceof HTMLCanvasElement
@@ -124,6 +144,7 @@ async function freezeSlide(
         image.setAttribute(attribute.name, attribute.value);
       image.src = copy.toDataURL();
       copy.replaceWith(image);
+      continue;
     } else if (source instanceof HTMLVideoElement && source.readyState >= 2) {
       const canvas = document.createElement('canvas');
       canvas.width = source.videoWidth;
@@ -134,6 +155,7 @@ async function freezeSlide(
         image.setAttribute(attribute.name, attribute.value);
       image.src = canvas.toDataURL();
       copy.replaceWith(image);
+      continue;
     } else if (
       source instanceof HTMLInputElement &&
       copy instanceof HTMLInputElement
@@ -149,20 +171,29 @@ async function freezeSlide(
       source instanceof HTMLSelectElement &&
       copy instanceof HTMLSelectElement
     ) {
-      for (const [optionIndex, option] of [...source.options].entries()) {
-        const target = copy.options[optionIndex];
-        if (target !== undefined) {
-          target.selected = option.selected;
-        }
-      }
+      selects.push([source, copy]);
+    }
+    for (const child of source.childNodes) {
+      if (
+        child instanceof Element &&
+        ['style', 'script', 'link'].includes(child.localName)
+      )
+        continue;
+      const childCopy = child.cloneNode(false);
+      copy.append(childCopy);
+      if (child instanceof Element && childCopy instanceof Element)
+        pending.push({ source: child, copy: childCopy });
     }
   }
-  // Every element has frozen computed styles; original sheets would override
-  // the shared declarations, and can make detached snapshots much larger.
-  for (const stylesheet of clone.querySelectorAll('style')) stylesheet.remove();
+  for (const [source, copy] of selects)
+    for (const [optionIndex, option] of [...source.options].entries()) {
+      const target = copy.options[optionIndex];
+      if (target !== undefined) target.selected = option.selected;
+    }
   if (styles.size > 0 || pseudos.length > 0) {
     const stylesheet = document.createElement('style');
     stylesheet.textContent = [
+      '*{animation:none!important;transition:none!important;view-transition-name:none!important;}',
       ...Array.from(
         styles,
         ([declarations, name]) =>
@@ -181,7 +212,7 @@ async function freezeSlide(
     translate: 'none',
     zoom: '1',
   });
-  return clone;
+  return { clone, fonts };
 }
 
 /**
@@ -192,22 +223,32 @@ export async function captureThumbnail(
   frame: HTMLElement,
   signal?: AbortSignal,
 ): Promise<string> {
-  const clone = await freezeSlide(frame, signal);
+  const { clone, fonts } = await freezeSlide(frame, signal);
+  signal?.throwIfAborted();
+  const resourceOptions = {
+    includeQueryParams: true,
+    preferredFontFormat: 'woff2',
+    fetchRequestInit: signal === undefined ? {} : { signal },
+  };
+  // Font discovery needs only the families we already read, rather than a
+  // second walk or repeated inline declarations on every frozen element.
+  const fontSample = document.createElement('span');
+  fontSample.style.fontFamily = [...fonts].join(',');
+  const fontEmbedCSS = await getFontEmbedCSS(fontSample, resourceOptions);
   signal?.throwIfAborted();
   // Frozen styles let the rasterizer work on a detached clone. Attaching
   // thousands of fully styled nodes would force another expensive layout.
   return toPng(clone, {
+    ...resourceOptions,
     width: SLIDE_WIDTH,
     height: SLIDE_HEIGHT,
     canvasWidth: THUMBNAIL_WIDTH,
     canvasHeight: THUMBNAIL_HEIGHT,
     pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-    includeQueryParams: true,
-    preferredFontFormat: 'woff2',
+    fontEmbedCSS,
     // The frozen clone already has every computed style, including its
     // pseudo-elements. Recomputing and assigning them again dominates the
     // cost of capturing large slides.
     includeStyleProperties: [],
-    fetchRequestInit: signal === undefined ? {} : { signal },
   });
 }

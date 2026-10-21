@@ -40,9 +40,10 @@ async function idle(): Promise<void> {
 }
 
 async function finish(): Promise<void> {
-  await act(() => Promise.resolve());
+  await act(() => vi.advanceTimersByTimeAsync(200));
   for (let count = 0; tasks.size > 0 && count < 20; count += 1) {
     await idle();
+    await act(() => vi.advanceTimersByTimeAsync(200));
   }
   expect(tasks.size).toBe(0);
 }
@@ -60,6 +61,7 @@ function image(index = 0): string | null | undefined {
 
 describe('cached slide thumbnails', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     window.history.replaceState(null, '', '#');
     vi.stubGlobal('requestIdleCallback', (callback: IdleRequestCallback) => {
       const handle = ++nextTask;
@@ -74,6 +76,7 @@ describe('cached slide thumbnails', () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     tasks.clear();
     vi.restoreAllMocks();
     vi.stubGlobal('requestIdleCallback', undefined);
@@ -172,6 +175,62 @@ describe('cached slide thumbnails', () => {
     expect(
       within(screen.getByRole('region')).queryByText('Count 2'),
     ).toBeNull();
+  });
+
+  it('waits for an editing pause before capturing the latest input value', async () => {
+    capture.mockImplementation((frame) =>
+      Promise.resolve(
+        `data:image/png,${frame.querySelector('input')?.value ?? ''}`,
+      ),
+    );
+    render(
+      <Deck>
+        <Slide>
+          <input aria-label="Value" />
+        </Slide>
+      </Deck>,
+    );
+    await finish();
+    capture.mockClear();
+    const input = screen.getByRole('textbox');
+    for (const value of ['a', 'ab', 'abc']) {
+      fireEvent.input(input, { target: { value } });
+      await act(() => vi.advanceTimersByTimeAsync(100));
+      await idle();
+      expect(capture).not.toHaveBeenCalled();
+    }
+    await finish();
+    expect(capture).toHaveBeenCalledOnce();
+    await expect(capture.mock.results[0]?.value).resolves.toBe(
+      'data:image/png,abc',
+    );
+  });
+
+  it('cancels an unfinished capture when local input changes again', async () => {
+    render(
+      <Deck>
+        <Slide>
+          <input aria-label="Value" />
+        </Slide>
+      </Deck>,
+    );
+    await finish();
+    capture.mockClear();
+    const pending = Promise.withResolvers<string>();
+    let signal: AbortSignal | undefined;
+    capture.mockImplementationOnce((_frame, captureSignal) => {
+      signal = captureSignal;
+      return pending.promise;
+    });
+    const input = screen.getByRole('textbox');
+    fireEvent.input(input, { target: { value: 'Before' } });
+    await finish();
+    expect(signal?.aborted).toBe(false);
+    fireEvent.input(input, { target: { value: 'After' } });
+    expect(signal?.aborted).toBe(true);
+    pending.resolve('data:image/png,obsolete');
+    await finish();
+    expect(capture).toHaveBeenCalledTimes(2);
   });
 
   it('reuses a shown thumbnail across unchanged visits and overview toggles', async () => {
