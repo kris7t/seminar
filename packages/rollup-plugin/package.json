@@ -1,7 +1,6 @@
 {
   "name": "@seminar/rollup-plugin",
   "version": "0.0.0",
-  "private": true,
   "description": "Rollup and Vite plugin for Seminar presentations",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -16,7 +15,13 @@
   "files": [
     "dist",
     "src",
-    "!src/**/*.test.*"
+    "!src/**/*.test.*",
+    "!dist/**/*.tsbuildinfo",
+    "!src/fixtures",
+    "!src/test",
+    "!dist/test",
+    "!dist/fixtures",
+    "!dist/**/*.test.*"
   ],
   "engines": {
     "node": ">=24"
@@ -25,7 +30,8 @@
     "@mdx-js/rollup": "^3.1.1",
     "@rollup/pluginutils": "^5.4.0",
     "@seminar/mdx": "0.0.0",
-    "@seminar/theme-default": "0.0.0"
+    "@seminar/theme-default": "0.0.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@seminar/core": "0.0.0",
@@ -33,5 +39,20 @@
     "@seminar/plugin-mathjax": "0.0.0",
     "rollup": "^4.64.6",
     "vite": "^8.3.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kris7t/seminar.git",
+    "directory": "packages/rollup-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/kris7t/seminar/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/release.mjs prepare"
   }
 }

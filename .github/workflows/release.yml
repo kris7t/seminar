@@ -1,0 +1,129 @@
+name: Release npm packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Release version increment
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+        required: true
+      mode:
+        description: Stage for npm approval, or publish directly
+        type: choice
+        options: [staged, direct]
+        default: staged
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Require main
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: test "$RELEASE_REF" = refs/heads/main
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      # Staged publishing requires npm 11.15.0 or newer.
+      - run: npm install --global npm@11
+      - run: npm ci
+      - name: Increment release version
+        id: version
+        env:
+          RELEASE_BUMP: ${{ inputs.bump }}
+        run: npm run release:version -- "$RELEASE_BUMP"
+      - run: npm run check
+      - run: npm run release:pack
+      - run: npm run release:smoke
+      - name: Save verified version changes
+        run: git diff --binary -- package-lock.json 'packages/*/package.json' > artifacts/npm/version.patch
+      - uses: actions/upload-artifact@v6
+        with:
+          name: npm-packages
+          path: artifacts/npm/
+          if-no-files-found: error
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_MODE: ${{ inputs.mode }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm install --global npm@11
+      - uses: actions/download-artifact@v7
+        with:
+          name: npm-packages
+          path: artifacts/npm/
+      - name: Commit and tag the verified release
+        env:
+          RELEASE_BASE: ${{ github.sha }}
+        run: node scripts/record-release.mjs "$RELEASE_BASE" "$RELEASE_TAG" artifacts/npm/version.patch
+      - name: Prepare GitHub release and restore publication receipts
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name' > "$RUNNER_TEMP/release-tags"
+          if ! grep -Fxq -- "$RELEASE_TAG" "$RUNNER_TEMP/release-tags"; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --generate-notes --title "Seminar $RELEASE_TAG"
+          fi
+          gh release upload "$RELEASE_TAG" artifacts/npm/*.tgz artifacts/npm/manifest.json --clobber
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/release-assets"
+          if grep -Fxq publish-results.json "$RUNNER_TEMP/release-assets"; then
+            gh release download "$RELEASE_TAG" --pattern publish-results.json --dir artifacts/npm/ --clobber
+          fi
+      - name: Publish verified tarballs
+        env:
+          # Only needed to bootstrap packages before trusted publishing is configured.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm run release:publish -- "$RELEASE_MODE" "$RELEASE_TAG"
+      - name: Update GitHub release
+        run: |
+          gh release view "$RELEASE_TAG" --json body --jq .body > "$RUNNER_TEMP/release-notes"
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import path from 'node:path';
+          const file = path.join(process.env.RUNNER_TEMP, 'release-notes');
+          const notes = readFileSync(file, 'utf8').split('<!-- seminar-publish-status -->')[0].trimEnd();
+          writeFileSync(file, notes + '\n' + readFileSync('artifacts/npm/publish-results.md', 'utf8'));
+          NODE
+          gh release edit "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes"
+          if [ "$RELEASE_MODE" = direct ]; then
+            gh release edit "$RELEASE_TAG" --draft=false --latest
+          fi
+      - name: Save publication receipts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: npm-publication-results
+          path: artifacts/npm/publish-results.*
+          if-no-files-found: ignore

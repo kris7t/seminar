@@ -1,7 +1,6 @@
 {
   "name": "@seminar/elements",
   "version": "0.0.0",
-  "private": true,
   "description": "Reusable presentation elements for Seminar decks",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -36,7 +35,13 @@
   "files": [
     "dist",
     "src",
-    "!src/**/*.test.*"
+    "!src/**/*.test.*",
+    "!dist/**/*.tsbuildinfo",
+    "!src/fixtures",
+    "!src/test",
+    "!dist/test",
+    "!dist/fixtures",
+    "!dist/**/*.test.*"
   ],
   "engines": {
     "node": ">=24"
@@ -57,5 +62,20 @@
     "@testing-library/user-event": "^14.6.8",
     "react": "^19.3.1",
     "vitest": "^5.0.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kris7t/seminar.git",
+    "directory": "packages/elements"
+  },
+  "bugs": {
+    "url": "https://github.com/kris7t/seminar/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/release.mjs prepare"
   }
 }

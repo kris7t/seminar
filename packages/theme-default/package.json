@@ -1,7 +1,6 @@
 {
   "name": "@seminar/theme-default",
   "version": "0.0.0",
-  "private": true,
   "description": "Default theme of Seminar presentations with the Roboto font",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -9,13 +8,20 @@
   "exports": {
     ".": {
       "@seminar/source": "./src/index.ts",
-      "types": "./dist/index.d.ts",
+      "types": "./index.d.ts",
       "default": "./dist/index.js"
     }
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "!dist/**/*.tsbuildinfo",
+    "!src/fixtures",
+    "!src/test",
+    "!dist/test",
+    "!dist/fixtures",
+    "!dist/**/*.test.*",
+    "index.d.ts"
   ],
   "engines": {
     "node": ">=24"
@@ -30,5 +36,20 @@
   "devDependencies": {
     "@mui/material": "^9.5.0",
     "@seminar/core": "0.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kris7t/seminar.git",
+    "directory": "packages/theme-default"
+  },
+  "bugs": {
+    "url": "https://github.com/kris7t/seminar/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/release.mjs prepare"
   }
 }

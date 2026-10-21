@@ -10,10 +10,16 @@
     "jsx": "react-jsx",
     "customConditions": ["@seminar/source"]
   },
-  "include": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test"],
   "references": [
-    { "path": "./tsconfig.lib.json" },
-    { "path": "../core/tsconfig.lib.json" },
-    { "path": "../mdx/tsconfig.lib.json" }
+    {
+      "path": "./tsconfig.lib.json"
+    },
+    {
+      "path": "../core/tsconfig.lib.json"
+    },
+    {
+      "path": "../mdx/tsconfig.lib.json"
+    }
   ]
 }

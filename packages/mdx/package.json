@@ -1,7 +1,6 @@
 {
   "name": "@seminar/mdx",
   "version": "0.0.0",
-  "private": true,
   "description": "MDX support for Seminar presentations",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -21,15 +20,30 @@
     "dist",
     "src",
     "!src/**/*.test.*",
-    "!src/test"
+    "!src/test",
+    "!dist/**/*.tsbuildinfo",
+    "!src/fixtures",
+    "!dist/test",
+    "!dist/fixtures",
+    "!dist/**/*.test.*"
   ],
   "engines": {
     "node": ">=24"
   },
   "dependencies": {
     "@mdx-js/mdx": "^3.1.1",
+    "@types/estree": "^1.0.9",
+    "@types/estree-jsx": "^1.0.5",
+    "@types/hast": "^3.0.5",
+    "@types/mdast": "^4.0.4",
+    "@types/react": "^19.3.0",
+    "@types/unist": "^3.0.3",
     "acorn": "^8.19.0",
     "github-slugger": "^2.0.0",
+    "mdast-util-directive": "^3.1.1",
+    "mdast-util-mdx": "^3.0.0",
+    "mdast-util-mdx-jsx": "^3.2.0",
+    "mdast-util-to-hast": "^13.2.1",
     "mdast-util-to-string": "^4.0.0",
     "property-information": "^7.2.0",
     "remark-directive": "^4.0.0",
@@ -37,22 +51,28 @@
     "remark-mdx": "^3.1.1",
     "remark-parse": "^11.0.0",
     "resolve.exports": "^2.0.4",
+    "unified": "^11.0.5",
+    "vfile": "^6.0.3",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@types/estree": "^1.0.9",
-    "@types/estree-jsx": "^1.0.5",
-    "@types/hast": "^3.0.5",
-    "@types/mdast": "^4.0.4",
     "@types/mdx": "^2.0.14",
-    "@types/react": "^19.3.0",
-    "mdast-util-directive": "^3.1.1",
-    "mdast-util-mdx": "^3.0.0",
-    "mdast-util-mdx-jsx": "^3.2.0",
-    "mdast-util-to-hast": "^13.2.1",
     "react": "^19.3.1",
-    "remark-math": "^6.0.0",
-    "unified": "^11.0.5",
-    "vfile": "^6.0.3"
+    "remark-math": "^6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kris7t/seminar.git",
+    "directory": "packages/mdx"
+  },
+  "bugs": {
+    "url": "https://github.com/kris7t/seminar/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/release.mjs prepare"
   }
 }

@@ -11,7 +11,10 @@ build is a single, self-contained HTML file that works offline.
 
 ## Getting started
 
-Seminar needs Node.js 24 or newer.
+Seminar needs Node.js 24 or newer. See [Vite setup](packages/docs/docs/guide/vite.md)
+for installing the library packages in a presentation project.
+
+To work on Seminar itself:
 
 ```sh
 npm install
@@ -168,6 +171,12 @@ Presentation elements, like callouts and columns, come from
 ```ts
 seminar({ plugins: ['@seminar/elements'] });
 ```
+
+## Releases
+
+The library packages share a release version; the docs and example remain
+private. See [Releasing Seminar](RELEASING.md) for package checks, npm trusted
+publishing setup, and the GitHub Actions release workflow.
 
 ## License
 

@@ -1,7 +1,6 @@
 {
   "name": "@seminar/core",
   "version": "0.0.0",
-  "private": true,
   "description": "Core Markdown presentation model for Seminar",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -19,7 +18,13 @@
   "files": [
     "dist",
     "src",
-    "!src/**/*.test.*"
+    "!src/**/*.test.*",
+    "!dist/**/*.tsbuildinfo",
+    "!src/fixtures",
+    "!src/test",
+    "!dist/test",
+    "!dist/fixtures",
+    "!dist/**/*.test.*"
   ],
   "engines": {
     "node": ">=24"
@@ -42,5 +47,20 @@
     "@emotion/cache": "^11.14.0",
     "@mui/icons-material": "^9.5.0",
     "html-to-image": "^1.11.13"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kris7t/seminar.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/kris7t/seminar/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/release.mjs prepare"
   }
 }

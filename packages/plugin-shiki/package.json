@@ -1,7 +1,6 @@
 {
   "name": "@seminar/plugin-shiki",
   "version": "0.0.0",
-  "private": true,
   "description": "Syntax highlighting of code blocks in Seminar decks with Shiki",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -33,14 +32,23 @@
   "files": [
     "dist",
     "src",
-    "!src/**/*.test.*"
+    "!src/**/*.test.*",
+    "!dist/**/*.tsbuildinfo",
+    "!src/fixtures",
+    "!src/test",
+    "!dist/test",
+    "!dist/fixtures",
+    "!dist/**/*.test.*"
   ],
   "engines": {
     "node": ">=24"
   },
   "dependencies": {
     "@seminar/mdx": "0.0.0",
-    "shiki": "^4.5.0"
+    "@types/hast": "^3.0.5",
+    "mdast-util-mdx-jsx": "^3.2.0",
+    "shiki": "^4.5.0",
+    "vfile": "^6.0.3"
   },
   "peerDependencies": {
     "@emotion/react": "^11.14.0",
@@ -56,10 +64,22 @@
     "@mui/material": "^9.5.0",
     "@seminar/core": "0.0.0",
     "@testing-library/react": "^16.3.3",
-    "@types/hast": "^3.0.5",
-    "mdast-util-mdx-jsx": "^3.2.0",
     "react": "^19.3.1",
-    "vfile": "^6.0.3",
     "vitest": "^5.0.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kris7t/seminar.git",
+    "directory": "packages/plugin-shiki"
+  },
+  "bugs": {
+    "url": "https://github.com/kris7t/seminar/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/release.mjs prepare"
   }
 }

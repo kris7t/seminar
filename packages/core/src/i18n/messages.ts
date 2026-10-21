@@ -1,4 +1,5 @@
 import en from './locales/en.json' with { type: 'json' };
+import type EnglishCatalog from './locales/en.json';
 
 /**
  * The messages of the user interface in a language, in the JSON format of
@@ -16,7 +17,7 @@ export interface UiLocale {
 }
 
 /** The keys of the messages of the user interface. */
-export type MessageKey = keyof typeof en;
+export type MessageKey = keyof typeof EnglishCatalog;
 
 /** Values interpolated into messages. */
 export type MessageValues = Readonly<Record<string, string | number>>;

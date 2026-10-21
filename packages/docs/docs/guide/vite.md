@@ -7,9 +7,26 @@ sidebar_position: 2
 [Vite](https://vite.dev/guide/) serves your deck while you edit it and builds
 the HTML file you present or share. Seminar needs Node.js 24 or newer.
 
-## Start with the example
+## Install in a project
 
-Seminar's packages are currently private npm workspaces in its repository.
+Create a project and install Seminar with its React and Material UI peers:
+
+```sh
+mkdir my-talk
+cd my-talk
+npm init -y
+npm pkg set type=module scripts.dev=vite 'scripts.build=vite build'
+npm install @seminar/core react react-dom @mui/material @emotion/react @emotion/styled
+npm install --save-dev @seminar/vite-plugin @vitejs/plugin-react vite typescript @types/react @types/react-dom
+```
+
+Create `vite.config.ts` using the configuration below and add an
+`index.deck.mdx` file. Run `npm run dev` to preview it or `npm run build` to
+produce the HTML file. For TypeScript imports of decks, add
+`@seminar/mdx/client` to your `tsconfig.json`'s `compilerOptions.types`.
+
+## Try the repository example
+
 The example in `packages/example` is a working Vite project:
 
 ```sh
@@ -93,7 +110,9 @@ export default defineConfig({
 });
 ```
 
-The example already includes these packages. They provide
+Install the plugins you enable with `npm install @seminar/elements
+@seminar/plugin-mathjax @seminar/plugin-shiki`. The repository example already
+includes them. They provide
 [callouts and columns](elements/index.md), [math](mathjax/index.md), and
 [syntax highlighting](shiki/index.md). The names in this option are Seminar
 plugins, while `react()` and `seminar()` themselves are Vite plugins.

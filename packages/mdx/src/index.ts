@@ -1,3 +1,4 @@
+export type * from './jsxTypes.ts';
 export { directiveHandlers } from './directives/directiveHandlers.ts';
 export {
   getSeminarConfigs,
