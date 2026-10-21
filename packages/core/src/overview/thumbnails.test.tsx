@@ -14,6 +14,7 @@ import { Slide } from '../slide/Slide.tsx';
 import { useSlideView } from '../view/SlideViewContext.ts';
 import { useResetSlideState, useSlideState } from '../state/useSlideState.ts';
 import { useDeckState } from '../state/useDeckState.ts';
+import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Step } from '../steps/Step.tsx';
 import { captureThumbnail } from './captureThumbnail.ts';
 import { ThumbnailCache } from './ThumbnailCache.ts';
@@ -507,6 +508,175 @@ describe('cached slide thumbnails', () => {
     expect(tasks.size).toBe(0);
   });
 
+  it('pauses background rendering for a departing capture and resumes near the new slide', async () => {
+    const foreground = Promise.withResolvers<string>();
+    const background = Promise.withResolvers<string>();
+    capture.mockImplementation((frame) =>
+      frame.dataset['seminarView'] === 'thumbnail'
+        ? background.promise
+        : foreground.promise,
+    );
+    render(
+      <Deck>
+        <Slide title="First" />
+        <Slide title="Second" />
+        <Slide title="Third" />
+        <Slide title="Fourth" />
+      </Deck>,
+    );
+    await idle();
+    await idle();
+    const backgroundJob = capture.mock.calls.find(
+      ([frame]) => frame.dataset['seminarView'] === 'thumbnail',
+    );
+    expect(backgroundJob?.[0].textContent).toContain('Second');
+    key('End');
+    expect(screen.getByRole('heading', { name: 'Fourth' })).toBeDefined();
+    expect(backgroundJob?.[1]?.aborted).toBe(true);
+    expect(
+      document.querySelector('[data-seminar-view="thumbnail"]'),
+    ).toBeNull();
+    await idle();
+    expect(
+      capture.mock.calls.filter(
+        ([frame]) => frame.dataset['seminarView'] === 'thumbnail',
+      ),
+    ).toHaveLength(1);
+    await act(async () => {
+      foreground.resolve('data:image/png,first');
+      await foreground.promise;
+    });
+    await idle();
+    await idle();
+    expect(capture.mock.calls.at(-1)?.[0].textContent).toContain('Third');
+  });
+
+  it('uses the probed master background while a thumbnail capture is pending', async () => {
+    const pending = Promise.withResolvers<string>();
+    capture.mockReturnValue(pending.promise);
+    const theme = createSlideTheme({
+      components: {
+        SeminarSectionMaster: {
+          styleOverrides: { root: { backgroundColor: '#123456' } },
+        },
+      },
+    });
+    render(
+      <Deck theme={theme}>
+        <Slide title="First" />
+        <Slide master="section" title="Colored" lang="hu" />
+      </Deck>,
+    );
+    key('o');
+    await idle();
+    const frames = screen
+      .getByRole('region')
+      .querySelectorAll('[data-seminar-view="thumbnail"]');
+    expect(frames).toHaveLength(2);
+    expect(frames[1] && getComputedStyle(frames[1]).backgroundImage).toContain(
+      'rgb(18, 52, 86)',
+    );
+    expect(screen.getByRole('region').querySelector('img')).toBeNull();
+  });
+
+  it('prioritizes visible overview thumbnails and preempts work scrolled off screen', async () => {
+    const originalObserver = globalThis.IntersectionObserver;
+    let callback: IntersectionObserverCallback | undefined;
+    let options: IntersectionObserverInit | undefined;
+    const observer = {
+      root: null,
+      rootMargin: '0px',
+      scrollMargin: '0px',
+      thresholds: [0],
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+      takeRecords: () => [],
+    } satisfies IntersectionObserver;
+    vi.stubGlobal(
+      'IntersectionObserver',
+      vi.fn(function (
+        onEntries: IntersectionObserverCallback,
+        init: IntersectionObserverInit,
+      ) {
+        callback = onEntries;
+        options = init;
+        return observer;
+      }),
+    );
+    try {
+      const foreground = Promise.withResolvers<string>();
+      const background = Promise.withResolvers<string>();
+      capture.mockImplementation((frame) =>
+        frame.dataset['seminarView'] === 'thumbnail'
+          ? background.promise
+          : foreground.promise,
+      );
+      const { unmount } = render(
+        <Deck>
+          {Array.from({ length: 8 }, (_, index) => (
+            <Slide key={index} title={`Slide ${String(index + 1)}`} />
+          ))}
+        </Deck>,
+      );
+      key('o');
+      const region = screen.getByRole('region');
+      const frames = region.querySelectorAll('[data-seminar-view="thumbnail"]');
+      expect(options?.root).toBe(region);
+      expect(observer.observe).toHaveBeenCalledTimes(8);
+      act(() => {
+        callback?.(
+          [
+            {
+              target: frames[4],
+              isIntersecting: true,
+            } as IntersectionObserverEntry,
+            {
+              target: frames[5],
+              isIntersecting: true,
+            } as IntersectionObserverEntry,
+          ],
+          observer,
+        );
+      });
+      await act(async () => {
+        foreground.resolve('data:image/png,first');
+        await foreground.promise;
+      });
+      await idle();
+      await idle();
+      const firstJob = capture.mock.calls.at(-1);
+      expect(firstJob?.[0].textContent).toContain('Slide 5');
+      act(() => {
+        callback?.(
+          [
+            {
+              target: frames[4],
+              isIntersecting: false,
+            } as IntersectionObserverEntry,
+            {
+              target: frames[5],
+              isIntersecting: false,
+            } as IntersectionObserverEntry,
+            {
+              target: frames[2],
+              isIntersecting: true,
+            } as IntersectionObserverEntry,
+          ],
+          observer,
+        );
+      });
+      expect(firstJob?.[1]?.aborted).toBe(true);
+      await idle();
+      await idle();
+      expect(capture.mock.calls.at(-1)?.[0].textContent).toContain('Slide 3');
+      unmount();
+      expect(observer.disconnect).toHaveBeenCalledOnce();
+    } finally {
+      vi.stubGlobal('IntersectionObserver', originalObserver);
+    }
+  });
+
   it('keeps background loading from holding the presented slide’s transitions', async () => {
     const transitions = new SlideTransitions();
     const hold = vi.spyOn(transitions, 'hold');
@@ -637,6 +807,69 @@ describe('cached slide thumbnails', () => {
 });
 
 describe('ThumbnailCache', () => {
+  it('captures visible slides before nearer off-screen slides', () => {
+    const cache = new ThumbnailCache();
+    cache.shown(0);
+    cache.setVisible([5, 6]);
+    expect(cache.nextMissing(8, 6)).toBe(6);
+    expect(cache.nextMissing(8, 1)).toBe(5);
+    cache.skip(5);
+    expect(cache.nextMissing(8, 1)).toBe(6);
+    cache.skip(6);
+    expect(cache.nextMissing(8, 1)).toBe(1);
+    cache.setVisible([3]);
+    expect(cache.nextMissing(8, 1)).toBe(3);
+    cache.setVisible([]);
+    expect(cache.nextMissing(8, 1)).toBe(1);
+  });
+
+  it('releases foreground priority on cancellation without waiting for the rasterizer', async () => {
+    const cache = new ThumbnailCache();
+    const pending = Promise.withResolvers<string>();
+    capture.mockReturnValueOnce(pending.promise);
+    const controller = new AbortController();
+    const work = cache.capture(
+      0,
+      document.createElement('div'),
+      true,
+      controller.signal,
+    );
+    expect(cache.isCapturingShown()).toBe(true);
+    expect(cache.nextMissing(2)).toBeUndefined();
+    controller.abort();
+    expect(cache.isCapturingShown()).toBe(false);
+    expect(cache.nextMissing(2, 1)).toBe(1);
+    pending.resolve('obsolete');
+    await work;
+    expect(cache.get(0)).toBeUndefined();
+  });
+
+  it('fills missing thumbnails near the selected slide, preferring forward ties', () => {
+    const cache = new ThumbnailCache();
+    cache.shown(3);
+    expect(cache.nextMissing(6, 3)).toBe(4);
+    cache.skip(4);
+    expect(cache.nextMissing(6, 3)).toBe(2);
+    cache.skip(2);
+    expect(cache.nextMissing(6, 3)).toBe(5);
+    cache.skip(5);
+    expect(cache.nextMissing(6, 3)).toBe(1);
+  });
+
+  it('preempts background captures for shown slides and retries the canceled work', async () => {
+    const cache = new ThumbnailCache();
+    const pending = Promise.withResolvers<string>();
+    capture.mockReturnValueOnce(pending.promise).mockResolvedValueOnce('shown');
+    const background = cache.capture(2, document.createElement('div'));
+    const signal = capture.mock.calls.at(-1)?.[1];
+    await cache.capture(0, document.createElement('div'), true);
+    expect(signal?.aborted).toBe(true);
+    pending.resolve('obsolete');
+    await background;
+    expect(cache.get(2)).toBeUndefined();
+    expect(cache.nextMissing(3, 2)).toBe(2);
+  });
+
   it('keeps every path only for the current generation and restores the selected image', async () => {
     const cache = new ThumbnailCache();
     const frame = document.createElement('div');

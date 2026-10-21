@@ -106,6 +106,11 @@ function Thumbnail({
     () => cache.get(index),
     () => undefined,
   );
+  const background = useSyncExternalStore(
+    cache.subscribe,
+    () => cache.getBackground(index),
+    () => undefined,
+  );
   // Keep the focus on the current slide, so that Enter selects it when the
   // arrow keys change the current slide.
   useEffect(() => {
@@ -128,6 +133,7 @@ function Thumbnail({
       <ThemeProvider theme={slideTheme}>
         <Box
           {...{ [SLIDE_VIEW_ATTRIBUTE]: 'thumbnail' }}
+          data-seminar-thumbnail-index={index}
           sx={[
             {
               position: 'relative',
@@ -135,6 +141,11 @@ function Thumbnail({
               height: THUMBNAIL_HEIGHT,
               overflow: 'hidden',
               bgcolor: 'background.default',
+              // Layer translucent master colors over the slide theme's base.
+              backgroundImage:
+                background === undefined
+                  ? undefined
+                  : `linear-gradient(${background}, ${background})`,
               color: 'text.primary',
             },
             // The outline is part of the overview, rather than of the slide.
@@ -276,6 +287,32 @@ export function SlideOverview({
   } = useDeck();
   const { lang: uiLang, t } = useUiLanguage();
   const slideTheme = useTheme();
+  const overviewRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = overviewRef.current;
+    if (root === null || typeof IntersectionObserver !== 'function')
+      return undefined;
+    const visible = new Set<number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const index = Number(
+            entry.target.getAttribute('data-seminar-thumbnail-index'),
+          );
+          if (entry.isIntersecting) visible.add(index);
+          else visible.delete(index);
+        }
+        cache.setVisible(visible);
+      },
+      { root },
+    );
+    for (const frame of root.querySelectorAll('[data-seminar-thumbnail-index]'))
+      observer.observe(frame);
+    return () => {
+      observer.disconnect();
+      cache.setVisible([]);
+    };
+  }, [cache, slides.length]);
   const groups = useMemo(
     () => groupSlides(toc, slides.length),
     [toc, slides.length],
@@ -291,6 +328,7 @@ export function SlideOverview({
     // the thumbnails keep the theme of the slides.
     <ThemeProvider theme={darkUiTheme}>
       <Box
+        ref={overviewRef}
         // Not a dialog, so that the navigation keys still work in it.
         role="region"
         aria-label={t('slideOverview')}

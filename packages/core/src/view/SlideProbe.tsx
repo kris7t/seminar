@@ -4,6 +4,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type JSX,
   type ReactNode,
@@ -15,6 +16,7 @@ import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SlideViewProvider } from './SlideViewProvider.tsx';
+import { probeSlideBackground } from './slideBackground.ts';
 
 /** What probing a slide found. */
 export interface ProbedSlide {
@@ -25,6 +27,8 @@ export interface ProbedSlide {
    * `useSlideState`.
    */
   state: boolean;
+  /** Background color of the master, if it supplies one. */
+  backgroundColor: string | undefined;
 }
 
 const NO_SLIDES: readonly ProbedSlide[] = [];
@@ -61,6 +65,7 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
   );
   // State of its own, so that the probe doesn't set up the state of the slides.
   const [slideState] = useState(() => new SlideStateStore());
+  const framesRef = useRef<(HTMLDivElement | null)[]>([]);
   const probes = useMemo(
     () => slides.map((slide) => ({ slide, store: new StepStore() })),
     [slides],
@@ -68,10 +73,17 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
   // Steps attach as they are committed, before the effects of their parents.
   useLayoutEffect(() => {
     onProbe(
-      probes.map(({ store }, index) => ({
-        steps: store.getTree().length > 0,
-        state: slideState.hasState(index),
-      })),
+      probes.map(({ store }, index) => {
+        const frame = framesRef.current[index];
+        return {
+          steps: store.getTree().length > 0,
+          state: slideState.hasState(index),
+          backgroundColor:
+            frame === undefined || frame === null
+              ? undefined
+              : probeSlideBackground(frame),
+        };
+      }),
     );
   }, [probes, slideState, onProbe]);
   return createPortal(
@@ -85,7 +97,13 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
               <SlideViewProvider
                 view={{ index, kind: 'probe', interactive: false }}
               >
-                {slide}
+                <div
+                  ref={(element) => {
+                    framesRef.current[index] = element;
+                  }}
+                >
+                  {slide}
+                </div>
               </SlideViewProvider>
             </StepStoreContext>
           </Suspense>

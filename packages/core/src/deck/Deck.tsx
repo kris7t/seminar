@@ -333,6 +333,12 @@ export function Deck({
     slideFade,
   });
   const { probed, probe } = useSlideProbe(slides);
+  useEffect(() => {
+    for (const [index, slide] of probed.entries()) {
+      if (thumbnails.getBackground(index) === undefined)
+        thumbnails.setBackground(index, slide.backgroundColor);
+    }
+  }, [probed, thumbnails]);
   // The current slide knows its steps even before it is probed, or after its
   // components gain steps, but not while it isn't shown, e.g., in the
   // overview.
@@ -995,6 +1001,8 @@ export function Deck({
                       cache={thumbnails}
                       slides={slides}
                       shownIndex={showOverview ? undefined : slideIndex}
+                      priorityIndex={showOverview ? overviewIndex : slideIndex}
+                      paused={swipe.moving}
                     />
                     {showOverview && (
                       <SlideOverview

@@ -2,10 +2,12 @@ import { Box } from '@mui/material';
 import {
   Component,
   Suspense,
+  use,
   useCallback,
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type JSX,
   type ReactNode,
 } from 'react';
@@ -124,33 +126,60 @@ export function ThumbnailRenderer({
   cache,
   slides,
   shownIndex,
+  priorityIndex = shownIndex ?? 0,
+  paused = false,
 }: {
   cache: ThumbnailCache;
   slides: readonly ReactNode[];
   shownIndex: number | undefined;
+  priorityIndex?: number;
+  paused?: boolean;
 }): ReactNode {
   const [index, setIndex] = useState<number>();
   const [owner, setOwner] = useState(cache);
+  const [priority, setPriority] = useState(priorityIndex);
   const [transitions] = useState(() => new SlideTransitions());
+  const presentedTransitions = use(SlideTransitionsContext);
+  const transitioning = useSyncExternalStore(
+    presentedTransitions.subscribe,
+    () => presentedTransitions.running,
+  );
+  const capturingShown = useSyncExternalStore(
+    cache.subscribe,
+    cache.isCapturingShown,
+  );
+  const visibility = useSyncExternalStore(
+    cache.subscribe,
+    cache.getVisibilityVersion,
+  );
+  const blocked = paused || transitioning || capturingShown;
   if (owner !== cache) {
     setOwner(cache);
     setIndex(undefined);
   }
-  if (index !== undefined && index === shownIndex) {
+  if (priority !== priorityIndex) {
+    setPriority(priorityIndex);
     setIndex(undefined);
   }
+  if (index !== undefined && (index === shownIndex || blocked)) {
+    setIndex(undefined);
+  }
+  if (index !== undefined && !cache.isVisible(index)) {
+    const next = cache.nextMissing(slides.length, priorityIndex);
+    if (next !== undefined && cache.isVisible(next)) setIndex(undefined);
+  }
   useEffect(() => {
-    if (index !== undefined) {
+    if (index !== undefined || blocked) {
       return undefined;
     }
-    const next = cache.nextMissing(slides.length);
+    const next = cache.nextMissing(slides.length, priorityIndex);
     return next === undefined
       ? undefined
       : whenIdle(() => {
           // A slide may have been shown while this idle task was waiting.
-          setIndex(cache.nextMissing(slides.length));
+          setIndex(cache.nextMissing(slides.length, priorityIndex));
         });
-  }, [cache, slides.length, index]);
+  }, [cache, slides.length, index, priorityIndex, blocked, visibility]);
   const onDone = useCallback(() => {
     setIndex(undefined);
   }, []);
