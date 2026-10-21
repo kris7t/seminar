@@ -23,6 +23,12 @@ export interface SlideStateOptions {
    * if the component mounts later, e.g., when a tab is selected.
    */
   key?: string | undefined;
+  /**
+   * Shares internal state, e.g., for mirroring, without a state marker or
+   * reset button on the slide. Transient values aren't marked as changed
+   * and are kept when the slide or deck is reset. Defaults to `false`.
+   */
+  transient?: boolean | undefined;
 }
 
 /** Scope of state outside of the views of a deck. */
@@ -40,7 +46,7 @@ const DETACHED_SCOPE = new StateScope('detached');
  */
 export function useSlideState<T>(
   initial: T | (() => T),
-  { key }: SlideStateOptions = {},
+  { key, transient = false }: SlideStateOptions = {},
 ): [T, Dispatch<SetStateAction<T>>] {
   const store = use(SlideStateContext);
   const { index: viewIndex, stateIndex } = useSlideView();
@@ -54,8 +60,8 @@ export function useSlideState<T>(
       : `${scope.path}/${key}`;
   const [initialValue] = useState(initial);
   const getValue = useCallback(
-    () => store.getOrInit(index, stateKey, () => initialValue) as T,
-    [store, index, stateKey, initialValue],
+    () => store.getOrInit(index, stateKey, () => initialValue, transient) as T,
+    [store, index, stateKey, initialValue, transient],
   );
   const subscribe = useCallback(
     (listener: () => void) => store.subscribe(index, stateKey, listener),
@@ -79,9 +85,9 @@ export function useSlideState<T>(
 
 /**
  * Returns a function that resets the state of the enclosing slide, e.g., for
- * a reset button, so that every {@link useSlideState} of the slide starts
- * over from its initial value, and the slide is no longer marked as changed.
- * The steps of the slide are kept.
+ * a reset button, so that every non-transient {@link useSlideState} of the
+ * slide starts over from its initial value, and the slide is no longer
+ * marked as changed. Transient values and the steps of the slide are kept.
  */
 export function useResetSlideState(): () => void {
   const store = use(SlideStateContext);

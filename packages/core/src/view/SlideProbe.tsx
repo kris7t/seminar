@@ -23,8 +23,8 @@ export interface ProbedSlide {
   /** Whether the slide has steps. */
   steps: boolean;
   /**
-   * Whether the slide has state that it keeps when it is left, e.g., from
-   * `useSlideState`.
+   * Whether the slide has non-transient state that it keeps when it is left,
+   * e.g., from `useSlideState`.
    */
   state: boolean;
   /** Background color of the master, if it supplies one. */

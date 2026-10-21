@@ -42,25 +42,25 @@ export interface DeckState {
    */
   hasSteps: readonly boolean[];
   /**
-   * Whether each slide has state that it keeps when it is left, e.g., from
-   * `useSlideState`, which is found like `hasSteps`.
+   * Whether each slide has non-transient state that it keeps when it is left,
+   * e.g., from `useSlideState`, which is found like `hasSteps`.
    */
   hasState: readonly boolean[];
-  /** Whether the state of each slide was changed since it was reset. */
+  /** Whether the non-transient state of each slide was changed since its reset. */
   stateChanged: readonly boolean[];
   /**
-   * Resets the state of a slide, which recaps share, and goes to its first
-   * step.
+   * Resets the non-transient state of a slide, which recaps share, and goes
+   * to its first step.
    */
   resetSlide: (slideIndex: number) => void;
   /**
-   * Whether the state of the deck (see `useDeckState`) or of any slide was
-   * changed since it was reset.
+   * Whether the state of the deck (see `useDeckState`) or the non-transient
+   * state of any slide was changed since it was reset.
    */
   deckChanged: boolean;
   /**
-   * Resets the state of the deck and of every slide, and goes to the first
-   * step of the current slide.
+   * Resets the state of the deck and the non-transient state of every slide,
+   * and goes to the first step of the current slide.
    */
   resetDeck: () => void;
   /**

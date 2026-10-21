@@ -7,6 +7,11 @@ import {
 /** Key of the position in the steps of a slide. */
 const STEP_KEY = 'seminar:steps';
 
+interface StateValue {
+  value: unknown;
+  transient: boolean;
+}
+
 /**
  * State of the slides of a deck that is shared by the views of the slides,
  * e.g., by the slide shown to the audience and its thumbnail in the overview,
@@ -17,7 +22,7 @@ const STEP_KEY = 'seminar:steps';
  * media streams.
  */
 export class SlideStateStore {
-  readonly #values = new Map<string, unknown>();
+  readonly #values = new Map<string, StateValue>();
   readonly #listeners = new Map<string, Set<() => void>>();
   readonly #stepPositions = new Map<number, StepPosition>();
   readonly #changeListeners = new Set<() => void>();
@@ -42,7 +47,7 @@ export class SlideStateStore {
   }
 
   get(slideIndex: number, key: string): unknown {
-    return this.#values.get(this.#id(slideIndex, key));
+    return this.#values.get(this.#id(slideIndex, key))?.value;
   }
 
   /**
@@ -50,22 +55,34 @@ export class SlideStateStore {
    * Doesn't notify listeners, since nobody could have seen another value, so
    * that it may be called while rendering.
    */
-  getOrInit(slideIndex: number, key: string, initial: () => unknown): unknown {
+  getOrInit(
+    slideIndex: number,
+    key: string,
+    initial: () => unknown,
+    transient = false,
+  ): unknown {
     const id = this.#id(slideIndex, key);
-    if (!this.#values.has(id)) {
-      this.#values.set(id, initial());
+    let entry = this.#values.get(id);
+    if (entry === undefined) {
+      entry = { value: initial(), transient };
+      this.#values.set(id, entry);
     }
-    return this.#values.get(id);
+    return entry.value;
   }
 
   set(slideIndex: number, key: string, value: unknown): void {
     const id = this.#id(slideIndex, key);
-    if (this.#values.has(id) && Object.is(this.#values.get(id), value)) {
+    const previous = this.#values.get(id);
+    if (previous !== undefined && Object.is(previous.value, value)) {
       return;
     }
-    this.#values.set(id, value);
+    this.#values.set(id, { value, transient: previous?.transient ?? false });
     if (key !== STEP_KEY) this.#advanceGeneration(slideIndex);
-    if (key !== STEP_KEY && !this.#changed.has(slideIndex)) {
+    if (
+      key !== STEP_KEY &&
+      previous?.transient !== true &&
+      !this.#changed.has(slideIndex)
+    ) {
       this.#setChanged(new Set([...this.#changed, slideIndex]));
     }
     this.#notify(id);
@@ -85,17 +102,17 @@ export class SlideStateStore {
   }
 
   /**
-   * Whether the slide has state other than its position in its steps, e.g.,
-   * from `useSlideState`.
+   * Whether the slide has non-transient state other than its position in its
+   * steps, e.g., from `useSlideState`.
    */
   hasState(slideIndex: number): boolean {
     return this.#keysOf(slideIndex).length > 0;
   }
 
   /**
-   * The slides whose state other than their position in their steps was set
-   * since they were reset, rather than only initialized. The result is the
-   * same object until it changes.
+   * The slides whose non-transient state other than their position in their
+   * steps was set since they were reset, rather than only initialized. The
+   * result is the same object until it changes.
    */
   getChanged = (): ReadonlySet<number> => this.#changed;
 
@@ -108,8 +125,8 @@ export class SlideStateStore {
   };
 
   /**
-   * Removes the state of the slide other than its position in its steps, so
-   * that its views initialize it again.
+   * Removes the non-transient state of the slide other than its position in
+   * its steps, so that its views initialize it again.
    */
   reset(slideIndex: number): void {
     const ids = this.#keysOf(slideIndex);
@@ -128,11 +145,13 @@ export class SlideStateStore {
   }
 
   /**
-   * Removes the state of every slide other than its position in its steps.
+   * Removes the non-transient state of every slide, keeping step positions.
    */
   resetAll(): void {
     const steps = `\u0000${STEP_KEY}`;
-    const ids = [...this.#values.keys()].filter((id) => !id.endsWith(steps));
+    const ids = [...this.#values.keys()].filter(
+      (id) => !id.endsWith(steps) && this.#values.get(id)?.transient !== true,
+    );
     const slides = new Set(
       ids.map((id) => Number(id.slice(0, id.indexOf('\u0000')))),
     );
@@ -154,7 +173,7 @@ export class SlideStateStore {
    */
   move(indices: readonly (number | undefined)[]): void {
     const ids = new Set<string>();
-    const values = new Map<string, unknown>();
+    const values = new Map<string, StateValue>();
     for (const [id, value] of this.#values) {
       ids.add(id);
       const separator = id.indexOf('\u0000');
@@ -170,7 +189,7 @@ export class SlideStateStore {
       if (
         !id.endsWith(`\u0000${STEP_KEY}`) &&
         (this.#values.has(id) !== values.has(id) ||
-          !Object.is(this.#values.get(id), values.get(id)))
+          !Object.is(this.#values.get(id)?.value, values.get(id)?.value))
       )
         changed.add(Number(id.slice(0, id.indexOf('\u0000'))));
     }
@@ -196,7 +215,10 @@ export class SlideStateStore {
     const prefix = this.#id(slideIndex, '');
     const steps = this.#id(slideIndex, STEP_KEY);
     return [...this.#values.keys()].filter(
-      (id) => id.startsWith(prefix) && id !== steps,
+      (id) =>
+        id.startsWith(prefix) &&
+        id !== steps &&
+        this.#values.get(id)?.transient !== true,
     );
   }
 

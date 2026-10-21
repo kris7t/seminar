@@ -30,7 +30,8 @@ export function Counter() {
 
 Every view of the slide shows the same count, and it's kept when the
 presenter comes back to the slide, or shows it again in a recap.
-`useResetSlideState` resets every state of the slide to its initial value.
+`useResetSlideState` resets every non-transient state of the slide to its
+initial value.
 
 States are told apart by the order in which the components of the slide
 first render. Pass a `key`, e.g., `useSlideState(0, { key: 'count' })`, for
@@ -40,6 +41,19 @@ several times, or that mount after the slide.
 
 The state can be any value, including objects that only exist while the deck
 runs, like a media stream that one view creates for the others.
+
+For internal values used only to mirror a component between views, pass
+`transient: true`:
+
+```tsx
+const [mirroredValue, setMirroredValue] = useSlideState('', {
+  transient: true,
+});
+```
+
+Transient state is shared and kept across visits like other slide state, but
+doesn't add a state marker or reset button to the slide. Updating it doesn't
+mark the slide or deck as changed. Slide and deck resets leave it alone.
 
 ## Deck state
 
@@ -62,7 +76,8 @@ The state is `undefined` until it is set. There is no initial value, since
 the slides that share the state could give different ones. Setting it to
 `undefined` resets it.
 
-Reset deck in the menu resets the state of the deck and of every slide.
+Reset deck in the menu resets the state of the deck and the non-transient
+state of every slide.
 
 ## Views
 

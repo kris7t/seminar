@@ -20,8 +20,16 @@ import { useResetSlideState, useSlideState } from './useSlideState.ts';
 import { SlideStateContext } from './SlideStateContext.ts';
 import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
 
-function Counter({ name, stateKey }: { name: string; stateKey?: string }) {
-  const [count, setCount] = useSlideState(0, { key: stateKey });
+function Counter({
+  name,
+  stateKey,
+  transient = false,
+}: {
+  name: string;
+  stateKey?: string;
+  transient?: boolean;
+}) {
+  const [count, setCount] = useSlideState(0, { key: stateKey, transient });
   return (
     <button
       type="button"
@@ -37,6 +45,82 @@ function Counter({ name, stateKey }: { name: string; stateKey?: string }) {
 const overview = () => screen.getByRole('region', { name: 'Slide overview' });
 
 describe('SlideStateStore', () => {
+  it('notifies transient state changes without marking the slide, while advancing its generation', () => {
+    const store = new SlideStateStore();
+    const changed = vi.fn();
+    const listener = vi.fn();
+    store.subscribeChanged(changed);
+    store.subscribe(0, 'mirror', listener);
+    store.getOrInit(0, 'mirror', () => 0, true);
+    expect(store.hasState(0)).toBe(false);
+    store.set(0, 'mirror', 1);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(changed).not.toHaveBeenCalled();
+    expect(store.getChanged().size).toBe(0);
+    expect(store.getGeneration(0)).toBe(1);
+    store.set(0, 'mirror', 1);
+    store.reset(0);
+    store.resetAll();
+    expect(store.get(0, 'mirror')).toBe(1);
+    expect(store.getGeneration(0)).toBe(1);
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  it('resets regular state while retaining transient values and step positions', () => {
+    const store = new SlideStateStore();
+    store.getOrInit(0, 'mirror', () => 0, true);
+    store.getOrInit(1, 'mirror', () => 0, true);
+    store.set(0, 'mirror', 1);
+    store.set(1, 'mirror', 2);
+    store.set(0, 'answer', 3);
+    store.set(1, 'answer', 4);
+    store.stepPosition(0).set({ path: [1], toEnd: false });
+    expect(store.hasState(0)).toBe(true);
+    store.reset(0);
+    expect(store.get(0, 'answer')).toBeUndefined();
+    expect(store.get(0, 'mirror')).toBe(1);
+    expect(store.hasState(0)).toBe(false);
+    expect([...store.getChanged()]).toEqual([1]);
+    store.resetAll();
+    expect(store.get(1, 'answer')).toBeUndefined();
+    expect(store.get(1, 'mirror')).toBe(2);
+    expect(store.hasState(1)).toBe(false);
+    expect(store.getChanged().size).toBe(0);
+    expect(store.stepPosition(0).get().path).toEqual([1]);
+  });
+
+  it('moves transient state with its slide and removes its metadata with removed slides', () => {
+    const store = new SlideStateStore();
+    store.getOrInit(0, 'mirror', () => 'removed', true);
+    store.getOrInit(1, 'mirror', () => 'moved', true);
+    store.move([undefined, 2]);
+    expect(store.has(0, 'mirror')).toBe(false);
+    expect(store.has(1, 'mirror')).toBe(false);
+    expect(store.get(2, 'mirror')).toBe('moved');
+    expect(store.hasState(2)).toBe(false);
+    expect(store.getGeneration(2)).toBe(1);
+    store.resetAll();
+    expect(store.get(2, 'mirror')).toBe('moved');
+    store.getOrInit(0, 'mirror', () => 'regular');
+    expect(store.hasState(0)).toBe(true);
+    store.set(0, 'mirror', 'changed');
+    expect([...store.getChanged()]).toEqual([0]);
+  });
+
+  it('preserves transient metadata when equal values move without advancing generations', () => {
+    const store = new SlideStateStore();
+    store.getOrInit(0, 'value', () => 1, true);
+    store.getOrInit(1, 'value', () => 1);
+    store.move([1, 0]);
+    expect(store.getGeneration(0)).toBe(0);
+    expect(store.getGeneration(1)).toBe(0);
+    expect(store.hasState(0)).toBe(true);
+    expect(store.hasState(1)).toBe(false);
+    store.resetAll();
+    expect(store.has(0, 'value')).toBe(false);
+    expect(store.get(1, 'value')).toBe(1);
+  });
+
   it('tracks generations per slide without counting initialization or steps', () => {
     const store = new SlideStateStore();
     expect(store.getGeneration(0)).toBe(0);
@@ -157,6 +241,59 @@ describe('useSlideState', () => {
     vi.restoreAllMocks();
   });
 
+  it('keeps transient values without state markers or per-slide reset buttons', async () => {
+    const user = userEvent.setup();
+    function StateFlags() {
+      const { hasState, stateChanged, deckChanged } = useDeck();
+      return (
+        <output data-testid="flags">
+          {JSON.stringify([hasState[0], stateChanged[0], deckChanged])}
+        </output>
+      );
+    }
+    render(
+      <Deck
+        defaultMouseNavigation={false}
+        defaultShowToc
+        toc={[{ slide: 0 }, { slide: 1 }]}
+      >
+        <Slide title="First">
+          <Counter name="Mirror" transient />
+          <StateFlags />
+        </Slide>
+        <Slide title="Second" />
+      </Deck>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Mirror: 0' }));
+    expect(screen.getByTestId('flags').textContent).toBe('[false,false,false]');
+    const nav = within(
+      screen.getByRole('navigation', { name: 'Table of contents' }),
+    );
+    expect(nav.queryByRole('img', { name: 'Keeps your changes' })).toBeNull();
+    expect(nav.queryByRole('button', { name: 'Reset slide' })).toBeNull();
+    await user.pointer({
+      keys: '[MouseRight]',
+      target: screen.getByRole('heading', { name: 'First' }),
+    });
+    const menu = within(await screen.findByRole('menu'));
+    expect(
+      menu
+        .getByRole('menuitem', { name: 'Reset slide' })
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
+    expect(
+      menu
+        .getByRole('menuitem', { name: 'Reset deck' })
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
+    await user.keyboard('{Escape}{PageDown}{PageUp}');
+    expect(screen.getByRole('button', { name: 'Mirror: 1' })).toBeDefined();
+    await user.keyboard('o');
+    expect(
+      within(overview()).getByRole('button', { name: 'Slide 1: First' }),
+    ).toBeDefined();
+  });
+
   it('lets slides reset their own state', async () => {
     const user = userEvent.setup();
     function ResetButton() {
@@ -175,6 +312,7 @@ describe('useSlideState', () => {
       <Deck>
         <Slide title="First">
           <Counter name="A" />
+          <Counter name="Mirror" transient />
           <ResetButton />
           <Changed />
           <Step>Later</Step>
@@ -182,10 +320,12 @@ describe('useSlideState', () => {
       </Deck>,
     );
     await user.click(screen.getByRole('button', { name: 'A: 0' }));
+    await user.click(screen.getByRole('button', { name: 'Mirror: 0' }));
     await user.keyboard('{ArrowRight}');
     expect(screen.getByText('Changed')).toBeDefined();
     await user.click(screen.getByRole('button', { name: 'Reset' }));
     expect(screen.getByRole('button', { name: 'A: 0' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Mirror: 1' })).toBeDefined();
     expect(screen.getByText('Unchanged')).toBeDefined();
     // The steps are kept.
     expect(window.location.hash).toBe('#slide=1&step=1');
@@ -221,35 +361,38 @@ describe('useSlideState', () => {
     expect(window.location.hash).toBe('#slide=1');
   });
 
-  it('shares state between the views of a slide', async () => {
-    const user = userEvent.setup();
-    render(
-      <SlideStateContext value={new SlideStateStore()}>
-        <div data-testid="presented">
-          <SlideViewProvider
-            view={{ index: 0, kind: 'audience', interactive: true }}
-          >
-            <Counter name="a" />
-            <Counter name="b" />
-          </SlideViewProvider>
-        </div>
-        <div data-testid="mirror">
-          <SlideViewProvider
-            view={{ index: 0, kind: 'preview', interactive: false }}
-          >
-            <Counter name="a" />
-            <Counter name="b" />
-          </SlideViewProvider>
-        </div>
-      </SlideStateContext>,
-    );
-    const presented = within(screen.getByTestId('presented'));
-    await user.click(presented.getByText('b: 0'));
-    await user.click(presented.getByText('b: 1'));
-    const mirror = within(screen.getByTestId('mirror'));
-    expect(mirror.getByText('a: 0')).toBeDefined();
-    expect(mirror.getByText('b: 2')).toBeDefined();
-  });
+  it.each([false, true])(
+    'shares state between the views of a slide (transient: %s)',
+    async (transient) => {
+      const user = userEvent.setup();
+      render(
+        <SlideStateContext value={new SlideStateStore()}>
+          <div data-testid="presented">
+            <SlideViewProvider
+              view={{ index: 0, kind: 'audience', interactive: true }}
+            >
+              <Counter name="a" transient={transient} />
+              <Counter name="b" transient={transient} />
+            </SlideViewProvider>
+          </div>
+          <div data-testid="mirror">
+            <SlideViewProvider
+              view={{ index: 0, kind: 'preview', interactive: false }}
+            >
+              <Counter name="a" transient={transient} />
+              <Counter name="b" transient={transient} />
+            </SlideViewProvider>
+          </div>
+        </SlideStateContext>,
+      );
+      const presented = within(screen.getByTestId('presented'));
+      await user.click(presented.getByText('b: 0'));
+      await user.click(presented.getByText('b: 1'));
+      const mirror = within(screen.getByTestId('mirror'));
+      expect(mirror.getByText('a: 0')).toBeDefined();
+      expect(mirror.getByText('b: 2')).toBeDefined();
+    },
+  );
 
   it('keeps state when going to another slide and back', async () => {
     const user = userEvent.setup();
