@@ -15,9 +15,10 @@ Seminar needs Node.js 24 or newer.
 
 ```sh
 npm install
-npm run dev     # serve the example deck with hot reloading
-npm run build   # build packages/example/dist/index.html
-npm run check   # format check, build, lint, and test
+npm run dev      # serve the example deck with hot reloading
+npm run build    # build the example deck and documentation site
+npm run check    # format check, build, lint, and test
+npm run docs:dev # serve the documentation site with hot reloading
 ```
 
 The example deck in [`packages/example/index.deck.mdx`](packages/example/index.deck.mdx)
@@ -64,16 +65,20 @@ braces name slides and elements. Decks can also show slides again in recaps,
 include slides of other decks, mark spare slides for questions, and switch the
 interface language.
 
-See the [documentation](docs/README.md) for the syntax:
+See the [user guide](packages/docs/docs/guide/index.md) for setup, syntax,
+and presentation controls:
 
-- [Decks and slides](docs/core/decks.md)
-- [Content](docs/core/content.md): images, math, code, notes, and components
-- [Steps](docs/core/steps.md)
-- [Recaps and includes](docs/core/reuse.md)
-- [Elements](docs/elements/README.md): callouts and columns
-- [Math](docs/mathjax/README.md) with MathJax
-- [Highlighting code](docs/shiki/README.md) with Shiki
-- [Authoring components](docs/authoring/README.md), plugins, and themes
+- [Vite setup](packages/docs/docs/guide/vite.md)
+- [Editing and live preview](packages/docs/docs/guide/editing.md)
+- [Presenting](packages/docs/docs/guide/presenting.md): controls and presenter view
+- [Decks and slides](packages/docs/docs/guide/core/decks.md)
+- [Content](packages/docs/docs/guide/core/content.md): images, math, code, notes, and components
+- [Steps](packages/docs/docs/guide/core/steps.md)
+- [Recaps and includes](packages/docs/docs/guide/core/reuse.md)
+- [Elements](packages/docs/docs/guide/elements/index.md): callouts and columns
+- [Math](packages/docs/docs/guide/mathjax/index.md) with MathJax
+- [Highlighting code](packages/docs/docs/guide/shiki/index.md) with Shiki
+- [Developers](packages/docs/docs/developer/index.md): components, plugins, and themes
 
 Decks can also be written in JSX with `Deck` and `Slide` from `@seminar/core`;
 see [`ExampleDeck.tsx`](packages/example/src/ExampleDeck.tsx).
@@ -138,6 +143,7 @@ and selection of text fields, selected text, and the ripples of buttons.
 | [`@seminar/rollup-plugin`](packages/rollup-plugin)   | Rollup and Vite plugin for `.deck.mdx` files          |
 | [`@seminar/vite-plugin`](packages/vite-plugin)       | Vite plugin with HTML pages and self-contained builds |
 | [`@seminar/theme-default`](packages/theme-default)   | Default theme with the Roboto font                    |
+| [`@seminar/docs`](packages/docs)                     | Documentation site                                    |
 | [`@seminar/example`](packages/example)               | Example deck                                          |
 
 To use Seminar in a Vite project, add the plugin along with the React plugin:

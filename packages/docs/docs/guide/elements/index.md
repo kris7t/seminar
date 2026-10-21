@@ -1,7 +1,11 @@
+---
+sidebar_position: 1
+---
+
 # Using elements
 
 `@seminar/elements` adds presentation elements, like callouts and columns, to
-decks. In Markdown, they're written as [directives](../README.md#syntax-at-a-glance),
+decks. In Markdown, they're written as [directives](../index.md#syntax-at-a-glance),
 e.g., `:::column`.
 
 Enable the package as a plugin of Seminar, e.g., in `vite.config.ts`:

@@ -1,3 +1,7 @@
+---
+sidebar_position: 5
+---
+
 # Plugins
 
 A plugin extends how decks are compiled. It can:

@@ -1,3 +1,7 @@
+---
+sidebar_position: 1
+---
+
 # Highlighting code
 
 `@seminar/plugin-shiki` highlights code blocks with

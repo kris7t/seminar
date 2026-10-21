@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "types": [
+      "node",
+      "@docusaurus/module-type-aliases",
+      "@docusaurus/theme-classic"
+    ],
+    "noEmit": true,
+    "isolatedDeclarations": false,
+    "tsBuildInfoFile": "../../node_modules/.cache/tsc/docs.tsbuildinfo"
+  },
+  "include": ["*.ts", "src"]
+}

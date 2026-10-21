@@ -1,3 +1,7 @@
+---
+sidebar_position: 2
+---
+
 # Dynamic math
 
 `DynamicFormula` typesets math in the browser. Use it in components for math
@@ -17,7 +21,7 @@ math:
 ```
 
 Dynamic formulas use the font, the macros, and the `tags` of the deck, see
-[Options](README.md#options).
+[Options](index.md#options).
 
 Only decks that enable `dynamic` contain MathJax. The formula is empty until
 its first result is ready. When `tex` changes, the previous formula stays
@@ -26,7 +30,7 @@ until the new one is ready.
 Changes of the slide wait up to a second for dynamic formulas to render, so
 the slide doesn't shift when they appear. So do updates made with
 `useSlideUpdate`, e.g., to show a formula when a button is clicked. See
-[Updating the slide](../authoring/components.md#updating-the-slide).
+[Updating the slide](../../developer/components.md#updating-the-slide).
 
 In other decks, `DynamicFormula` shows its TeX in red.
 

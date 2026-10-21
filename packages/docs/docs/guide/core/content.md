@@ -1,3 +1,7 @@
+---
+sidebar_position: 2
+---
+
 # Content
 
 Slides hold ordinary Markdown: paragraphs, lists, emphasis, links, code, and
@@ -55,7 +59,7 @@ attributes the same way.
 ## Math
 
 Math is written in TeX between dollar signs, like `$e^{i\pi}$`. It's
-typeset by a plugin, like [`@seminar/plugin-mathjax`](../mathjax/README.md).
+typeset by a plugin, like [`@seminar/plugin-mathjax`](../mathjax/index.md).
 Without one, dollar signs are ordinary text.
 
 ## Code
@@ -70,7 +74,7 @@ export const answer = 42;
 ````
 
 They're shown as plain text, unless a plugin highlights them, like
-[`@seminar/plugin-shiki`](../shiki/README.md).
+[`@seminar/plugin-shiki`](../shiki/index.md).
 
 ## Presenter notes
 

@@ -1,0 +1,59 @@
+import type { Config } from '@docusaurus/types';
+import type { Options, ThemeConfig } from '@docusaurus/preset-classic';
+
+const config: Config = {
+  title: 'Seminar',
+  tagline: 'Scientific talks and lectures as Markdown presentations',
+  url: 'https://seminar.run',
+  baseUrl: '/',
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
+  markdown: {
+    format: 'detect',
+    hooks: { onBrokenMarkdownLinks: 'throw' },
+  },
+  presets: [
+    [
+      'classic',
+      {
+        docs: {
+          routeBasePath: '/',
+          sidebarPath: './sidebars.ts',
+          editUrl: 'https://github.com/kris7t/seminar/edit/main/packages/docs/',
+        },
+        blog: false,
+        theme: { customCss: './src/css/custom.css' },
+      } satisfies Options,
+    ],
+  ],
+  themeConfig: {
+    colorMode: { respectPrefersColorScheme: true },
+    navbar: {
+      title: 'Seminar',
+      items: [
+        {
+          type: 'docSidebar',
+          sidebarId: 'userGuide',
+          label: 'User guide',
+          position: 'left',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'developerGuide',
+          label: 'Developers',
+          position: 'left',
+        },
+        {
+          href: 'https://github.com/kris7t/seminar',
+          label: 'GitHub',
+          position: 'right',
+        },
+      ],
+    },
+    prism: {
+      additionalLanguages: ['bash', 'json', 'tsx'],
+    },
+  } satisfies ThemeConfig,
+};
+
+export default config;

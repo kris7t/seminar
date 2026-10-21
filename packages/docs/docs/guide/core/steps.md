@@ -1,3 +1,7 @@
+---
+sidebar_position: 3
+---
+
 # Steps
 
 Steps reveal the content of a slide bit by bit. Going forward shows the next

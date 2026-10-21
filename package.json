@@ -23,7 +23,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run format:check && npm run build && npm run lint && npm run test",
-    "dev": "npm run dev --workspace @seminar/example"
+    "dev": "npm run dev --workspace @seminar/example",
+    "docs:dev": "npm run dev --workspace @seminar/docs --",
+    "docs:build": "npm run build --workspace @seminar/docs --",
+    "docs:preview": "npm run preview --workspace @seminar/docs --"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^5.26.7",

@@ -1,3 +1,7 @@
+---
+sidebar_position: 2
+---
+
 # Components on slides
 
 ## Slide state

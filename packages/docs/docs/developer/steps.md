@@ -1,3 +1,7 @@
+---
+sidebar_position: 3
+---
+
 # Steps in components
 
 ## Wrapping content in a step

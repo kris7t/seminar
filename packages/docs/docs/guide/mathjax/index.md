@@ -1,3 +1,7 @@
+---
+sidebar_position: 1
+---
+
 # Math
 
 `@seminar/plugin-mathjax` typesets math with [MathJax](https://www.mathjax.org).

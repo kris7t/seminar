@@ -1,3 +1,7 @@
+---
+sidebar_position: 2
+---
+
 # Callouts
 
 A callout is a speech bubble pointing at something on the slide, e.g., to

@@ -1,3 +1,7 @@
+---
+sidebar_position: 6
+---
+
 # Themes
 
 A theme is a module whose default export is an MUI theme made with
@@ -224,7 +228,7 @@ Cuts and fades both wait until the changed slide is ready, see
 
 Masters can set `fade`, `fadeIn`, `fadeOut`, `fadeBefore`, `fadeAfter`, and
 `cut`, like slides (see
-[Fades between slides](../core/decks.md#fades-between-slides)). The
+[Fades between slides](../guide/core/decks.md#fades-between-slides)). The
 attributes of a slide take precedence.
 
 ```ts

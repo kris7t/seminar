@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "./packages/docs" },
     { "path": "./packages/core" },
     { "path": "./packages/elements" },
     { "path": "./packages/mdx" },

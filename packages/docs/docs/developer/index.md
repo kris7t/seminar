@@ -1,9 +1,17 @@
-# Authoring components
+---
+sidebar_position: 1
+sidebar_label: Overview
+---
 
-Decks can use any React component, but components that know about slides
-work better: they keep their state when the slide is shown again, reveal
-themselves in steps, point at other elements, and follow the theme. These
-pages describe the API of `@seminar/core` for writing them.
+# Developers
+
+Build React components, plugins, and themes that extend Seminar. For writing
+and presenting decks with existing components, start with the
+[User guide](../guide/index.md).
+
+Decks can use any React component. The APIs in `@seminar/core` let components
+keep state between visits, reveal content in steps, point at other elements,
+and follow the theme.
 
 Components reach decks in three ways:
 
@@ -13,15 +21,14 @@ Components reach decks in three ways:
   `:::column` to `Column`.
 - A theme uses them as [masters](themes.md#masters), which lay out slides.
 
-The pages:
+## Features
 
-1. [Components on slides](components.md): slide state, views, shared resources
-   and cached work, input, sizes, and naming and measuring elements.
-2. [Steps in components](steps.md): wrapping content in steps, and reacting
-   to the steps of the slide.
-3. [Directives](directives.md): making components available as directives.
-4. [Plugins](plugins.md): configs, options, and compiler plugins.
-5. [Themes](themes.md): masters, styling components, and step behaviors.
+- [Components on slides](components.md): share state and handle user input.
+- [Steps in components](steps.md): reveal and animate content as the talk
+  progresses.
+- [Directives](directives.md): use your components in Markdown.
+- [Plugins](plugins.md): bundle components and extend the deck compiler.
+- [Themes](themes.md): customize slide layouts, styling, and transitions.
 
 ## Guidelines
 

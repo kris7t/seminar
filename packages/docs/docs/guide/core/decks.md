@@ -1,3 +1,7 @@
+---
+sidebar_position: 1
+---
+
 # Decks and slides
 
 A deck is an MDX file whose name ends in `.deck.mdx`. Each deck becomes a
@@ -37,7 +41,7 @@ optional.
 | `depth`           | Deepest heading level that starts a slide, see [Headings](#headings-and-slides) |
 | `mouseNavigation` | `false` starts with text selection (S) instead of clicks changing steps         |
 | `mirrorPointer`   | `true` starts the presenter view showing the mouse pointer to the audience      |
-| `math`            | Options of math, see [Math](../mathjax/README.md#options)                       |
+| `math`            | Options of math, see [Math](../mathjax/index.md#options)                        |
 
 ## Headings and slides
 
@@ -182,4 +186,4 @@ uiLanguages: [de, fr, { pt: ./locales/pt.json }]
 ```
 
 The files are like those in
-[`packages/core/src/i18n/locales`](../../packages/core/src/i18n/locales).
+[`packages/core/src/i18n/locales`](https://github.com/kris7t/seminar/tree/main/packages/core/src/i18n/locales).

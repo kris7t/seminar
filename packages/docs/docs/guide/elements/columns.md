@@ -1,3 +1,7 @@
+---
+sidebar_position: 3
+---
+
 # Columns
 
 Consecutive `:::column` containers are laid out side by side:

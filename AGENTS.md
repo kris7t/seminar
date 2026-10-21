@@ -14,6 +14,7 @@ React presentations. See `README.md` for the features and the syntax of decks.
 - `elements`, `plugin-mathjax`, `plugin-shiki`, `theme-default`: components,
   plugins, and the default theme.
 - `example`: the example deck, also used for trying out changes by hand.
+- `docs`: the Docusaurus site, with guides in `packages/docs/docs/`.
 
 Workspace packages resolve to their TypeScript sources through the
 `@seminar/source` export condition, so most changes need no build.
@@ -21,6 +22,8 @@ Workspace packages resolve to their TypeScript sources through the
 ## Commands
 
 - `npm run dev`: serve the example deck.
+- `npm run docs:dev`: serve the documentation site.
+- `npm run docs:build`, `npm run docs:preview`: build and preview the docs.
 - `npm test`, or `npx vitest run <path>` for some of the tests.
 - `npm run lint`, `npm run format`, `npm run typecheck`.
 - `npm run check` runs everything before a commit.

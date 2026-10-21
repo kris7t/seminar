@@ -1,0 +1,28 @@
+{
+  "name": "@seminar/docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Documentation website for Seminar",
+  "homepage": "https://seminar.run",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "docusaurus start",
+    "build": "docusaurus build --out-dir dist",
+    "preview": "docusaurus serve --dir dist",
+    "clean": "docusaurus clear"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@mdx-js/react": "^3.1.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/types": "3.10.2"
+  }
+}

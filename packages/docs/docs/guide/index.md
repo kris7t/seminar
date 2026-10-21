@@ -1,11 +1,25 @@
-# Seminar documentation
+---
+sidebar_position: 1
+sidebar_label: Overview
+---
 
-These pages describe how to write Seminar decks in MDX: Markdown with
-directives, attributes, and React components, and how to write components,
-plugins, and themes for them. Read them in order the first time, and come
-back to look things up.
+# User guide
+
+Write and present Seminar decks in MDX: Markdown with directives,
+attributes, and React components. Set up a project, preview it as you edit,
+and present it with notes, slide previews, and navigation controls.
+
+To build your own components, plugins, or themes, see
+[Developers](../developer/index.md).
 
 > Seminar is a proof of concept, so the syntax may still change.
+
+## Getting started
+
+1. [Vite setup](vite.md): run the example, configure plugins, and build a
+   presentation to share.
+2. [Editing and live preview](editing.md): work in your editor or with a
+   coding agent while the deck updates in the browser.
 
 ## Core
 
@@ -20,38 +34,29 @@ What every deck can use, provided by `@seminar/core` and `@seminar/mdx`:
 4. [Recaps and includes](core/reuse.md): showing a slide again, and reusing
    slides of other decks.
 
+## Presenting
+
+[Presentation controls](presenting.md) cover navigation with the keyboard,
+mouse, and touch; the overview and table of contents; presenter notes,
+previews, timers, and pointer mirroring.
+
 ## Elements
 
 Presentation elements from the `@seminar/elements` plugin:
 
-1. [Using elements](elements/README.md): enabling the plugin.
+1. [Using elements](elements/index.md): enabling the plugin.
 2. [Callouts](elements/callouts.md): speech bubbles pointing at text, images,
    or other elements.
 3. [Columns](elements/columns.md): content side by side.
 
 ## Plugins
 
-1. [Math](mathjax/README.md) with `@seminar/plugin-mathjax`: writing math,
+1. [Math](mathjax/index.md) with `@seminar/plugin-mathjax`: writing math,
    fonts, and macros.
    - [Dynamic math](mathjax/dynamic.md): math that changes while you
      present.
-2. [Highlighting code](shiki/README.md) with `@seminar/plugin-shiki`: themes,
+2. [Highlighting code](shiki/index.md) with `@seminar/plugin-shiki`: themes,
    and other languages.
-
-## Authoring
-
-Writing components, plugins, and themes for decks:
-
-1. [Authoring components](authoring/README.md): an overview and guidelines.
-2. [Components on slides](authoring/components.md): slide state, views,
-   input, and naming and measuring elements.
-3. [Steps in components](authoring/steps.md): `Step`, default placement, and
-   steppers.
-4. [Directives](authoring/directives.md): making components available as
-   directives.
-5. [Plugins](authoring/plugins.md): configs, options, and compiler plugins.
-6. [Themes](authoring/themes.md): masters, theming components, and step
-   behaviors.
 
 ## Syntax at a glance
 
