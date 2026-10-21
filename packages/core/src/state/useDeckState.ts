@@ -7,7 +7,7 @@ import {
 } from 'react';
 
 import { DeckStateContext } from './DeckStateContext.ts';
-import { DeckStateUsageContext } from './DeckStateUsageContext.ts';
+import { DeckStateUsageContext } from './StateUsageContext.ts';
 import { SlideViewContext } from '../view/SlideViewContext.ts';
 
 /**
@@ -25,7 +25,7 @@ export function useDeckState<T>(
   const store = use(DeckStateContext);
   const recordUse = use(DeckStateUsageContext);
   const view = use(SlideViewContext);
-  recordUse?.(view.index);
+  recordUse?.(view.index, key);
   const getValue = useCallback(
     () => store.get(key) as T | undefined,
     [store, key],

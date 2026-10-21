@@ -1,7 +1,5 @@
 import { use, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
-import { DeckStateContext } from '../state/DeckStateContext.ts';
-import { SlideStateContext } from '../state/SlideStateContext.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { getInteraction } from '../interaction/interaction.ts';
 import type { SlideViewKind } from '../view/SlideViewContext.ts';
@@ -11,7 +9,6 @@ import { whenIdle } from './whenIdle.ts';
 interface ThumbnailCaptureProps {
   cache: ThumbnailCache;
   index: number;
-  stateIndex: number;
   kind: SlideViewKind;
   frame: HTMLElement | null;
   active: boolean;
@@ -22,21 +19,17 @@ interface ThumbnailCaptureProps {
 export function ThumbnailCapture({
   cache,
   index,
-  stateIndex,
   kind,
   frame,
   active,
   onCaptured,
 }: ThumbnailCaptureProps): null {
-  const deck = use(DeckStateContext);
-  const slide = use(SlideStateContext);
   const steps = use(StepStoreContext);
   const getState = useCallback(
     (): ThumbnailState => ({
-      generation: `${cache.usesDeckState(index) ? String(deck.getGeneration()) : 'independent'}/${String(slide.getGeneration(stateIndex))}`,
       path: `${steps.getPath().join('.')}/${kind}`,
     }),
-    [cache, index, deck, slide, stateIndex, steps, kind],
+    [steps, kind],
   );
   const activeRef = useRef(active);
   useLayoutEffect(() => {
@@ -44,18 +37,33 @@ export function ThumbnailCapture({
   }, [active]);
   useEffect(() => {
     if (frame === null) return undefined;
-    cache.shown(index);
-    const controller = new AbortController();
+    const releaseShown = cache.shown(index);
     if (!active) {
-      void cache
-        .capture(index, frame, true, controller.signal, getState())
-        .then(() => {
-          if (!controller.signal.aborted) onCaptured();
+      let captureController: AbortController | undefined;
+      let cancel: (() => void) | undefined;
+      const capture = () => {
+        captureController?.abort();
+        captureController = new AbortController();
+        const signal = captureController.signal;
+        void cache.capture(index, frame, true, signal, getState()).then(() => {
+          if (!signal.aborted) onCaptured();
         });
+      };
+      const unsubscribe = cache.subscribeInvalidation(index, () => {
+        captureController?.abort();
+        cancel?.();
+        // State notifications precede React's commit of the updated slide.
+        cancel = whenIdle(capture);
+      });
+      capture();
       return () => {
-        controller.abort();
+        captureController?.abort();
+        unsubscribe();
+        cancel?.();
+        releaseShown();
       };
     }
+    const controller = new AbortController();
     let cancel: (() => void) | undefined;
     let running = false;
     let dirty = false;
@@ -65,7 +73,7 @@ export function ThumbnailCapture({
     const schedule = (force = false) => {
       if (!activeRef.current || controller.signal.aborted) return;
       const next = getState();
-      if (next.generation !== state.generation || next.path !== state.path) {
+      if (next.path !== state.path) {
         captureController?.abort();
         state = next;
         reused = cache.restore(index, state);
@@ -118,8 +126,10 @@ export function ThumbnailCapture({
     });
     const unsubscribeSteps = steps.subscribe(() => {
       const next = getState();
-      if (next.generation !== state.generation || next.path !== state.path)
-        schedule();
+      if (next.path !== state.path) schedule();
+    });
+    const unsubscribeState = cache.subscribeInvalidation(index, () => {
+      schedule();
     });
     const events = [
       'input',
@@ -162,6 +172,8 @@ export function ThumbnailCapture({
       cancel?.();
       observer.disconnect();
       unsubscribeSteps();
+      unsubscribeState();
+      releaseShown();
       clearInterval(timer);
       for (const event of events)
         frame.removeEventListener(event, onEvent, true);

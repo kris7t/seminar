@@ -135,7 +135,21 @@ export function ThumbnailRenderer({
   priorityIndex?: number;
   paused?: boolean;
 }): ReactNode {
-  const [index, setIndex] = useState<number>();
+  const [job, setJob] = useState<{
+    index: number;
+    invalidation: symbol | undefined;
+  }>();
+  const index = job?.index;
+  const setIndex = useCallback(
+    (next: number | undefined) => {
+      setJob(
+        next === undefined
+          ? undefined
+          : { index: next, invalidation: cache.getInvalidation(next) },
+      );
+    },
+    [cache],
+  );
   const [owner, setOwner] = useState(cache);
   const [priority, setPriority] = useState(priorityIndex);
   const [transitions] = useState(() => new SlideTransitions());
@@ -152,6 +166,7 @@ export function ThumbnailRenderer({
     cache.subscribe,
     cache.getVisibilityVersion,
   );
+  const queue = useSyncExternalStore(cache.subscribe, cache.getQueueVersion);
   const blocked = paused || transitioning || capturingShown;
   if (owner !== cache) {
     setOwner(cache);
@@ -161,7 +176,12 @@ export function ThumbnailRenderer({
     setPriority(priorityIndex);
     setIndex(undefined);
   }
-  if (index !== undefined && (index === shownIndex || blocked)) {
+  if (
+    index !== undefined &&
+    (index === shownIndex ||
+      blocked ||
+      job?.invalidation !== cache.getInvalidation(index))
+  ) {
     setIndex(undefined);
   }
   if (index !== undefined && !cache.isVisible(index)) {
@@ -179,10 +199,19 @@ export function ThumbnailRenderer({
           // A slide may have been shown while this idle task was waiting.
           setIndex(cache.nextMissing(slides.length, priorityIndex));
         });
-  }, [cache, slides.length, index, priorityIndex, blocked, visibility]);
+  }, [
+    cache,
+    slides.length,
+    index,
+    priorityIndex,
+    blocked,
+    visibility,
+    queue,
+    setIndex,
+  ]);
   const onDone = useCallback(() => {
     setIndex(undefined);
-  }, []);
+  }, [setIndex]);
   const onSkip = useCallback(() => {
     if (index !== undefined) {
       cache.skip(index);

@@ -45,9 +45,11 @@ function Counter({
 const overview = () => screen.getByRole('region', { name: 'Slide overview' });
 
 describe('SlideStateStore', () => {
-  it('notifies transient state changes without marking the slide or advancing its generation', () => {
+  it('notifies transient state changes without marking the slide or invalidating snapshots', () => {
     const store = new SlideStateStore();
     const changed = vi.fn();
+    const invalidated = vi.fn();
+    store.subscribeState(invalidated);
     const listener = vi.fn();
     store.subscribeChanged(changed);
     store.subscribe(0, 'mirror', listener);
@@ -57,13 +59,12 @@ describe('SlideStateStore', () => {
     expect(listener).toHaveBeenCalledOnce();
     expect(changed).not.toHaveBeenCalled();
     expect(store.getChanged().size).toBe(0);
-    expect(store.getGeneration(0)).toBe(0);
     store.set(0, 'mirror', 1);
     store.reset(0);
     store.resetAll();
     expect(store.get(0, 'mirror')).toBe(1);
-    expect(store.getGeneration(0)).toBe(0);
     expect(listener).toHaveBeenCalledOnce();
+    expect(invalidated).not.toHaveBeenCalled();
   });
 
   it('resets regular state while retaining transient values and step positions', () => {
@@ -91,6 +92,8 @@ describe('SlideStateStore', () => {
 
   it('moves transient state with its slide and removes its metadata with removed slides', () => {
     const store = new SlideStateStore();
+    const invalidated = vi.fn();
+    store.subscribeState(invalidated);
     store.getOrInit(0, 'mirror', () => 'removed', true);
     store.getOrInit(1, 'mirror', () => 'moved', true);
     store.move([undefined, 2]);
@@ -98,7 +101,7 @@ describe('SlideStateStore', () => {
     expect(store.has(1, 'mirror')).toBe(false);
     expect(store.get(2, 'mirror')).toBe('moved');
     expect(store.hasState(2)).toBe(false);
-    expect(store.getGeneration(2)).toBe(0);
+    expect(invalidated).not.toHaveBeenCalled();
     store.resetAll();
     expect(store.get(2, 'mirror')).toBe('moved');
     store.getOrInit(0, 'mirror', () => 'regular');
@@ -107,13 +110,14 @@ describe('SlideStateStore', () => {
     expect([...store.getChanged()]).toEqual([0]);
   });
 
-  it('preserves transient metadata when equal values move without advancing generations', () => {
+  it('preserves transient metadata when equal values move without invalidating snapshots', () => {
     const store = new SlideStateStore();
+    const invalidated = vi.fn();
+    store.subscribeState(invalidated);
     store.getOrInit(0, 'value', () => 1, true);
     store.getOrInit(1, 'value', () => 1);
     store.move([1, 0]);
-    expect(store.getGeneration(0)).toBe(0);
-    expect(store.getGeneration(1)).toBe(0);
+    expect(invalidated).not.toHaveBeenCalled();
     expect(store.hasState(0)).toBe(true);
     expect(store.hasState(1)).toBe(false);
     store.resetAll();
@@ -121,42 +125,39 @@ describe('SlideStateStore', () => {
     expect(store.get(1, 'value')).toBe(1);
   });
 
-  it('tracks generations per slide without counting initialization or steps', () => {
+  it('reports changed slides without counting initialization, unchanged writes, or steps', () => {
     const store = new SlideStateStore();
-    expect(store.getGeneration(0)).toBe(0);
+    const listener = vi.fn();
+    const unsubscribe = store.subscribeState(listener);
     store.getOrInit(0, 'a', () => 1);
     store.stepPosition(0).set({ path: [1], toEnd: false });
-    expect(store.getGeneration(0)).toBe(0);
+    expect(listener).not.toHaveBeenCalled();
     store.set(0, 'a', 2);
     store.set(0, 'a', 2);
-    expect(store.getGeneration(0)).toBe(1);
-    expect(store.getGeneration(1)).toBe(0);
     store.set(0, 'a', 3);
-    expect(store.getGeneration(0)).toBe(2);
     store.reset(0);
-    expect(store.getGeneration(0)).toBe(3);
     store.reset(0);
-    expect(store.getGeneration(0)).toBe(3);
     store.getOrInit(0, 'a', () => 1);
     store.getOrInit(1, 'a', () => 1);
     store.resetAll();
-    expect(store.getGeneration(0)).toBe(4);
-    expect(store.getGeneration(1)).toBe(1);
     store.resetAll();
-    expect(store.getGeneration(0)).toBe(4);
+    expect(listener.mock.calls).toEqual([[[0]], [[0]], [[0]], [[0, 1]]]);
+    unsubscribe();
+    store.set(0, 'a', 4);
+    expect(listener).toHaveBeenCalledTimes(4);
   });
 
-  it('invalidates generations only where moving state changes values', () => {
+  it('reports only slides whose values change when moving state', () => {
     const store = new SlideStateStore();
     store.set(0, 'a', 'first');
     store.set(1, 'a', 'second');
+    const listener = vi.fn();
+    store.subscribeState(listener);
     store.move([0, 1]);
-    expect(store.getGeneration(0)).toBe(1);
-    expect(store.getGeneration(1)).toBe(1);
+    expect(listener).not.toHaveBeenCalled();
     store.move([undefined, 2]);
-    expect(store.getGeneration(0)).toBe(2);
-    expect(store.getGeneration(1)).toBe(2);
-    expect(store.getGeneration(2)).toBe(1);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener.mock.calls[0]?.[0]).toEqual([0, 1, 2]);
   });
 
   it('stores values by slide and key', () => {

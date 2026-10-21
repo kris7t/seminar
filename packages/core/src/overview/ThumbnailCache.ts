@@ -1,15 +1,11 @@
+import type { DeckStateStore } from '../state/DeckStateStore.ts';
+import type { SlideStateStore } from '../state/SlideStateStore.ts';
 import { captureThumbnail } from './captureThumbnail.ts';
 import { slideBackground } from '../view/slideBackground.ts';
 
-/** Small generation and step keys; no state values are retained. */
+/** A step path and view kind; no state values are retained. */
 export interface ThumbnailState {
-  generation: string;
   path: string;
-}
-
-interface Snapshots {
-  generation: string;
-  images: Map<string, string>;
 }
 
 /** Images of the slides, owned by a single version of a deck. */
@@ -17,10 +13,14 @@ export class ThumbnailCache {
   readonly #images = new Map<number, string>();
   readonly #backgrounds = new Map<number, string>();
   readonly #versions = new Map<number, number>();
-  readonly #snapshots = new Map<number, Snapshots>();
+  readonly #snapshots = new Map<number, Map<string, string>>();
   readonly #selected = new Map<number, ThumbnailState>();
-  readonly #deckStateUsers = new Set<number>();
-  readonly #shown = new Set<number>();
+  readonly #deckStateUsers = new Map<string, Set<number>>();
+  readonly #slideStateUsers = new Map<number, Set<number>>();
+  readonly #invalidations = new Map<number, symbol>();
+  readonly #invalidationListeners = new Map<number, Set<() => void>>();
+  #queueVersion = 0;
+  readonly #shown = new Map<number, number>();
   readonly #attempted = new Set<number>();
   readonly #listeners = new Set<() => void>();
   readonly #foreground = new Set<symbol>();
@@ -68,41 +68,82 @@ export class ThumbnailCache {
     return this.#visible.has(index);
   }
 
-  /** Records a deck-state read for this version of a slide. */
-  recordDeckStateUse = (index: number): void => {
-    this.#deckStateUsers.add(index);
+  /** Records the deck-state keys that a slide reads in any of its views. */
+  recordDeckStateUse = (index: number, key: string): void => {
+    let users = this.#deckStateUsers.get(key);
+    if (users === undefined) {
+      users = new Set();
+      this.#deckStateUsers.set(key, users);
+    }
+    users.add(index);
   };
 
-  /** Whether any view of the slide has read deck state. */
-  usesDeckState(index: number): boolean {
-    return this.#deckStateUsers.has(index);
+  /** Records shared slide state, including dependencies of recaps. */
+  recordSlideStateUse = (index: number, stateIndex: number): void => {
+    let users = this.#slideStateUsers.get(stateIndex);
+    if (users === undefined) {
+      users = new Set();
+      this.#slideStateUsers.set(stateIndex, users);
+    }
+    users.add(index);
+  };
+
+  /** Keeps dependency tracking alive after the slide views unmount. */
+  observe(deck: DeckStateStore, slides: SlideStateStore): () => void {
+    const invalidate = <K>(keys: readonly K[], users: Map<K, Set<number>>) => {
+      const affected = new Set(
+        keys.flatMap((key) => [...(users.get(key) ?? [])]),
+      );
+      for (const index of affected) this.invalidate(index);
+    };
+    const unsubscribeDeck = deck.subscribeState((keys) => {
+      invalidate(keys, this.#deckStateUsers);
+    });
+    const unsubscribeSlides = slides.subscribeState((indices) => {
+      invalidate(indices, this.#slideStateUsers);
+    });
+    return () => {
+      unsubscribeDeck();
+      unsubscribeSlides();
+    };
   }
 
-  /** Whether this generation has a successful capture of the requested path. */
+  /** Changes when state invalidation queues thumbnails for rendering again. */
+  getQueueVersion = (): number => this.#queueVersion;
+
+  /** Identifies state invalidations that supersede a pending background job. */
+  getInvalidation(index: number): symbol | undefined {
+    return this.#invalidations.get(index);
+  }
+
+  /** Lets mounted slides refresh from their actual appearance after invalidation. */
+  subscribeInvalidation(index: number, listener: () => void): () => void {
+    let listeners = this.#invalidationListeners.get(index);
+    if (listeners === undefined) {
+      listeners = new Set();
+      this.#invalidationListeners.set(index, listeners);
+    }
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) this.#invalidationListeners.delete(index);
+    };
+  }
+
+  /** Whether the requested path has a successful capture since invalidation. */
   isCurrent(index: number, state: ThumbnailState): boolean {
-    const snapshots = this.#snapshots.get(index);
-    return (
-      snapshots?.generation === state.generation &&
-      snapshots.images.has(state.path)
-    );
+    return this.#snapshots.get(index)?.has(state.path) ?? false;
   }
 
-  /** Selects a path, discarding older generations and restoring its image if captured. */
+  /** Selects a path and restores its image if captured. */
   restore(index: number, state: ThumbnailState): boolean {
     const previous = this.#selected.get(index);
-    if (
-      previous?.generation !== state.generation ||
-      previous.path !== state.path
-    ) {
+    if (previous?.path !== state.path) {
       this.#selected.set(index, state);
       this.#versions.set(index, (this.#versions.get(index) ?? 0) + 1);
     }
     const snapshots = this.#snapshots.get(index);
-    if (snapshots?.generation !== state.generation) {
-      this.#snapshots.delete(index);
-      return false;
-    }
-    const image = snapshots.images.get(state.path);
+    const image = snapshots?.get(state.path);
     if (image === undefined) return false;
     if (this.#images.get(index) !== image) {
       this.#images.set(index, image);
@@ -113,13 +154,19 @@ export class ThumbnailCache {
 
   /** Invalidates one path, or all paths, keeping the last image as a fallback. */
   invalidate(index: number, state?: ThumbnailState): void {
-    if (state === undefined) this.#snapshots.delete(index);
-    else {
-      const snapshots = this.#snapshots.get(index);
-      if (snapshots?.generation === state.generation)
-        snapshots.images.delete(state.path);
+    if (state !== undefined) {
+      this.#snapshots.get(index)?.delete(state.path);
+      this.#versions.set(index, (this.#versions.get(index) ?? 0) + 1);
+      return;
     }
+    this.#snapshots.delete(index);
+    this.#attempted.delete(index);
     this.#versions.set(index, (this.#versions.get(index) ?? 0) + 1);
+    this.#invalidations.set(index, Symbol());
+    this.#queueVersion += 1;
+    for (const listener of this.#invalidationListeners.get(index) ?? [])
+      listener();
+    this.#notify();
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -130,9 +177,16 @@ export class ThumbnailCache {
   };
 
   /** Reserves shown slides for captures of their actual appearance. */
-  shown(index: number): void {
-    this.#shown.add(index);
+  shown(index: number): () => void {
+    this.#shown.set(index, (this.#shown.get(index) ?? 0) + 1);
     this.#versions.set(index, (this.#versions.get(index) ?? 0) + 1);
+    return () => {
+      const remaining = (this.#shown.get(index) ?? 1) - 1;
+      if (remaining === 0) this.#shown.delete(index);
+      else this.#shown.set(index, remaining);
+      this.#queueVersion += 1;
+      this.#notify();
+    };
   }
 
   /** Finds the nearest missing slide, leaving foreground captures uninterrupted. */
@@ -158,7 +212,7 @@ export class ThumbnailCache {
     return undefined;
   }
 
-  /** Failed background captures are skipped until the slide is shown. */
+  /** Failed background captures wait for invalidation or a shown view. */
   skip(index: number): void {
     this.#attempted.add(index);
   }
@@ -202,11 +256,11 @@ export class ThumbnailCache {
           this.#selected.delete(index);
         } else {
           let snapshots = this.#snapshots.get(index);
-          if (snapshots?.generation !== state.generation) {
-            snapshots = { generation: state.generation, images: new Map() };
+          if (snapshots === undefined) {
+            snapshots = new Map();
             this.#snapshots.set(index, snapshots);
           }
-          snapshots.images.set(state.path, image);
+          snapshots.set(state.path, image);
         }
         this.#notify();
       }

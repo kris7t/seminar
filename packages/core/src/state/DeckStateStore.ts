@@ -9,11 +9,20 @@ export class DeckStateStore {
   readonly #values = new Map<string, unknown>();
   readonly #listeners = new Map<string, Set<() => void>>();
   readonly #changeListeners = new Set<() => void>();
-  #generation = 0;
+  readonly #stateListeners = new Set<(keys: readonly string[]) => void>();
 
-  /** Counts state changes, excluding writes that preserve the current value. */
-  getGeneration(): number {
-    return this.#generation;
+  /** Listens to changed keys, including resets, even when no view is mounted. */
+  subscribeState = (
+    listener: (keys: readonly string[]) => void,
+  ): (() => void) => {
+    this.#stateListeners.add(listener);
+    return () => {
+      this.#stateListeners.delete(listener);
+    };
+  };
+
+  #notifyState(keys: readonly string[]): void {
+    for (const listener of this.#stateListeners) listener(keys);
   }
 
   get(key: string): unknown {
@@ -24,13 +33,13 @@ export class DeckStateStore {
     if (Object.is(this.#values.get(key), value)) {
       return;
     }
-    this.#generation += 1;
     const wasChanged = this.#values.size > 0;
     if (value === undefined) {
       this.#values.delete(key);
     } else {
       this.#values.set(key, value);
     }
+    this.#notifyState([key]);
     for (const listener of this.#listeners.get(key) ?? []) {
       listener();
     }
@@ -71,8 +80,8 @@ export class DeckStateStore {
     if (keys.length === 0) {
       return;
     }
-    this.#generation += 1;
     this.#values.clear();
+    this.#notifyState(keys);
     for (const key of keys) {
       for (const listener of this.#listeners.get(key) ?? []) {
         listener();

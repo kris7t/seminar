@@ -38,22 +38,26 @@ function Counter() {
 }
 
 describe('DeckStateStore', () => {
-  it('advances its generation for every state change and nonempty reset', () => {
+  it('reports changed keys and batches resets without notifying for unchanged values', () => {
     const store = new DeckStateStore();
-    expect(store.getGeneration()).toBe(0);
+    const listener = vi.fn();
+    const unsubscribe = store.subscribeState(listener);
     store.set('a', 1);
-    expect(store.getGeneration()).toBe(1);
     store.set('a', 1);
     store.set('unset', undefined);
-    expect(store.getGeneration()).toBe(1);
     store.set('a', 2);
-    expect(store.getGeneration()).toBe(2);
     store.set('b', 3);
-    expect(store.getGeneration()).toBe(3);
     store.reset();
-    expect(store.getGeneration()).toBe(4);
     store.reset();
-    expect(store.getGeneration()).toBe(4);
+    expect(listener.mock.calls).toEqual([
+      [['a']],
+      [['a']],
+      [['b']],
+      [['a', 'b']],
+    ]);
+    unsubscribe();
+    store.set('a', 4);
+    expect(listener).toHaveBeenCalledTimes(4);
   });
 
   it('stores values by key, and is changed while it has any', () => {

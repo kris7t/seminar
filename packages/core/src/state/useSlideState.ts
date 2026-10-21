@@ -8,6 +8,7 @@ import {
   type SetStateAction,
 } from 'react';
 
+import { SlideStateUsageContext } from './StateUsageContext.ts';
 import { useSlideView } from '../view/SlideViewContext.ts';
 import {
   SlideStateContext,
@@ -60,6 +61,8 @@ export function useSlideState<T>(
   const { index: viewIndex, stateIndex } = useSlideView();
   // Recaps share persistent state, but each visit has its own transient values.
   const index = transient ? viewIndex : (stateIndex ?? viewIndex);
+  const recordUse = use(SlideStateUsageContext);
+  if (!transient) recordUse?.(viewIndex, index);
   const scope = use(StateScopeContext) ?? DETACHED_SCOPE;
   const instanceId = useId();
   const stateKey =

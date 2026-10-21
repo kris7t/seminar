@@ -13,6 +13,8 @@ import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { useSlideView } from '../view/SlideViewContext.ts';
 import { useResetSlideState, useSlideState } from '../state/useSlideState.ts';
+import { DeckStateStore } from '../state/DeckStateStore.ts';
+import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { useDeckState } from '../state/useDeckState.ts';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Step } from '../steps/Step.tsx';
@@ -312,7 +314,7 @@ describe('cached slide thumbnails', () => {
     ).toHaveLength(0);
   });
 
-  it('recaptures for deck and shared slide state generations, and changed step paths', async () => {
+  it('recaptures for changed deck and shared slide state, and changed step paths', async () => {
     function State(): JSX.Element {
       const [slide, setSlide] = useSlideState(0);
       const [deck, setDeck] = useDeckState<number>('count');
@@ -529,6 +531,196 @@ describe('cached slide thumbnails', () => {
         frame.textContent.includes('Independent'),
       ),
     ).toHaveLength(0);
+  });
+
+  it('refreshes only thumbnails that read a changed deck-state key, including shown slides', async () => {
+    function Value({ name }: { name: string }): JSX.Element {
+      const [value, setValue] = useDeckState<number>(name);
+      return (
+        <button
+          onClick={() => {
+            setValue((value ?? 0) + 1);
+          }}
+        >
+          {name} {value ?? 0}
+        </button>
+      );
+    }
+    render(
+      <Deck>
+        <Slide title="Writer">
+          <Value name="a" />
+          <Value name="b" />
+        </Slide>
+        <Slide title="Reads A">
+          <Value name="a" />
+          <Step>Later</Step>
+        </Slide>
+        <Slide title="Reads B">
+          <Value name="b" />
+        </Slide>
+        <Slide title="Independent" />
+      </Deck>,
+    );
+    await finish();
+    // Include a previously shown slide, with multiple captured step paths.
+    key('PageDown');
+    await finish();
+    key('ArrowRight');
+    await finish();
+    key('PageDown');
+    await finish();
+    key('Home');
+    await finish();
+    capture.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'a 0' }));
+    await finish();
+    const backgrounds = capture.mock.calls.filter(
+      ([frame]) => frame.dataset['seminarView'] === 'thumbnail',
+    );
+    expect(backgrounds).toHaveLength(1);
+    expect(backgrounds[0]?.[0].textContent).toContain('Reads A');
+    expect(backgrounds[0]?.[0].textContent).toContain('a 1');
+    expect(
+      capture.mock.calls.some(
+        ([frame]) =>
+          frame.dataset['seminarView'] !== 'thumbnail' &&
+          frame.textContent.includes('Writer'),
+      ),
+    ).toBe(true);
+    capture.mockClear();
+    key('End');
+    await finish();
+    key('PageUp');
+    await finish();
+    key('Home');
+    await finish();
+    expect(
+      capture.mock.calls.filter(([frame]) =>
+        frame.textContent.includes('Reads B'),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('refreshes unmounted original and recap thumbnails after slide state changes and resets', async () => {
+    function Counter(): JSX.Element {
+      const [value, setValue] = useSlideState(0);
+      const reset = useResetSlideState();
+      return (
+        <>
+          <button
+            onClick={() => {
+              setValue(value + 1);
+            }}
+          >
+            Value {value}
+          </button>
+          <button onClick={reset}>Reset value</button>
+        </>
+      );
+    }
+    render(
+      <Deck>
+        <Slide id="source" title="Shared">
+          <Counter />
+        </Slide>
+        <Slide recap="source" />
+        <Slide title="Independent" />
+      </Deck>,
+    );
+    await finish();
+    key('PageDown');
+    await finish();
+    capture.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Value 0' }));
+    await finish();
+    const backgrounds = () =>
+      capture.mock.calls.filter(
+        ([frame]) => frame.dataset['seminarView'] === 'thumbnail',
+      );
+    expect(backgrounds()).toHaveLength(1);
+    expect(backgrounds()[0]?.[0].textContent).toContain('Value 1');
+    capture.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset value' }));
+    await finish();
+    expect(backgrounds()).toHaveLength(1);
+    expect(backgrounds()[0]?.[0].textContent).toContain('Value 0');
+  });
+
+  it('keeps stale previews visible through invalidation and superseded background captures', async () => {
+    let change: ((value: number) => void) | undefined;
+    function Value(): JSX.Element {
+      const [value, setValue] = useDeckState<number>('value');
+      const { interactive } = useSlideView();
+      useEffect(() => {
+        if (interactive) change = setValue;
+      }, [interactive, setValue]);
+      return <span>Value {value ?? 0}</span>;
+    }
+    render(
+      <Deck>
+        <Slide title="Writer">
+          <Value />
+        </Slide>
+        <Slide title="Reader">
+          <Value />
+        </Slide>
+      </Deck>,
+    );
+    await finish();
+    key('o');
+    await finish();
+    const stale = image(1);
+    expect(stale).toBeDefined();
+    const first = Promise.withResolvers<string>();
+    const second = Promise.withResolvers<string>();
+    let replacement = first;
+    capture.mockImplementation((frame) =>
+      frame.dataset['seminarView'] === 'thumbnail'
+        ? replacement.promise
+        : Promise.resolve(
+            `data:image/png,${encodeURIComponent(frame.innerHTML)}`,
+          ),
+    );
+    act(() => {
+      change?.(1);
+    });
+    expect(image(1)).toBe(stale);
+    await finish();
+    const firstJob = capture.mock.calls.at(-1);
+    expect(firstJob?.[0].textContent).toContain('Reader');
+    expect(image(1)).toBe(stale);
+    replacement = second;
+    act(() => {
+      change?.(2);
+    });
+    await finish();
+    expect(firstJob?.[1]?.aborted).toBe(true);
+    expect(capture.mock.calls.at(-1)?.[0].textContent).toContain('Value 2');
+    expect(image(1)).toBe(stale);
+    await act(async () => {
+      first.resolve('data:image/png,obsolete');
+      await first.promise;
+    });
+    expect(image(1)).toBe(stale);
+    await act(async () => {
+      second.resolve('data:image/png,updated');
+      await second.promise;
+    });
+    expect(image(1)).toBe('data:image/png,updated');
+    expect(decodeURIComponent(image(0) ?? '')).toContain('Value 2');
+    capture.mockImplementation((frame) =>
+      frame.dataset['seminarView'] === 'thumbnail'
+        ? Promise.reject(new Error('Unavailable'))
+        : Promise.resolve(
+            `data:image/png,${encodeURIComponent(frame.innerHTML)}`,
+          ),
+    );
+    act(() => {
+      change?.(3);
+    });
+    await finish();
+    expect(image(1)).toBe('data:image/png,updated');
   });
 
   it('cancels background work when the deck unmounts', async () => {
@@ -844,6 +1036,68 @@ describe('cached slide thumbnails', () => {
 });
 
 describe('ThumbnailCache', () => {
+  it('invalidates only recorded dependencies, batching deck resets and stopping on cleanup', () => {
+    const cache = new ThumbnailCache();
+    const deck = new DeckStateStore();
+    const slides = new SlideStateStore();
+    cache.recordDeckStateUse(0, 'a');
+    cache.recordDeckStateUse(0, 'b');
+    cache.recordDeckStateUse(1, 'b');
+    cache.recordDeckStateUse(2, 'unset');
+    cache.recordSlideStateUse(0, 0);
+    cache.recordSlideStateUse(3, 0);
+    const listeners = Array.from({ length: 4 }, () => vi.fn());
+    listeners.forEach((listener, index) => {
+      cache.subscribeInvalidation(index, listener);
+    });
+    const stop = cache.observe(deck, slides);
+    deck.set('unread', 1);
+    expect(
+      listeners.every((listener) => listener.mock.calls.length === 0),
+    ).toBe(true);
+    deck.set('a', 1);
+    expect(listeners[0]).toHaveBeenCalledOnce();
+    expect(listeners[1]).not.toHaveBeenCalled();
+    deck.set('a', 1);
+    deck.set('b', 2);
+    expect(listeners[0]).toHaveBeenCalledTimes(2);
+    expect(listeners[1]).toHaveBeenCalledOnce();
+    deck.reset();
+    expect(listeners[0]).toHaveBeenCalledTimes(3);
+    expect(listeners[1]).toHaveBeenCalledTimes(2);
+    expect(listeners[2]).not.toHaveBeenCalled();
+    slides.getOrInit(0, 'value', () => 0);
+    slides.getOrInit(0, 'mirror', () => 0, true);
+    slides.stepPosition(0).set({ path: [1], toEnd: false });
+    slides.set(0, 'mirror', 1);
+    expect(listeners[0]).toHaveBeenCalledTimes(3);
+    slides.set(0, 'value', 1);
+    expect(listeners[0]).toHaveBeenCalledTimes(4);
+    expect(listeners[3]).toHaveBeenCalledOnce();
+    stop();
+    deck.set('a', 2);
+    slides.resetAll();
+    expect(listeners[0]).toHaveBeenCalledTimes(4);
+    expect(listeners[3]).toHaveBeenCalledOnce();
+  });
+
+  it('queues previously shown slides after invalidation once all live views leave', async () => {
+    const cache = new ThumbnailCache();
+    capture.mockResolvedValue('last image');
+    const leaveAudience = cache.shown(0);
+    const leavePresenter = cache.shown(0);
+    await cache.capture(0, document.createElement('div'), true, undefined, {
+      path: '/audience',
+    });
+    cache.invalidate(0);
+    expect(cache.get(0)).toBe('last image');
+    expect(cache.nextMissing(1)).toBeUndefined();
+    leaveAudience();
+    expect(cache.nextMissing(1)).toBeUndefined();
+    leavePresenter();
+    expect(cache.nextMissing(1)).toBe(0);
+  });
+
   it('captures visible slides before nearer off-screen slides', () => {
     const cache = new ThumbnailCache();
     cache.shown(0);
@@ -907,11 +1161,11 @@ describe('ThumbnailCache', () => {
     expect(cache.nextMissing(3, 2)).toBe(2);
   });
 
-  it('keeps every path only for the current generation and restores the selected image', async () => {
+  it('keeps every path until invalidation and restores the selected image', async () => {
     const cache = new ThumbnailCache();
     const frame = document.createElement('div');
-    const first = { generation: '1/2', path: '/audience' };
-    const nested = { generation: '1/2', path: '1.1/audience' };
+    const first = { path: '/audience' };
+    const nested = { path: '1.1/audience' };
     capture.mockResolvedValueOnce('first').mockResolvedValueOnce('nested');
     await cache.capture(0, frame, true, undefined, first);
     await cache.capture(0, frame, true, undefined, nested);
@@ -927,10 +1181,12 @@ describe('ThumbnailCache', () => {
     cache.invalidate(0, nested);
     expect(cache.isCurrent(0, nested)).toBe(false);
     expect(cache.isCurrent(0, first)).toBe(true);
-    const changed = { generation: '1/3', path: first.path };
+    cache.invalidate(0);
+    expect(cache.isCurrent(0, first)).toBe(false);
+    const changed = { path: first.path };
     capture.mockResolvedValueOnce('changed');
     await cache.capture(0, frame, true, undefined, changed);
-    expect(cache.isCurrent(0, first)).toBe(false);
+    expect(cache.isCurrent(0, first)).toBe(true);
     expect(cache.isCurrent(0, nested)).toBe(false);
     expect(cache.isCurrent(0, changed)).toBe(true);
   });
@@ -938,8 +1194,8 @@ describe('ThumbnailCache', () => {
   it('ignores pending work after restoring an already captured path', async () => {
     const cache = new ThumbnailCache();
     const frame = document.createElement('div');
-    const first = { generation: '1/2', path: '/audience' };
-    const later = { generation: '1/2', path: '1/audience' };
+    const first = { path: '/audience' };
+    const later = { path: '1/audience' };
     capture.mockResolvedValueOnce('first');
     await cache.capture(0, frame, true, undefined, first);
     const deferred = Promise.withResolvers<string>();
@@ -952,39 +1208,30 @@ describe('ThumbnailCache', () => {
     expect(cache.isCurrent(0, later)).toBe(false);
   });
 
-  it('reuses only successful captures of the same generations and step path', async () => {
+  it('reuses only successful captures of valid step paths', async () => {
     const cache = new ThumbnailCache();
     const frame = document.createElement('div');
     capture.mockResolvedValueOnce('image');
     await cache.capture(0, frame, true, undefined, {
-      generation: '1/2',
       path: '3/audience',
     });
-    expect(cache.isCurrent(0, { generation: '1/2', path: '3/audience' })).toBe(
-      true,
-    );
+    expect(cache.isCurrent(0, { path: '3/audience' })).toBe(true);
     capture.mockClear();
     await cache.capture(0, frame, true, undefined, {
-      generation: '1/2',
       path: '3/audience',
     });
     expect(capture).not.toHaveBeenCalled();
+    cache.invalidate(0);
     capture.mockRejectedValueOnce(new Error('Unavailable'));
     await cache.capture(0, frame, true, undefined, {
-      generation: '2/2',
       path: '3/audience',
     });
-    expect(cache.isCurrent(0, { generation: '2/2', path: '3/audience' })).toBe(
-      false,
-    );
+    expect(cache.isCurrent(0, { path: '3/audience' })).toBe(false);
     capture.mockResolvedValueOnce('updated');
     await cache.capture(0, frame, true, undefined, {
-      generation: '2/2',
       path: '3/audience',
     });
-    expect(cache.isCurrent(0, { generation: '2/2', path: '3/audience' })).toBe(
-      true,
-    );
+    expect(cache.isCurrent(0, { path: '3/audience' })).toBe(true);
     expect(cache.get(0)).toBe('updated');
   });
 
@@ -995,27 +1242,21 @@ describe('ThumbnailCache', () => {
     const canceled = Promise.withResolvers<string>();
     capture.mockReturnValueOnce(canceled.promise);
     const pending = cache.capture(0, frame, true, controller.signal, {
-      generation: '0/0',
       path: '/audience',
     });
     controller.abort();
     canceled.resolve('canceled');
     await pending;
-    expect(cache.isCurrent(0, { generation: '0/0', path: '/audience' })).toBe(
-      false,
-    );
+    expect(cache.isCurrent(0, { path: '/audience' })).toBe(false);
     const stale = Promise.withResolvers<string>();
     capture.mockReturnValueOnce(stale.promise);
     const invalidated = cache.capture(0, frame, true, undefined, {
-      generation: '0/0',
       path: '/audience',
     });
     cache.invalidate(0);
     stale.resolve('stale');
     await invalidated;
-    expect(cache.isCurrent(0, { generation: '0/0', path: '/audience' })).toBe(
-      false,
-    );
+    expect(cache.isCurrent(0, { path: '/audience' })).toBe(false);
     expect(cache.get(0)).toBeUndefined();
   });
 

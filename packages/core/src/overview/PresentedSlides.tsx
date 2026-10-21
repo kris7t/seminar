@@ -93,9 +93,6 @@ function PresentedLayer({
           <ThumbnailCapture
             cache={layer.cache}
             index={layer.view.index}
-            stateIndex={
-              layer.deck.recapOf[layer.view.index] ?? layer.view.index
-            }
             kind={layer.view.kind}
             frame={frame}
             active={active}

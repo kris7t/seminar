@@ -88,7 +88,10 @@ import {
   TransientSlideStateContext,
 } from '../state/SlideStateContext.ts';
 import { DeckStateContext } from '../state/DeckStateContext.ts';
-import { DeckStateUsageContext } from '../state/DeckStateUsageContext.ts';
+import {
+  DeckStateUsageContext,
+  SlideStateUsageContext,
+} from '../state/StateUsageContext.ts';
 import { DeckStateStore } from '../state/DeckStateStore.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { SharedWorkProvider } from '../shared/SharedWorkProvider.tsx';
@@ -302,6 +305,10 @@ export function Deck({
   const spares = useSpares(slides.map(isSpare));
   const [slideState] = useState(() => new SlideStateStore());
   const [deckState] = useState(() => new DeckStateStore());
+  useEffect(
+    () => thumbnails.observe(deckState, slideState),
+    [thumbnails, deckState, slideState],
+  );
   const [transitions] = useState(() => new SlideTransitions());
   const stepFade = useCallback(
     (index: number) =>
@@ -1085,15 +1092,17 @@ export function Deck({
   );
   return (
     <DeckStateUsageContext value={thumbnails.recordDeckStateUse}>
-      <SharedWorkProvider>
-        <TransientSlideStateContext value={transientState}>
-          <PointerMirroringContext
-            value={presenting && pointerMode === 'mirror'}
-          >
-            {content}
-          </PointerMirroringContext>
-        </TransientSlideStateContext>
-      </SharedWorkProvider>
+      <SlideStateUsageContext value={thumbnails.recordSlideStateUse}>
+        <SharedWorkProvider>
+          <TransientSlideStateContext value={transientState}>
+            <PointerMirroringContext
+              value={presenting && pointerMode === 'mirror'}
+            >
+              {content}
+            </PointerMirroringContext>
+          </TransientSlideStateContext>
+        </SharedWorkProvider>
+      </SlideStateUsageContext>
     </DeckStateUsageContext>
   );
 }

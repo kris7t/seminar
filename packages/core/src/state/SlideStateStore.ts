@@ -26,16 +26,22 @@ export class SlideStateStore {
   readonly #listeners = new Map<string, Set<() => void>>();
   readonly #stepPositions = new Map<number, StepPosition>();
   readonly #changeListeners = new Set<() => void>();
-  readonly #generations = new Map<number, number>();
+  readonly #stateListeners = new Set<(indices: readonly number[]) => void>();
   #changed: ReadonlySet<number> = new Set();
 
-  /** Counts non-transient changes and resets, excluding steps and initialization. */
-  getGeneration(slideIndex: number): number {
-    return this.#generations.get(slideIndex) ?? 0;
-  }
+  /** Listens to changed slides, excluding transient values, steps, and initialization. */
+  subscribeState = (
+    listener: (indices: readonly number[]) => void,
+  ): (() => void) => {
+    this.#stateListeners.add(listener);
+    return () => {
+      this.#stateListeners.delete(listener);
+    };
+  };
 
-  #advanceGeneration(slideIndex: number): void {
-    this.#generations.set(slideIndex, this.getGeneration(slideIndex) + 1);
+  #notifyState(indices: readonly number[]): void {
+    if (indices.length === 0) return;
+    for (const listener of this.#stateListeners) listener(indices);
   }
 
   #id(slideIndex: number, key: string): string {
@@ -78,7 +84,7 @@ export class SlideStateStore {
     }
     this.#values.set(id, { value, transient: previous?.transient ?? false });
     if (key !== STEP_KEY && previous?.transient !== true)
-      this.#advanceGeneration(slideIndex);
+      this.#notifyState([slideIndex]);
     if (
       key !== STEP_KEY &&
       previous?.transient !== true &&
@@ -131,10 +137,10 @@ export class SlideStateStore {
    */
   reset(slideIndex: number): void {
     const ids = this.#keysOf(slideIndex);
-    if (ids.length > 0) this.#advanceGeneration(slideIndex);
     for (const id of ids) {
       this.#values.delete(id);
     }
+    if (ids.length > 0) this.#notifyState([slideIndex]);
     if (this.#changed.has(slideIndex)) {
       this.#setChanged(
         new Set([...this.#changed].filter((index) => index !== slideIndex)),
@@ -156,10 +162,10 @@ export class SlideStateStore {
     const slides = new Set(
       ids.map((id) => Number(id.slice(0, id.indexOf('\u0000')))),
     );
-    for (const slide of slides) this.#advanceGeneration(slide);
     for (const id of ids) {
       this.#values.delete(id);
     }
+    this.#notifyState([...slides]);
     if (this.#changed.size > 0) {
       this.#setChanged(new Set());
     }
@@ -196,11 +202,11 @@ export class SlideStateStore {
       )
         changed.add(Number(id.slice(0, id.indexOf('\u0000'))));
     }
-    for (const slide of changed) this.#advanceGeneration(slide);
     this.#values.clear();
     for (const [id, value] of values) {
       this.#values.set(id, value);
     }
+    this.#notifyState([...changed]);
     this.#setChanged(
       new Set(
         [...this.#changed].flatMap((slideIndex) => {
