@@ -44,7 +44,7 @@ describe('writeColophon', () => {
       images: { count: 3, withoutAlt: 1, embedded: ['PNG', 'JPEG'] },
     });
     expect(colophonLines(written)).toEqual([
-      `${made}: “A &lt;talk&gt; about \`code\` {and} more”, 12 slides in Hungarian.`,
+      `${made}: <cite lang="hu">A &lt;talk&gt; about \`code\` {and} more</cite>, 12 slides in Hungarian.`,
       `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<p id='))}–${String(lineOf(written, '</main>' + CONTENT_END))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 7 KB. Speaker notes in an <code>&lt;aside&gt;</code> in the section of their slide.`,
       'The <code>id</code> of the heading of each slide is its link in the deck, e.g., <code>#intro</code>.',
       'Images: the slides have 3 images, 1 without alt text. Each is an <code>&lt;svg role="img"&gt;</code> with its alt text in <code>aria-label</code> and its title in <code>&lt;title&gt;</code>, whose <code>&lt;use href="#seminar-image-N"&gt;</code> refers to <code>&lt;image id="seminar-image-N"&gt;</code> in <code>&lt;svg id="seminar-images"&gt;</code> (base64 PNG/JPEG) after the slides. Their content is only in the image data, which text extraction leaves out.',
@@ -76,7 +76,7 @@ describe('writeColophon', () => {
       '<script type="module" src="./talk.js"></script>';
     const written = writeColophon(html);
     expect(colophonLines(written)).toEqual([
-      `${made}: “Talk”.`,
+      `${made}: <cite>Talk</cite>.`,
       `The MDX source of the deck: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<p id='))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, about the first 1 KB.`,
     ]);
   });
@@ -87,7 +87,7 @@ describe('writeColophon', () => {
       images: { count: 1, withoutAlt: 0 },
     });
     expect(colophonLines(written)).toEqual([
-      `${made}: “Talk”, 1 slide.`,
+      `${made}: <cite>Talk</cite>, 1 slide.`,
       `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<p id='))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 1 KB.`,
       'Images: the slides have 1 image, with alt text. Each is an <code>&lt;img&gt;</code> with its alt text in <code>alt</code>. Their content is only in the image files, which text extraction leaves out.',
     ]);

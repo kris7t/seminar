@@ -206,7 +206,7 @@ export function writeColophon(
       : `, ${String(deck.slides)} ${deck.slides === 1 ? 'slide' : 'slides'}`;
   const lang = deck.lang === undefined ? '' : ` in ${languageName(deck.lang)}`;
   const lines = [
-    `A slide deck made with {seminar}: “{title}”${slides}${lang}.`,
+    `A slide deck made with {seminar}: {title}${slides}${lang}.`,
     deck.kind === 'document'
       ? `Slide content: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, with a \`<section>\` for each slide, about the first \0size\0.${deck.notes === true ? ' Speaker notes in an `<aside>` in the section of their slide.' : ''}`
       : `The MDX source of the deck: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, about the first \0size\0.`,
@@ -231,7 +231,11 @@ export function writeColophon(
   // in after formatting, so that they stay text, or markup.
   const values = new Map<string, string>([
     ['seminar', `<a href="${SEMINAR_URL}">Seminar</a>`],
-    ['title', escapeHtml(deck.title)],
+    // In the language of the deck, unlike the colophon.
+    [
+      'title',
+      `<cite${deck.lang === undefined ? '' : ` lang="${escapeHtml(deck.lang).replaceAll('"', '&quot;')}"`}>${escapeHtml(deck.title)}</cite>`,
+    ],
     ['example', escapeHtml(deck.example ?? '')],
   ]);
   const text = (line: string) =>
