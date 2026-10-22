@@ -83,9 +83,27 @@ describe('seminarSelfContained', () => {
       '<div id="end-diagram"><svg role="img" aria-label="A diagram" width="120" height="60" viewBox="0 0 120 60"><title>A diagram</title><use href="#seminar-image-0"/></svg></div>',
     );
     // The colophon tells what follows the content.
-    expect(html).toMatch(
-      /<p id="seminar-colophon" lang="en">Slide content: <code>&lt;main&gt;<\/code>, about the first \d+ KB\.<br>Images: .* \(base64 SVG\) after the slides\.<br>Followed by images, fonts, and scripts \(about [\d.]+ [KM]B\)\.<\/p>/,
+    const colophon = (
+      /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
+    ).replaceAll('\n', ' ');
+    expect(colophon).toMatch(
+      /^Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+, about the first \d+ KB\.<br> Images: the slides have 1 image, with alt text\. .* \(base64 SVG\) on line \d+\. Their content is only in the image data, which text extraction leaves out\.<br> Followed by fonts \(line \d+\), images \(line \d+\), and scripts \(line \d+\), about [\d.]+ [KM]B\.$/,
     );
+    // The lines it tells are right.
+    const line = (text: string, after = 0) =>
+      html.slice(0, html.indexOf(text, after)).split('\n').length;
+    const lines =
+      /on lines (\d+)–(\d+)[^]*fonts \(line (\d+)\), images \(line (\d+)\), and scripts \(line (\d+)\)/
+        .exec(colophon)
+        ?.slice(1)
+        .map(Number);
+    expect(lines).toEqual([
+      line('<p id="seminar-colophon"'),
+      line('</main></div>'),
+      line('<style>', html.indexOf('<div id="seminar-stylesheets">')),
+      line('<svg id="seminar-images" aria-hidden'),
+      line('<script type="module">'),
+    ]);
     expect(html).not.toContain('<!--seminar-');
     // The slides look the image up instead of having it in the script.
     expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);

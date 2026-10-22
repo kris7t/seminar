@@ -11,8 +11,9 @@ import {
   removeInputs,
 } from './decks.ts';
 import { EMOTION_ID, STYLESHEETS_ID, type DeckContent } from './entries.ts';
-import { writeColophon } from './colophon.ts';
+import { partMarker, writeColophon } from './colophon.ts';
 import {
+  countImage,
   embedImage,
   imageDefinitions,
   imageTypeName,
@@ -23,6 +24,7 @@ import {
   resolveImages,
   imageReference,
   type EmbeddedImage,
+  type ImageCounts,
 } from './images.ts';
 import {
   collectCodePoints,
@@ -88,16 +90,18 @@ function findPage(
  * `images` look them up (see {@link imageModule}), and the `img` elements of
  * the document become `svg` elements that use them, with their alt text.
  *
- * @returns The files of the embedded images.
+ * @returns The files of the embedded images, and how many images the
+ *   document shows.
  */
 async function embedImages(
   bundle: Rolldown.OutputBundle,
   images: Map<string, string>,
   warn: (message: string) => void,
-): Promise<string[]> {
+): Promise<{ files: string[]; counts: ImageCounts }> {
+  const counts: ImageCounts = { count: 0, withoutAlt: 0 };
   const page = findPage(bundle);
   if (page === undefined) {
-    return [];
+    return { files: [], counts };
   }
   let html = String(page.source);
   for (const file of markedImages(html)) {
@@ -106,7 +110,7 @@ async function embedImages(
     }
   }
   if (images.size === 0) {
-    return [];
+    return { files: [], counts };
   }
   const embedded = new Map<string, EmbeddedImage>();
   const unsized = new Map<string, string>();
@@ -123,6 +127,7 @@ async function embedImages(
   html = resolveImages(
     html,
     (file, attributes) => {
+      countImage(counts, attributes);
       const image = embedded.get(file);
       if (image !== undefined) {
         return imageReference(image, attributes);
@@ -145,9 +150,15 @@ async function embedImages(
   // the page for tools that only read its beginning.
   const container = `<div id="${EMOTION_ID}"></div>`;
   page.source = html.includes(container)
-    ? html.replace(container, () => container + definitions)
-    : html.replace(/<body\b[^>]*>/, (tag) => tag + definitions);
-  return [...images.keys()];
+    ? html.replace(
+        container,
+        () => `${container}\n${partMarker('images')}${definitions}`,
+      )
+    : html.replace(
+        /<body\b[^>]*>/,
+        (tag) => `${tag}\n${partMarker('images')}${definitions}`,
+      );
+  return { files: [...images.keys()], counts };
 }
 
 /** Generates the module of an image, which looks it up in the page. */
@@ -160,18 +171,16 @@ function imageModule(id: string): string {
  * removing them from the bundle, and removes the fonts that the page doesn't
  * need. Other assets are inlined as data URIs by the build options of the
  * environment.
- *
- * @returns Whether fonts and scripts were inlined.
  */
 function inlineBundle(
   bundle: Rolldown.OutputBundle,
   keep: readonly CodePointRange[],
   warn: (message: string) => void,
-): { fonts: boolean; scripts: boolean } {
+) {
   const outputs = Object.values(bundle);
   const page = findPage(bundle);
   if (page === undefined) {
-    return { fonts: false, scripts: false };
+    return;
   }
   let html = String(page.source);
   const used = collectCodePoints(
@@ -216,16 +225,20 @@ function inlineBundle(
   }
   // Scripts first, since the inlined style sheets may contain `</body>`, but
   // the scripts come after the start of the body.
+  // With markers of where they start, for the colophon.
+  if (scripts[0] !== undefined) {
+    scripts[0] = partMarker('scripts') + scripts[0];
+  }
+  if (styles[0] !== undefined) {
+    const fonts = styles.some((style) => style.includes('@font-face'));
+    styles[0] = partMarker(fonts ? 'fonts' : 'styles') + styles[0];
+  }
   html = html.replace(/<\/body>/, () => [...scripts, '</body>'].join('\n'));
   const container = `<div id="${STYLESHEETS_ID}">`;
   page.source = html.includes(container)
     ? html.replace(container, () => [container, ...styles].join('\n'))
     : // A page of a deck that is not generated.
       html.replace(/<body\b[^>]*>/, (tag) => [tag, ...styles].join('\n'));
-  return {
-    fonts: styles.some((style) => style.includes('@font-face')),
-    scripts: scripts.length > 0,
-  };
 }
 
 /** Empties `outDir` like Vite does, keeping `.git`. */
@@ -390,14 +403,15 @@ export function seminarSelfContained(
             const warn = (message: string) => {
               this.warn(message);
             };
-            const { fonts, scripts } = inlineBundle(bundle, keep, warn);
-            const embedded = await embedImages(bundle, images, warn);
+            inlineBundle(bundle, keep, warn);
+            const { files, counts } = await embedImages(bundle, images, warn);
             const page = findPage(bundle);
             if (page !== undefined) {
               page.source = writeColophon(String(page.source), {
-                images: [...new Set(embedded.map(imageTypeName))],
-                fonts,
-                scripts,
+                images: {
+                  ...counts,
+                  embedded: [...new Set(files.map(imageTypeName))],
+                },
               });
             }
           },

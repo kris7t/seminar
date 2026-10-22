@@ -33,10 +33,12 @@ import {
 } from './documents.ts';
 import { colophonStart, CONTENT_END, writeColophon } from './colophon.ts';
 import {
+  countImage,
   imageElement,
   markedImages,
   readDataUri,
   resolveImages,
+  type ImageCounts,
 } from './images.ts';
 
 /** Query that marks the script that renders a deck. */
@@ -453,16 +455,16 @@ export function seminarEntries({
           for (const file of markedImages(html)) {
             urls.set(file, await imageUrl(bundle, file, page.fileName, config));
           }
-          page.source = writeColophon(
-            urls.size === 0
-              ? html
-              : resolveImages(
-                  html,
-                  (file, attributes) =>
-                    imageElement(urls.get(file) ?? '', attributes),
-                  (file) => urls.get(file) ?? '',
-                ),
+          const images: ImageCounts = { count: 0, withoutAlt: 0 };
+          const resolved = resolveImages(
+            html,
+            (file, attributes) => {
+              countImage(images, attributes);
+              return imageElement(urls.get(file) ?? '', attributes);
+            },
+            (file) => urls.get(file) ?? '',
           );
+          page.source = writeColophon(resolved, { images });
         }
       },
     },

@@ -102,6 +102,23 @@ function unescapeAttribute(text: string): string {
 /** The attributes of an `img` element of a document. */
 export type ImageAttributes = ReadonlyMap<string, string>;
 
+/** How many images a document shows, and how many have no alt text. */
+export interface ImageCounts {
+  count: number;
+  withoutAlt: number;
+}
+
+/** Counts the image with `attributes` in `counts`. */
+export function countImage(
+  counts: ImageCounts,
+  attributes: ImageAttributes,
+): void {
+  counts.count += 1;
+  if ((attributes.get('alt') ?? '') === '') {
+    counts.withoutAlt += 1;
+  }
+}
+
 /**
  * Replaces the markers of images in `html`: `img` elements with markers as
  * their `src` with what `element` returns, and other markers, e.g., in
@@ -183,8 +200,9 @@ export function imageDefinitions(
 
 /**
  * Returns an `svg` element that shows the embedded `image` in place of an
- * `img` element with `attributes`, with its alt text as its title, so that
- * text extractors can read it, and its id, so that links still point at it.
+ * `img` element with `attributes`: with its alt text as its label, its title,
+ * or else its alt text, as its `title`, which text extractors can read, and
+ * its id, so that links still point at it.
  */
 export function imageReference(
   image: EmbeddedImage,
@@ -207,7 +225,9 @@ export function imageReference(
     alt === ''
       ? ' aria-hidden="true"'
       : ` role="img" aria-label="${escapeAttribute(alt)}"`;
+  // Like the `title` of an `img`, which is shown as a tooltip.
+  const title = alt === '' ? '' : (attributes.get('title') ?? alt);
   return `<svg${id === undefined ? '' : ` id="${escapeAttribute(id)}"`}${label} width="${String(width)}" height="${String(height)}" viewBox="0 0 ${String(image.width)} ${String(image.height)}">${
-    alt === '' ? '' : `<title>${escapeAttribute(alt)}</title>`
+    title === '' ? '' : `<title>${escapeAttribute(title)}</title>`
   }<use href="#${image.id}"/></svg>`;
 }

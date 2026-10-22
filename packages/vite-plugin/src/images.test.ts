@@ -55,6 +55,27 @@ describe('imageReference', () => {
     );
   });
 
+  it('keeps the title of the image', () => {
+    expect(
+      imageReference(
+        image,
+        new Map([
+          ['alt', 'A chart'],
+          ['title', 'Sales'],
+        ]),
+      ),
+    ).toContain('aria-label="A chart"');
+    expect(
+      imageReference(
+        image,
+        new Map([
+          ['alt', 'A chart'],
+          ['title', 'Sales'],
+        ]),
+      ),
+    ).toContain('<title>Sales</title>');
+  });
+
   it('keeps the aspect ratio for a given width or height', () => {
     expect(imageReference(image, new Map([['width', '50']]))).toContain(
       'width="50" height="25"',
