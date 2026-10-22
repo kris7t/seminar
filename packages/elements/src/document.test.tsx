@@ -20,7 +20,7 @@ function renderDocument(children: ReactNode): string {
     </DeckDocument>,
   )
     .replaceAll(/ class="[^"]*"/g, '')
-    .replace(/^<section><h4 .*?<\/h4>([^]*)<\/section>$/, '$1');
+    .replace(/^<section[^>]*><h4 .*?<\/h4>([^]*)<\/section>$/, '$1');
 }
 
 describe('elements in documents', () => {

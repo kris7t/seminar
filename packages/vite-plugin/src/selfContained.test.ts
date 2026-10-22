@@ -60,7 +60,7 @@ describe('seminarSelfContained', () => {
       '<$1></$1>',
     );
     // Only links within the page, and embedded images.
-    expect(markup).not.toMatch(/\s(src|href)="(?!#|data:)/);
+    expect(markup).not.toMatch(/\s(src|href)="(?!#|data:|https:\/\/)/);
     // The fonts of the theme, without WOFF fallbacks and unused subsets.
     expect(html).toContain('data:font/woff2;base64,');
     expect(html).not.toContain('data:font/woff;base64,');
@@ -87,24 +87,20 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toMatch(
-      /^Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> Images: the slides have 1 image, with alt text\. .* \(base64 SVG\) on line \d+\. Their content is only in the image data, which text extraction leaves out\.<br> Followed by fonts \(line \d+\), images \(line \d+\), and scripts \(line \d+\), about [\d.]+ [KM]B\.$/,
+      /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: “A talk about slides”, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Images: the slides have 1 image, with alt text\. .* \(base64 SVG\) after the slides\. Their content is only in the image data, which text extraction leaves out\.<br> Followed by fonts, images, and scripts, about [\d.]+ [KM]B\.$/,
     );
-    // The lines it tells are right.
-    const line = (text: string, after = 0) =>
-      html.slice(0, html.indexOf(text, after)).split('\n').length;
-    const lines =
-      /on lines (\d+)–(\d+)[^]*fonts \(line (\d+)\), images \(line (\d+)\), and scripts \(line (\d+)\)/
-        .exec(colophon)
-        ?.slice(1)
-        .map(Number);
-    expect(lines).toEqual([
-      line('<p id="seminar-colophon"'),
-      line('</main></div>'),
-      line('<style>', html.indexOf('<div id="seminar-stylesheets">')),
-      line('<svg id="seminar-images" aria-hidden'),
-      line('<script type="module">'),
-    ]);
-    expect(html).not.toContain('<!--seminar-');
+    // The lines of the content are right.
+    const line = (text: string) =>
+      html.slice(0, html.indexOf(text)).split('\n').length;
+    expect(/on lines (\d+)–(\d+)/.exec(colophon)?.slice(1).map(Number)).toEqual(
+      [
+        line('<p id="seminar-colophon"'),
+        line('</main><!--seminar-content-end-->'),
+      ],
+    );
+    // Without empty lines where the inlined tags were.
+    expect(html.slice(0, html.indexOf('</head>'))).not.toMatch(/\n\s*\n/);
+    expect(html).not.toMatch(/<!--seminar-(?!content-end-->)/);
     // The slides look the image up instead of having it in the script.
     expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);
   }, 60_000);

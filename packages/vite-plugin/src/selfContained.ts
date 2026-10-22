@@ -233,7 +233,12 @@ function inlineBundle(
     const fonts = styles.some((style) => style.includes('@font-face'));
     styles[0] = partMarker(fonts ? 'fonts' : 'styles') + styles[0];
   }
-  html = html.replace(/<\/body>/, () => [...scripts, '</body>'].join('\n'));
+  html = html
+    .replace(/<\/body>/, () => [...scripts, '</body>'].join('\n'))
+    // Without the lines of the tags that were moved out of the head.
+    .replace(/<head>[^]*?<\/head>/, (head) =>
+      head.replaceAll(/\n[ \t]*(?=\n)/g, ''),
+    );
   const container = `<div id="${STYLESHEETS_ID}">`;
   page.source = html.includes(container)
     ? html.replace(container, () => [container, ...styles].join('\n'))

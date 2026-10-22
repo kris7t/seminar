@@ -263,6 +263,9 @@ export function DocumentDeck({
                             {/* Without a label, which would make every slide
                                 a landmark. */}
                             <section
+                              // Marked, unlike other sections, e.g., for the
+                              // colophon of the page.
+                              data-seminar-slide=""
                               lang={
                                 slideLangs[index] === lang
                                   ? undefined

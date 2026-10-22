@@ -31,7 +31,13 @@ import {
   renderDocumentModule,
   type RenderDocument,
 } from './documents.ts';
-import { colophonStart, CONTENT_END, writeColophon } from './colophon.ts';
+import {
+  colophonStart,
+  CONTENT_END,
+  RENDERED_NOTE_ID,
+  renderedNote,
+  writeColophon,
+} from './colophon.ts';
 import {
   countImage,
   imageElement,
@@ -61,6 +67,9 @@ const SCRIPTING_QUERY = '(scripting: enabled)';
  * so the contents of the deck are shown instead of rendering it.
  */
 const INITIAL_ONLY_QUERY = '(scripting: initial-only)';
+
+/** ID of the colophon at the start of the content, see `writeColophon`. */
+const COLOPHON_ID = 'seminar-colophon';
 
 /** ID of the element that the deck is rendered into. */
 const ROOT_ID = 'seminar-root';
@@ -97,6 +106,14 @@ function isGenerated(htmlPath: string): boolean {
     htmlPath.endsWith(HTML_SUFFIX) &&
     !existsSync(htmlPath) &&
     existsSync(getDeckPath(htmlPath))
+  );
+}
+
+function unescapeHtml(text: string): string {
+  return text.replaceAll(
+    /&(amp|lt|gt|quot|#x27);/g,
+    (_, entity: string) =>
+      ({ amp: '&', lt: '<', gt: '>', quot: '"', '#x27': "'" })[entity] ?? '',
   );
 }
 
@@ -144,14 +161,33 @@ async function renderHtml(
   warn: (message: string) => void,
 ): Promise<string> {
   const source = await readFile(deckPath, 'utf8');
-  const sourceHtml = `${colophonStart({ kind: 'source' })}<main><pre>\n${escapeHtml(source)}</pre></main>${CONTENT_END}`;
+  const { title, lang } = readDeckFrontmatter(
+    source,
+    deckPath,
+    (await syntaxPlugins?.(source, deckPath)) ?? [],
+  );
+  const name = path.basename(deckPath);
+  const pageTitle =
+    typeof title === 'string' ? title : name.slice(0, -DECK_SUFFIX.length);
+  const deck = {
+    title: pageTitle,
+    lang: typeof lang === 'string' ? lang : undefined,
+  };
+  const sourceHtml = `${colophonStart({ kind: 'source', ...deck })}<main><pre>\n${escapeHtml(source)}</pre></main>${CONTENT_END}`;
   let contentHtml: string | undefined;
   if (content === 'ssr') {
     try {
       const documentHtml = await renderDocument()(deckPath);
-      // React escapes text and attributes, so only notes match this.
-      const notes = documentHtml.includes(' data-seminar-notes=');
-      contentHtml = `${colophonStart({ kind: 'document', notes })}<main>${documentHtml}</main>${CONTENT_END}`;
+      // React escapes text and attributes, so only the sections of slides,
+      // their notes, and their headings match these.
+      const example = /<h[1-4] id="([^"]*)"/.exec(documentHtml)?.[1];
+      contentHtml = `${colophonStart({
+        kind: 'document',
+        ...deck,
+        slides: documentHtml.split(' data-seminar-slide=').length - 1,
+        example: example === undefined ? undefined : unescapeHtml(example),
+        notes: documentHtml.includes(' data-seminar-notes='),
+      })}<main>${documentHtml}</main>${CONTENT_END}`;
     } catch (error) {
       warn(
         `${deckPath} could not be rendered as a document, so its page shows the source instead: ${String(error)}`,
@@ -161,18 +197,12 @@ async function renderHtml(
   } else if (content === 'source') {
     contentHtml = sourceHtml;
   }
-  const { title, lang } = readDeckFrontmatter(
-    source,
-    deckPath,
-    (await syntaxPlugins?.(source, deckPath)) ?? [],
-  );
-  const name = path.basename(deckPath);
   return `<!doctype html>
 <html lang="${escapeHtml(typeof lang === 'string' ? lang : 'en')}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${escapeHtml(typeof title === 'string' ? title : name.slice(0, -DECK_SUFFIX.length))}</title>${
+    <title>${escapeHtml(pageTitle)}</title>${
       contentHtml === undefined
         ? ''
         : `
@@ -235,6 +265,12 @@ if (!matchMedia(${JSON.stringify(INITIAL_ONLY_QUERY)}).matches) {
     const style = document.createElement('style');
     document.head.append(style);
     style.sheet.insertRule('#${CONTENT_ID} { display: none; }');
+  }
+
+  // Unless the page was saved from the browser with it.
+  const colophon = document.getElementById(${JSON.stringify(COLOPHON_ID)});
+  if (colophon !== null && document.getElementById(${JSON.stringify(RENDERED_NOTE_ID)}) === null) {
+    colophon.insertAdjacentHTML('beforeend', ${JSON.stringify(renderedNote(ROOT_ID))});
   }
 
   ${render.replaceAll('\n', '\n  ')}

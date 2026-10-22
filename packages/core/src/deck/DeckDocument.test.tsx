@@ -44,11 +44,11 @@ describe('DeckDocument', () => {
       </DeckDocument>,
     );
     expect(html).toBe(
-      `<section><h1 id="talk">Talk${link('talk')}</h1><p>By someone</p></section>` +
-        `<section><h2 id="slide=2">Part${link('slide=2')}</h2></section>` +
-        `<section><h3 id="slide=3">Detail${link('slide=3')}</h3></section>` +
-        `<section><h4 id="content">Content${link('content')}</h4></section>` +
-        `<section><h4 id="untitled">Slide 5${link('untitled')}</h4></section>`,
+      `<section data-seminar-slide=""><h1 id="talk">Talk${link('talk')}</h1><p>By someone</p></section>` +
+        `<section data-seminar-slide=""><h2 id="slide=2">Part${link('slide=2')}</h2></section>` +
+        `<section data-seminar-slide=""><h3 id="slide=3">Detail${link('slide=3')}</h3></section>` +
+        `<section data-seminar-slide=""><h4 id="content">Content${link('content')}</h4></section>` +
+        `<section data-seminar-slide=""><h4 id="untitled">Slide 5${link('untitled')}</h4></section>`,
     );
   });
 
@@ -126,7 +126,7 @@ describe('DeckDocument', () => {
     );
     expect(html).toMatch(
       new RegExp(
-        `</aside></section><section><h2 id="original-recap">Original${link('original-recap')}</h2>` +
+        `</aside></section><section data-seminar-slide=""><h2 id="original-recap">Original${link('original-recap')}</h2>` +
           '<p>Recap of <a href="#original">Original</a></p></section>$',
       ),
     );
@@ -144,7 +144,7 @@ describe('DeckDocument', () => {
       </DeckDocument>,
     );
     expect(html).toMatch(
-      /^<section><h4 id="english">English.*<\/h4><\/section><section lang="de"><h4 id="deutsch">Deutsch <a href="#deutsch" aria-label="Link to this slide" lang="en">#<\/a><\/h4><aside data-seminar-notes="" aria-labelledby="[^"]+"><h5 id="[^"]+" lang="en">Presenter notes<\/h5>Gesagt<\/aside><\/section>$/,
+      /^<section data-seminar-slide=""><h4 id="english">English.*<\/h4><\/section><section data-seminar-slide="" lang="de"><h4 id="deutsch">Deutsch <a href="#deutsch" aria-label="Link to this slide" lang="en">#<\/a><\/h4><aside data-seminar-notes="" aria-labelledby="[^"]+"><h5 id="[^"]+" lang="en">Presenter notes<\/h5>Gesagt<\/aside><\/section>$/,
     );
   });
 });

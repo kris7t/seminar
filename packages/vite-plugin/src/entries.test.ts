@@ -71,17 +71,17 @@ function expectDocument(html: string) {
     /^<body>\s*<div id="seminar-content">\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<main>/,
   );
   expect(colophonOf(body)).toMatch(
-    /^Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\./,
+    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: “A talk about slides”, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\./,
   );
   // Lines are broken at spaces, which mean the same.
   const content = body
     .slice(
       body.indexOf('</p>\n<main>') + '</p>\n'.length,
-      body.indexOf('<div id="seminar-root">'),
+      body.indexOf('<!--seminar-content-end-->'),
     )
     .replaceAll('\n', ' ');
   expect(content).toMatch(
-    /^<main> ?<section> ?<h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1> <p>Someone, somewhere<\/p><\/section> <section> ?<h4 id="introduction">/,
+    /^<main> ?<section data-seminar-slide=""> ?<h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1> <p>Someone, somewhere<\/p><\/section> <section data-seminar-slide=""> ?<h4 id="introduction">/,
   );
   // Steps without their styles, and math without SVG.
   expect(content).toContain('<div>Revealed later</div>');
@@ -207,6 +207,8 @@ describe('seminarEntries', () => {
       expect(code).toContain(
         '!matchMedia("(scripting: initial-only)").matches',
       );
+      // A note on the rendered slides, which the page only has once they are.
+      expect(code).toContain('seminar-colophon-rendered');
       expect(code).toContain('talk.deck.mdx');
     });
 
@@ -256,7 +258,7 @@ describe('seminarEntries', () => {
         /<div id="seminar-content">\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<main><pre>\nexport function Broken\(\)/,
       );
       expect(colophonOf(html ?? '')).toMatch(
-        /^The MDX source of the deck: <code>&lt;main&gt;<\/code> on lines \d+–\d+, about the first \d+ KB\.$/,
+        /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: “A broken talk”\.<br> The MDX source of the deck: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, about the first \d+ KB\.$/,
       );
       expect(warn).toHaveBeenCalledWith(
         expect.stringMatching(
