@@ -195,6 +195,35 @@ function cleanMathml(node: LiteElement, root: boolean): void {
   }
 }
 
+/**
+ * Puts the content of `math` with its TeX source into a `semantics` element,
+ * as an `annotation`, like the compiler does.
+ */
+function annotateMathml(math: LiteElement): void {
+  const tex = adaptor.getAttribute(math, 'data-latex') as unknown;
+  if (typeof tex !== 'string') {
+    return;
+  }
+  const children = [...adaptor.childNodes(math)];
+  for (const child of children) {
+    adaptor.remove(child);
+  }
+  const [only] = children;
+  const content =
+    children.length === 1 && only !== undefined && isElement(only)
+      ? only
+      : adaptor.node('mrow', {}, children);
+  adaptor.append(
+    math,
+    adaptor.node('semantics', {}, [
+      content,
+      adaptor.node('annotation', { encoding: 'application/x-tex' }, [
+        adaptor.text(tex),
+      ]),
+    ]),
+  );
+}
+
 function toFormula(container: LiteElement): RenderedFormula {
   const [svg] = adaptor.tags(container, 'svg');
   const [math] = adaptor.tags(container, 'math');
@@ -203,6 +232,7 @@ function toFormula(container: LiteElement): RenderedFormula {
   }
   if (math !== undefined) {
     cleanMathml(math, true);
+    annotateMathml(math);
   }
   const fullWidth = adaptor.getAttribute(container, 'width') === 'full';
   const style = adaptor.getAttribute(container, 'style') as unknown;

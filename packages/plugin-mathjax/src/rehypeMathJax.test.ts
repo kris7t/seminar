@@ -65,6 +65,10 @@ describe('rehypeMathJax', () => {
     expect(code).toContain('"aria-hidden": "true"');
     const [inline, display] = mathml(code);
     expect(inline).toMatch(/^<math [^>]*data-latex="x\^\{2\}"/);
+    // The TeX source is text, too, which text extractors keep.
+    expect(inline).toMatch(
+      /^<math[^>]*><semantics><msup>.*<\/msup><annotation encoding="application\/x-tex">x\^\{2\}<\/annotation><\/semantics><\/math>$/,
+    );
     // Non-ASCII characters are character references, so that self-contained
     // builds don't keep fonts for them.
     expect(display).toContain('&#x3C0;');

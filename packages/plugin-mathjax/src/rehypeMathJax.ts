@@ -130,6 +130,47 @@ function cleanMathml(node: ElementContent, root: boolean): ElementContent {
 }
 
 /**
+ * Puts the content of `math` with the TeX source of its `data-latex` into a
+ * `semantics` element, as an `annotation` that text extractors keep, unlike
+ * attributes, and that isn't shown or read out.
+ */
+function annotateMathml(math: Element): Element {
+  const tex = math.properties['dataLatex'];
+  if (typeof tex !== 'string') {
+    return math;
+  }
+  const [only, ...rest] = math.children;
+  const content: ElementContent =
+    only?.type === 'element' && rest.length === 0
+      ? only
+      : {
+          type: 'element',
+          tagName: 'mrow',
+          properties: {},
+          children: math.children,
+        };
+  return {
+    ...math,
+    children: [
+      {
+        type: 'element',
+        tagName: 'semantics',
+        properties: {},
+        children: [
+          content,
+          {
+            type: 'element',
+            tagName: 'annotation',
+            properties: { encoding: 'application/x-tex' },
+            children: [{ type: 'text', value: tex }],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
  * Serializes MathML to HTML with non-ASCII characters as character references,
  * e.g., `&#x3C0;` for `π`. Self-contained builds only keep fonts for the
  * characters that occur literally in the page, and the MathML is only read by
@@ -193,7 +234,10 @@ function createFormula(
   }
   if (math !== undefined) {
     attributes.push(
-      createStringAttribute('mathml', serializeMathml(cleanMathml(math, true))),
+      createStringAttribute(
+        'mathml',
+        serializeMathml(annotateMathml(cleanMathml(math, true) as Element)),
+      ),
     );
   }
   const children = svg === undefined ? [] : cleanSvg(svg);

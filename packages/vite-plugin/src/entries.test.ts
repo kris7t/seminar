@@ -66,6 +66,9 @@ function expectDocument(html: string) {
   // Steps without their styles, and math without SVG.
   expect(content).toContain('<div>Revealed later</div>');
   expect(content).toContain('data-latex="e^{i\\pi} + 1 = 0"');
+  expect(content).toContain(
+    '<annotation encoding="application/x-tex">e^{i\\pi} + 1 = 0</annotation>',
+  );
   expect(content).not.toContain('<svg');
   expect(content).toContain('<h2 id="results">Results ');
   // Slides without a title get one.

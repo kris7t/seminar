@@ -94,6 +94,9 @@ describe('renderFormula', () => {
     expect(svg).toContain('<path');
     expect(svg).not.toContain('data-c');
     expect(mathml).toMatch(/^<math [^>]*data-latex="\\mathbb\{R\}\^\{2\}"/);
+    expect(mathml).toContain(
+      '<annotation encoding="application/x-tex">\\mathbb{R}^{2}</annotation></semantics></math>',
+    );
   });
 
   it('reports errors', async () => {
