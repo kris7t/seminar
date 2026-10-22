@@ -14,7 +14,6 @@ Run these commands in your terminal:
 ```sh
 npm create seminar@latest my-talk
 cd my-talk
-npm install
 npm run dev
 ```
 
@@ -22,6 +21,8 @@ The setup asks which presentation features to include, which theme to use,
 and how to build your presentation. Keep the defaults to start with math
 formulas, highlighted code, callouts, and columns, and to share your
 presentation as a single HTML file. You can change these choices later.
+It also offers to install dependencies (yes by default). If you skip that
+step, run `npm install` before `npm run dev`.
 
 Open the local address printed in the terminal. Leave the command running
 while you work on your slides.
@@ -95,7 +96,7 @@ npm create seminar@latest my-talk -- --yes
 You can also supply individual choices:
 
 ```sh
-npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained
+npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained --install
 ```
 
 | Option                | Choice                                                        |
@@ -105,7 +106,11 @@ npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom -
 | `--theme custom`      | Create an editable `src/theme.ts` with Roboto fonts           |
 | `--self-contained`    | Inline scripts and assets into each HTML file (default)       |
 | `--no-self-contained` | Keep scripts and assets in separate files for web hosting     |
+| `--install`           | Install dependencies after creating the project (default)     |
+| `--no-install`        | Leave dependency installation for later                       |
 | `--yes`               | Use defaults for any choices not supplied                     |
+
+`--yes` also installs dependencies unless you supply `--no-install`.
 
 Use `.` as the directory to initialize the current directory. The
 destination must be empty apart from any `.git` metadata; existing project

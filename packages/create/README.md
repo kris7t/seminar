@@ -6,7 +6,6 @@ Requires Node.js 24 or newer.
 ```sh
 npm create seminar@latest my-talk
 cd my-talk
-npm install
 npm run dev
 ```
 
@@ -14,6 +13,8 @@ Choose which plugins to enable: Elements (callouts and columns), MathJax
 (math formulas), and Shiki (syntax highlighting). All three are selected by
 default. Then choose the default theme or an editable `src/theme.ts`, and
 whether to inline scripts and assets into each HTML file (on by default).
+Finally, choose whether to install dependencies now (yes by default). If you
+skip installation, run `npm install` before `npm run dev`.
 
 The starter includes `decks/index.deck.mdx` with examples of the selected
 features, Vite and TypeScript configuration, and commands to develop, build,
@@ -40,31 +41,33 @@ Vite and TypeScript both map `@/` to `src/`. For example, a deck can import
 Supply all choices to skip interactive prompts:
 
 ```sh
-npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained
+npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained --install
 ```
 
-| Option                             | Meaning                                                                    |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| `--plugins elements,mathjax,shiki` | Enable the listed plugins; use `none` or an empty string for no plugins    |
-| `--theme default`                  | Use `@seminar/theme-default`                                               |
-| `--theme custom`                   | Create an editable `src/theme.ts` with Roboto imports                      |
-| `--self-contained`                 | Inline scripts and assets into each HTML file (default)                    |
-| `--no-self-contained`              | Keep scripts and assets in separate files                                  |
-| `-y`, `--yes`                      | Use defaults: `my-talk`, all plugins, default theme, self-contained builds |
-| `-h`, `--help`                     | Show usage                                                                 |
-| `-v`, `--version`                  | Show the initializer version                                               |
+| Option                             | Meaning                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `--plugins elements,mathjax,shiki` | Enable the listed plugins; use `none` or an empty string for no plugins                          |
+| `--theme default`                  | Use `@seminar/theme-default`                                                                     |
+| `--theme custom`                   | Create an editable `src/theme.ts` with Roboto imports                                            |
+| `--self-contained`                 | Inline scripts and assets into each HTML file (default)                                          |
+| `--no-self-contained`              | Keep scripts and assets in separate files                                                        |
+| `--install`                        | Install dependencies after creating the project (default)                                        |
+| `--no-install`                     | Create files without installing dependencies                                                     |
+| `-y`, `--yes`                      | Use defaults: `my-talk`, all plugins, default theme, self-contained builds, install dependencies |
+| `-h`, `--help`                     | Show usage                                                                                       |
+| `-v`, `--version`                  | Show the initializer version                                                                     |
 
 Use `.` as the directory to initialize the current directory. The destination
 must be new or empty; an existing `.git` directory or file is preserved.
-Existing project files are never overwritten. Dependencies are installed
-when you run `npm install`; the initializer only creates files.
+Existing project files are never overwritten. If installation fails, the
+generated files are kept and the command explains how to retry `npm install`.
 
 ## Developing the initializer
 
 From the Seminar repository, build it with `npm run build:packages`, then run:
 
 ```sh
-node packages/create/dist/index.js /tmp/my-talk --plugins elements --theme custom --self-contained
+node packages/create/dist/index.js /tmp/my-talk --plugins elements --theme custom --self-contained --no-install
 ```
 
 Before the first npm release, generated projects refer to unpublished package

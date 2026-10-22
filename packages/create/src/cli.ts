@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import prompts from 'prompts';
@@ -17,15 +18,18 @@ Create a Seminar presentation with Vite.
   --theme <default|custom>  Use the default theme or create src/theme.ts with Roboto
   --self-contained         Inline scripts and assets into HTML (default)
   --no-self-contained      Keep scripts and assets in separate files
+  --install                Install dependencies after creating the project (default)
+  --no-install             Leave dependency installation for later
   -y, --yes                Use defaults for any choices not supplied
   -h, --help               Show this help
   -v, --version            Show the initializer version
 
-Without flags, choose plugins, a theme, and the build format interactively.
-With --yes, use my-talk, all plugins, the default theme, and self-contained builds.
+Without flags, choose plugins, a theme, the build format, and installation interactively.
+With --yes, use my-talk, all plugins, the default theme, self-contained builds,
+and install dependencies.
 
 Example:
-  npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained
+  npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained --install
 `;
 
 /** Raised when a prompt is canceled, before any files are created. */
@@ -61,10 +65,35 @@ export interface RunOptions {
   interactive?: boolean;
   ask?: (questions: prompts.PromptObject[]) => Promise<Record<string, unknown>>;
   output?: (message: string) => void;
+  /** Installs dependencies in the generated project. Defaults to npm install. */
+  installDependencies?: (directory: string) => Promise<void>;
 }
 
 function quote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function installWithNpm(directory: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('npm', ['install'], {
+      cwd: directory,
+      stdio: 'inherit',
+      // Windows needs a shell to launch npm.cmd.
+      shell: process.platform === 'win32',
+    });
+    child.once('error', reject);
+    child.once('close', (code, signal) => {
+      if (code === 0) resolve();
+      else
+        reject(
+          new Error(
+            signal === null
+              ? `npm install exited with code ${String(code)}.`
+              : `npm install stopped with signal ${signal}.`,
+          ),
+        );
+    });
+  });
 }
 
 /** Resolves CLI choices, optionally prompts, and writes a presentation project. */
@@ -80,6 +109,7 @@ export async function run(
         },
       }),
     output = console.log,
+    installDependencies = installWithNpm,
   }: RunOptions = {},
 ): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -90,6 +120,7 @@ export async function run(
       plugins: { type: 'string' },
       theme: { type: 'string' },
       'self-contained': { type: 'boolean' },
+      install: { type: 'boolean' },
       yes: { type: 'boolean', short: 'y' },
       help: { type: 'boolean', short: 'h' },
       version: { type: 'boolean', short: 'v' },
@@ -110,12 +141,17 @@ export async function run(
   let theme =
     values.theme === undefined ? undefined : themeChoice(values.theme);
   let selfContained = values['self-contained'];
-  if (!interactive) selfContained ??= true;
+  let install = values.install;
+  if (!interactive) {
+    selfContained ??= true;
+    install ??= true;
+  }
   if (values.yes) {
     directory ??= 'my-talk';
     plugins ??= PLUGINS.map((plugin) => plugin.value);
     theme ??= 'default';
     selfContained ??= true;
+    install ??= true;
   }
   const questions: prompts.PromptObject[] = [];
   if (directory === undefined)
@@ -161,6 +197,15 @@ export async function run(
       active: 'yes',
       inactive: 'no',
     });
+  if (install === undefined)
+    questions.push({
+      type: 'toggle',
+      name: 'install',
+      message: 'Install dependencies now?',
+      initial: true,
+      active: 'yes',
+      inactive: 'no',
+    });
   if (questions.length > 0) {
     if (!interactive)
       throw new Error(
@@ -182,18 +227,35 @@ export async function run(
       typeof answers['selfContained'] === 'boolean'
     )
       selfContained = answers['selfContained'];
+    if (install === undefined && typeof answers['install'] === 'boolean')
+      install = answers['install'];
   }
   if (
     directory === undefined ||
     directory.trim() === '' ||
     plugins === undefined ||
     theme === undefined ||
-    selfContained === undefined
+    selfContained === undefined ||
+    install === undefined
   )
     throw new Canceled();
   const target = path.resolve(cwd, directory);
   createProject({ directory: target, plugins, theme, selfContained });
+  output(`Created ${target}`);
+  const changeDirectory =
+    target === path.resolve(cwd) ? '' : `  cd ${quote(directory)}\n`;
+  if (install) {
+    output('\nInstalling dependencies...\n');
+    try {
+      await installDependencies(target);
+    } catch (error) {
+      throw new Error(
+        `Could not install dependencies: ${error instanceof Error ? error.message : String(error)}\n\nProject files are kept in ${target}.\nTo retry:\n${changeDirectory}  npm install`,
+        { cause: error },
+      );
+    }
+  }
   output(
-    `Created ${target}\n\nNext steps:\n${target === path.resolve(cwd) ? '' : `  cd ${quote(directory)}\n`}  npm install\n  npm run dev`,
+    `\nNext steps:\n${changeDirectory}${install ? '' : '  npm install\n'}  npm run dev`,
   );
 }

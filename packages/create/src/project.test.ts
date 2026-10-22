@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -12,16 +13,22 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { run } from './cli.ts';
+import { run as runCli, type RunOptions } from './cli.ts';
 import { createProject, VERSION, type Plugin } from './project.ts';
 
 const temporary: string[] = [];
+const run = (argv: string[], options: RunOptions = {}) =>
+  runCli(argv, {
+    installDependencies: vi.fn(() => Promise.resolve()),
+    ...options,
+  });
 function workspace() {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'create-seminar-test-'));
   temporary.push(directory);
   return directory;
 }
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const directory of temporary.splice(0))
     rmSync(directory, { recursive: true, force: true });
 });
@@ -160,6 +167,7 @@ describe('CLI', () => {
         '--theme',
         'custom',
         '--self-contained',
+        '--no-install',
       ],
       { cwd, interactive: true, ask, output },
     );
@@ -177,12 +185,14 @@ describe('CLI', () => {
         'plugins',
         'theme',
         'selfContained',
+        'install',
       ]);
       expect(questions.at(-1)?.initial).toBe(true);
       return Promise.resolve({
         plugins: [],
         theme: 'custom',
         selfContained: false,
+        install: false,
       });
     });
     await run(['talk'], { cwd, interactive: true, ask, output: vi.fn() });
@@ -276,5 +286,137 @@ describe('CLI', () => {
     await run(['--help'], { cwd, interactive: false, output });
     expect(output.mock.calls.flat().join('\n')).toContain('--plugins');
     expect(readdirSync(cwd)).toEqual([]);
+  });
+});
+
+describe('dependency installation', () => {
+  it('offers installation by default and creates files before installing', async () => {
+    const cwd = workspace();
+    const installDependencies = vi.fn((directory: string) => {
+      expect(read(directory, 'package.json')).toContain('"private": true');
+      return Promise.resolve();
+    });
+    const ask = vi.fn((questions: { name?: unknown; initial?: unknown }[]) => {
+      expect(questions).toHaveLength(1);
+      expect(questions[0]).toMatchObject({ name: 'install', initial: true });
+      return Promise.resolve({ install: true });
+    });
+    const output = vi.fn();
+    await run(
+      ['talk', '--plugins', 'none', '--theme', 'default', '--self-contained'],
+      { cwd, interactive: true, ask, installDependencies, output },
+    );
+    expect(installDependencies).toHaveBeenCalledExactlyOnceWith(
+      path.join(cwd, 'talk'),
+    );
+    const messages = output.mock.calls.flat().join('\n');
+    expect(messages).toContain('npm run dev');
+    expect(messages).not.toContain('  npm install\n');
+  });
+  it.each([
+    [[], true],
+    [['--install'], true],
+    [['--no-install'], false],
+  ] as const)(
+    'respects installation flags %j with --yes',
+    async (flags, install) => {
+      const cwd = workspace();
+      const installDependencies = vi.fn(() => Promise.resolve());
+      const ask = vi.fn();
+      const output = vi.fn();
+      await run(['talk', '--yes', ...flags], {
+        cwd,
+        interactive: false,
+        ask,
+        installDependencies,
+        output,
+      });
+      expect(ask).not.toHaveBeenCalled();
+      expect(installDependencies).toHaveBeenCalledTimes(install ? 1 : 0);
+      expect(
+        output.mock.calls.flat().join('\n').includes('  npm install\n'),
+      ).toBe(!install);
+    },
+  );
+  it('allows declining the installation prompt', async () => {
+    const cwd = workspace();
+    const installDependencies = vi.fn(() => Promise.resolve());
+    const output = vi.fn();
+    await run(
+      ['talk', '--plugins', 'none', '--theme', 'default', '--self-contained'],
+      {
+        cwd,
+        interactive: true,
+        ask: () => Promise.resolve({ install: false }),
+        installDependencies,
+        output,
+      },
+    );
+    expect(installDependencies).not.toHaveBeenCalled();
+    expect(output.mock.calls.flat().join('\n')).toContain('  npm install\n');
+  });
+  it('keeps the project and explains how to retry a failed install', async () => {
+    const cwd = workspace();
+    const output = vi.fn();
+    await expect(
+      run(['talk', '--yes'], {
+        cwd,
+        interactive: false,
+        output,
+        installDependencies: () =>
+          Promise.reject(new Error('Registry offline')),
+      }),
+    ).rejects.toThrow(/Registry offline.*npm install/s);
+    expect(read(path.join(cwd, 'talk'), 'decks/index.deck.mdx')).toContain(
+      'My talk',
+    );
+    expect(output.mock.calls.flat().join('\n')).not.toContain('Next steps:');
+  });
+  it.each([0, 7])(
+    'runs npm install in the project and handles exit code %i',
+    async (code) => {
+      const cwd = workspace();
+      const bin = path.join(workspace(), 'bin');
+      mkdirSync(bin);
+      const script = `require('node:fs').writeFileSync('.install-receipt.json', JSON.stringify(process.argv.slice(2)));\nprocess.exitCode = ${String(code)};\n`;
+      if (process.platform === 'win32') {
+        writeFileSync(path.join(bin, 'npm.cjs'), script);
+        writeFileSync(
+          path.join(bin, 'npm.cmd'),
+          `@echo off\r\n"${process.execPath}" "%~dp0npm.cjs" %*\r\n`,
+        );
+      } else {
+        writeFileSync(
+          path.join(bin, 'npm'),
+          `#!${process.execPath}\n${script}`,
+        );
+        chmodSync(path.join(bin, 'npm'), 0o755);
+      }
+      vi.stubEnv('PATH', `${bin}${path.delimiter}${process.env['PATH'] ?? ''}`);
+      const result = runCli(['My Talk', '--yes'], {
+        cwd,
+        interactive: false,
+        output: vi.fn(),
+      });
+      if (code === 0) await result;
+      else await expect(result).rejects.toThrow(/7.*npm install/s);
+      expect(
+        JSON.parse(read(path.join(cwd, 'My Talk'), '.install-receipt.json')),
+      ).toEqual(['install']);
+    },
+  );
+  it('keeps the project if npm cannot be started', async () => {
+    const cwd = workspace();
+    vi.stubEnv('PATH', workspace());
+    await expect(
+      runCli(['talk', '--yes'], {
+        cwd,
+        interactive: false,
+        output: vi.fn(),
+      }),
+    ).rejects.toThrow(/Could not install dependencies:.*npm install/s);
+    expect(read(path.join(cwd, 'talk'), 'package.json')).toContain(
+      '"private": true',
+    );
   });
 });

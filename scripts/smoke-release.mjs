@@ -185,6 +185,7 @@ export const deck = Deck;
         options.plugins,
         '--theme',
         options.theme,
+        '--no-install',
         ...(options.selfContained ? [] : ['--no-self-contained']),
       ],
       { cwd: starter, stdio: 'inherit' },

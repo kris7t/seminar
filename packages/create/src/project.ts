@@ -241,8 +241,10 @@ ${seminarOptions.join('\n')}
 
 Requires Node.js 24 or newer.
 
+Run \`npm install\` first if you skipped dependency installation during setup
+or are setting up a fresh checkout.
+
 \`\`\`sh
-npm install
 npm run dev
 \`\`\`
 

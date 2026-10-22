@@ -107,6 +107,8 @@ self-contained Vite deck using the theme, elements, MathJax, Shiki, and a
 dynamic formula. It also runs the packed `create-seminar` command and builds
 isolated starters with a custom theme and all plugins, and the default theme
 without plugins, covering both self-contained and separate-asset builds.
+It passes `--no-install` so it can replace unpublished dependency versions
+with local tarballs before installing them.
 The smoke test checks source aliases in development and
 typechecking and keeps source fixtures out of deck discovery. Generated
 projects use the tested local tarballs for Seminar
