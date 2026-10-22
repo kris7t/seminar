@@ -16,8 +16,8 @@ To build your own components, plugins, or themes, see
 
 ## Getting started
 
-1. [Vite setup](vite.md): run the example, configure plugins, and build a
-   presentation to share.
+1. [Getting started](getting-started.md): create a project, edit your slides,
+   and build a presentation to share.
 2. [Editing and live preview](editing.md): work in your editor or with a
    coding agent while the deck updates in the browser.
 

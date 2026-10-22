@@ -22,8 +22,8 @@ npm run dev
 
 Choose plugins and either the default theme or an editable theme with Roboto.
 Self-contained builds are enabled by default; you can disable them during setup.
-See [Vite setup](packages/docs/docs/guide/vite.md) for initializer options and
-manual installation.
+See [Getting started](packages/docs/docs/guide/getting-started.md) to create
+a project or configure an existing one.
 
 To work on Seminar itself:
 
@@ -81,7 +81,7 @@ interface language.
 See the [user guide](packages/docs/docs/guide/index.md) for setup, syntax,
 and presentation controls:
 
-- [Vite setup](packages/docs/docs/guide/vite.md)
+- [Getting started](packages/docs/docs/guide/getting-started.md)
 - [Editing and live preview](packages/docs/docs/guide/editing.md)
 - [Presenting](packages/docs/docs/guide/presenting.md): controls and presenter view
 - [Decks and slides](packages/docs/docs/guide/core/decks.md)

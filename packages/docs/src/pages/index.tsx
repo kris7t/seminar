@@ -125,12 +125,12 @@ export default function Home(): JSX.Element {
             <span className={styles['featureNumber']} aria-hidden="true">
               05
             </span>
-            <h2>Build a deck with Vite</h2>
+            <h2>Create your first deck</h2>
             <p>
-              Configure Seminar alongside the React plugin, add math and code
-              highlighting, and build a single HTML file to present or share.
+              Create a project, choose presentation features and a theme, then
+              build a single HTML file to present or share.
             </p>
-            <Link to="/guide/vite">Set up Vite →</Link>
+            <Link to="/guide/getting-started">Get started →</Link>
           </article>
           <article>
             <span className={styles['featureNumber']} aria-hidden="true">

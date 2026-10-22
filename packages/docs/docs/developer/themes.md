@@ -25,7 +25,7 @@ With the generated Vite project, the `@/` alias points to `src/`. Select a
 custom theme for every deck with `seminar({ defaultTheme: '@/theme.ts' })` in
 `vite.config.ts`. Individual decks can override it in their frontmatter.
 The same aliases apply when loading a theme's compile-time config and its
-local imports. See [Vite setup](../guide/vite.md#aliases-and-a-default-theme).
+local imports. See [Aliases and a default theme](../guide/getting-started.md#aliases-and-a-default-theme).
 
 ## Masters
 

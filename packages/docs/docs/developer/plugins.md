@@ -64,7 +64,7 @@ seminar({ plugins: ['my-elements'] });
 With Vite, plugin names can also use the project's aliases, such as
 `plugins: ['@/presentation-plugin.ts']`. Aliases apply to plugin references in
 configs and to the `source` entries of compiler plugins too. See
-[Aliases and a default theme](../guide/vite.md#aliases-and-a-default-theme).
+[Aliases and a default theme](../guide/getting-started.md#aliases-and-a-default-theme).
 
 The configs of the plugins apply in order. The config of the theme of the
 deck applies last, so the theme can override the plugins.

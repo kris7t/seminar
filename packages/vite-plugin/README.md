@@ -18,7 +18,7 @@ export default defineConfig({
 Each `.deck.mdx` file gets its own HTML page. Production builds are
 self-contained by default.
 
-[Documentation](https://seminar.run/guide/vite) ·
+[Documentation](https://seminar.run/guide/getting-started#configure-vite) ·
 [Source](https://github.com/kris7t/seminar/tree/main/packages/vite-plugin)
 
 Licensed under the Apache License 2.0.

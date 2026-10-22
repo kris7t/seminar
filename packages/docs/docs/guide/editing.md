@@ -4,20 +4,20 @@ sidebar_position: 3
 
 # Editing and live preview
 
-Keep your editor and the browser side by side. With the
-[Vite setup](vite.md), saving a deck updates the presentation in place, so
-you can work on a slide while looking at it.
+Keep your editor and the browser side by side. Once you have
+[created a project](getting-started.md), saving a deck updates the presentation
+in place, so you can work on a slide while looking at it.
 
 ## Preview your changes
 
-From the Seminar repository root, start the example's development server:
+From your project directory, start the development server:
 
 ```sh
 npm run dev
 ```
 
 Open the address Vite prints and navigate to the slide you want to edit.
-Change `packages/example/index.deck.mdx` and save it. With
+Change `decks/index.deck.mdx` and save it. With
 `@vitejs/plugin-react` enabled, Seminar keeps the current slide, open
 panels, presenter view, and shared slide state when the deck updates.
 Without the React plugin, a deck change reloads the page instead.
@@ -60,6 +60,6 @@ Use the [presenter view](presenting.md#presenter-view) to check notes and
 previews. Try the [touch controls](presenting.md#mouse-and-touch) if you
 will present from a tablet or phone.
 
-Before sharing, [build the deck](vite.md#build-and-share) and open the
+Before sharing, [build the deck](getting-started.md#build-and-share) and open the
 resulting HTML file. This checks the version you will actually present,
 including its bundled fonts, images, and scripts.
