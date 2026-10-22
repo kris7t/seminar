@@ -1,4 +1,4 @@
-import { useState, type JSX, type KeyboardEvent } from 'react';
+import type { JSX, KeyboardEvent } from 'react';
 
 import styles from './SlidePreview.module.css';
 
@@ -11,19 +11,22 @@ const points = [
 /** Demonstrates steps and slides without loading the presentation runtime. */
 export default function SlidePreview({
   imageSrc,
+  frame,
+  onFrameChange,
 }: {
   imageSrc: string;
+  frame: number;
+  onFrameChange: (frame: number) => void;
 }): JSX.Element {
-  const [frame, setFrame] = useState(1);
   const imageSlide = frame === points.length;
   const previous = () => {
-    setFrame((value) => Math.max(0, value - 1));
+    onFrameChange(Math.max(0, frame - 1));
   };
   const next = () => {
-    setFrame((value) => Math.min(points.length, value + 1));
+    onFrameChange(Math.min(points.length, frame + 1));
   };
   const advance = () => {
-    setFrame((value) => (value === points.length ? 0 : value + 1));
+    onFrameChange(frame === points.length ? 0 : frame + 1);
   };
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {

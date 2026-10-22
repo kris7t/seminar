@@ -2,7 +2,7 @@ import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import CodeBlock from '@theme/CodeBlock';
 import Layout from '@theme/Layout';
-import type { JSX } from 'react';
+import { useState, type JSX } from 'react';
 
 import SlidePreview from '../components/SlidePreview.tsx';
 import styles from './index.module.css';
@@ -20,6 +20,8 @@ const example = `### One idea at a time
 /** Introduces Seminar and the guides for presenters and developers. */
 export default function Home(): JSX.Element {
   const talkImage = useBaseUrl('/img/talk.webp');
+  const [frame, setFrame] = useState(0);
+  const highlightedLine = frame < 3 ? frame + 3 : 9;
   return (
     <Layout
       title="Scientific talks, written in Markdown"
@@ -68,10 +70,17 @@ export default function Home(): JSX.Element {
               </p>
             </div>
             <figure className={styles['example']}>
-              <CodeBlock language="markdown" title="talk.deck.mdx">
+              <CodeBlock
+                language="markdown"
+                metastring={`{${highlightedLine.toString()}}`}
+              >
                 {example}
               </CodeBlock>
-              <SlidePreview imageSrc={talkImage} />
+              <SlidePreview
+                imageSrc={talkImage}
+                frame={frame}
+                onFrameChange={setFrame}
+              />
             </figure>
           </div>
         </header>
