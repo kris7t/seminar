@@ -184,12 +184,6 @@ Presentation elements, like callouts and columns, come from
 seminar({ plugins: ['@seminar/elements'] });
 ```
 
-## Releases
-
-The library packages and `create-seminar` share a release version; the docs and example remain
-private. See [Releasing Seminar](RELEASING.md) for package checks, npm trusted
-publishing setup, and the GitHub Actions release workflow.
-
 ## License
 
 [Apache License 2.0](LICENSE)
