@@ -58,6 +58,7 @@ for (let mask = 0; mask < 8; mask++) {
       expect(tsconfig.compilerOptions.paths['@/*']).toEqual(['./src/*']);
       expect(config).toContain("outDir: '../dist'");
       expect(config).toContain('emptyOutDir: true');
+      expect(config).toContain('selfContained: true');
       const deck = read(directory, 'decks/index.deck.mdx');
       expect(deck).toContain(':step');
       for (const plugin of plugins) {
@@ -70,7 +71,7 @@ for (let mask = 0; mask < 8; mask++) {
           expect(config).not.toContain(name);
         }
       }
-      expect(deck.includes(':::columns')).toBe(selected.includes('elements'));
+      expect(deck.includes(':::column[')).toBe(selected.includes('elements'));
       expect(deck.includes('$')).toBe(selected.includes('mathjax'));
       expect(deck.includes('```ts')).toBe(selected.includes('shiki'));
       expect(manifest.devDependencies).toHaveProperty('@seminar/mdx');
@@ -98,6 +99,18 @@ for (let mask = 0; mask < 8; mask++) {
     });
   }
 }
+
+it.each(['default', 'custom'] as const)(
+  'can disable self-contained builds with the %s theme',
+  (theme) => {
+    const directory = path.join(workspace(), 'hosted-talk');
+    createProject({ directory, plugins: [], theme, selfContained: false });
+    expect(read(directory, 'vite.config.ts')).toContain('selfContained: false');
+    const readme = read(directory, 'README.md');
+    expect(readme).toContain('Deploy the whole `dist/` directory');
+    expect(readme).not.toContain('a self-contained presentation');
+  },
+);
 
 describe('existing destinations', () => {
   it('keeps existing files and refuses to create a project over them', () => {
@@ -140,7 +153,14 @@ describe('CLI', () => {
     const ask = vi.fn();
     const output = vi.fn();
     await run(
-      ['My Talk', '--plugins', 'mathjax,elements', '--theme', 'custom'],
+      [
+        'My Talk',
+        '--plugins',
+        'mathjax,elements',
+        '--theme',
+        'custom',
+        '--self-contained',
+      ],
       { cwd, interactive: true, ask, output },
     );
     expect(ask).not.toHaveBeenCalled();
@@ -152,7 +172,19 @@ describe('CLI', () => {
   });
   it('asks only for missing choices and accepts an empty plugin selection', async () => {
     const cwd = workspace();
-    const ask = vi.fn(() => Promise.resolve({ plugins: [], theme: 'custom' }));
+    const ask = vi.fn((questions: { name?: unknown; initial?: unknown }[]) => {
+      expect(questions.map(({ name }) => name)).toEqual([
+        'plugins',
+        'theme',
+        'selfContained',
+      ]);
+      expect(questions.at(-1)?.initial).toBe(true);
+      return Promise.resolve({
+        plugins: [],
+        theme: 'custom',
+        selfContained: false,
+      });
+    });
     await run(['talk'], { cwd, interactive: true, ask, output: vi.fn() });
     expect(ask.mock.calls).toHaveLength(1);
     const manifest = JSON.parse(
@@ -160,6 +192,9 @@ describe('CLI', () => {
     ) as Manifest;
     expect(manifest.dependencies).not.toHaveProperty('@seminar/elements');
     expect(manifest.dependencies).toHaveProperty('@fontsource/roboto');
+    expect(read(path.join(cwd, 'talk'), 'vite.config.ts')).toContain(
+      'selfContained: false',
+    );
   });
   it('uses defaults with --yes and lets explicit flags override them', async () => {
     const cwd = workspace();
@@ -170,6 +205,9 @@ describe('CLI', () => {
     for (const name of Object.values(packages))
       expect(manifest.dependencies).toHaveProperty(name);
     expect(manifest.dependencies).toHaveProperty('@seminar/theme-default');
+    expect(read(path.join(cwd, 'my-talk'), 'vite.config.ts')).toContain(
+      'selfContained: true',
+    );
     await run(['minimal', '--yes', '--plugins', 'none', '--theme', 'custom'], {
       cwd,
       interactive: false,
@@ -181,6 +219,34 @@ describe('CLI', () => {
     for (const name of Object.values(packages))
       expect(minimal.dependencies).not.toHaveProperty(name);
     expect(minimal.dependencies).toHaveProperty('@fontsource/roboto');
+  });
+  it.each([
+    ['--self-contained', true],
+    ['--no-self-contained', false],
+  ] as const)('accepts %s with --yes', async (flag, enabled) => {
+    const cwd = workspace();
+    const ask = vi.fn();
+    await run(['talk', '--yes', flag], {
+      cwd,
+      interactive: true,
+      ask,
+      output: vi.fn(),
+    });
+    expect(ask).not.toHaveBeenCalled();
+    expect(read(path.join(cwd, 'talk'), 'vite.config.ts')).toContain(
+      `selfContained: ${String(enabled)}`,
+    );
+  });
+  it('defaults to self-contained builds for noninteractive flags', async () => {
+    const cwd = workspace();
+    await run(['talk', '--plugins', 'none', '--theme', 'default'], {
+      cwd,
+      interactive: false,
+      output: vi.fn(),
+    });
+    expect(read(path.join(cwd, 'talk'), 'vite.config.ts')).toContain(
+      'selfContained: true',
+    );
   });
   it('does not write files on cancellation or incomplete noninteractive input', async () => {
     const cwd = workspace();

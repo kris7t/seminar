@@ -21,6 +21,7 @@ npm run dev
 ```
 
 Choose plugins and either the default theme or an editable theme with Roboto.
+Self-contained builds are enabled by default; you can disable them during setup.
 See [Vite setup](packages/docs/docs/guide/vite.md) for initializer options and
 manual installation.
 

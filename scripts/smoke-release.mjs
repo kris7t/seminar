@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -171,14 +172,21 @@ export const deck = Deck;
     'The deck must contain its own scripts',
   );
   for (const options of [
-    { plugins: 'elements,mathjax,shiki', theme: 'custom' },
-    { plugins: 'none', theme: 'default' },
+    { plugins: 'elements,mathjax,shiki', theme: 'custom', selfContained: true },
+    { plugins: 'none', theme: 'default', selfContained: false },
   ]) {
     const starter = mkdtempSync(path.join(os.tmpdir(), 'seminar-starter-'));
     starters.push(starter);
     execFileSync(
       path.join(directory, 'node_modules/.bin/create-seminar'),
-      [starter, '--plugins', options.plugins, '--theme', options.theme],
+      [
+        starter,
+        '--plugins',
+        options.plugins,
+        '--theme',
+        options.theme,
+        ...(options.selfContained ? [] : ['--no-self-contained']),
+      ],
       { cwd: starter, stdio: 'inherit' },
     );
     mkdirSync(path.join(starter, 'src/fixtures'), { recursive: true });
@@ -273,10 +281,19 @@ export const deck = Deck;
       built.includes('My talk'),
       'The generated starter must build its deck',
     );
-    assert.ok(
+    assert.equal(
       !/<script[^>]*\bsrc=/.test(built),
-      'The generated deck must be self-contained',
+      options.selfContained,
+      'The generated deck must use the selected build format',
     );
+    if (!options.selfContained) {
+      const script = /<script[^>]*\bsrc="([^"]+)"/.exec(built)?.[1];
+      assert.ok(script, 'The generated deck must link its script');
+      assert.ok(
+        existsSync(path.join(starter, 'dist', script.replace(/^\//, ''))),
+        'The linked script must be included in the output directory',
+      );
+    }
     console.log(
       `Packed initializer builds a ${options.theme} theme starter with ${options.plugins} plugins.`,
     );

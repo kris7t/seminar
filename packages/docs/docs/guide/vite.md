@@ -28,13 +28,15 @@ components.
 To skip the prompts, supply all choices:
 
 ```sh
-npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom
+npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained
 ```
 
 `--plugins` accepts `elements`, `mathjax`, and `shiki`, separated by commas, or
 `none` to omit all optional plugins. `--theme` accepts `default` or `custom`.
-`--yes` uses defaults for any missing choices: `my-talk`, all plugins, and the
-default theme. Use `.` as the directory to initialize the current directory.
+Self-contained builds are enabled by default; choose `--no-self-contained`
+to keep scripts and assets in separate files. `--yes` uses defaults for any
+missing choices: `my-talk`, all plugins, the default theme, and self-contained
+builds. Use `.` as the directory to initialize the current directory.
 The destination must be empty apart from any `.git` metadata; existing project
 files are preserved.
 
@@ -46,7 +48,9 @@ up as presentation entries. The configuration selects a custom theme once
 with `defaultTheme: '@/theme.ts'`, so decks need no theme frontmatter.
 
 The generated project has `dev`, `build`, `preview`, and `typecheck` scripts.
-`build` checks TypeScript and produces a self-contained `dist/index.html`.
+`build` checks TypeScript and produces `dist/index.html`. By default it is
+self-contained; otherwise, deploy the whole `dist/` directory with its scripts
+and assets. Change `selfContained` in `vite.config.ts` to switch formats later.
 
 ## Install manually
 

@@ -15,15 +15,17 @@ Create a Seminar presentation with Vite.
 
   --plugins <list>          Comma-separated elements,mathjax,shiki, or none
   --theme <default|custom>  Use the default theme or create src/theme.ts with Roboto
+  --self-contained         Inline scripts and assets into HTML (default)
+  --no-self-contained      Keep scripts and assets in separate files
   -y, --yes                Use defaults for any choices not supplied
   -h, --help               Show this help
   -v, --version            Show the initializer version
 
-Without flags, choose plugins and a theme interactively.
-With --yes, use my-talk, all plugins, and the default theme.
+Without flags, choose plugins, a theme, and the build format interactively.
+With --yes, use my-talk, all plugins, the default theme, and self-contained builds.
 
 Example:
-  npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom
+  npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained
 `;
 
 /** Raised when a prompt is canceled, before any files are created. */
@@ -83,9 +85,11 @@ export async function run(
   const { values, positionals } = parseArgs({
     args: argv,
     allowPositionals: true,
+    allowNegative: true,
     options: {
       plugins: { type: 'string' },
       theme: { type: 'string' },
+      'self-contained': { type: 'boolean' },
       yes: { type: 'boolean', short: 'y' },
       help: { type: 'boolean', short: 'h' },
       version: { type: 'boolean', short: 'v' },
@@ -105,10 +109,13 @@ export async function run(
     values.plugins === undefined ? undefined : pluginList(values.plugins);
   let theme =
     values.theme === undefined ? undefined : themeChoice(values.theme);
+  let selfContained = values['self-contained'];
+  if (!interactive) selfContained ??= true;
   if (values.yes) {
     directory ??= 'my-talk';
     plugins ??= PLUGINS.map((plugin) => plugin.value);
     theme ??= 'default';
+    selfContained ??= true;
   }
   const questions: prompts.PromptObject[] = [];
   if (directory === undefined)
@@ -144,10 +151,20 @@ export async function run(
         },
       ],
     });
+  if (selfContained === undefined)
+    questions.push({
+      type: 'toggle',
+      name: 'selfContained',
+      message:
+        'Build self-contained HTML files with scripts and assets inlined?',
+      initial: true,
+      active: 'yes',
+      inactive: 'no',
+    });
   if (questions.length > 0) {
     if (!interactive)
       throw new Error(
-        'Supply a directory, --plugins elements,mathjax,shiki (or none), and --theme default|custom; or use --yes for defaults.',
+        'Supply a directory, --plugins elements,mathjax,shiki (or none), and --theme default|custom; or use --yes for defaults. Builds are self-contained unless --no-self-contained is supplied.',
       );
     const answers = await ask(questions);
     if (directory === undefined && typeof answers['directory'] === 'string')
@@ -160,16 +177,22 @@ export async function run(
       plugins = pluginList(answers['plugins'].join(','));
     if (theme === undefined && typeof answers['theme'] === 'string')
       theme = themeChoice(answers['theme']);
+    if (
+      selfContained === undefined &&
+      typeof answers['selfContained'] === 'boolean'
+    )
+      selfContained = answers['selfContained'];
   }
   if (
     directory === undefined ||
     directory.trim() === '' ||
     plugins === undefined ||
-    theme === undefined
+    theme === undefined ||
+    selfContained === undefined
   )
     throw new Canceled();
   const target = path.resolve(cwd, directory);
-  createProject({ directory: target, plugins, theme });
+  createProject({ directory: target, plugins, theme, selfContained });
   output(
     `Created ${target}\n\nNext steps:\n${target === path.resolve(cwd) ? '' : `  cd ${quote(directory)}\n`}  npm install\n  npm run dev`,
   );

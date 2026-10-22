@@ -12,13 +12,16 @@ npm run dev
 
 Choose which plugins to enable: Elements (callouts and columns), MathJax
 (math formulas), and Shiki (syntax highlighting). All three are selected by
-default. Then choose the default theme or an editable `src/theme.ts`.
+default. Then choose the default theme or an editable `src/theme.ts`, and
+whether to inline scripts and assets into each HTML file (on by default).
 
 The starter includes `decks/index.deck.mdx` with examples of the selected
 features, Vite and TypeScript configuration, and commands to develop, build,
 preview, and check types. Vite's root is `decks/`, so deck discovery only
 searches that directory.
-`npm run build` produces a self-contained `dist/index.html`.
+`npm run build` produces `dist/index.html`. By default, it is self-contained;
+when disabled, deploy the whole `dist/` directory with its scripts and assets.
+Change `selfContained` in `vite.config.ts` to switch formats later.
 
 `build.outDir` is `../dist` relative to the Vite root, keeping build output in
 the project's `dist/` directory. Components and fixtures can live in `src/`.
@@ -37,17 +40,19 @@ Vite and TypeScript both map `@/` to `src/`. For example, a deck can import
 Supply all choices to skip interactive prompts:
 
 ```sh
-npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom
+npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained
 ```
 
-| Option                             | Meaning                                                                 |
-| ---------------------------------- | ----------------------------------------------------------------------- |
-| `--plugins elements,mathjax,shiki` | Enable the listed plugins; use `none` or an empty string for no plugins |
-| `--theme default`                  | Use `@seminar/theme-default`                                            |
-| `--theme custom`                   | Create an editable `src/theme.ts` with Roboto imports                   |
-| `-y`, `--yes`                      | Use defaults for missing choices: `my-talk`, all plugins, default theme |
-| `-h`, `--help`                     | Show usage                                                              |
-| `-v`, `--version`                  | Show the initializer version                                            |
+| Option                             | Meaning                                                                    |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `--plugins elements,mathjax,shiki` | Enable the listed plugins; use `none` or an empty string for no plugins    |
+| `--theme default`                  | Use `@seminar/theme-default`                                               |
+| `--theme custom`                   | Create an editable `src/theme.ts` with Roboto imports                      |
+| `--self-contained`                 | Inline scripts and assets into each HTML file (default)                    |
+| `--no-self-contained`              | Keep scripts and assets in separate files                                  |
+| `-y`, `--yes`                      | Use defaults: `my-talk`, all plugins, default theme, self-contained builds |
+| `-h`, `--help`                     | Show usage                                                                 |
+| `-v`, `--version`                  | Show the initializer version                                               |
 
 Use `.` as the directory to initialize the current directory. The destination
 must be new or empty; an existing `.git` directory or file is preserved.
@@ -59,7 +64,7 @@ when you run `npm install`; the initializer only creates files.
 From the Seminar repository, build it with `npm run build:packages`, then run:
 
 ```sh
-node packages/create/dist/index.js /tmp/my-talk --plugins elements --theme custom
+node packages/create/dist/index.js /tmp/my-talk --plugins elements --theme custom --self-contained
 ```
 
 Before the first npm release, generated projects refer to unpublished package

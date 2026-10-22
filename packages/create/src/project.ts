@@ -17,6 +17,8 @@ export interface ProjectOptions {
   directory: string;
   plugins: readonly Plugin[];
   theme: Theme;
+  /** Inline scripts and assets into each HTML page. Defaults to true. */
+  selfContained?: boolean;
 }
 
 /** Plugin names and packages, in the order shown in the prompt. */
@@ -185,6 +187,7 @@ export function createProject(options: ProjectOptions): void {
     ]),
   };
   const seminarOptions = [
+    `      selfContained: ${String(options.selfContained ?? true)},`,
     ...(options.theme === 'custom'
       ? ["      defaultTheme: '@/theme.ts',"]
       : []),
@@ -203,13 +206,9 @@ export default defineConfig({
   root: 'decks',
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   plugins: [
-    ${
-      seminarOptions.length === 0
-        ? 'seminar()'
-        : `seminar({
+    seminar({
 ${seminarOptions.join('\n')}
-    })`
-    },
+    }),
     react(),
   ],
   build: { outDir: '../dist', emptyOutDir: true },
@@ -250,8 +249,12 @@ npm run dev
 Edit \`decks/index.deck.mdx\` while the development server is running.
 Imports such as \`@/MyComponent\` resolve to \`src/MyComponent\`.
 ${options.theme === 'custom' ? '\nEdit `src/theme.ts` to customize the theme and fonts.\n' : ''}
-Run \`npm run build\` to create \`dist/index.html\`, a self-contained presentation
-that you can open in a browser or share. Run \`npm run preview\` to preview the build.
+Run \`npm run build\` to create \`dist/index.html\`${
+      options.selfContained === false
+        ? ' with separate scripts and assets.\nDeploy the whole `dist/` directory to your web host.'
+        : ', a self-contained presentation\nthat you can open in a browser or share.'
+    } Run \`npm run preview\` to preview the build.
+Toggle \`selfContained\` in \`vite.config.ts\` to change the build format.
 
 [Seminar documentation](https://seminar.run)
 `,
