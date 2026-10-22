@@ -17,3 +17,13 @@
   --ifm-color-primary-lighter: #d5eaff;
   --ifm-color-primary-lightest: #ffffff;
 }
+
+.navbar__brand::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  margin-right: 0.5rem;
+  background-color: currentColor;
+  mask: url('/safari-pinned-tab.svg') center / contain no-repeat;
+}

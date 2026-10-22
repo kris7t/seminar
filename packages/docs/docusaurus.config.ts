@@ -6,6 +6,34 @@ const config: Config = {
   tagline: 'Scientific talks and lectures as Markdown presentations',
   url: 'https://seminar.run',
   baseUrl: '/',
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        href: '/favicon.ico',
+        type: 'image/x-icon',
+        sizes: '16x16 32x32 48x48',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        href: '/favicon.svg',
+        type: 'image/svg+xml',
+        sizes: 'any',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'mask-icon',
+        href: '/safari-pinned-tab.svg',
+        color: '#00639b',
+      },
+    },
+  ],
   onBrokenLinks: 'throw',
   onBrokenAnchors: 'throw',
   markdown: {

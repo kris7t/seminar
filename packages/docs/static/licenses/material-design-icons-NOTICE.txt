@@ -1,0 +1,15 @@
+The Seminar documentation favicons use the School icon from Material Design
+Icons by Google, licensed under the Apache License, Version 2.0.
+
+Source (24px filled School icon):
+https://github.com/google/material-design-icons/blob/49d4db35df873165d6bd6ba09b063c7dafbac2f4/src/social/school/materialicons/24px.svg
+
+License: material-design-icons-LICENSE.txt in this directory.
+
+Modifications for Seminar:
+- favicon.svg: removed the empty background path and added light/dark colors
+  selected by the browser's prefers-color-scheme media query.
+- favicon.ico: rasterized the blue icon at 16, 32, and 48 pixels on a transparent
+  background for browsers without SVG favicon support.
+- safari-pinned-tab.svg: removed the empty background path and scaled the black
+  icon to a 16 by 16 viewBox for Safari pinned tabs.
