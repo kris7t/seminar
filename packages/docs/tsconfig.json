@@ -14,5 +14,6 @@
     "isolatedDeclarations": false,
     "tsBuildInfoFile": "../../node_modules/.cache/tsc/docs.tsbuildinfo"
   },
-  "include": ["*.ts", "src"]
+  "include": ["*.ts", "src"],
+  "exclude": ["vitest.config.ts"]
 }

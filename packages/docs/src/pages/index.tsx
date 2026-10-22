@@ -1,18 +1,25 @@
 import Link from '@docusaurus/Link';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import CodeBlock from '@theme/CodeBlock';
 import Layout from '@theme/Layout';
 import type { JSX } from 'react';
 
+import SlidePreview from '../components/SlidePreview.tsx';
 import styles from './index.module.css';
 
 const example = `### One idea at a time
 
 - Start with the question
 - :step Show the evidence
-- :step Make the connection`;
+- :step Make the connection
+
+### The next slide
+
+![Person giving a talk](./talk.webp "Show your figures")`;
 
 /** Introduces Seminar and the guides for presenters and developers. */
 export default function Home(): JSX.Element {
+  const talkImage = useBaseUrl('/img/talk.webp');
   return (
     <Layout
       title="Scientific talks, written in Markdown"
@@ -22,6 +29,7 @@ export default function Home(): JSX.Element {
         <header className={styles['hero']}>
           <div className={['container', styles['heroGrid']].join(' ')}>
             <div>
+              <p className={styles['eyebrow']}>Markdown. React. Present.</p>
               <h1>
                 Scientific talks,
                 <br />
@@ -33,7 +41,7 @@ export default function Home(): JSX.Element {
                 HTML file that works offline.
               </p>
               <div className={styles['quickStart']}>
-                <CodeBlock language="bash">
+                <CodeBlock language="bash" title="Create a presentation">
                   npm create seminar@latest my-talk
                 </CodeBlock>
                 <p>Requires Node.js 24 or newer.</p>
@@ -46,7 +54,10 @@ export default function Home(): JSX.Element {
                   Get started
                 </Link>
                 <Link
-                  className="button button--outline button--secondary button--lg"
+                  className={[
+                    'button button--outline button--secondary button--lg',
+                    styles['developerButton'],
+                  ].join(' ')}
                   to="/developer/"
                 >
                   Developer guide
@@ -60,23 +71,7 @@ export default function Home(): JSX.Element {
               <CodeBlock language="markdown" title="talk.deck.mdx">
                 {example}
               </CodeBlock>
-              <div
-                className={styles['slide']}
-                role="group"
-                aria-label="Example slide, with two of three points revealed"
-              >
-                <span className={styles['slideLabel']}>A little at a time</span>
-                <h2>One idea at a time</h2>
-                <ul>
-                  <li>Start with the question</li>
-                  <li>Show the evidence</li>
-                  <li className={styles['future']}>Make the connection</li>
-                </ul>
-                <span className={styles['stepIndicator']}>Step 2 of 3</span>
-              </div>
-              <figcaption>
-                Plain text in your editor. A presentation on screen.
-              </figcaption>
+              <SlidePreview imageSrc={talkImage} />
             </figure>
           </div>
         </header>

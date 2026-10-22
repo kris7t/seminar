@@ -1,0 +1,4 @@
+Generated with the built-in image_gen tool. Exported as a 900 × 600 WebP for the landing-page preview.
+
+Prompt:
+Use case: photorealistic-natural. Asset type: photograph used inside a small presentation slide preview on the Seminar documentation website. Primary request: a person giving a scientific talk. Scene: a welcoming university lecture room, a speaker explaining a simple colorful scientific figure on a projection screen to a small audience. Style: natural editorial photography, candid and warm, believable hands and faces, soft daylight. Composition: landscape 3:2, medium-wide view, speaker and projected visual clearly recognizable at thumbnail size; keep the scene simple and uncluttered. The projected figure contains abstract geometric plots with no readable text. No logos, no watermarks, no added titles or captions. The website supplies its own title and caption.

@@ -1,0 +1,151 @@
+.preview {
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  border: 1px solid var(--ifm-toc-border-color);
+  border-left: 4px solid var(--ifm-color-primary);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 8%);
+}
+
+.stage {
+  display: grid;
+  cursor: pointer;
+}
+
+.slide {
+  grid-area: 1 / 1;
+  min-width: 0;
+  padding: 1.75rem 2rem 1.25rem;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 240ms ease,
+    visibility 0s 240ms;
+}
+
+.slide[data-current='true'] {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.slide h2 {
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+  letter-spacing: -0.03em;
+}
+
+.slide ul {
+  margin-bottom: 0;
+  padding-left: 1.25rem;
+  line-height: 1.9;
+}
+
+.bullet {
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.bullet[data-upcoming='true'] {
+  opacity: 0.35;
+}
+
+[data-theme='dark'] .bullet[data-upcoming='true'] {
+  opacity: 0.25;
+}
+
+.imageFigure {
+  margin: 0;
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  height: 10.5rem;
+  border-radius: var(--ifm-global-radius);
+  object-fit: cover;
+  object-position: center 36%;
+}
+
+.imageFigure figcaption {
+  margin-top: 0.5rem;
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--ifm-toc-border-color);
+}
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--ifm-toc-border-color);
+  border-radius: var(--ifm-global-radius);
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.control:hover:not(:disabled) {
+  border-color: var(--ifm-color-primary);
+  background: color-mix(in srgb, var(--ifm-color-primary) 10%, transparent);
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 3px;
+}
+
+.control:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.indicator {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .slide {
+    padding: 1.5rem 1.5rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .indicator {
+    grid-row: 1;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide,
+  .bullet {
+    transition: none;
+  }
+}

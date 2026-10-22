@@ -19,6 +19,15 @@
   gap: 4rem;
 }
 
+.eyebrow {
+  margin-bottom: 1.25rem;
+  color: var(--ifm-color-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .hero h1 {
   margin-bottom: 1.5rem;
   font-size: clamp(2.5rem, 4.2vw, 3.75rem);
@@ -40,6 +49,10 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 2rem;
+}
+
+.actions .developerButton {
+  border-color: var(--ifm-color-emphasis-400);
 }
 
 .quickStart {
@@ -73,59 +86,6 @@
 .example > div:first-child {
   margin-bottom: 1rem;
   box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
-}
-
-.example figcaption {
-  margin-top: 1rem;
-  color: var(--ifm-color-emphasis-600);
-  font-size: 0.85rem;
-  text-align: center;
-}
-
-.slide {
-  position: relative;
-  padding: 2rem 2.25rem 2.75rem;
-  border: 1px solid var(--ifm-toc-border-color);
-  border-left: 4px solid var(--ifm-color-primary);
-  border-radius: var(--ifm-global-radius);
-  background: var(--ifm-background-surface-color);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 8%);
-}
-
-.slideLabel {
-  color: var(--ifm-color-primary);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.slide h2 {
-  margin: 0.75rem 0 1rem;
-  font-size: 1.6rem;
-  letter-spacing: -0.03em;
-}
-
-.slide ul {
-  margin-bottom: 0;
-  padding-left: 1.25rem;
-  line-height: 1.9;
-}
-
-.future {
-  color: var(--ifm-color-emphasis-500);
-}
-
-[data-theme='dark'] .future {
-  color: var(--ifm-color-emphasis-300);
-}
-
-.stepIndicator {
-  position: absolute;
-  right: 1rem;
-  bottom: 0.75rem;
-  color: var(--ifm-color-emphasis-600);
-  font-size: 0.7rem;
 }
 
 .features {
@@ -193,10 +153,6 @@
 
   .actions > a {
     width: 100%;
-  }
-
-  .slide {
-    padding: 1.5rem 1.5rem 2.5rem;
   }
 
   .features {
