@@ -7,6 +7,7 @@ export type {
   SeminarConfig,
 } from './SeminarConfig.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
+export { DeckDocument, type DeckDocumentProps } from './deck/DeckDocument.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
 export { useDeckState } from './state/useDeckState.ts';
 export {

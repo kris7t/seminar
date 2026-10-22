@@ -1,5 +1,5 @@
 import { Box, Button, TextField, Typography } from '@mui/material';
-import { useResetSlideState, useSlideState } from '@seminar/core';
+import { useResetSlideState, useSlideState, useSlideView } from '@seminar/core';
 import type { JSX } from 'react';
 
 function parse(value: string): number | undefined {
@@ -18,6 +18,8 @@ export function Calculator(): JSX.Element {
   const [c, setC] = useSlideState<number | undefined>(undefined);
   const reset = useResetSlideState();
   const valid = parse(a) !== undefined && parse(b) !== undefined;
+  // Below the headings of the slides in documents.
+  const heading = useSlideView().kind === 'document' ? 'h5' : 'h4';
   return (
     <Box
       component="form"
@@ -40,7 +42,9 @@ export function Calculator(): JSX.Element {
         slotProps={{ htmlInput: { inputMode: 'decimal' } }}
         sx={{ width: 200 }}
       />
-      <Typography variant="h4">+</Typography>
+      <Typography variant="h4" component={heading}>
+        +
+      </Typography>
       <TextField
         label="B"
         value={b}
@@ -50,8 +54,10 @@ export function Calculator(): JSX.Element {
         slotProps={{ htmlInput: { inputMode: 'decimal' } }}
         sx={{ width: 200 }}
       />
-      <Typography variant="h4">=</Typography>
-      <Typography variant="h4" sx={{ minWidth: 120 }}>
+      <Typography variant="h4" component={heading}>
+        =
+      </Typography>
+      <Typography variant="h4" component={heading} sx={{ minWidth: 120 }}>
         {c ?? '?'}
       </Typography>
       <Button type="submit" variant="contained" disabled={!valid}>

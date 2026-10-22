@@ -5,7 +5,7 @@ import rollupSeminar, {
 
 import type { Alias, Plugin } from 'vite';
 
-import { seminarEntries } from './entries.ts';
+import { seminarEntries, type DeckContent } from './entries.ts';
 import { seminarHotReload } from './hotReload.ts';
 import { createViteImporter } from './importModule.ts';
 import { resolveAlias } from './aliases.ts';
@@ -20,6 +20,16 @@ export interface SeminarPluginOptions extends RollupSeminarPluginOptions {
    * pages (see {@link seminarEntries}). Defaults to `true`.
    */
   entries?: boolean;
+  /**
+   * What the generated page of each deck starts with, for clients that don't
+   * run JavaScript, like text extractors and AI tools that can't open a
+   * browser: `'ssr'` for the deck rendered on the server as a document,
+   * `'source'` for its MDX source, or `'none'` for nothing. Defaults to
+   * `'ssr'`.
+   *
+   * Only applies if `entries` is enabled.
+   */
+  content?: DeckContent | undefined;
   /**
    * Whether `vite build` turns the generated page of each deck into a single,
    * self-contained HTML file, with all scripts, style sheets, fonts, and
@@ -47,6 +57,7 @@ export interface SeminarPluginOptions extends RollupSeminarPluginOptions {
  */
 export default function seminar({
   entries = true,
+  content,
   selfContained = true,
   ...options
 }: SeminarPluginOptions = {}): Plugin[] {
@@ -77,6 +88,7 @@ export default function seminar({
     seminarEntries({
       syntaxPlugins: (source, deckPath) =>
         rollupPlugin.syntaxPlugins(source, deckPath),
+      content,
     }),
     ...(selfContained === false
       ? []
@@ -87,6 +99,7 @@ export default function seminar({
 export {
   seminarEntries,
   seminarHotReload,
+  type DeckContent,
   seminarSelfContained,
   type SelfContainedOptions,
 };

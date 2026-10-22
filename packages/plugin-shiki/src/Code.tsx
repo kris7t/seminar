@@ -2,6 +2,7 @@ import { generateUtilityClasses } from '@mui/material';
 import { styled, useThemeProps } from '@mui/material/styles';
 import {
   Step,
+  useSlideView,
   WITH_PREVIOUS,
   type ComponentTheme,
   type StepProps,
@@ -65,7 +66,8 @@ const CodeRoot = styled(Step, {
 /**
  * A code block of a deck, highlighted by Shiki when the deck is compiled. It's
  * shown with the previous step, like paragraphs, unless it's placed
- * otherwise.
+ * otherwise. Documents show its `code` in a plain `pre` instead, with the
+ * language in `data-lang`.
  *
  * Can be themed as `SeminarCode` in the `components` of the MUI theme.
  */
@@ -76,6 +78,21 @@ export function Code(inProps: CodeProps): JSX.Element {
   const { lang, meta, code, className, children, ...stepProps } = useThemeProps(
     { props: inProps, name: 'SeminarCode' },
   );
+  const { kind } = useSlideView();
+  if (kind === 'document' && code !== undefined) {
+    // The text of the code without its highlighting.
+    return (
+      <Step
+        component="pre"
+        defaultAttachment={WITH_PREVIOUS}
+        className={className}
+        data-lang={lang}
+        {...stepProps}
+      >
+        {code}
+      </Step>
+    );
+  }
   return (
     <CodeRoot
       component="div"

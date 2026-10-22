@@ -14,6 +14,8 @@ import {
   type RefCallback,
 } from 'react';
 
+import { DocumentSlideContext } from '../masters/DocumentMasters.tsx';
+
 /**
  * The elements named in one rendering of a slide, e.g., with `{#name}` in
  * MDX. A deck renders a slide in several views at once, as well as in recaps
@@ -89,8 +91,14 @@ export function SlideElementScope({
   children?: ReactNode;
 }): JSX.Element {
   // Ids from `useId` may have characters, like colons, that need escaping in
-  // selectors and in `url(#…)`.
-  const prefix = `seminar-${useId().replace(/[^\w-]/g, '')}-`;
+  // selectors and in `url(#…)`. Documents have a single rendering of each
+  // slide, whose ids can be readable instead.
+  const documentSlide = use(DocumentSlideContext);
+  const id = useId();
+  const prefix =
+    documentSlide === undefined
+      ? `seminar-${id.replace(/[^\w-]/g, '')}-`
+      : `${documentSlide.anchor}-`;
   const [store] = useState(() => new SlideElementStore(prefix));
   return <SlideElementContext value={store}>{children}</SlideElementContext>;
 }

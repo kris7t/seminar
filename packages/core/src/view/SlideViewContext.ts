@@ -19,9 +19,14 @@ import { createContext, use, useSyncExternalStore, type Context } from 'react';
  *   media, or frames, and it has state of its own. Slides should still render
  *   their steps in it, but may leave out anything else that is expensive to
  *   set up, like connections or timers.
+ * - `'document'`: a static rendering of the slide as part of a document, e.g.,
+ *   rendered on the server into the page of the deck for clients that don't
+ *   run JavaScript, like text extractors (see `DeckDocument`). Its effects
+ *   never run, so slides should render their content, including that of
+ *   every step, as text and semantic elements, without relying on styles.
  */
 export type SlideViewKind =
-  'audience' | 'presenter' | 'thumbnail' | 'preview' | 'probe';
+  'audience' | 'presenter' | 'thumbnail' | 'preview' | 'probe' | 'document';
 
 /** A rendering of a slide. See {@link useSlideView}. */
 export interface SlideView {

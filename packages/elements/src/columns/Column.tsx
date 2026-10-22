@@ -7,6 +7,7 @@ import {
 import {
   Step,
   WITH_PREVIOUS,
+  useSlideView,
   type ComponentTheme,
   type StepProps,
 } from '@seminar/core';
@@ -116,6 +117,8 @@ export function Column(inProps: ColumnProps): JSX.Element {
     ...stepProps
   } = props;
   const ownerState: ColumnOwnerState = { width, grow, headingVariant };
+  // Below the headings of the slides in documents.
+  const { kind } = useSlideView();
   return (
     <ColumnRoot
       defaultAttachment={WITH_PREVIOUS}
@@ -125,6 +128,7 @@ export function Column(inProps: ColumnProps): JSX.Element {
     >
       {heading !== undefined && heading !== null && (
         <ColumnHeading
+          as={kind === 'document' ? 'h5' : undefined}
           className={columnClasses.heading}
           ownerState={ownerState}
         >

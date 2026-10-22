@@ -78,7 +78,7 @@ export function useSlideState<T>(
     (listener: () => void) => store.subscribe(index, stateKey, listener),
     [store, index, stateKey],
   );
-  const value = useSyncExternalStore(subscribe, getValue);
+  const value = useSyncExternalStore(subscribe, getValue, getValue);
   const setValue = useCallback<Dispatch<SetStateAction<T>>>(
     (action) => {
       store.set(

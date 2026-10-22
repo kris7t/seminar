@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { readDeckFrontmatter } from '@seminar/mdx';
 import type { PluggableList } from 'unified';
-import type { Plugin } from 'vite';
+import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
 
 import {
   DECK_SUFFIX,
@@ -14,6 +14,14 @@ import {
   HTML_SUFFIX,
   type Input,
 } from './decks.ts';
+import {
+  createDocumentServer,
+  DOCUMENT_PREFIX,
+  DOCUMENT_QUERY,
+  documentRenderer,
+  renderDocumentModule,
+  type RenderDocument,
+} from './documents.ts';
 
 /** Query that marks the script that renders a deck. */
 const ENTRY_QUERY = '?seminar-entry';
@@ -92,19 +100,46 @@ export type SyntaxPlugins = (
 ) => Promise<PluggableList>;
 
 /**
+ * What the page of a deck starts with, for clients that don't run JavaScript,
+ * or only run it once, like text extractors:
+ *
+ * - `'ssr'`: the deck rendered on the server as a document (see `DeckDocument`
+ *   in `@seminar/core`), or its source if that fails.
+ * - `'source'`: the MDX source of the deck.
+ * - `'none'`: nothing, so that the page only has the deck.
+ */
+export type DeckContent = 'ssr' | 'source' | 'none';
+
+/**
  * Generates the HTML page for a deck.
  *
- * The page starts with the source of the deck, so that clients that don't run
- * JavaScript, or only run it once, can read it. Where the deck is rendered, it
- * is hidden by a media query instead of a script, so it doesn't flash before
- * the deck is rendered, stays in pages saved from the browser, and isn't read
- * by screen readers next to the slides.
+ * The page starts with the `content` of the deck. Where the deck is rendered,
+ * it is hidden by a media query instead of a script, so it doesn't flash
+ * before the deck is rendered, stays in pages saved from the browser, and
+ * isn't read by screen readers next to the slides.
  */
 async function renderHtml(
   deckPath: string,
   syntaxPlugins: SyntaxPlugins | undefined,
+  content: DeckContent,
+  renderDocument: () => RenderDocument,
+  warn: (message: string) => void,
 ): Promise<string> {
   const source = await readFile(deckPath, 'utf8');
+  const sourceHtml = `<pre>\n${escapeHtml(source)}</pre>`;
+  let contentHtml: string | undefined;
+  if (content === 'ssr') {
+    try {
+      contentHtml = await renderDocument()(deckPath);
+    } catch (error) {
+      warn(
+        `${deckPath} could not be rendered as a document, so its page shows the source instead: ${String(error)}`,
+      );
+      contentHtml = sourceHtml;
+    }
+  } else if (content === 'source') {
+    contentHtml = sourceHtml;
+  }
   const { title, lang } = readDeckFrontmatter(
     source,
     deckPath,
@@ -116,20 +151,25 @@ async function renderHtml(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${escapeHtml(typeof title === 'string' ? title : name.slice(0, -DECK_SUFFIX.length))}</title>
+    <title>${escapeHtml(typeof title === 'string' ? title : name.slice(0, -DECK_SUFFIX.length))}</title>${
+      contentHtml === undefined
+        ? ''
+        : `
     <style>
       @media ${SCRIPTING_QUERY} {
         #${CONTENT_ID} {
           display: none;
         }
       }
-    </style>
+    </style>`
+    }
   </head>
-  <body>
-    <div id="${CONTENT_ID}">
-      <pre>
-${escapeHtml(source)}</pre>
-    </div>
+  <body>${
+    contentHtml === undefined
+      ? ''
+      : `
+    <div id="${CONTENT_ID}">${contentHtml}</div>`
+  }
     <div id="${ROOT_ID}"></div>
     <div id="${STYLESHEETS_ID}"></div>
     <div id="${EMOTION_ID}"></div>
@@ -141,16 +181,31 @@ ${escapeHtml(source)}</pre>
 
 /**
  * Generates the module that renders a deck into the page, unless the page
- * shows the contents of the deck instead.
+ * shows the `content` of the deck instead.
  */
-function renderEntry(deckPath: string): string {
+function renderEntry(deckPath: string, content: DeckContent): string {
+  const render = `const cache = createCache({
+  key: 'css',
+  container: document.getElementById(${JSON.stringify(EMOTION_ID)}),
+});
+
+createRoot(document.getElementById(${JSON.stringify(ROOT_ID)})).render(
+  createElement(
+    StrictMode,
+    null,
+    createElement(CacheProvider, { value: cache }, createElement(Deck)),
+  ),
+);`;
   return `import createCache from '@emotion/cache';
 import { CacheProvider } from '@emotion/react';
 import { createElement, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import Deck from ${JSON.stringify(deckPath)};
 
-// Browsers that don't support the media queries match neither, but can render
+${
+  content === 'none'
+    ? render
+    : `// Browsers that don't support the media queries match neither, but can render
 // the deck.
 if (!matchMedia(${JSON.stringify(INITIAL_ONLY_QUERY)}).matches) {
   if (!matchMedia(${JSON.stringify(SCRIPTING_QUERY)}).matches) {
@@ -161,18 +216,8 @@ if (!matchMedia(${JSON.stringify(INITIAL_ONLY_QUERY)}).matches) {
     style.sheet.insertRule('#${CONTENT_ID} { display: none; }');
   }
 
-  const cache = createCache({
-    key: 'css',
-    container: document.getElementById(${JSON.stringify(EMOTION_ID)}),
-  });
-
-  createRoot(document.getElementById(${JSON.stringify(ROOT_ID)})).render(
-    createElement(
-      StrictMode,
-      null,
-      createElement(CacheProvider, { value: cache }, createElement(Deck)),
-    ),
-  );
+  ${render.replaceAll('\n', '\n  ')}
+}`
 }
 `;
 }
@@ -214,14 +259,33 @@ function addInputs(
  * `name.html` file. `index.deck.mdx` is served at the root of its directory.
  *
  * The title and language of the page are taken from the `title` and `lang`
- * of the frontmatter, where the title defaults to the first heading.
+ * of the frontmatter, where the title defaults to the first heading. The page
+ * starts with the `content` of the deck (see {@link DeckContent}), the deck
+ * rendered as a document by default.
  *
  * Only works with Vite.
  */
 export function seminarEntries({
   syntaxPlugins,
-}: { syntaxPlugins?: SyntaxPlugins | undefined } = {}): Plugin {
+  content = 'ssr',
+}: {
+  syntaxPlugins?: SyntaxPlugins | undefined;
+  content?: DeckContent | undefined;
+} = {}): Plugin {
   let root = process.cwd();
+  let config: ResolvedConfig;
+  let renderDocument: RenderDocument | undefined;
+  let documentServer: Promise<ViteDevServer> | undefined;
+  const getRenderDocument = (): RenderDocument => {
+    if (renderDocument === undefined) {
+      // While building, documents are rendered by a server of our own.
+      const server = createDocumentServer(config);
+      documentServer = server;
+      renderDocument = async (deckPath) =>
+        documentRenderer(await server)(deckPath);
+    }
+    return renderDocument;
+  };
   return {
     name: 'seminar:entries',
     enforce: 'pre',
@@ -249,36 +313,62 @@ export function seminarEntries({
       };
     },
 
-    configResolved(config) {
-      ({ root } = config);
+    configResolved(resolved) {
+      config = resolved;
+      ({ root } = resolved);
     },
 
     resolveId(id, importer) {
-      if (id.endsWith(ENTRY_QUERY)) {
-        const deck = decodeURI(id.slice(0, -ENTRY_QUERY.length));
-        const deckPath = path.isAbsolute(deck)
-          ? existsSync(deck)
-            ? deck
-            : path.join(root, deck)
-          : path.resolve(
-              importer === undefined ? root : path.dirname(importer),
-              deck,
-            );
-        return ENTRY_PREFIX + deckPath;
+      for (const [query, prefix] of [
+        [ENTRY_QUERY, ENTRY_PREFIX],
+        [DOCUMENT_QUERY, DOCUMENT_PREFIX],
+      ] as const) {
+        if (id.endsWith(query)) {
+          const deck = decodeURI(id.slice(0, -query.length));
+          const deckPath = path.isAbsolute(deck)
+            ? existsSync(deck)
+              ? deck
+              : path.join(root, deck)
+            : path.resolve(
+                importer === undefined ? root : path.dirname(importer),
+                deck,
+              );
+          return prefix + deckPath;
+        }
       }
       return isGenerated(id) ? id : undefined;
     },
 
     load(id) {
       if (id.startsWith(ENTRY_PREFIX)) {
-        return renderEntry(id.slice(ENTRY_PREFIX.length));
+        return renderEntry(id.slice(ENTRY_PREFIX.length), content);
       }
-      return isGenerated(id)
-        ? renderHtml(getDeckPath(id), syntaxPlugins)
-        : undefined;
+      if (id.startsWith(DOCUMENT_PREFIX)) {
+        return renderDocumentModule(id.slice(DOCUMENT_PREFIX.length));
+      }
+      if (!isGenerated(id)) {
+        return undefined;
+      }
+      return renderHtml(
+        getDeckPath(id),
+        syntaxPlugins,
+        content,
+        getRenderDocument,
+        (message) => {
+          this.warn(message);
+        },
+      );
+    },
+
+    async buildEnd() {
+      const server = documentServer;
+      documentServer = undefined;
+      renderDocument = undefined;
+      await (await server)?.close();
     },
 
     configureServer(server) {
+      renderDocument = documentRenderer(server);
       server.middlewares.use((request, response, next) => {
         if (
           request.url === undefined ||
@@ -300,7 +390,15 @@ export function seminarEntries({
           next();
           return;
         }
-        renderHtml(getDeckPath(htmlPath), syntaxPlugins)
+        renderHtml(
+          getDeckPath(htmlPath),
+          syntaxPlugins,
+          content,
+          getRenderDocument,
+          (message) => {
+            server.config.logger.warn(message);
+          },
+        )
           .then((html) =>
             server.transformIndexHtml(
               request.url ?? pathname,

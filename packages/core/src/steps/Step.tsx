@@ -8,11 +8,13 @@ import {
   type Theme,
 } from '@mui/material/styles';
 import {
+  createElement,
   use,
   type ElementType,
   type HTMLAttributes,
   type JSX,
   type ReactNode,
+  type Ref,
 } from 'react';
 
 import {
@@ -33,8 +35,20 @@ import {
 import type { StepPhase } from './StepStore.ts';
 import { StepBehaviorContext } from './StepBehaviorContext.ts';
 import type { FadeProps } from '../transitions/fades.ts';
+import { SlideViewContext } from '../view/SlideViewContext.ts';
 import { TogetherContext } from './TogetherContext.ts';
 import { useStep, type StepState, type StepWith } from './useSteps.ts';
+
+interface DocumentStepProps extends HTMLAttributes<HTMLElement> {
+  component: ElementType;
+  ref?: Ref<Element> | undefined;
+}
+
+/** A step in a `document` view, which is its element without styles. */
+function DocumentStep({ component, ...props }: DocumentStepProps): ReactNode {
+  // Use `createElement` to avoid tripping `static-components`.
+  return createElement(component, props);
+}
 
 /**
  * Further behaviors of steps. Add them by module augmentation, e.g.,
@@ -331,9 +345,11 @@ export function Step(inProps: StepProps): JSX.Element {
     fadeBefore,
     fadeAfter,
     className,
+    sx,
     children,
     ...rest
   } = props;
+  const view = use(SlideViewContext);
   const [shorthand, other] = splitShorthands(theme, rest);
   // The behavior of the slide takes precedence over the default of the theme.
   const behavior =
@@ -387,6 +403,21 @@ export function Step(inProps: StepProps): JSX.Element {
     moreHidden(appearances[phase], inherited),
     enclosing,
   );
+  const content = typeof children === 'function' ? children(step) : children;
+  if (view.kind === 'document') {
+    // Every step is part of the document, without styles or appearances.
+    return (
+      <DocumentStep
+        component={component}
+        ref={ref}
+        id={id === undefined ? undefined : elementId}
+        className={className}
+        {...other}
+      >
+        {content}
+      </DocumentStep>
+    );
+  }
   return (
     <StepRoot
       as={component}
@@ -399,13 +430,12 @@ export function Step(inProps: StepProps): JSX.Element {
         className,
       )}
       ownerState={{ ...props, behavior, phase }}
+      sx={sx}
       {...other}
     >
       <StepAppearanceContext value={appearance}>
         {/* Steps nested inside this one don't join the enclosing Together. */}
-        <TogetherContext value={undefined}>
-          {typeof children === 'function' ? children(step) : children}
-        </TogetherContext>
+        <TogetherContext value={undefined}>{content}</TogetherContext>
       </StepAppearanceContext>
     </StepRoot>
   );

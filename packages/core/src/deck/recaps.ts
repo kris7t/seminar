@@ -13,6 +13,24 @@ function propsOf(slide: SlideNode | undefined): SlideProps | undefined {
   return isValidElement<SlideProps>(slide) ? slide.props : undefined;
 }
 
+/** Returns the slides that the aliases of the slides refer to. */
+export function getAliases(slides: readonly SlideNode[]): Map<string, number> {
+  const aliases = new Map<string, number>();
+  for (const [index, slide] of slides.entries()) {
+    if (isValidElement<{ aliases?: unknown }>(slide)) {
+      const { aliases: slideAliases } = slide.props;
+      if (Array.isArray(slideAliases)) {
+        for (const alias of slideAliases) {
+          if (typeof alias === 'string' && !aliases.has(alias)) {
+            aliases.set(alias, index);
+          }
+        }
+      }
+    }
+  }
+  return aliases;
+}
+
 /** The slides of a deck with their recaps resolved. */
 export interface ResolvedRecaps {
   slides: SlideNode[];

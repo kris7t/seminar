@@ -223,9 +223,11 @@ export function useSteps(
       fades,
     ],
   );
+  const getStatus = linked ? getUnlinkedStatus : () => store.getStatus(node);
   const { stepIndex, phase, inherited } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,
-    linked ? getUnlinkedStatus : () => store.getStatus(node),
+    getStatus,
+    getStatus,
   );
   const clampedIndex = Math.min(stepIndex, count - 1);
   const ownStep = useMemo(

@@ -9,6 +9,7 @@ import {
 
 import { DeckContext } from '../deck/DeckContext.ts';
 import type { FadeProps } from '../transitions/fades.ts';
+import { getDocumentMaster } from '../masters/DocumentMasters.tsx';
 import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
 import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
@@ -152,13 +153,22 @@ export function Slide({
       store.setRange(undefined);
     };
   }, [store, from, after, to, before, fromLast]);
+  const deckLang = use(DeckContext)?.lang;
+  const inDocument = view.kind === 'document';
   // Every view of the slide tells its language, e.g., for reading it out,
-  // even in the user interface, which may be in another language.
-  const slideLang = lang ?? use(DeckContext)?.lang;
+  // even in the user interface, which may be in another language. Documents
+  // already have the language of the deck.
+  const slideLang = inDocument
+    ? lang === deckLang
+      ? undefined
+      : lang
+    : (lang ?? deckLang);
   // Masters are looked up rather than defined during render, so their state is
   // preserved. Use `createElement` to avoid tripping `static-components`.
   const master = createElement(
-    resolveMaster(masterName, theme.master),
+    inDocument
+      ? getDocumentMaster(masterName, theme.master)
+      : resolveMaster(masterName, theme.master),
     { title, className },
     children,
   );
@@ -168,6 +178,8 @@ export function Slide({
       <StepBehaviorContext value={steps}>
         {slideLang === undefined ? (
           master
+        ) : inDocument ? (
+          <div lang={slideLang}>{master}</div>
         ) : (
           // Without a box of its own, so that the master is laid out as before.
           <div lang={slideLang} style={{ display: 'contents' }}>

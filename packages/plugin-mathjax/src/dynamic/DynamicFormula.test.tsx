@@ -216,6 +216,18 @@ describe('DynamicFormula', () => {
     },
   );
 
+  it('shows the TeX source in documents without loading MathJax', () => {
+    const loadRenderer = vi.fn(() => Promise.resolve({ renderFormula }));
+    seminarOptions.math = {
+      ...deckOptions,
+      dynamic: { font: stix2Font, loadRenderer },
+    };
+    slideKind = 'document';
+    const { container } = render(<DynamicFormula tex="x^{2}" display />);
+    expect(container.innerHTML).toBe('<code>x^{2}</code>');
+    expect(loadRenderer).not.toHaveBeenCalled();
+  });
+
   it('takes the macros of the deck', async () => {
     const { container } = render(<DynamicFormula tex={'\\R'} />);
     await waitFor(() => {

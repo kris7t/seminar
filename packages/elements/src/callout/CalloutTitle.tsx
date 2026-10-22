@@ -4,7 +4,7 @@ import {
   useThemeProps,
   type TypographyVariant,
 } from '@mui/material/styles';
-import type { ComponentTheme } from '@seminar/core';
+import { useSlideView, type ComponentTheme } from '@seminar/core';
 import type { ComponentProps, JSX } from 'react';
 
 /** Props of the title of a callout. */
@@ -62,8 +62,11 @@ const CalloutTitleRoot = styled('span', {
 export function CalloutTitle(inProps: CalloutTitleProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SeminarCalloutTitle' });
   const { variant = 'h5', className, ...other } = props;
+  // Phrasing content, like the callout in documents.
+  const { kind } = useSlideView();
   return (
     <CalloutTitleRoot
+      as={kind === 'document' ? 'strong' : undefined}
       className={`${calloutTitleClasses.root}${className === undefined ? '' : ` ${className}`}`}
       ownerState={{ ...props, variant }}
       {...other}

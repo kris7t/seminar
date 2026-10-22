@@ -34,7 +34,7 @@ export function useDeckState<T>(
     (listener: () => void) => store.subscribe(key, listener),
     [store, key],
   );
-  const value = useSyncExternalStore(subscribe, getValue);
+  const value = useSyncExternalStore(subscribe, getValue, getValue);
   const setValue = useCallback<Dispatch<SetStateAction<T | undefined>>>(
     (action) => {
       store.set(

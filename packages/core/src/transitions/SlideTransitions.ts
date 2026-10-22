@@ -1,6 +1,14 @@
 import type { Theme } from '@mui/material/styles';
-import { createContext, useId, type Context, type CSSProperties } from 'react';
+import {
+  createContext,
+  use,
+  useId,
+  type Context,
+  type CSSProperties,
+} from 'react';
 import { flushSync } from 'react-dom';
+
+import { SlideViewContext } from '../view/SlideViewContext.ts';
 
 /** How the slide fades, e.g., from one step to another. */
 export interface FadeTransition {
@@ -104,6 +112,8 @@ export const POINTER_TRANSITION_NAME = 'seminar-pointer';
  */
 export const OWN_ANIMATION_CLASS = 'seminar-own-animation';
 
+const NO_STYLES: CSSProperties = {};
+
 /**
  * Returns styles that keep an element out of the fade of the slide from one
  * step to another, but not from one slide to another, e.g., a marker that moves with a CSS transition when the
@@ -115,10 +125,15 @@ export const OWN_ANIMATION_CLASS = 'seminar-own-animation';
  * appearing and disappearing itself, if it does. Its animations should
  * follow the steps, as the authoring guidelines describe. Browsers that
  * don't support view transition classes fade it with the slide.
+ *
+ * Documents don't fade, so the styles are empty in `document` views.
  */
 export function useOwnAnimation(): CSSProperties {
   // View transition names must be identifiers.
   const id = useId().replace(/[^\w-]/g, '');
+  if (use(SlideViewContext).kind === 'document') {
+    return NO_STYLES;
+  }
   return {
     viewTransitionName: `seminar-own-animation-${id}`,
     viewTransitionClass: OWN_ANIMATION_CLASS,

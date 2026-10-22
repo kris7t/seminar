@@ -111,7 +111,7 @@ export function DynamicFormula({
   onError,
   ...other
 }: DynamicFormulaProps): JSX.Element {
-  const { visible } = useSlideView();
+  const { visible, kind } = useSlideView();
   const options = useSeminarOptions('math');
   const deck = isRuntimeMathOptions(options) ? options : undefined;
   const reportError = useEffectEvent((message: string) => {
@@ -127,6 +127,10 @@ export function DynamicFormula({
   useEffect(() => {
     if (visible && unavailable !== undefined) reportError(unavailable);
   }, [visible, unavailable]);
+  if (kind === 'document') {
+    // MathJax only runs in the browser, so documents show the TeX source.
+    return <code>{tex}</code>;
+  }
   if (dynamic !== undefined) {
     return (
       <CachedFormula

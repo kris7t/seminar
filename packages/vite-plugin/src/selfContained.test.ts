@@ -4,7 +4,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import react from '@vitejs/plugin-react';
-import { createBuilder, defaultClientConditions } from 'vite';
+import {
+  createBuilder,
+  defaultClientConditions,
+  defaultServerConditions,
+} from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import seminar, { type SeminarPluginOptions } from './index.ts';
@@ -33,6 +37,11 @@ async function buildApp(options?: SeminarPluginOptions) {
     resolve: {
       conditions: ['@seminar/source', ...defaultClientConditions],
     },
+    ssr: {
+      resolve: {
+        conditions: ['@seminar/source', ...defaultServerConditions],
+      },
+    },
     build: { outDir, emptyOutDir: true },
   });
   await builder.buildApp();
@@ -52,7 +61,8 @@ describe('seminarSelfContained', () => {
       /<(script|style)\b[^>]*>[\s\S]*?<\/\1>/g,
       '<$1></$1>',
     );
-    expect(markup).not.toMatch(/\s(src|href)=/);
+    // Only links to the slides of the page.
+    expect(markup).not.toMatch(/\s(src|href)="(?!#)/);
     // The fonts of the theme, without WOFF fallbacks and unused subsets.
     expect(html).toContain('data:font/woff2;base64,');
     expect(html).not.toContain('data:font/woff;base64,');

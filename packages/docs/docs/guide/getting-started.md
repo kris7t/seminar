@@ -262,6 +262,27 @@ Deploy the whole output directory in this mode. It is useful for hosting
 with a Content Security Policy that forbids inline scripts. Set
 `selfContained: true` to return to single-file builds.
 
+### Content for clients without JavaScript
+
+The page of each deck starts with its slides rendered as a plain document:
+headings, text, presenter notes, MathML for formulas, and code without
+highlighting. Text extractors and AI tools that can't open a browser can read
+the deck from it, and it stays in pages saved from the browser. Browsers that
+run the deck hide it, so it neither flashes nor reaches screen readers.
+
+The headings link to their slides, so following such a link with JavaScript
+shows the slide. Change the `content` option to embed something else:
+
+```ts
+seminar({ content: 'source' });
+```
+
+- `'ssr'`, the default, renders the deck on the server. If that fails, e.g.,
+  because a component needs a browser, the build warns and embeds the source
+  instead.
+- `'source'` embeds the MDX source of the deck.
+- `'none'` embeds nothing.
+
 ## Install manually
 
 To add Seminar to an existing Vite project, install its packages and React

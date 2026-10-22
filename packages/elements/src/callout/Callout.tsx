@@ -20,7 +20,10 @@ import {
   useSlideBox,
   useMeasure,
   useSlideElement,
+  useSlideElementId,
   useSlidePoint,
+  useSlideView,
+  useUiLanguage,
   type SlidePoint,
   type StepProps,
   type StepState,
@@ -558,6 +561,49 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const element = block ? 'div' : 'span';
   const shadowId = useSvgId('SeminarCallout-shadow');
   const shadow = theme.shadows[elevation] ?? 'none';
+  const { kind } = useSlideView();
+  const { t } = useUiLanguage();
+  const targetId = useSlideElementId(typeof anchor === 'string' ? anchor : '');
+  if (kind === 'document') {
+    // A note without the bubble, linking to what it points at, if that has a
+    // name. Inline callouts are parenthesized, so that they don't run into the
+    // text around them.
+    const link = typeof anchor === 'string' && (
+      <>
+        <a href={`#${encodeURIComponent(targetId)}`} aria-label={t('pointsAt')}>
+          →
+        </a>{' '}
+      </>
+    );
+    const aside = (body: ReactNode): ReactNode =>
+      block ? (
+        <>
+          {link}
+          {body}
+        </>
+      ) : (
+        <>
+          ({link}
+          {body})
+        </>
+      );
+    return (
+      <>
+        {!block && ' '}
+        <Step
+          component={block ? 'aside' : 'small'}
+          role={block ? undefined : 'note'}
+          defaultBehavior="scoped"
+          className={className}
+          {...stepProps}
+        >
+          {typeof children === 'function'
+            ? (state: StepState) => aside(children(state))
+            : aside(children)}
+        </Step>
+      </>
+    );
+  }
 
   const content = (body: ReactNode): ReactNode => (
     <>

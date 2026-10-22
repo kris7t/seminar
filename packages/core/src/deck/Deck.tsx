@@ -8,6 +8,7 @@ import {
 import {
   Children,
   isValidElement,
+  use,
   useCallback,
   useEffect,
   useMemo,
@@ -18,6 +19,7 @@ import {
 } from 'react';
 
 import { DeckContext, type DeckState } from './DeckContext.ts';
+import { DeckDocumentContext, DocumentDeck } from './DeckDocument.tsx';
 import {
   SeminarOptionsContext,
   type SeminarOptions,
@@ -27,7 +29,7 @@ import {
   SLIDE_HEIGHT,
   SLIDE_WIDTH,
 } from '../theme/createSlideTheme.ts';
-import { resolveRecaps } from './recaps.ts';
+import { getAliases, resolveRecaps } from './recaps.ts';
 import { getFadeBetween, getStepFade } from '../transitions/slideFades.ts';
 import { useFitScale } from '../view/useFitScale.ts';
 import { useKeyboardNavigation } from '../interaction/useKeyboardNavigation.ts';
@@ -215,26 +217,6 @@ function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
   return undefined;
 }
 
-/** Returns the slides that the aliases of the slides refer to. */
-function getAliases(
-  slides: ReturnType<typeof Children.toArray>,
-): Map<string, number> {
-  const aliases = new Map<string, number>();
-  for (const [index, slide] of slides.entries()) {
-    if (isValidElement<{ aliases?: unknown }>(slide)) {
-      const { aliases: slideAliases } = slide.props;
-      if (Array.isArray(slideAliases)) {
-        for (const alias of slideAliases) {
-          if (typeof alias === 'string' && !aliases.has(alias)) {
-            aliases.set(alias, index);
-          }
-        }
-      }
-    }
-  }
-  return aliases;
-}
-
 function isSpare(slide: ReturnType<typeof Children.toArray>[number]) {
   return (
     isValidElement<{ spare?: unknown }>(slide) && slide.props.spare === true
@@ -263,8 +245,18 @@ const NO_OPTIONS: SeminarOptions = {};
  *
  * Going through the deck skips spare slides (see the `spare` prop of
  * {@link Slide}).
+ *
+ * Inside a {@link DeckDocument}, renders the slides as a document instead.
  */
-export function Deck({
+export function Deck(props: DeckProps): JSX.Element {
+  return use(DeckDocumentContext) ? (
+    <DocumentDeck {...props} />
+  ) : (
+    <InteractiveDeck {...props} />
+  );
+}
+
+function InteractiveDeck({
   children,
   options = NO_OPTIONS,
   theme = defaultSlideTheme,

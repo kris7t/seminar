@@ -9,25 +9,34 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import {
   build,
+  createLogger,
   createServer,
   defaultClientConditions,
+  defaultServerConditions,
   type InlineConfig,
   type Rolldown,
   type ViteDevServer,
 } from 'vite';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import seminar from './index.ts';
 
 const root = fileURLToPath(new URL('fixtures', import.meta.url));
 
+const pluginOptions = { plugins: ['@seminar/plugin-mathjax'] };
+
 const config: InlineConfig = {
   root,
   configFile: false,
   logLevel: 'silent',
-  plugins: [seminar({ plugins: ['@seminar/plugin-mathjax'] }), react()],
+  plugins: [seminar(pluginOptions), react()],
   resolve: {
     conditions: ['@seminar/source', ...defaultClientConditions],
+  },
+  ssr: {
+    resolve: {
+      conditions: ['@seminar/source', ...defaultServerConditions],
+    },
   },
 };
 
@@ -53,6 +62,50 @@ function get(
   });
 }
 
+/** Expects `html` to start with the fixture deck rendered as a document. */
+function expectDocument(html: string) {
+  const body = html.slice(html.indexOf('<body>'));
+  const content = body.slice(0, body.indexOf('<div id="seminar-root">'));
+  expect(content).toMatch(
+    /^<body>\s*<div id="seminar-content"><h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1><p>Someone, somewhere<\/p><h4 id="introduction">/,
+  );
+  // Steps without their styles, and math without SVG.
+  expect(content).toContain('<div>Revealed later</div>');
+  expect(content).toContain('data-latex="e^{i\\pi} + 1 = 0"');
+  expect(content).not.toContain('<svg');
+  expect(content).toContain('<h2 id="results">Results ');
+  // Slides without a title get one.
+  expect(content).toContain('<h4 id="end">Slide 4 ');
+  expect(content).not.toMatch(/<style|<!--| class=/);
+}
+
+/** Gets `paths` from a dev server with `options`. */
+async function serve(
+  options: InlineConfig,
+  paths: readonly string[],
+): Promise<string[]> {
+  const server = await createServer({
+    ...config,
+    ...options,
+    appType: 'mpa',
+    server: { middlewareMode: true },
+  });
+  const httpServer = createHttpServer(server.middlewares);
+  try {
+    await new Promise<void>((resolve) => {
+      httpServer.listen(0, '127.0.0.1', resolve);
+    });
+    const bodies: string[] = [];
+    for (const path of paths) {
+      bodies.push((await get(httpServer, path)).body);
+    }
+    return bodies;
+  } finally {
+    await new Promise((resolve) => httpServer.close(resolve));
+    await server.close();
+  }
+}
+
 describe('seminarEntries', () => {
   describe('build', () => {
     let output: Rolldown.RolldownOutput;
@@ -70,6 +123,11 @@ describe('seminarEntries', () => {
       expect(html).toMatch(
         /<script type="module" crossorigin src="[^"]+\.js">/,
       );
+    });
+
+    it('starts the page with the deck as a document', () => {
+      const page = output.output.find((file) => file.fileName === 'talk.html');
+      expectDocument(page?.type === 'asset' ? String(page.source) : '');
     });
 
     it('bundles the deck', () => {
@@ -119,15 +177,9 @@ describe('seminarEntries', () => {
       expect(html).toContain('src="./talk.deck.mdx?seminar-entry"');
     });
 
-    it('starts the page with the source of the deck', async () => {
+    it('starts the page with the deck as a document', async () => {
       const response = await fetch(`${baseUrl}/talk.html`);
-      const html = await response.text();
-      const body = html.slice(html.indexOf('<body>'));
-      expect(body).toMatch(
-        /^<body>\s*<div id="seminar-content">\s*<pre>\n---\nmouseNavigation: false\n/,
-      );
-      expect(body).toContain('&lt;Step&gt;Revealed later&lt;/Step&gt;');
-      expect(html).toContain('@media (scripting: enabled) {');
+      expectDocument(await response.text());
     });
 
     it('serves the script that renders the deck', async () => {
@@ -167,6 +219,57 @@ describe('seminarEntries', () => {
     it('answers malformed paths', async () => {
       const { status } = await get(httpServer, '/%E0.html');
       expect(status).toBe(404);
+    });
+  });
+
+  describe('content', () => {
+    it('falls back to the source of the deck with a warning', async () => {
+      const warn = vi.fn<(message: string) => void>();
+      const logger = createLogger('silent');
+      logger.warn = warn;
+      const [html] = await serve(
+        {
+          root: fileURLToPath(new URL('fixtures-broken', import.meta.url)),
+          customLogger: logger,
+          logLevel: 'warn',
+        },
+        ['/broken.html'],
+      );
+      expect(html).toMatch(
+        /<div id="seminar-content"><pre>\nexport function Broken\(\)/,
+      );
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /broken\.deck\.mdx could not be rendered as a document.*Broken on purpose/,
+        ),
+      );
+    });
+
+    it('can be the source of the deck', async () => {
+      const [html, entry] = await serve(
+        {
+          plugins: [seminar({ ...pluginOptions, content: 'source' }), react()],
+        },
+        ['/talk.html', '/talk.deck.mdx?seminar-entry'],
+      );
+      expect(html).toMatch(
+        /<div id="seminar-content"><pre>\n---\nmouseNavigation: false\n/,
+      );
+      expect(html).toContain('&lt;Step&gt;Revealed later&lt;/Step&gt;');
+      expect(entry).toContain('scripting: initial-only');
+    });
+
+    it('can be left out', async () => {
+      const [html, entry] = await serve(
+        { plugins: [seminar({ ...pluginOptions, content: 'none' }), react()] },
+        ['/talk.html', '/talk.deck.mdx?seminar-entry'],
+      );
+      expect(html).not.toContain('seminar-content');
+      expect(html).not.toContain('scripting');
+      expect(html).toMatch(/<body>\s*<div id="seminar-root">/);
+      // The deck is rendered wherever scripts run.
+      expect(entry).toContain('createRoot');
+      expect(entry).not.toContain('matchMedia');
     });
   });
 });
