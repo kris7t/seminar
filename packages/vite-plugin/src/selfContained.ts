@@ -3,8 +3,25 @@ import path from 'node:path';
 
 import type { Plugin, ResolvedConfig, Rolldown, ViteBuilder } from 'vite';
 
-import { findDecks, getHtmlPath, isEmptyInput, removeInputs } from './decks.ts';
-import { STYLESHEETS_ID } from './entries.ts';
+import {
+  ENVIRONMENT_PREFIX,
+  findDecks,
+  getHtmlPath,
+  isEmptyInput,
+  removeInputs,
+} from './decks.ts';
+import { EMOTION_ID, STYLESHEETS_ID, type DeckContent } from './entries.ts';
+import {
+  embedImage,
+  imageDefinitions,
+  imageElement,
+  isImageFile,
+  markedImages,
+  readDataUri,
+  resolveImages,
+  imageReference,
+  type EmbeddedImage,
+} from './images.ts';
 import {
   collectCodePoints,
   parseUnicodeRange,
@@ -20,8 +37,11 @@ export interface SelfContainedOptions {
   keepUnicodeRanges?: string[] | undefined;
 }
 
-/** Prefix of the names of the build environments of decks. */
-const ENVIRONMENT_PREFIX = 'seminar_deck_';
+/** Id of the element that holds the images embedded into a page. */
+const IMAGES_ID = 'seminar-images';
+
+/** Prefix of the ids of the images embedded into a page. */
+const IMAGE_PREFIX = 'seminar-image-';
 
 function escapeRegExp(text: string): string {
   return text.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -51,6 +71,85 @@ function tagPattern(tag: string, attribute: string, fileName: string): RegExp {
   );
 }
 
+function findPage(
+  bundle: Rolldown.OutputBundle,
+): Rolldown.OutputAsset | undefined {
+  return Object.values(bundle).find(
+    (output): output is Rolldown.OutputAsset =>
+      output.type === 'asset' && output.fileName.endsWith('.html'),
+  );
+}
+
+/**
+ * Embeds the images that the page uses into it once, in a hidden `svg`
+ * element, which both the document and the slides use: the modules of
+ * `images` look them up (see {@link imageModule}), and the `img` elements of
+ * the document become `svg` elements that use them, with their alt text.
+ */
+async function embedImages(
+  bundle: Rolldown.OutputBundle,
+  images: Map<string, string>,
+  warn: (message: string) => void,
+) {
+  const page = findPage(bundle);
+  if (page === undefined) {
+    return;
+  }
+  let html = String(page.source);
+  for (const file of markedImages(html)) {
+    if (!images.has(file)) {
+      images.set(file, `${IMAGE_PREFIX}${String(images.size)}`);
+    }
+  }
+  if (images.size === 0) {
+    return;
+  }
+  const embedded = new Map<string, EmbeddedImage>();
+  const unsized = new Map<string, string>();
+  for (const [file, id] of images) {
+    try {
+      embedded.set(file, await embedImage(file, id));
+    } catch (error) {
+      warn(
+        `The size of ${file} is unknown, so the document of ${page.fileName} has it as a data URI: ${String(error)}`,
+      );
+      unsized.set(file, await readDataUri(file));
+    }
+  }
+  html = resolveImages(
+    html,
+    (file, attributes) => {
+      const image = embedded.get(file);
+      if (image !== undefined) {
+        return imageReference(image, attributes);
+      }
+      return imageElement(unsized.get(file) ?? '', attributes);
+    },
+    (file) => embedded.get(file)?.dataUri ?? unsized.get(file) ?? '',
+  );
+  const definitions = imageDefinitions(IMAGES_ID, [
+    ...embedded.values(),
+    // Images without a size are still looked up by the slides.
+    ...[...unsized].map(([file, dataUri]) => ({
+      id: images.get(file) ?? '',
+      dataUri,
+      width: 0,
+      height: 0,
+    })),
+  ]);
+  // After the content and the slides, where they don't cut off the text of
+  // the page for tools that only read its beginning.
+  const container = `<div id="${EMOTION_ID}"></div>`;
+  page.source = html.includes(container)
+    ? html.replace(container, () => container + definitions)
+    : html.replace(/<body\b[^>]*>/, (tag) => tag + definitions);
+}
+
+/** Generates the module of an image, which looks it up in the page. */
+function imageModule(id: string): string {
+  return `export default document.getElementById(${JSON.stringify(id)})?.getAttribute("href") ?? "";`;
+}
+
 /**
  * Inlines the scripts and style sheets of the page in `bundle` into the page,
  * removing them from the bundle, and removes the fonts that the page doesn't
@@ -63,10 +162,7 @@ function inlineBundle(
   warn: (message: string) => void,
 ) {
   const outputs = Object.values(bundle);
-  const page = outputs.find(
-    (output): output is Rolldown.OutputAsset =>
-      output.type === 'asset' && output.fileName.endsWith('.html'),
-  );
+  const page = findPage(bundle);
   if (page === undefined) {
     return;
   }
@@ -161,9 +257,10 @@ function shouldEmptyOutDir({ root, build }: ResolvedConfig): boolean {
  *
  * Files in the `public` directory are not inlined.
  */
-export function seminarSelfContained({
-  keepUnicodeRanges = [],
-}: SelfContainedOptions = {}): Plugin {
+export function seminarSelfContained(
+  { keepUnicodeRanges = [] }: SelfContainedOptions = {},
+  content: DeckContent = 'ssr',
+): Plugin {
   const keep = keepUnicodeRanges.flatMap((range) => {
     const parsed = parseUnicodeRange(range);
     if (parsed === undefined) {
@@ -253,18 +350,37 @@ export function seminarSelfContained({
       if (page === undefined) {
         return false;
       }
+      /** The ids of the images embedded into the page, by their files. */
+      const images = new Map<string, string>();
       return {
         name: 'seminar:self-contained:deck',
         options(options) {
           return { ...options, input: [page] };
         },
+        load: {
+          // Before Vite inlines the image into the script.
+          order: 'pre',
+          handler(id) {
+            if (content !== 'ssr' || !isImageFile(id)) {
+              return undefined;
+            }
+            let imageId = images.get(id);
+            if (imageId === undefined) {
+              imageId = `${IMAGE_PREFIX}${String(images.size)}`;
+              images.set(id, imageId);
+            }
+            return imageModule(imageId);
+          },
+        },
         generateBundle: {
           // After Vite has emitted the HTML page.
           order: 'post',
-          handler(_options, bundle) {
-            inlineBundle(bundle, keep, (message) => {
+          async handler(_options, bundle) {
+            const warn = (message: string) => {
               this.warn(message);
-            });
+            };
+            inlineBundle(bundle, keep, warn);
+            await embedImages(bundle, images, warn);
           },
         },
       };

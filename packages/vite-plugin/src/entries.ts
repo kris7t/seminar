@@ -4,10 +4,19 @@ import path from 'node:path';
 
 import { readDeckFrontmatter } from '@seminar/mdx';
 import type { PluggableList } from 'unified';
-import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
+import {
+  defaultClientConditions,
+  defaultServerConditions,
+  type Plugin,
+  type ResolvedConfig,
+  type Rolldown,
+  type UserConfig,
+  type ViteDevServer,
+} from 'vite';
 
 import {
   DECK_SUFFIX,
+  ENVIRONMENT_PREFIX,
   findDecks,
   getDeckPath,
   getHtmlPath,
@@ -22,6 +31,12 @@ import {
   renderDocumentModule,
   type RenderDocument,
 } from './documents.ts';
+import {
+  imageElement,
+  markedImages,
+  readDataUri,
+  resolveImages,
+} from './images.ts';
 
 /** Query that marks the script that renders a deck. */
 const ENTRY_QUERY = '?seminar-entry';
@@ -57,7 +72,7 @@ export const STYLESHEETS_ID = 'seminar-stylesheets';
  * ID of the element in the body of the page that holds the styles of Emotion,
  * which would otherwise be added to the head.
  */
-const EMOTION_ID = 'seminar-emotion';
+export const EMOTION_ID = 'seminar-emotion';
 
 /** Prefix of the virtual modules that render decks. */
 const ENTRY_PREFIX = '\0seminar-entry:';
@@ -222,6 +237,58 @@ if (!matchMedia(${JSON.stringify(INITIAL_ONLY_QUERY)}).matches) {
 `;
 }
 
+/**
+ * Returns the URL of the asset of the image at `file` in `bundle` from the
+ * page `pageName`, or its data URI if Vite inlined it into the scripts.
+ */
+async function imageUrl(
+  bundle: Rolldown.OutputBundle,
+  file: string,
+  pageName: string,
+  { root, base }: ResolvedConfig,
+): Promise<string> {
+  const asset = Object.values(bundle).find(
+    (output) =>
+      output.type === 'asset' &&
+      output.originalFileNames.some(
+        (name) => path.resolve(root, name) === file,
+      ),
+  );
+  if (asset === undefined) {
+    return readDataUri(file);
+  }
+  // Like Vite, relative to the page with a relative base.
+  return base === '' || base.startsWith('.')
+    ? path.posix.relative(path.posix.dirname(pageName), asset.fileName)
+    : `${base}${asset.fileName}`;
+}
+
+/**
+ * Returns the options that resolve modules for the server, which render the
+ * documents of decks, with the export conditions that `config` adds to those
+ * of the client, e.g., to use the sources of workspace packages, unless it
+ * sets the conditions of the server itself.
+ *
+ * Only for serving, since setting options of the server makes `vite build`
+ * build for the server, too.
+ */
+function serverResolveOptions(config: UserConfig): UserConfig['ssr'] {
+  const conditions = config.resolve?.conditions?.filter(
+    (condition) => !defaultClientConditions.includes(condition),
+  );
+  if (
+    conditions === undefined ||
+    conditions.length === 0 ||
+    config.ssr?.resolve?.conditions !== undefined ||
+    config.environments?.['ssr']?.resolve?.conditions !== undefined
+  ) {
+    return undefined;
+  }
+  return {
+    resolve: { conditions: [...conditions, ...defaultServerConditions] },
+  };
+}
+
 /** Adds the HTML pages of `decks` to the inputs of the build. */
 function addInputs(
   input: Input | undefined,
@@ -290,14 +357,19 @@ export function seminarEntries({
     name: 'seminar:entries',
     enforce: 'pre',
 
-    config(config) {
+    config(config, { command }) {
       root = path.resolve(config.root ?? process.cwd());
       const decks = findDecks(root);
       if (decks.length === 0) {
         return undefined;
       }
       const build = config.build;
+      const ssr =
+        content === 'ssr' && command === 'serve'
+          ? serverResolveOptions(config)
+          : undefined;
       return {
+        ...(ssr === undefined ? {} : { ssr }),
         build: {
           rolldownOptions: {
             input: addInputs(
@@ -358,6 +430,35 @@ export function seminarEntries({
           this.warn(message);
         },
       );
+    },
+
+    generateBundle: {
+      // After Vite has emitted the HTML pages.
+      order: 'post',
+      async handler(_options, bundle) {
+        // Self-contained pages embed their images on their own.
+        if (this.environment.name.startsWith(ENVIRONMENT_PREFIX)) {
+          return;
+        }
+        for (const page of Object.values(bundle)) {
+          if (page.type !== 'asset' || !page.fileName.endsWith('.html')) {
+            continue;
+          }
+          const html = String(page.source);
+          const urls = new Map<string, string>();
+          for (const file of markedImages(html)) {
+            urls.set(file, await imageUrl(bundle, file, page.fileName, config));
+          }
+          if (urls.size > 0) {
+            page.source = resolveImages(
+              html,
+              (file, attributes) =>
+                imageElement(urls.get(file) ?? '', attributes),
+              (file) => urls.get(file) ?? '',
+            );
+          }
+        }
+      },
     },
 
     async buildEnd() {

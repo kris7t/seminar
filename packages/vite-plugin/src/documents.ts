@@ -1,5 +1,7 @@
 import { createServer, type ResolvedConfig, type ViteDevServer } from 'vite';
 
+import { imageMarkers } from './images.ts';
+
 /** Query that marks the module that renders a deck as a document. */
 export const DOCUMENT_QUERY = '?seminar-document';
 
@@ -51,7 +53,10 @@ export async function render() {
 /**
  * Removes what documents rendered by React don't need: the markers that React
  * leaves between text and around suspended components for hydration, since
- * documents are never hydrated, and classes, which have no styles in them.
+ * documents are never hydrated, the links that preload images, which would
+ * put their data URIs before the text, and styles and classes. Emotion only
+ * leaves out its styles if it uses the cache of the document, which a second
+ * copy of Emotion doesn't.
  *
  * React escapes quotes in text and attribute values, so they can't contain
  * these.
@@ -59,6 +64,8 @@ export async function render() {
 export function cleanDocument(html: string): string {
   return html
     .replaceAll(/<!--(?: |\/?\$[!?]?)-->/g, '')
+    .replaceAll(/<link rel="preload"[^>]*>/g, '')
+    .replaceAll(/<style data-emotion="[^"]*"[^>]*>[^<]*<\/style>/g, '')
     .replaceAll(/ class="[^"]*"/g, '');
 }
 
@@ -83,14 +90,17 @@ export function documentRenderer(server: ViteDevServer): RenderDocument {
 }
 
 /**
- * Creates a server that loads the modules of `config` for the server, e.g.,
- * to render documents while building, without listening or watching files.
+ * Creates a server that loads the modules of `config` for the server, to
+ * render documents while building, without listening or watching files.
+ * Images in the documents are markers, which the build resolves (see
+ * `resolveImages`).
  */
 export function createDocumentServer(
   config: ResolvedConfig,
 ): Promise<ViteDevServer> {
   return createServer({
     ...config.inlineConfig,
+    plugins: [...(config.inlineConfig.plugins ?? []), imageMarkers()],
     configFile: config.configFile ?? false,
     root: config.root,
     mode: config.mode,

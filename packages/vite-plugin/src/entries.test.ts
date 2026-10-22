@@ -12,7 +12,6 @@ import {
   createLogger,
   createServer,
   defaultClientConditions,
-  defaultServerConditions,
   type InlineConfig,
   type Rolldown,
   type ViteDevServer,
@@ -32,11 +31,6 @@ const config: InlineConfig = {
   plugins: [seminar(pluginOptions), react()],
   resolve: {
     conditions: ['@seminar/source', ...defaultClientConditions],
-  },
-  ssr: {
-    resolve: {
-      conditions: ['@seminar/source', ...defaultServerConditions],
-    },
   },
 };
 

@@ -4,6 +4,9 @@ import path from 'node:path';
 import type { UserConfig } from 'vite';
 
 export const DECK_SUFFIX = '.deck.mdx';
+
+/** Prefix of the names of the build environments of self-contained decks. */
+export const ENVIRONMENT_PREFIX = 'seminar_deck_';
 export const HTML_SUFFIX = '.html';
 
 /** The inputs of a build. */

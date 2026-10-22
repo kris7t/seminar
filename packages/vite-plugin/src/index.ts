@@ -92,7 +92,12 @@ export default function seminar({
     }),
     ...(selfContained === false
       ? []
-      : [seminarSelfContained(selfContained === true ? {} : selfContained)]),
+      : [
+          seminarSelfContained(
+            selfContained === true ? {} : selfContained,
+            content,
+          ),
+        ]),
   ];
 }
 

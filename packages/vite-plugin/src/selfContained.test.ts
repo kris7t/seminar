@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react';
 import {
   createBuilder,
   defaultClientConditions,
-  defaultServerConditions,
+  type BuildEnvironmentOptions,
 } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -24,7 +24,10 @@ afterEach(async () => {
 });
 
 /** Builds the fixtures like `vite build` and returns the output files. */
-async function buildApp(options?: SeminarPluginOptions) {
+async function buildApp(
+  options?: SeminarPluginOptions,
+  build?: BuildEnvironmentOptions,
+) {
   outDir = await mkdtemp(path.join(tmpdir(), 'seminar-build-'));
   const builder = await createBuilder({
     root,
@@ -37,12 +40,7 @@ async function buildApp(options?: SeminarPluginOptions) {
     resolve: {
       conditions: ['@seminar/source', ...defaultClientConditions],
     },
-    ssr: {
-      resolve: {
-        conditions: ['@seminar/source', ...defaultServerConditions],
-      },
-    },
-    build: { outDir, emptyOutDir: true },
+    build: { ...build, outDir, emptyOutDir: true },
   });
   await builder.buildApp();
   const files = await readdir(outDir, { recursive: true });
@@ -61,12 +59,51 @@ describe('seminarSelfContained', () => {
       /<(script|style)\b[^>]*>[\s\S]*?<\/\1>/g,
       '<$1></$1>',
     );
-    // Only links to the slides of the page.
-    expect(markup).not.toMatch(/\s(src|href)="(?!#)/);
+    // Only links within the page, and embedded images.
+    expect(markup).not.toMatch(/\s(src|href)="(?!#|data:)/);
     // The fonts of the theme, without WOFF fallbacks and unused subsets.
     expect(html).toContain('data:font/woff2;base64,');
     expect(html).not.toContain('data:font/woff;base64,');
     expect(html).not.toMatch(/unicode-range:[^;}]*U\+0?400-0?45F/i);
+  }, 60_000);
+
+  it('embeds images once for the document and the slides', async () => {
+    const { html } = await buildApp();
+    const data =
+      /<image id="seminar-image-0" href="(data:image\/svg\+xml;base64,[^"]+)" width="120" height="60"\/>/.exec(
+        html,
+      )?.[1];
+    expect(data).toBeDefined();
+    expect(html.split(data ?? '').length - 1).toBe(1);
+    // After the deck and its styles.
+    expect(html.indexOf('<svg id="seminar-images"')).toBeGreaterThan(
+      html.indexOf('<div id="seminar-emotion">'),
+    );
+    expect(html).toContain(
+      '<div id="end-diagram"><svg role="img" aria-label="A diagram" width="120" height="60" viewBox="0 0 120 60"><title>A diagram</title><use href="#seminar-image-0"/></svg></div>',
+    );
+    // The slides look the image up instead of having it in the script.
+    expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);
+  }, 60_000);
+
+  it('embeds images into the document in other modes', async () => {
+    const { html } = await buildApp({ selfContained: false });
+    expect(html).toMatch(
+      /<div id="end-diagram"><img src="data:image\/svg\+xml;base64,[^"]+" alt="A diagram"\/><\/div>/,
+    );
+    expect(html).not.toContain('seminar-images');
+  }, 60_000);
+
+  it('refers to the assets of images in the document in other modes', async () => {
+    const { files, html } = await buildApp(
+      { selfContained: false },
+      { assetsInlineLimit: 0 },
+    );
+    const asset = files.find((file) => /^assets\/diagram-.*\.svg$/.test(file));
+    expect(asset).toBeDefined();
+    expect(html).toContain(
+      `<div id="end-diagram"><img src="/${asset ?? ''}" alt="A diagram"/></div>`,
+    );
   }, 60_000);
 
   it('puts the inlined code into the body after the deck', async () => {
@@ -99,5 +136,11 @@ describe('seminarSelfContained', () => {
     expect(files).toContain('talk.html');
     expect(files.some((file) => file.endsWith('.js'))).toBe(true);
     expect(html).toMatch(/<script type="module" crossorigin src=/);
+    // Only the build of the client, which has every file the page refers to.
+    const references = [...html.matchAll(/\s(?:src|href)="\/([^"]+)"/g)].map(
+      ([, file]) => file,
+    );
+    expect(references.length).toBeGreaterThan(0);
+    expect(files).toEqual(expect.arrayContaining(references));
   }, 60_000);
 });
