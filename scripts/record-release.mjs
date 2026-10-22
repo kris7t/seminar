@@ -33,8 +33,6 @@ export function recordRelease({ directory = root, base, tag, patchFile }) {
     'commit',
     '-m',
     `Release Seminar ${tag}`,
-    '-m',
-    'Co-Authored-By: Codex <noreply@openai.com>',
   );
   git(
     '-c',

@@ -42,7 +42,6 @@ test('recording a release atomically pushes the tested version and reuses it on 
   assert.notEqual(commit, repo.base);
   assert.equal(repo.git('rev-parse', 'origin/main'), commit);
   assert.equal(repo.git('rev-list', '-n', '1', repo.tag), commit);
-  assert.match(repo.git('log', '-1', '--format=%B'), /Co-Authored-By: Codex/);
   repo.git('checkout', '--detach', repo.base);
   assert.equal(recordRelease(repo), commit);
   assert.equal(repo.git('rev-parse', 'HEAD'), commit);
