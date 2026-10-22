@@ -1,6 +1,6 @@
 {
   "name": "@seminar/theme-default",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Default theme of Seminar presentations with the Roboto font",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -31,11 +31,11 @@
   },
   "peerDependencies": {
     "@mui/material": "^9.5.0",
-    "@seminar/core": "0.0.0"
+    "@seminar/core": "0.1.0"
   },
   "devDependencies": {
     "@mui/material": "^9.5.0",
-    "@seminar/core": "0.0.0"
+    "@seminar/core": "0.1.0"
   },
   "repository": {
     "type": "git",
