@@ -76,12 +76,17 @@ describe('seminarSelfContained', () => {
     expect(data).toBeDefined();
     expect(html.split(data ?? '').length - 1).toBe(1);
     // After the deck and its styles.
-    expect(html.indexOf('<svg id="seminar-images"')).toBeGreaterThan(
+    expect(html.search(/<svg id="seminar-images" aria-hidden/)).toBeGreaterThan(
       html.indexOf('<div id="seminar-emotion">'),
     );
     expect(html).toContain(
       '<div id="end-diagram"><svg role="img" aria-label="A diagram" width="120" height="60" viewBox="0 0 120 60"><title>A diagram</title><use href="#seminar-image-0"/></svg></div>',
     );
+    // The colophon tells what follows the content.
+    expect(html).toMatch(
+      /<p id="seminar-colophon" lang="en">Slide content: <code>&lt;main&gt;<\/code>, about the first \d+ KB\.<br>Images: .* \(base64 SVG\) after the slides\.<br>Followed by images, fonts, and scripts \(about [\d.]+ [KM]B\)\.<\/p>/,
+    );
+    expect(html).not.toContain('<!--seminar-');
     // The slides look the image up instead of having it in the script.
     expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);
   }, 60_000);

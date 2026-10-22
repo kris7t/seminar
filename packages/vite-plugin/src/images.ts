@@ -25,6 +25,13 @@ const IMAGE_TYPES: Readonly<Record<string, string>> = {
   '.webp': 'image/webp',
 };
 
+/** Returns the name of the type of the image at `file`, e.g., `PNG`. */
+export function imageTypeName(file: string): string {
+  const type = IMAGE_TYPES[path.extname(file).toLowerCase()] ?? '';
+  const subtype = type.slice(type.indexOf('/') + 1).replace(/^x-|\+xml$/g, '');
+  return subtype.toUpperCase();
+}
+
 /** Whether the module `id` is an image file imported for its URL. */
 export function isImageFile(id: string): boolean {
   return (

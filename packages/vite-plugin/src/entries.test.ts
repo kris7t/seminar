@@ -59,9 +59,16 @@ function get(
 /** Expects `html` to start with the fixture deck rendered as a document. */
 function expectDocument(html: string) {
   const body = html.slice(html.indexOf('<body>'));
-  const content = body.slice(0, body.indexOf('<div id="seminar-root">'));
+  // A colophon, which tells tools where the content is.
+  expect(body).toMatch(
+    /^<body>\s*<div id="seminar-content"><p id="seminar-colophon" lang="en">Slide content: <code>&lt;main&gt;<\/code>, about the first \d+ KB\.<\/p><main>/,
+  );
+  const content = body.slice(
+    body.indexOf('</p><main>') + '</p>'.length,
+    body.indexOf('<div id="seminar-root">'),
+  );
   expect(content).toMatch(
-    /^<body>\s*<div id="seminar-content"><h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1><p>Someone, somewhere<\/p><h4 id="introduction">/,
+    /^<main><h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1><p>Someone, somewhere<\/p><h4 id="introduction">/,
   );
   // Steps without their styles, and math without SVG.
   expect(content).toContain('<div>Revealed later</div>');
@@ -233,7 +240,7 @@ describe('seminarEntries', () => {
         ['/broken.html'],
       );
       expect(html).toMatch(
-        /<div id="seminar-content"><pre>\nexport function Broken\(\)/,
+        /<div id="seminar-content"><p id="seminar-colophon" lang="en">The MDX source of the deck: <code>&lt;main&gt;<\/code>, about the first \d+ KB\.<\/p><main><pre>\nexport function Broken\(\)/,
       );
       expect(warn).toHaveBeenCalledWith(
         expect.stringMatching(
@@ -250,7 +257,7 @@ describe('seminarEntries', () => {
         ['/talk.html', '/talk.deck.mdx?seminar-entry'],
       );
       expect(html).toMatch(
-        /<div id="seminar-content"><pre>\n---\nmouseNavigation: false\n/,
+        /<div id="seminar-content"><p id="seminar-colophon" lang="en">[^]*?<\/p><main><pre>\n---\nmouseNavigation: false\n/,
       );
       expect(html).toContain('&lt;Step&gt;Revealed later&lt;/Step&gt;');
       expect(entry).toContain('scripting: initial-only');

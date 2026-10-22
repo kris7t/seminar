@@ -108,7 +108,7 @@ describe('DeckDocument', () => {
       </DeckDocument>,
     );
     expect(html).toMatch(
-      /<p>Shown<\/p><aside aria-labelledby="([^"]+)"><h5 id="\1">Presenter notes<\/h5><p>Said<\/p><\/aside>$/,
+      /<p>Shown<\/p><aside data-seminar-notes="" aria-labelledby="([^"]+)"><h5 id="\1">Presenter notes<\/h5><p>Said<\/p><\/aside>$/,
     );
   });
 
@@ -144,7 +144,7 @@ describe('DeckDocument', () => {
       </DeckDocument>,
     );
     expect(html).toMatch(
-      /^<h4 id="english">English.*<\/h4><div lang="de"><h4 id="deutsch">Deutsch <a href="#deutsch" aria-label="Link to this slide" lang="en">#<\/a><\/h4><\/div><aside aria-labelledby="[^"]+" lang="de"><h5 id="[^"]+" lang="en">Presenter notes<\/h5>Gesagt<\/aside>$/,
+      /^<h4 id="english">English.*<\/h4><div lang="de"><h4 id="deutsch">Deutsch <a href="#deutsch" aria-label="Link to this slide" lang="en">#<\/a><\/h4><\/div><aside data-seminar-notes="" aria-labelledby="[^"]+" lang="de"><h5 id="[^"]+" lang="en">Presenter notes<\/h5>Gesagt<\/aside>$/,
     );
   });
 });

@@ -129,7 +129,8 @@ function DocumentNotes({
 }: DocumentNotesProps): JSX.Element {
   const id = useId();
   return (
-    <aside aria-labelledby={id} lang={lang}>
+    // Marked, unlike other asides, e.g., for the colophon of the page.
+    <aside data-seminar-notes="" aria-labelledby={id} lang={lang}>
       <h5 id={id} lang={labelLang}>
         {label}
       </h5>

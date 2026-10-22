@@ -31,6 +31,7 @@ import {
   renderDocumentModule,
   type RenderDocument,
 } from './documents.ts';
+import { colophonStart, CONTENT_END, writeColophon } from './colophon.ts';
 import {
   imageElement,
   markedImages,
@@ -141,11 +142,14 @@ async function renderHtml(
   warn: (message: string) => void,
 ): Promise<string> {
   const source = await readFile(deckPath, 'utf8');
-  const sourceHtml = `<pre>\n${escapeHtml(source)}</pre>`;
+  const sourceHtml = `${colophonStart({ kind: 'source' })}<main><pre>\n${escapeHtml(source)}</pre></main>${CONTENT_END}`;
   let contentHtml: string | undefined;
   if (content === 'ssr') {
     try {
-      contentHtml = await renderDocument()(deckPath);
+      const documentHtml = await renderDocument()(deckPath);
+      // React escapes text and attributes, so only notes match this.
+      const notes = documentHtml.includes(' data-seminar-notes=');
+      contentHtml = `${colophonStart({ kind: 'document', notes })}<main>${documentHtml}</main>${CONTENT_END}`;
     } catch (error) {
       warn(
         `${deckPath} could not be rendered as a document, so its page shows the source instead: ${String(error)}`,
@@ -449,14 +453,16 @@ export function seminarEntries({
           for (const file of markedImages(html)) {
             urls.set(file, await imageUrl(bundle, file, page.fileName, config));
           }
-          if (urls.size > 0) {
-            page.source = resolveImages(
-              html,
-              (file, attributes) =>
-                imageElement(urls.get(file) ?? '', attributes),
-              (file) => urls.get(file) ?? '',
-            );
-          }
+          page.source = writeColophon(
+            urls.size === 0
+              ? html
+              : resolveImages(
+                  html,
+                  (file, attributes) =>
+                    imageElement(urls.get(file) ?? '', attributes),
+                  (file) => urls.get(file) ?? '',
+                ),
+          );
         }
       },
     },
@@ -509,7 +515,7 @@ export function seminarEntries({
           )
           .then((html) => {
             response.setHeader('Content-Type', 'text/html');
-            response.end(html);
+            response.end(writeColophon(html));
           })
           .catch(next);
       });

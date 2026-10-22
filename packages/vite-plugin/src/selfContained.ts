@@ -11,9 +11,11 @@ import {
   removeInputs,
 } from './decks.ts';
 import { EMOTION_ID, STYLESHEETS_ID, type DeckContent } from './entries.ts';
+import { writeColophon } from './colophon.ts';
 import {
   embedImage,
   imageDefinitions,
+  imageTypeName,
   imageElement,
   isImageFile,
   markedImages,
@@ -85,15 +87,17 @@ function findPage(
  * element, which both the document and the slides use: the modules of
  * `images` look them up (see {@link imageModule}), and the `img` elements of
  * the document become `svg` elements that use them, with their alt text.
+ *
+ * @returns The files of the embedded images.
  */
 async function embedImages(
   bundle: Rolldown.OutputBundle,
   images: Map<string, string>,
   warn: (message: string) => void,
-) {
+): Promise<string[]> {
   const page = findPage(bundle);
   if (page === undefined) {
-    return;
+    return [];
   }
   let html = String(page.source);
   for (const file of markedImages(html)) {
@@ -102,7 +106,7 @@ async function embedImages(
     }
   }
   if (images.size === 0) {
-    return;
+    return [];
   }
   const embedded = new Map<string, EmbeddedImage>();
   const unsized = new Map<string, string>();
@@ -143,6 +147,7 @@ async function embedImages(
   page.source = html.includes(container)
     ? html.replace(container, () => container + definitions)
     : html.replace(/<body\b[^>]*>/, (tag) => tag + definitions);
+  return [...images.keys()];
 }
 
 /** Generates the module of an image, which looks it up in the page. */
@@ -155,16 +160,18 @@ function imageModule(id: string): string {
  * removing them from the bundle, and removes the fonts that the page doesn't
  * need. Other assets are inlined as data URIs by the build options of the
  * environment.
+ *
+ * @returns Whether fonts and scripts were inlined.
  */
 function inlineBundle(
   bundle: Rolldown.OutputBundle,
   keep: readonly CodePointRange[],
   warn: (message: string) => void,
-) {
+): { fonts: boolean; scripts: boolean } {
   const outputs = Object.values(bundle);
   const page = findPage(bundle);
   if (page === undefined) {
-    return;
+    return { fonts: false, scripts: false };
   }
   let html = String(page.source);
   const used = collectCodePoints(
@@ -215,6 +222,10 @@ function inlineBundle(
     ? html.replace(container, () => [container, ...styles].join('\n'))
     : // A page of a deck that is not generated.
       html.replace(/<body\b[^>]*>/, (tag) => [tag, ...styles].join('\n'));
+  return {
+    fonts: styles.some((style) => style.includes('@font-face')),
+    scripts: scripts.length > 0,
+  };
 }
 
 /** Empties `outDir` like Vite does, keeping `.git`. */
@@ -379,8 +390,16 @@ export function seminarSelfContained(
             const warn = (message: string) => {
               this.warn(message);
             };
-            inlineBundle(bundle, keep, warn);
-            await embedImages(bundle, images, warn);
+            const { fonts, scripts } = inlineBundle(bundle, keep, warn);
+            const embedded = await embedImages(bundle, images, warn);
+            const page = findPage(bundle);
+            if (page !== undefined) {
+              page.source = writeColophon(String(page.source), {
+                images: [...new Set(embedded.map(imageTypeName))],
+                fonts,
+                scripts,
+              });
+            }
           },
         },
       };
