@@ -18,6 +18,39 @@ import {
 /** Query that marks the script that renders a deck. */
 const ENTRY_QUERY = '?seminar-entry';
 
+/**
+ * ID of the element at the start of the body that holds the contents of the
+ * deck as HTML, for clients without JavaScript, like text extractors.
+ */
+const CONTENT_ID = 'seminar-content';
+
+/**
+ * Media query of environments where the style sheet of the page hides the
+ * contents of the deck, since the deck is rendered instead.
+ */
+const SCRIPTING_QUERY = '(scripting: enabled)';
+
+/**
+ * Media query of environments where scripts only run once, like in printing,
+ * so the contents of the deck are shown instead of rendering it.
+ */
+const INITIAL_ONLY_QUERY = '(scripting: initial-only)';
+
+/** ID of the element that the deck is rendered into. */
+const ROOT_ID = 'seminar-root';
+
+/**
+ * ID of the element in the body of the page that holds the style sheets of
+ * self-contained pages, which Vite would otherwise add to the head.
+ */
+export const STYLESHEETS_ID = 'seminar-stylesheets';
+
+/**
+ * ID of the element in the body of the page that holds the styles of Emotion,
+ * which would otherwise be added to the head.
+ */
+const EMOTION_ID = 'seminar-emotion';
+
 /** Prefix of the virtual modules that render decks. */
 const ENTRY_PREFIX = '\0seminar-entry:';
 
@@ -58,7 +91,15 @@ export type SyntaxPlugins = (
   deckPath: string,
 ) => Promise<PluggableList>;
 
-/** Generates the HTML page for a deck. */
+/**
+ * Generates the HTML page for a deck.
+ *
+ * The page starts with the source of the deck, so that clients that don't run
+ * JavaScript, or only run it once, can read it. Where the deck is rendered, it
+ * is hidden by a media query instead of a script, so it doesn't flash before
+ * the deck is rendered, stays in pages saved from the browser, and isn't read
+ * by screen readers next to the slides.
+ */
 async function renderHtml(
   deckPath: string,
   syntaxPlugins: SyntaxPlugins | undefined,
@@ -76,24 +117,63 @@ async function renderHtml(
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(typeof title === 'string' ? title : name.slice(0, -DECK_SUFFIX.length))}</title>
+    <style>
+      @media ${SCRIPTING_QUERY} {
+        #${CONTENT_ID} {
+          display: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="${CONTENT_ID}">
+      <pre>
+${escapeHtml(source)}</pre>
+    </div>
+    <div id="${ROOT_ID}"></div>
+    <div id="${STYLESHEETS_ID}"></div>
+    <div id="${EMOTION_ID}"></div>
     <script type="module" src="./${encodeURI(name)}${ENTRY_QUERY}"></script>
   </body>
 </html>
 `;
 }
 
-/** Generates the module that renders a deck into the page. */
+/**
+ * Generates the module that renders a deck into the page, unless the page
+ * shows the contents of the deck instead.
+ */
 function renderEntry(deckPath: string): string {
-  return `import { createElement, StrictMode } from 'react';
+  return `import createCache from '@emotion/cache';
+import { CacheProvider } from '@emotion/react';
+import { createElement, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import Deck from ${JSON.stringify(deckPath)};
 
-createRoot(document.getElementById('root')).render(
-  createElement(StrictMode, null, createElement(Deck)),
-);
+// Browsers that don't support the media queries match neither, but can render
+// the deck.
+if (!matchMedia(${JSON.stringify(INITIAL_ONLY_QUERY)}).matches) {
+  if (!matchMedia(${JSON.stringify(SCRIPTING_QUERY)}).matches) {
+    // Not hidden by the style sheet of the page. Unlike an attribute, a rule
+    // in the CSSOM isn't kept in pages saved from the browser.
+    const style = document.createElement('style');
+    document.head.append(style);
+    style.sheet.insertRule('#${CONTENT_ID} { display: none; }');
+  }
+
+  const cache = createCache({
+    key: 'css',
+    container: document.getElementById(${JSON.stringify(EMOTION_ID)}),
+  });
+
+  createRoot(document.getElementById(${JSON.stringify(ROOT_ID)})).render(
+    createElement(
+      StrictMode,
+      null,
+      createElement(CacheProvider, { value: cache }, createElement(Deck)),
+    ),
+  );
+}
 `;
 }
 

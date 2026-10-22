@@ -40,8 +40,10 @@ function setUpDocument(
   doc.title = document.title;
   // Copy the styles that don't come from Emotion, like fonts. Emotion styles
   // of this window may be in the CSSOM only, so they are rendered again.
-  for (const style of document.head.querySelectorAll(
-    'style:not([data-emotion]), link[rel="stylesheet"]',
+  // Self-contained pages have their style sheets in the body, see
+  // `@seminar/vite-plugin`.
+  for (const style of document.querySelectorAll(
+    ':is(head, #seminar-stylesheets) > :is(style:not([data-emotion]), link[rel="stylesheet"])',
   )) {
     doc.head.append(doc.importNode(style, true));
   }

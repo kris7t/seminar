@@ -59,6 +59,24 @@ describe('seminarSelfContained', () => {
     expect(html).not.toMatch(/unicode-range:[^;}]*U\+0?400-0?45F/i);
   }, 60_000);
 
+  it('puts the inlined code into the body after the deck', async () => {
+    const { html } = await buildApp();
+    const head = html.slice(0, html.indexOf('<body>'));
+    expect(head).not.toContain('<script');
+    expect(head.length).toBeLessThan(1000);
+    const body = html.slice(html.indexOf('<body>'));
+    const content = body.indexOf('<div id="seminar-content">');
+    const root = body.indexOf('<div id="seminar-root"></div>');
+    const stylesheets = body.indexOf('<div id="seminar-stylesheets">\n<style>');
+    const emotion = body.indexOf('<div id="seminar-emotion"></div>');
+    const script = body.indexOf('<script type="module">');
+    expect(content).toBeGreaterThan(0);
+    expect(root).toBeGreaterThan(content);
+    expect(stylesheets).toBeGreaterThan(root);
+    expect(emotion).toBeGreaterThan(stylesheets);
+    expect(script).toBeGreaterThan(emotion);
+  }, 60_000);
+
   it('keeps the requested Unicode ranges', async () => {
     const { html } = await buildApp({
       selfContained: { keepUnicodeRanges: ['U+0416'] },

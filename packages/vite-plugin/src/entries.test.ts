@@ -119,11 +119,25 @@ describe('seminarEntries', () => {
       expect(html).toContain('src="./talk.deck.mdx?seminar-entry"');
     });
 
+    it('starts the page with the source of the deck', async () => {
+      const response = await fetch(`${baseUrl}/talk.html`);
+      const html = await response.text();
+      const body = html.slice(html.indexOf('<body>'));
+      expect(body).toMatch(
+        /^<body>\s*<div id="seminar-content">\s*<pre>\n---\nmouseNavigation: false\n/,
+      );
+      expect(body).toContain('&lt;Step&gt;Revealed later&lt;/Step&gt;');
+      expect(html).toContain('@media (scripting: enabled) {');
+    });
+
     it('serves the script that renders the deck', async () => {
       const response = await fetch(`${baseUrl}/talk.deck.mdx?seminar-entry`);
       expect(response.status).toBe(200);
       const code = await response.text();
       expect(code).toContain('createRoot');
+      expect(code).toContain(
+        '!matchMedia("(scripting: initial-only)").matches',
+      );
       expect(code).toContain('talk.deck.mdx');
     });
 

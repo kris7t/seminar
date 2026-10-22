@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Plugin, ResolvedConfig, Rolldown, ViteBuilder } from 'vite';
 
 import { findDecks, getHtmlPath, isEmptyInput, removeInputs } from './decks.ts';
+import { STYLESHEETS_ID } from './entries.ts';
 import {
   collectCodePoints,
   parseUnicodeRange,
@@ -76,24 +77,28 @@ function inlineBundle(
   for (const codePoint of collectCodePoints([html], { html: true })) {
     used.add(codePoint);
   }
+  // Vite adds the tags to the head, but the inlined code goes into the body,
+  // so that the content of the page comes before it.
+  const styles: string[] = [];
+  const scripts: string[] = [];
   for (const output of outputs) {
     if (output === page) {
       continue;
     }
     const before = html;
     if (output.type === 'chunk') {
-      const script = `<script type="module">${escapeScript(output.code)}</script>`;
-      html = html.replace(
-        tagPattern('script', 'src', output.fileName),
-        () => script,
-      );
+      html = html.replace(tagPattern('script', 'src', output.fileName), '');
+      if (html !== before) {
+        scripts.push(
+          `<script type="module">${escapeScript(output.code)}</script>`,
+        );
+      }
     } else if (output.fileName.endsWith('.css')) {
-      const css = pruneFonts(String(output.source), { used, keep });
-      const style = `<style>${escapeStyle(css)}</style>`;
-      html = html.replace(
-        tagPattern('link', 'href', output.fileName),
-        () => style,
-      );
+      html = html.replace(tagPattern('link', 'href', output.fileName), '');
+      if (html !== before) {
+        const css = pruneFonts(String(output.source), { used, keep });
+        styles.push(`<style>${escapeStyle(css)}</style>`);
+      }
     }
     const inlined = html !== before;
     if (inlined) {
@@ -106,7 +111,14 @@ function inlineBundle(
       );
     }
   }
-  page.source = html;
+  // Scripts first, since the inlined style sheets may contain `</body>`, but
+  // the scripts come after the start of the body.
+  html = html.replace(/<\/body>/, () => [...scripts, '</body>'].join('\n'));
+  const container = `<div id="${STYLESHEETS_ID}">`;
+  page.source = html.includes(container)
+    ? html.replace(container, () => [container, ...styles].join('\n'))
+    : // A page of a deck that is not generated.
+      html.replace(/<body\b[^>]*>/, (tag) => [tag, ...styles].join('\n'));
 }
 
 /** Empties `outDir` like Vite does, keeping `.git`. */

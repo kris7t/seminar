@@ -880,6 +880,28 @@ describe('mirroring the interaction', () => {
     remove();
   });
 
+  it('copies the style sheets of self-contained pages to the audience window', async () => {
+    const stylesheets = document.createElement('div');
+    stylesheets.id = 'seminar-stylesheets';
+    const style = document.createElement('style');
+    style.textContent = '.copied { color: red; }';
+    stylesheets.append(style);
+    document.body.prepend(stylesheets);
+    const { audience, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="First" />
+      </Deck>,
+    );
+    await user.keyboard('{Shift>}P{/Shift}');
+    expect(audience.document.head.innerHTML).toContain(
+      '.copied { color: red; }',
+    );
+    stylesheets.remove();
+    remove();
+  });
+
   it('mirrors the ripple of buttons without clicking them', async () => {
     const { audience, remove } = fakeAudienceWindow();
     const onClick = vi.fn<() => void>();
