@@ -1,4 +1,9 @@
 {
   "label": "Writing decks",
-  "position": 4
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "slug": "/guide/core",
+    "description": "Write slides, reveal content step by step, and reuse material across presentations."
+  }
 }

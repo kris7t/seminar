@@ -1,5 +1,6 @@
 ---
 sidebar_position: 3
+description: Reveal content step by step and control how it appears.
 ---
 
 # Steps

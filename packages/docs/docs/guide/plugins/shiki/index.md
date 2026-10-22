@@ -1,5 +1,7 @@
 ---
 sidebar_position: 1
+slug: /guide/shiki
+description: Highlight code blocks with Shiki.
 ---
 
 # Highlighting code

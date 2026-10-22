@@ -1,5 +1,6 @@
 ---
 sidebar_position: 2
+description: Add text, images, math, code, notes, and React components.
 ---
 
 # Content
@@ -59,7 +60,7 @@ attributes the same way.
 ## Math
 
 Math is written in TeX between dollar signs, like `$e^{i\pi}$`. It's
-typeset by a plugin, like [`@seminar/plugin-mathjax`](../mathjax/index.md).
+typeset by a plugin, like [`@seminar/plugin-mathjax`](../plugins/mathjax/index.md).
 Without one, dollar signs are ordinary text.
 
 ## Code
@@ -74,7 +75,7 @@ export const answer = 42;
 ````
 
 They're shown as plain text, unless a plugin highlights them, like
-[`@seminar/plugin-shiki`](../shiki/index.md).
+[`@seminar/plugin-shiki`](../plugins/shiki/index.md).
 
 ## Presenter notes
 

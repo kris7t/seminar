@@ -89,9 +89,9 @@ and presentation controls:
 - [Content](packages/docs/docs/guide/core/content.md): images, math, code, notes, and components
 - [Steps](packages/docs/docs/guide/core/steps.md)
 - [Recaps and includes](packages/docs/docs/guide/core/reuse.md)
-- [Elements](packages/docs/docs/guide/elements/index.md): callouts and columns
-- [Math](packages/docs/docs/guide/mathjax/index.md) with MathJax
-- [Highlighting code](packages/docs/docs/guide/shiki/index.md) with Shiki
+- [Elements](packages/docs/docs/guide/plugins/elements/index.md): callouts and columns
+- [Math](packages/docs/docs/guide/plugins/mathjax/index.md) with MathJax
+- [Highlighting code](packages/docs/docs/guide/plugins/shiki/index.md) with Shiki
 - [Developers](packages/docs/docs/developer/index.md): components, plugins, and themes
 
 Decks can also be written in JSX with `Deck` and `Slide` from `@seminar/core`;

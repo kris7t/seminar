@@ -52,6 +52,45 @@ See [Decks and slides](core/decks.md) for the file format and
 [Editing and live preview](editing.md) for working in your editor or with a
 coding agent.
 
+## Syntax at a glance
+
+Besides Markdown and MDX, decks use [directives](https://talk.commonmark.org/t/generic-directives-plugins-syntax/444)
+in three forms:
+
+| Form      | Written as                           | Used for                        |
+| --------- | ------------------------------------ | ------------------------------- |
+| Text      | `:name[label]{attributes}`           | Something within a line of text |
+| Leaf      | `::name[label]{attributes}`          | Something on a line of its own  |
+| Container | `:::name[label]{attributes}` … `:::` | A block holding Markdown        |
+
+The label and the attributes are optional. Attributes are written like in
+Pandoc:
+
+- `#intro` sets the id, or name, to `intro`,
+- `.wide` adds the class `wide`,
+- `width=600` or `title="Two words"` sets a value, and
+- a bare word, like `only`, sets a flag.
+
+Headings and images take the same attributes in braces right after them,
+e.g., `## Intro {#intro}` or `![Tree](./tree.svg){width=600}`.
+
+Containers nest by using more colons for the outer one:
+
+```mdx
+::::columns
+:::column
+Left
+:::
+
+:::column
+Right
+:::
+::::
+```
+
+Write `\:step` for a literal `:step`, and `\{` for a brace that isn't an MDX
+expression.
+
 ## Build and share
 
 When your presentation is ready, run:
@@ -206,8 +245,8 @@ seminar({
 });
 ```
 
-They provide [callouts and columns](elements/index.md),
-[math](mathjax/index.md), and [syntax highlighting](shiki/index.md). The
+They provide [callouts and columns](plugins/elements/index.md),
+[math](plugins/mathjax/index.md), and [syntax highlighting](plugins/shiki/index.md). The
 initializer installs and configures the ones you select during setup.
 
 ### Separate scripts and assets

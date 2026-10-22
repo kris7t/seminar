@@ -1,5 +1,6 @@
 ---
 sidebar_position: 1
+description: Structure a presentation with slides, frontmatter, and slide attributes.
 ---
 
 # Decks and slides
@@ -41,7 +42,7 @@ optional.
 | `depth`           | Deepest heading level that starts a slide, see [Headings](#headings-and-slides) |
 | `mouseNavigation` | `false` starts with text selection (S) instead of clicks changing steps         |
 | `mirrorPointer`   | `true` starts the presenter view showing the mouse pointer to the audience      |
-| `math`            | Options of math, see [Math](../mathjax/index.md#options)                        |
+| `math`            | Options of math, see [Math](../plugins/mathjax/index.md#options)                |
 
 ## Headings and slides
 

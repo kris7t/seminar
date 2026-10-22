@@ -1,5 +1,6 @@
 ---
 sidebar_position: 2
+slug: /guide/elements/callouts
 ---
 
 # Callouts
@@ -18,7 +19,7 @@ Parsing builds a syntax tree:callout[Also known as an AST] of the slide.
 
 ## Pointing at an element
 
-On a line of its own, `::callout` points at a [named element](../core/content.md#naming-elements)
+On a line of its own, `::callout` points at a [named element](../../core/content.md#naming-elements)
 with `for`:
 
 ```mdx

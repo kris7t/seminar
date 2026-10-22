@@ -22,6 +22,10 @@ structure; set `sidebar_position` in a guide's frontmatter to order it within
 its section.
 Use `index.md` for section overviews and `_category_.json` for section labels
 and positions.
+Plugin usage guides live under `docs/guide/plugins/`. Writing decks uses
+`link.type: "generated-index"` in its metadata for an overview with automatic
+cards. Plugins uses an `index.mdx` with `<DocCardList />` so its introduction
+can include links while its cards still follow the sidebar automatically.
 
 Use relative `.md` links between guides so they also work when browsing the
 repository. The `.md` files use Markdown syntax; use `.mdx` for pages that

@@ -1,5 +1,6 @@
 ---
 sidebar_position: 4
+description: Return to earlier slides and include slides from other decks.
 ---
 
 # Recaps and includes

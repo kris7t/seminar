@@ -33,6 +33,16 @@ On a touch screen:
 - Pinch to open the slide overview.
 - Long-press to open the menu.
 
+### Interactive content
+
+Buttons, text fields, and other interactive components handle their own
+input. Keys used by a focused field stay with that field. Press Escape to
+move the focus away so the navigation keys control the deck again.
+
+Press S, or choose **Text selection** from the menu, to select and copy text
+with the mouse instead of changing steps by clicking. Press S again to
+return to click navigation.
+
 ## Overview and table of contents
 
 Press O to see the deck as thumbnails. Select a slide to go to it. With the
@@ -75,34 +85,23 @@ Press P again to stop presenting. Shift+P toggles the presenter view.
 ### Show your pointer
 
 In the presenter view, press M to show your pointer to the audience. The
-audience sees its shape, hover and focus styles, text caret and selection,
-and button ripples. Press L to switch between an ordinary pointer and a
-laser pointer.
+audience sees its shape, hovered and focused controls, and text caret and selection.
+Press L to switch between an ordinary pointer and a laser pointer.
 
 Set `mirrorPointer: true` in the deck's
 [frontmatter](core/decks.md#frontmatter) to start with pointer mirroring
 enabled.
 
-## Interactive content and text selection
-
-Buttons, text fields, and other interactive components handle their own
-input. Keys used by a focused field stay with that field. Press Escape to
-move the focus away so the navigation keys control the deck again.
-
-Press S, or choose **Text selection** from the menu, to select and copy text
-with the mouse instead of changing steps by clicking. Press S again to
-return to click navigation.
-
-## Reset state and choose a language
+## Slide and deck state
 
 Choose **Reset slide** in the menu to restore the current slide's shared
-state and return to the first step of its range. It is available when the
-slide has steps or modified slide state.
+state and return to the first step of its range.
 
 **Reset deck** starts the deck over: it clears all deck and slide state,
 including transient values, resets every slide and recap to the first step
-of its own range, and shows the first non-spare slide (or the first slide if
-all are spare). It is available even if only the navigation position changed.
+of its own range, and shows the first non-spare slide of the deck.
+
+## Interface language
 
 If the deck offers several interface languages, choose **Language** in the
 menu to switch between them. This changes menus and tooltips, while the

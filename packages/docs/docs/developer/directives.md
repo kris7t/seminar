@@ -5,7 +5,7 @@ sidebar_position: 4
 # Directives
 
 A plugin or a theme can make components available as Markdown
-[directives](../guide/index.md#syntax-at-a-glance), so that decks don't have to
+[directives](../guide/getting-started.md#syntax-at-a-glance), so that decks don't have to
 import them. `@seminar/elements` is a plugin like this.
 
 ## Registering directives
