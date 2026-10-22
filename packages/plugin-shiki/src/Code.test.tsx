@@ -39,7 +39,7 @@ describe('Code', () => {
       </DeckDocument>,
     );
     expect(html).toMatch(
-      /<\/h4><pre data-lang="ts">let x = 1 &lt; 2;\nx;<\/pre>$/,
+      /<\/h4><pre data-lang="ts">let x = 1 &lt; 2;\nx;<\/pre><\/section>$/,
     );
   });
 });

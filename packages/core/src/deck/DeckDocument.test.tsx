@@ -44,11 +44,11 @@ describe('DeckDocument', () => {
       </DeckDocument>,
     );
     expect(html).toBe(
-      `<h1 id="talk">Talk${link('talk')}</h1><p>By someone</p>` +
-        `<h2 id="slide=2">Part${link('slide=2')}</h2>` +
-        `<h3 id="slide=3">Detail${link('slide=3')}</h3>` +
-        `<h4 id="content">Content${link('content')}</h4>` +
-        `<h4 id="untitled">Slide 5${link('untitled')}</h4>`,
+      `<section><h1 id="talk">Talk${link('talk')}</h1><p>By someone</p></section>` +
+        `<section><h2 id="slide=2">Part${link('slide=2')}</h2></section>` +
+        `<section><h3 id="slide=3">Detail${link('slide=3')}</h3></section>` +
+        `<section><h4 id="content">Content${link('content')}</h4></section>` +
+        `<section><h4 id="untitled">Slide 5${link('untitled')}</h4></section>`,
     );
   });
 
@@ -94,7 +94,7 @@ describe('DeckDocument', () => {
     expect(html).toContain('<div>Moving</div>');
   });
 
-  it('renders notes after their slide', () => {
+  it('renders notes after their slide, in its section', () => {
     const html = renderToStaticMarkup(
       <DeckDocument>
         <Deck lang="en">
@@ -108,7 +108,7 @@ describe('DeckDocument', () => {
       </DeckDocument>,
     );
     expect(html).toMatch(
-      /<p>Shown<\/p><aside data-seminar-notes="" aria-labelledby="([^"]+)"><h5 id="\1">Presenter notes<\/h5><p>Said<\/p><\/aside>$/,
+      /<p>Shown<\/p><aside data-seminar-notes="" aria-labelledby="([^"]+)"><h5 id="\1">Presenter notes<\/h5><p>Said<\/p><\/aside><\/section>$/,
     );
   });
 
@@ -126,8 +126,8 @@ describe('DeckDocument', () => {
     );
     expect(html).toMatch(
       new RegExp(
-        `</aside><h2 id="original-recap">Original${link('original-recap')}</h2>` +
-          '<p>Recap of <a href="#original">Original</a></p>$',
+        `</aside></section><section><h2 id="original-recap">Original${link('original-recap')}</h2>` +
+          '<p>Recap of <a href="#original">Original</a></p></section>$',
       ),
     );
   });
@@ -144,7 +144,7 @@ describe('DeckDocument', () => {
       </DeckDocument>,
     );
     expect(html).toMatch(
-      /^<h4 id="english">English.*<\/h4><div lang="de"><h4 id="deutsch">Deutsch <a href="#deutsch" aria-label="Link to this slide" lang="en">#<\/a><\/h4><\/div><aside data-seminar-notes="" aria-labelledby="[^"]+" lang="de"><h5 id="[^"]+" lang="en">Presenter notes<\/h5>Gesagt<\/aside>$/,
+      /^<section><h4 id="english">English.*<\/h4><\/section><section lang="de"><h4 id="deutsch">Deutsch <a href="#deutsch" aria-label="Link to this slide" lang="en">#<\/a><\/h4><aside data-seminar-notes="" aria-labelledby="[^"]+"><h5 id="[^"]+" lang="en">Presenter notes<\/h5>Gesagt<\/aside><\/section>$/,
     );
   });
 });

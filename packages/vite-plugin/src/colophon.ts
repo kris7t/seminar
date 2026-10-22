@@ -149,7 +149,7 @@ export function writeColophon(
   const rest = html.slice(end + CONTENT_END.length);
   const lines = [
     start[1] === 'document'
-      ? `Slide content: \`<main>\` on lines {start}–{end}, about the first {size}.${start[2] === undefined ? '' : ' Speaker notes in `<aside>`.'}`
+      ? `Slide content: \`<main>\` on lines {start}–{end}, with a \`<section>\` for each slide, about the first {size}.${start[2] === undefined ? '' : ' Speaker notes in an `<aside>` in the section of their slide.'}`
       : 'The MDX source of the deck: `<main>` on lines {start}–{end}, about the first {size}.',
   ];
   if (images !== undefined && images.count > 0) {

@@ -54,12 +54,13 @@ export interface DeckDocumentProps {
  * extractors.
  *
  * The slides are rendered in `document` views (see `SlideViewKind`), one after
- * the other, each starting with a heading by the level of its master: `h1`
- * for the title, `h2` for sections, `h3` for subsections, and `h4` for every
- * other slide. The heading has the location hash of the slide as its id, and
- * links to it, so that following the link shows the slide in the deck.
- * Presenter notes follow their slide in an `aside`. Recaps only have the
- * heading of the slide they recap, followed by a link to it.
+ * the other, each in a `section` that starts with a heading by the level of
+ * its master: `h1` for the title, `h2` for sections, `h3` for subsections, and
+ * `h4` for every other slide. The heading has the location hash of the slide
+ * as its id, and links to it, so that following the link shows the slide in
+ * the deck. Presenter notes follow the slide in an `aside` in its section.
+ * Recaps only have the heading of the slide they recap, followed by a link to
+ * it.
  */
 export function DeckDocument({ children }: DeckDocumentProps): JSX.Element {
   return <DeckDocumentContext value>{children}</DeckDocumentContext>;
@@ -114,8 +115,6 @@ function noop() {
 
 interface DocumentNotesProps {
   notes: ReactNode;
-  /** The language of the notes, if it differs from that of the deck. */
-  lang: string | undefined;
   label: string;
   /** The language of `label`, if it differs from that of the notes. */
   labelLang: string | undefined;
@@ -123,14 +122,13 @@ interface DocumentNotesProps {
 
 function DocumentNotes({
   notes,
-  lang,
   label,
   labelLang,
 }: DocumentNotesProps): JSX.Element {
   const id = useId();
   return (
     // Marked, unlike other asides, e.g., for the colophon of the page.
-    <aside data-seminar-notes="" aria-labelledby={id} lang={lang}>
+    <aside data-seminar-notes="" aria-labelledby={id}>
       <h5 id={id} lang={labelLang}>
         {label}
       </h5>
@@ -262,45 +260,50 @@ export function DocumentDeck({
                               interactive: false,
                             }}
                           >
-                            <DocumentSlideContext
-                              value={{
-                                anchor: slideIds[index] ?? href.slice(1),
-                                href,
-                                untitled: t('slide', { number: index + 1 }),
-                                linkLabel: t('linkToSlide'),
-                                labelLang,
-                              }}
+                            {/* Without a label, which would make every slide
+                                a landmark. */}
+                            <section
+                              lang={
+                                slideLangs[index] === lang
+                                  ? undefined
+                                  : slideLangs[index]
+                              }
                             >
-                              {original === undefined ||
-                              !isValidElement<SlideProps>(slide) ? (
-                                slide
-                              ) : (
-                                <DocumentRecap
-                                  slide={slide.props}
-                                  href={formatLocation(
-                                    { slideIndex: original, step: [] },
-                                    slideIds,
-                                  )}
-                                  untitled={t('slide', {
-                                    number: original + 1,
-                                  })}
-                                  label={t('recapOf')}
+                              <DocumentSlideContext
+                                value={{
+                                  anchor: slideIds[index] ?? href.slice(1),
+                                  href,
+                                  untitled: t('slide', { number: index + 1 }),
+                                  linkLabel: t('linkToSlide'),
+                                  labelLang,
+                                }}
+                              >
+                                {original === undefined ||
+                                !isValidElement<SlideProps>(slide) ? (
+                                  slide
+                                ) : (
+                                  <DocumentRecap
+                                    slide={slide.props}
+                                    href={formatLocation(
+                                      { slideIndex: original, step: [] },
+                                      slideIds,
+                                    )}
+                                    untitled={t('slide', {
+                                      number: original + 1,
+                                    })}
+                                    label={t('recapOf')}
+                                    labelLang={labelLang}
+                                  />
+                                )}
+                              </DocumentSlideContext>
+                              {notes !== undefined && (
+                                <DocumentNotes
+                                  notes={notes}
+                                  label={t('presenterNotes')}
                                   labelLang={labelLang}
                                 />
                               )}
-                            </DocumentSlideContext>
-                            {notes !== undefined && (
-                              <DocumentNotes
-                                notes={notes}
-                                lang={
-                                  slideLangs[index] === lang
-                                    ? undefined
-                                    : slideLangs[index]
-                                }
-                                label={t('presenterNotes')}
-                                labelLang={labelLang}
-                              />
-                            )}
+                            </section>
                           </SlideViewProvider>
                         </StepStoreContext>
                       );

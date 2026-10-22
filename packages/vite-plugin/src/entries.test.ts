@@ -71,7 +71,7 @@ function expectDocument(html: string) {
     /^<body>\s*<div id="seminar-content">\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<main>/,
   );
   expect(colophonOf(body)).toMatch(
-    /^Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+, about the first \d+ KB\./,
+    /^Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\./,
   );
   // Lines are broken at spaces, which mean the same.
   const content = body
@@ -81,7 +81,7 @@ function expectDocument(html: string) {
     )
     .replaceAll('\n', ' ');
   expect(content).toMatch(
-    /^<main><h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1> <p>Someone, somewhere<\/p> <h4 id="introduction">/,
+    /^<main> ?<section> ?<h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1> <p>Someone, somewhere<\/p><\/section> <section> ?<h4 id="introduction">/,
   );
   // Steps without their styles, and math without SVG.
   expect(content).toContain('<div>Revealed later</div>');

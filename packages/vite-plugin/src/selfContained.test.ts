@@ -87,7 +87,7 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toMatch(
-      /^Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+, about the first \d+ KB\.<br> Images: the slides have 1 image, with alt text\. .* \(base64 SVG\) on line \d+\. Their content is only in the image data, which text extraction leaves out\.<br> Followed by fonts \(line \d+\), images \(line \d+\), and scripts \(line \d+\), about [\d.]+ [KM]B\.$/,
+      /^Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> Images: the slides have 1 image, with alt text\. .* \(base64 SVG\) on line \d+\. Their content is only in the image data, which text extraction leaves out\.<br> Followed by fonts \(line \d+\), images \(line \d+\), and scripts \(line \d+\), about [\d.]+ [KM]B\.$/,
     );
     // The lines it tells are right.
     const line = (text: string, after = 0) =>

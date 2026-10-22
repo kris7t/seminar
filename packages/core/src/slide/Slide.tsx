@@ -157,12 +157,8 @@ export function Slide({
   const inDocument = view.kind === 'document';
   // Every view of the slide tells its language, e.g., for reading it out,
   // even in the user interface, which may be in another language. Documents
-  // already have the language of the deck.
-  const slideLang = inDocument
-    ? lang === deckLang
-      ? undefined
-      : lang
-    : (lang ?? deckLang);
+  // tell it on the section of the slide.
+  const slideLang = inDocument ? undefined : (lang ?? deckLang);
   // Masters are looked up rather than defined during render, so their state is
   // preserved. Use `createElement` to avoid tripping `static-components`.
   const master = createElement(
@@ -178,8 +174,6 @@ export function Slide({
       <StepBehaviorContext value={steps}>
         {slideLang === undefined ? (
           master
-        ) : inDocument ? (
-          <div lang={slideLang}>{master}</div>
         ) : (
           // Without a box of its own, so that the master is laid out as before.
           <div lang={slideLang} style={{ display: 'contents' }}>
