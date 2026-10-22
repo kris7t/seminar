@@ -14,18 +14,9 @@
 
 .heroGrid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   align-items: center;
   gap: 4rem;
-}
-
-.eyebrow {
-  margin-bottom: 1.25rem;
-  color: var(--ifm-color-primary);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .hero h1 {
@@ -49,6 +40,21 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 2rem;
+}
+
+.quickStart {
+  max-width: 34rem;
+  margin-top: 1.75rem;
+}
+
+.quickStart > div {
+  margin-bottom: 0.5rem;
+}
+
+.quickStart p {
+  margin-bottom: 0;
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.85rem;
 }
 
 .status {

@@ -22,7 +22,6 @@ export default function Home(): JSX.Element {
         <header className={styles['hero']}>
           <div className={['container', styles['heroGrid']].join(' ')}>
             <div>
-              <p className={styles['eyebrow']}>Markdown. React. Present.</p>
               <h1>
                 Scientific talks,
                 <br />
@@ -33,18 +32,24 @@ export default function Home(): JSX.Element {
                 React components. Reveal ideas step by step, then share a single
                 HTML file that works offline.
               </p>
+              <div className={styles['quickStart']}>
+                <CodeBlock language="bash">
+                  npm create seminar@latest my-talk
+                </CodeBlock>
+                <p>Requires Node.js 24 or newer.</p>
+              </div>
               <div className={styles['actions']}>
                 <Link
                   className="button button--primary button--lg"
-                  to="/guide/"
+                  to="/guide/getting-started"
                 >
-                  Read the user guide
+                  Get started
                 </Link>
                 <Link
                   className="button button--outline button--secondary button--lg"
                   to="/developer/"
                 >
-                  Build components
+                  Developer guide
                 </Link>
               </div>
               <p className={styles['status']}>
