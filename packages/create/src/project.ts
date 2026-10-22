@@ -90,11 +90,11 @@ ${
     ? `
 ### Side by side
 
-:::columns
-::column[The question]
+:::column[The question]
 What do we want to understand?
+:::
 
-::column[The evidence]
+:::column[The evidence]
 What have we learned?
 :::
 `
@@ -248,8 +248,8 @@ npm run dev
 \`\`\`
 
 Edit \`decks/index.deck.mdx\` while the development server is running.
-Imports such as \`@/MyComponent\` resolve to \`src/MyComponent\` in Vite and TypeScript.
-${options.theme === 'custom' ? '\nEdit `src/theme.ts` to customize the theme and fonts. The Vite configuration selects it as the default theme for every deck.\n' : ''}
+Imports such as \`@/MyComponent\` resolve to \`src/MyComponent\`.
+${options.theme === 'custom' ? '\nEdit `src/theme.ts` to customize the theme and fonts.\n' : ''}
 Run \`npm run build\` to create \`dist/index.html\`, a self-contained presentation
 that you can open in a browser or share. Run \`npm run preview\` to preview the build.
 
