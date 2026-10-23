@@ -14,6 +14,8 @@ export interface ColophonContent {
   example?: string | undefined;
   /** Whether the document has presenter notes. */
   notes?: boolean | undefined;
+  /** How many formulas the document has as MathML. */
+  formulas?: number | undefined;
 }
 
 /** The images of the content of a page, which its colophon describes. */
@@ -214,6 +216,11 @@ export function writeColophon(
   if (deck.kind === 'document' && deck.example !== undefined) {
     lines.push(
       'The `id` of the heading of each slide is its link in the deck, e.g., `#{example}`.',
+    );
+  }
+  if (deck.formulas !== undefined && deck.formulas > 0) {
+    lines.push(
+      `Formulas: the slides have ${String(deck.formulas)}, each a MathML \`<math>\` with its TeX source in \`<annotation encoding="application/x-tex">\`. Text extraction may give both, one after the other.`,
     );
   }
   if (images !== undefined && images.count > 0) {

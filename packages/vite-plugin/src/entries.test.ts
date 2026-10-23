@@ -71,7 +71,7 @@ function expectDocument(html: string) {
     /^<body>\s*<div id="seminar-content">\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<main>/,
   );
   expect(colophonOf(body)).toMatch(
-    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\./,
+    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code>/,
   );
   // Lines are broken at spaces, which mean the same.
   const content = body

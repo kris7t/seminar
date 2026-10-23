@@ -179,7 +179,7 @@ async function renderHtml(
     try {
       const documentHtml = await renderDocument()(deckPath);
       // React escapes text and attributes, so only the sections of slides,
-      // their notes, and their headings match these.
+      // their notes, their headings, and MathML match these.
       const example = /<h[1-4] id="([^"]*)"/.exec(documentHtml)?.[1];
       contentHtml = `${colophonStart({
         kind: 'document',
@@ -187,6 +187,7 @@ async function renderHtml(
         slides: documentHtml.split(' data-seminar-slide=').length - 1,
         example: example === undefined ? undefined : unescapeHtml(example),
         notes: documentHtml.includes(' data-seminar-notes='),
+        formulas: documentHtml.match(/<math[\s>]/g)?.length ?? 0,
       })}<main>${documentHtml}</main>${CONTENT_END}`;
     } catch (error) {
       warn(
