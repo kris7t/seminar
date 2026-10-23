@@ -11,7 +11,7 @@
     "jsx": "react-jsx",
     "customConditions": ["@seminar/source"]
   },
-  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/fixtures"],
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test"],
   "references": [
     { "path": "./tsconfig.lib.json" },
     { "path": "../core/tsconfig.lib.json" },

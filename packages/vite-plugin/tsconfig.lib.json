@@ -10,5 +10,5 @@
     { "path": "../mdx/tsconfig.lib.json" },
     { "path": "../rollup-plugin/tsconfig.lib.json" }
   ],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/fixtures"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test"]
 }

@@ -22,7 +22,7 @@ import {
   getHtmlPath,
   HTML_SUFFIX,
   type Input,
-} from './decks.ts';
+} from '../decks.ts';
 import {
   createDocumentServer,
   DOCUMENT_PREFIX,
@@ -45,7 +45,7 @@ import {
   readDataUri,
   resolveImages,
   type ImageCounts,
-} from './images.ts';
+} from '../inline/images.ts';
 
 /** Query that marks the script that renders a deck. */
 const ENTRY_QUERY = '?seminar-entry';

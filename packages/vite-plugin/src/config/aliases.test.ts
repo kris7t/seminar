@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { build, createServer, type Alias, type Rolldown } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import seminar from './index.ts';
+import seminar from '../index.ts';
 import { createViteImporter } from './importModule.ts';
 
 let root: string;
@@ -14,7 +14,7 @@ const write = (name: string, contents: string) =>
 beforeAll(async () => {
   root = await mkdtemp(path.join(os.tmpdir(), 'seminar-aliases-'));
   await symlink(
-    fileURLToPath(new URL('../../../node_modules', import.meta.url)),
+    fileURLToPath(new URL('../../../../node_modules', import.meta.url)),
     path.join(root, 'node_modules'),
     'dir',
   );

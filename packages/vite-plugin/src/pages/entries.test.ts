@@ -18,9 +18,9 @@ import {
 } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import seminar from './index.ts';
+import seminar from '../index.ts';
 
-const root = fileURLToPath(new URL('fixtures', import.meta.url));
+const root = fileURLToPath(new URL('../test/fixtures', import.meta.url));
 
 const pluginOptions = { plugins: ['@seminar/plugin-mathjax'] };
 
@@ -248,7 +248,9 @@ describe('seminarEntries', () => {
       logger.warn = warn;
       const [html] = await serve(
         {
-          root: fileURLToPath(new URL('fixtures-broken', import.meta.url)),
+          root: fileURLToPath(
+            new URL('../test/fixtures-broken', import.meta.url),
+          ),
           customLogger: logger,
           logLevel: 'warn',
         },

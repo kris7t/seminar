@@ -5,14 +5,14 @@ import rollupSeminar, {
 
 import type { Alias, Plugin } from 'vite';
 
-import { seminarEntries, type DeckContent } from './entries.ts';
+import { seminarEntries, type DeckContent } from './pages/entries.ts';
 import { seminarHotReload } from './hotReload.ts';
-import { createViteImporter } from './importModule.ts';
-import { resolveAlias } from './aliases.ts';
+import { createViteImporter } from './config/importModule.ts';
+import { resolveAlias } from './config/aliases.ts';
 import {
   seminarSelfContained,
   type SelfContainedOptions,
-} from './selfContained.ts';
+} from './inline/selfContained.ts';
 
 export interface SeminarPluginOptions extends RollupSeminarPluginOptions {
   /**

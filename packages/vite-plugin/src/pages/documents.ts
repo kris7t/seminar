@@ -1,6 +1,6 @@
 import { createServer, type ResolvedConfig, type ViteDevServer } from 'vite';
 
-import { imageMarkers } from './images.ts';
+import { imageMarkers } from '../inline/images.ts';
 
 /** Query that marks the module that renders a deck as a document. */
 export const DOCUMENT_QUERY = '?seminar-document';

@@ -11,9 +11,9 @@ import {
 } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import seminar, { type SeminarPluginOptions } from './index.ts';
+import seminar, { type SeminarPluginOptions } from '../index.ts';
 
-const root = fileURLToPath(new URL('fixtures', import.meta.url));
+const root = fileURLToPath(new URL('../test/fixtures', import.meta.url));
 
 let outDir: string | undefined;
 

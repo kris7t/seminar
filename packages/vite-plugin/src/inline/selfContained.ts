@@ -9,9 +9,13 @@ import {
   getHtmlPath,
   isEmptyInput,
   removeInputs,
-} from './decks.ts';
-import { EMOTION_ID, STYLESHEETS_ID, type DeckContent } from './entries.ts';
-import { partMarker, writeColophon } from './colophon.ts';
+} from '../decks.ts';
+import {
+  EMOTION_ID,
+  STYLESHEETS_ID,
+  type DeckContent,
+} from '../pages/entries.ts';
+import { partMarker, writeColophon } from '../pages/colophon.ts';
 import {
   countImage,
   embedImage,

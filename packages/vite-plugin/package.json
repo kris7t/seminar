@@ -17,10 +17,8 @@
     "src",
     "!src/**/*.test.*",
     "!dist/**/*.tsbuildinfo",
-    "!src/fixtures",
     "!src/test",
     "!dist/test",
-    "!dist/fixtures",
     "!dist/**/*.test.*"
   ],
   "engines": {
