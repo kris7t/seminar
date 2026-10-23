@@ -93,10 +93,7 @@ describe('seminarSelfContained', () => {
     const line = (text: string) =>
       html.slice(0, html.indexOf(text)).split('\n').length;
     expect(/on lines (\d+)–(\d+)/.exec(colophon)?.slice(1).map(Number)).toEqual(
-      [
-        line('<p id="seminar-colophon"'),
-        line('</main><!--seminar-content-end-->'),
-      ],
+      [line('<details>'), line('</main><!--seminar-content-end-->')],
     );
     // Without empty lines where the inlined tags were.
     expect(html.slice(0, html.indexOf('</head>'))).not.toMatch(/\n\s*\n/);

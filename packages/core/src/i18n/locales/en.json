@@ -73,5 +73,7 @@
   "keyShift": "Shift",
   "noSteps": "This slide has no steps.",
   "endOfPresentation": "End of the presentation",
-  "language": "Language"
+  "language": "Language",
+  "skipToContent": "Skip to content",
+  "aboutPage": "About this page"
 }

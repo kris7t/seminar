@@ -8,6 +8,10 @@ export interface ColophonContent {
   title: string;
   /** The language of the deck, as a BCP 47 tag, if it's known. */
   lang?: string | undefined;
+  /** The label that the colophon is shown under, see {@link writeColophon}. */
+  label: string;
+  /** The language of `label`, if it isn't that of the deck. */
+  labelLang?: string | undefined;
   /** How many slides the document has. */
   slides?: number | undefined;
   /** The id of the heading of a slide in the document, as an example. */
@@ -88,6 +92,13 @@ function escapeHtml(text: string): string {
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
+}
+
+/** Returns the `lang` attribute of an element in `lang`, if it's known. */
+function langAttribute(lang: string | undefined): string {
+  return lang === undefined
+    ? ''
+    : ` lang="${escapeHtml(lang).replaceAll('"', '&quot;')}"`;
 }
 
 /**
@@ -181,7 +192,9 @@ function lineAt(text: string, index: number): number {
  * large it is, and which parts follow it, which are marked with
  * {@link partMarker}. Their lines aren't told, since pages saved from the
  * browser have the slides rendered before them. It's in English, whatever the language of the
- * deck, and text, unlike a comment, so that text extractors keep it.
+ * deck, and text, unlike a comment, so that text extractors keep it. It's
+ * collapsed in a `details` element under its label, which is in the language
+ * of the user interface, so that people can skip it.
  *
  * The content is between the placeholder and {@link CONTENT_END}, which stays
  * in the page for tools that read its source, while the other markers are
@@ -241,7 +254,7 @@ export function writeColophon(
     // In the language of the deck, unlike the colophon.
     [
       'title',
-      `<cite${deck.lang === undefined ? '' : ` lang="${escapeHtml(deck.lang).replaceAll('"', '&quot;')}"`}>${escapeHtml(deck.title)}</cite>`,
+      `<cite${langAttribute(deck.lang)}>${escapeHtml(deck.title)}</cite>`,
     ],
     ['example', escapeHtml(deck.example ?? '')],
   ]);
@@ -253,7 +266,7 @@ export function writeColophon(
   // On lines of its own, whose numbers don't change its lines, so the lines
   // can be found with placeholders.
   const colophon = `\n${wrapLines(
-    `<p id="seminar-colophon" lang="en">${lines.map(text).join('<br>\n')}</p>`,
+    `<details><summary${langAttribute(deck.labelLang)}>${escapeHtml(deck.label).replaceAll('\0', '')}</summary>\n<p id="seminar-colophon" lang="en">${lines.map(text).join('<br>\n')}</p>\n</details>`,
   )}\n`;
   const contentEnd = before.length + colophon.length + content.length;
   const page = before + colophon + content;

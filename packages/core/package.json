@@ -12,6 +12,7 @@
       "default": "./dist/index.js"
     },
     "./locales/*.json": {
+      "@seminar/source": "./src/i18n/locales/*.json",
       "default": "./dist/i18n/locales/*.json"
     }
   },

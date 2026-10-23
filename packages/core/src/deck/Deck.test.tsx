@@ -203,6 +203,15 @@ describe('Deck', () => {
     expect(window.location.hash).toBe('#slide=1');
   });
 
+  it('can be skipped to its slide without leaving it', () => {
+    renderDeck();
+    navigateTo('#second');
+    expect(screen.getByRole('main').id).toBe('seminar-slides');
+    navigateTo('#seminar-slides');
+    expect(currentTitle()).toBe('Second');
+    expect(window.location.hash).toBe('#second');
+  });
+
   it('follows changes of the location hash', () => {
     renderDeck();
     navigateTo('#slide=3');

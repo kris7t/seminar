@@ -241,6 +241,12 @@ function useSpares(spares: readonly boolean[]): readonly boolean[] {
 const NO_OPTIONS: SeminarOptions = {};
 
 /**
+ * Id of the area of the slide, the main landmark of the deck, which the pages
+ * of decks link to, so that it can be skipped to.
+ */
+const SLIDES_ID = 'seminar-slides';
+
+/**
  * Shows one of its child slides at a time, scaled to fit the viewport.
  *
  * Going through the deck skips spare slides (see the `spare` prop of
@@ -773,6 +779,8 @@ function InteractiveDeck({
                         >
                           <Box
                             ref={slideAreaRef}
+                            component="main"
+                            id={SLIDES_ID}
                             onClick={mouseNavigation ? onClick : undefined}
                             onWheel={mouseNavigation ? onWheel : undefined}
                             {...composeHandlers(

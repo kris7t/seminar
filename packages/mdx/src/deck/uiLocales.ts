@@ -1,4 +1,4 @@
-import type { VFile } from 'vfile';
+import { VFile } from 'vfile';
 
 /**
  * The languages that `@seminar/core` has a user interface in, and the names of
@@ -139,4 +139,22 @@ export function getUiLocaleSources(
     }
   }
   return sources;
+}
+
+/**
+ * Returns the language of the user interface that goes with the content of a
+ * deck, e.g., for its page around the deck: the language of the deck, if the
+ * user interface is available in it, or English.
+ */
+export function getContentUiLocale(
+  frontmatter: Record<string, unknown>,
+): UiLocaleSource {
+  // The messages are reported when the deck is compiled.
+  const file = new VFile();
+  const lang = getDeckLang(frontmatter, file);
+  return (
+    getUiLocaleSources(frontmatter, lang, file).find(
+      (source) => baseLanguage(source.lang) === baseLanguage(lang),
+    ) ?? { lang: 'en', module: undefined }
+  );
 }

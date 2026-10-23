@@ -31,6 +31,7 @@ describe('writeColophon', () => {
         kind: 'document',
         title: 'A <talk> about `code` {and} more',
         lang: 'hu',
+        label: 'Az oldalról',
         slides: 12,
         example: 'intro',
         notes: true,
@@ -46,13 +47,18 @@ describe('writeColophon', () => {
     });
     expect(colophonLines(written)).toEqual([
       `${made}: <cite lang="hu">A &lt;talk&gt; about \`code\` {and} more</cite>, 12 slides in Hungarian.`,
-      `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<p id='))}–${String(lineOf(written, '</main>' + CONTENT_END))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 7 KB. Speaker notes in an <code>&lt;aside&gt;</code> in the section of their slide.`,
+      `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>' + CONTENT_END))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 7 KB. Speaker notes in an <code>&lt;aside&gt;</code> in the section of their slide.`,
       'The <code>id</code> of the heading of each slide is its link in the deck, e.g., <code>#intro</code>.',
       'Formulas: the slides have 2, each a MathML <code>&lt;math&gt;</code> with its TeX source in <code>&lt;annotation encoding="application/x-tex"&gt;</code>. Text extraction may give both, one after the other.',
       'Images: the slides have 3 images, 1 without alt text. Each is an <code>&lt;svg role="img"&gt;</code> with its alt text in <code>aria-label</code> and its title in <code>&lt;title&gt;</code>, whose <code>&lt;use href="#seminar-image-N"&gt;</code> refers to <code>&lt;image id="seminar-image-N"&gt;</code> in <code>&lt;svg id="seminar-images"&gt;</code> (base64 PNG/JPEG) after the slides. Their content is only in the image data, which text extraction leaves out.',
       // Rounded up, so that reading as much doesn't stop short.
       'Followed by fonts, images, and scripts, about 2.6 MB.',
     ]);
+    // Collapsed under its label, before the content.
+    expect(written).toContain(
+      '<div id="seminar-content">\n<details><summary>Az oldalról</summary>\n<p id="seminar-colophon" lang="en">',
+    );
+    expect(written).toContain('</p>\n</details>\n<main>');
     // Only the end of the content stays marked.
     expect(written.match(/<!--[^]*?-->/g)).toEqual([CONTENT_END]);
     expect(written).toContain(`</main>${CONTENT_END}</div>`);
@@ -74,29 +80,33 @@ describe('writeColophon', () => {
 
   it('only describes what the page has', () => {
     const html =
-      `<div id="seminar-content">${colophonStart({ kind: 'source', title: 'Talk' })}<main><pre>---\n</pre></main>${CONTENT_END}</div>` +
+      `<div id="seminar-content">${colophonStart({ kind: 'source', title: 'Talk', label: 'About this page' })}<main><pre>---\n</pre></main>${CONTENT_END}</div>` +
       '<script type="module" src="./talk.js"></script>';
     const written = writeColophon(html);
     expect(colophonLines(written)).toEqual([
       `${made}: <cite>Talk</cite>.`,
-      `The MDX source of the deck: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<p id='))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, about the first 1 KB.`,
+      `The MDX source of the deck: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, about the first 1 KB.`,
     ]);
   });
 
   it('tells about images that are elements of their own', () => {
-    const html = `${colophonStart({ kind: 'document', title: 'Talk', slides: 1 })}<main><p>Slide</p></main>${CONTENT_END}`;
+    const html = `${colophonStart({ kind: 'document', title: 'Talk', slides: 1, label: 'About this page', labelLang: 'en' })}<main><p>Slide</p></main>${CONTENT_END}`;
     const written = writeColophon(html, {
       images: { count: 1, withoutAlt: 0 },
     });
+    // Its label is marked if it's in another language than the deck.
+    expect(written).toContain(
+      '<details><summary lang="en">About this page</summary>',
+    );
     expect(colophonLines(written)).toEqual([
       `${made}: <cite>Talk</cite>, 1 slide.`,
-      `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<p id='))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 1 KB.`,
+      `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 1 KB.`,
       'Images: the slides have 1 image, with alt text. Each is an <code>&lt;img&gt;</code> with its alt text in <code>alt</code>. Their content is only in the image files, which text extraction leaves out.',
     ]);
   });
 
   it('leaves pages without the markers of their content as they are', () => {
-    const html = `${colophonStart({ kind: 'source', title: 'Talk' })}<main></main>`;
+    const html = `${colophonStart({ kind: 'source', title: 'Talk', label: 'About this page' })}<main></main>`;
     expect(writeColophon(html)).toBe(html);
   });
 });

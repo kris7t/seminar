@@ -46,6 +46,7 @@ import {
   resolveImages,
   type ImageCounts,
 } from '../inline/images.ts';
+import { otherLang, readPageMessages } from './messages.ts';
 
 /** Query that marks the script that renders a deck. */
 const ENTRY_QUERY = '?seminar-entry';
@@ -73,6 +74,25 @@ const COLOPHON_ID = 'seminar-colophon';
 
 /** ID of the element that the deck is rendered into. */
 const ROOT_ID = 'seminar-root';
+
+/** ID of the link at the start of the page that skips to the content. */
+const SKIP_ID = 'seminar-skip';
+
+/** ID of the `main` element of the content of the deck. */
+const MAIN_ID = 'seminar-main';
+
+/**
+ * Shows the link that skips to the content over the rendered deck. Since it's
+ * only needed once the link is focused, it's with the other style sheets after
+ * the deck, so that the start of the page, which tools read first, stays short.
+ */
+const SKIP_FOCUS_STYLE = `#${SKIP_ID}:focus { position: fixed; top: 0; left: 0; z-index: 2147483647; padding: 0.5em 1em; background: white; color: black; }`;
+
+/**
+ * ID of the area of the slide, the `main` element of the rendered deck (see
+ * `Deck` in `@seminar/core`).
+ */
+const SLIDES_ID = 'seminar-slides';
 
 /**
  * ID of the element in the body of the page that holds the style sheets of
@@ -161,19 +181,28 @@ async function renderHtml(
   warn: (message: string) => void,
 ): Promise<string> {
   const source = await readFile(deckPath, 'utf8');
-  const { title, lang } = readDeckFrontmatter(
+  const frontmatter = readDeckFrontmatter(
     source,
     deckPath,
     (await syntaxPlugins?.(source, deckPath)) ?? [],
   );
+  const { title, lang } = frontmatter;
   const name = path.basename(deckPath);
   const pageTitle =
     typeof title === 'string' ? title : name.slice(0, -DECK_SUFFIX.length);
+  const pageLang = typeof lang === 'string' ? lang : 'en';
+  const { skipToContent, aboutPage } = await readPageMessages(
+    frontmatter,
+    deckPath,
+  );
   const deck = {
     title: pageTitle,
     lang: typeof lang === 'string' ? lang : undefined,
+    label: aboutPage.text,
+    labelLang: otherLang(aboutPage, pageLang),
   };
-  const sourceHtml = `${colophonStart({ kind: 'source', ...deck })}<main><pre>\n${escapeHtml(source)}</pre></main>${CONTENT_END}`;
+  const skipLang = otherLang(skipToContent, pageLang);
+  const sourceHtml = `${colophonStart({ kind: 'source', ...deck })}<main id="${MAIN_ID}"><pre>\n${escapeHtml(source)}</pre></main>${CONTENT_END}`;
   let contentHtml: string | undefined;
   if (content === 'ssr') {
     try {
@@ -188,7 +217,7 @@ async function renderHtml(
         example: example === undefined ? undefined : unescapeHtml(example),
         notes: documentHtml.includes(' data-seminar-notes='),
         formulas: documentHtml.match(/<math[\s>]/g)?.length ?? 0,
-      })}<main>${documentHtml}</main>${CONTENT_END}`;
+      })}<main id="${MAIN_ID}">${documentHtml}</main>${CONTENT_END}`;
     } catch (error) {
       warn(
         `${deckPath} could not be rendered as a document, so its page shows the source instead: ${String(error)}`,
@@ -199,31 +228,42 @@ async function renderHtml(
     contentHtml = sourceHtml;
   }
   return `<!doctype html>
-<html lang="${escapeHtml(typeof lang === 'string' ? lang : 'en')}">
+<html lang="${escapeHtml(pageLang)}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${escapeHtml(pageTitle)}</title>${
-      contentHtml === undefined
-        ? ''
-        : `
+    <title>${escapeHtml(pageTitle)}</title>
     <style>
+      #${SKIP_ID}:not(:focus) {
+        position: absolute;
+        clip-path: inset(50%);
+      }${
+        contentHtml === undefined
+          ? ''
+          : `
       @media ${SCRIPTING_QUERY} {
         #${CONTENT_ID} {
           display: none;
         }
+      }`
       }
-    </style>`
-    }
+    </style>
   </head>
-  <body>${
-    contentHtml === undefined
-      ? ''
-      : `
+  <body>
+    <a id="${SKIP_ID}" href="#${contentHtml === undefined ? SLIDES_ID : MAIN_ID}"${
+      skipLang === undefined ? '' : ` lang="${escapeHtml(skipLang)}"`
+    }>${escapeHtml(skipToContent.text)}</a>${
+      contentHtml === undefined
+        ? ''
+        : `
     <div id="${CONTENT_ID}">${contentHtml}</div>`
-  }
+    }
     <div id="${ROOT_ID}"></div>
-    <div id="${STYLESHEETS_ID}"></div>
+    <div id="${STYLESHEETS_ID}">
+      <style>
+        ${SKIP_FOCUS_STYLE}
+      </style>
+    </div>
     <div id="${EMOTION_ID}"></div>
     <script type="module" src="./${encodeURI(name)}${ENTRY_QUERY}"></script>
   </body>
@@ -267,6 +307,9 @@ if (!matchMedia(${JSON.stringify(INITIAL_ONLY_QUERY)}).matches) {
     document.head.append(style);
     style.sheet.insertRule('#${CONTENT_ID} { display: none; }');
   }
+
+  // The link at the start of the page skips to the slides instead.
+  document.getElementById(${JSON.stringify(SKIP_ID)})?.setAttribute('href', ${JSON.stringify(`#${SLIDES_ID}`)});
 
   // Unless the page was saved from the browser with it.
   const colophon = document.getElementById(${JSON.stringify(COLOPHON_ID)});

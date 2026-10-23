@@ -73,5 +73,7 @@
   "keyShift": "Umschalt",
   "noSteps": "Diese Folie hat keine Schritte.",
   "endOfPresentation": "Ende der Präsentation",
-  "language": "Sprache"
+  "language": "Sprache",
+  "skipToContent": "Zum Inhalt springen",
+  "aboutPage": "Über diese Seite"
 }

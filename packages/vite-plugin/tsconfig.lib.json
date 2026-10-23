@@ -7,6 +7,7 @@
   },
   "include": ["src"],
   "references": [
+    { "path": "../core/tsconfig.lib.json" },
     { "path": "../mdx/tsconfig.lib.json" },
     { "path": "../rollup-plugin/tsconfig.lib.json" }
   ],

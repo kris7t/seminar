@@ -73,5 +73,7 @@
   "keyShift": "Shift",
   "noSteps": "Ennek a diának nincsenek lépései.",
   "endOfPresentation": "A prezentáció vége",
-  "language": "Nyelv"
+  "language": "Nyelv",
+  "skipToContent": "Ugrás a tartalomhoz",
+  "aboutPage": "Az oldalról"
 }

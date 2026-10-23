@@ -66,9 +66,10 @@ function colophonOf(html: string): string {
 /** Expects `html` to start with the fixture deck rendered as a document. */
 function expectDocument(html: string) {
   const body = html.slice(html.indexOf('<body>'));
-  // A colophon, which tells tools where the content is.
+  // A link that skips the colophon, which tells tools where the content is,
+  // under a label.
   expect(body).toMatch(
-    /^<body>\s*<div id="seminar-content">\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<main>/,
+    /^<body>\s*<a id="seminar-skip" href="#seminar-main">Skip to content<\/a>\s*<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main">/,
   );
   expect(colophonOf(body)).toMatch(
     /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code>/,
@@ -76,12 +77,12 @@ function expectDocument(html: string) {
   // Lines are broken at spaces, which mean the same.
   const content = body
     .slice(
-      body.indexOf('</p>\n<main>') + '</p>\n'.length,
+      body.indexOf('</details>\n<main') + '</details>\n'.length,
       body.indexOf('<!--seminar-content-end-->'),
     )
     .replaceAll('\n', ' ');
   expect(content).toMatch(
-    /^<main> ?<section data-seminar-slide=""> ?<h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1> <p>Someone, somewhere<\/p><\/section> <section data-seminar-slide=""> ?<h4 id="introduction">/,
+    /^<main id="seminar-main"> ?<section data-seminar-slide=""> ?<h1 id="a-talk-about-slides">A <em>talk<\/em> about slides <a href="#a-talk-about-slides" aria-label="Link to this slide">#<\/a><\/h1> <p>Someone, somewhere<\/p><\/section> <section data-seminar-slide=""> ?<h4 id="introduction">/,
   );
   // Steps without their styles, and math without SVG.
   expect(content).toContain('<div>Revealed later</div>');
@@ -192,6 +193,14 @@ describe('seminarEntries', () => {
       const html = await response.text();
       expect(html).toContain('<title>A talk about slides</title>');
       expect(html).toContain('src="./talk.deck.mdx?seminar-entry"');
+      // The style of the focused link that skips to the content, which only
+      // the rendered deck covers, is after the deck.
+      expect(html).toMatch(
+        /<div id="seminar-root"><\/div>\s*<div id="seminar-stylesheets">\s*<style>\s*#seminar-skip:focus \{/,
+      );
+      expect(html.slice(0, html.indexOf('<body>'))).not.toContain(
+        'seminar-skip:focus',
+      );
     });
 
     it('starts the page with the deck as a document', async () => {
@@ -209,6 +218,8 @@ describe('seminarEntries', () => {
       );
       // A note on the rendered slides, which the page only has once they are.
       expect(code).toContain('seminar-colophon-rendered');
+      // The link at the start of the page skips to the slides instead.
+      expect(code).toContain('"#seminar-slides"');
       expect(code).toContain('talk.deck.mdx');
     });
 
@@ -257,7 +268,7 @@ describe('seminarEntries', () => {
         ['/broken.html'],
       );
       expect(html).toMatch(
-        /<div id="seminar-content">\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<main><pre>\nexport function Broken\(\)/,
+        /<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main"><pre>\nexport function Broken\(\)/,
       );
       expect(colophonOf(html ?? '')).toMatch(
         /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A broken talk<\/cite>\.<br> The MDX source of the deck: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, about the first \d+ KB\.$/,
@@ -277,7 +288,7 @@ describe('seminarEntries', () => {
         ['/talk.html', '/talk.deck.mdx?seminar-entry'],
       );
       expect(html).toMatch(
-        /<div id="seminar-content">\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<main><pre>\n---\nmouseNavigation: false\n/,
+        /<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main"><pre>\n---\nmouseNavigation: false\n/,
       );
       expect(html).toContain('&lt;Step&gt;Revealed later&lt;/Step&gt;');
       expect(entry).toContain('scripting: initial-only');
@@ -290,7 +301,9 @@ describe('seminarEntries', () => {
       );
       expect(html).not.toContain('seminar-content');
       expect(html).not.toContain('scripting');
-      expect(html).toMatch(/<body>\s*<div id="seminar-root">/);
+      expect(html).toMatch(
+        /<body>\s*<a id="seminar-skip" href="#seminar-slides">Skip to content<\/a>\s*<div id="seminar-root">/,
+      );
       // The deck is rendered wherever scripts run.
       expect(entry).toContain('createRoot');
       expect(entry).not.toContain('matchMedia');

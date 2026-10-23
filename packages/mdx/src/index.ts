@@ -13,6 +13,7 @@ export {
   type DirectiveComponents,
   type RemarkDirectiveComponentsOptions,
 } from './directives/remarkDirectiveComponents.ts';
+export { getContentUiLocale, type UiLocaleSource } from './deck/uiLocales.ts';
 export {
   getDeckFrontmatter,
   readDeckFrontmatter,

@@ -73,5 +73,7 @@
   "keyShift": "Maj",
   "noSteps": "Cette diapositive n’a pas d’étapes.",
   "endOfPresentation": "Fin de la présentation",
-  "language": "Langue"
+  "language": "Langue",
+  "skipToContent": "Aller au contenu",
+  "aboutPage": "À propos de cette page"
 }
