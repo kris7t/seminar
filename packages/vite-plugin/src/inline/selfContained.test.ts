@@ -68,7 +68,7 @@ describe('seminarSelfContained', () => {
   }, 60_000);
 
   it('embeds images once for the document and the slides', async () => {
-    const { html } = await buildApp();
+    const { html } = await buildApp({ content: 'ssr' });
     const data =
       /<image id="seminar-image-0" href="(data:image\/svg\+xml;base64,[^"]+)" width="120" height="60"\/>/.exec(
         html,
@@ -114,10 +114,23 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toContain(
-      '<br> Directives: <code>:name[label]{attributes}</code> in text, <code>::name[label]{attributes}</code> on a line of its own, and <code>:::name[label]{attributes}</code> up to <code>:::</code> around blocks, see the syntax of decks (<a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>).<br> Images: the Markdown has 1 image whose URL refers to an image embedded after the source, e.g., <code>![Alt text](#seminar-image-N)</code> to <code>&lt;image id="seminar-image-N"&gt;</code> in <code>&lt;svg id="seminar-images"&gt;</code> (base64 SVG). Their content is only in the image data in <code>href</code>, which text extraction leaves out.<br>',
+      '<br> Directives in the Markdown: <code>:name[label]{attributes}</code> in text, <code>::name[label]{attributes}</code> on a line of its own, and <code>:::name[label]{attributes}</code> up to <code>:::</code> around blocks, see the syntax of decks (<a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>).<br> Images: the Markdown has 1 image whose URL refers to an image embedded after the content, e.g., <code>![Alt text](#seminar-image-N)</code> to <code>&lt;image id="seminar-image-N"&gt;</code> in <code>&lt;svg id="seminar-images"&gt;</code> (base64 SVG). Their content is only in the image data in <code>href</code>, which text extraction leaves out.<br>',
     );
     // The slides look the image up, too.
     expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);
+  }, 60_000);
+
+  it('embeds images once for both the document and the Markdown', async () => {
+    const { html } = await buildApp({ content: 'both' });
+    expect(html).toContain('![A diagram](#seminar-image-0){#diagram}');
+    expect(html).toContain('<use href="#seminar-image-0"/>');
+    expect(html.match(/<image id="seminar-image-\d+"/g)).toHaveLength(1);
+    const colophon = (
+      /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
+    ).replaceAll('\n', ' ');
+    expect(colophon).toMatch(
+      /<br> Images: the Markdown has 1 image whose URL refers to an image embedded after the content[^]*<br> Slide content: [^]*<br> Images: the slides have 1 image, with alt text\. /,
+    );
   }, 60_000);
 
   it('embeds images into the document in other modes', async () => {

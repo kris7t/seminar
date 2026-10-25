@@ -177,11 +177,12 @@ Every `.deck.mdx` file then gets its own HTML page. Pass
 `seminar({ selfContained: false })` to keep scripts and assets in separate
 files, e.g., for hosting with a Content Security Policy.
 
-The page starts with the deck rendered as a plain document, which browsers
-that run the deck hide, so that clients without JavaScript, like text
-extractors, can read it. Pass `seminar({ content: 'markdown' })` to embed the
-source as Markdown, without comments and with included slides, `'source'` for
-the MDX source, or `'none'` to embed nothing.
+The page starts with the source of the deck as Markdown, without comments and
+with included slides, and the deck rendered as a plain document, which
+browsers that run the deck hide, so that clients without JavaScript, like text
+extractors, can read it. Pass `seminar({ content: 'ssr' })` to only embed the
+document, `'markdown'` to only embed the Markdown, or `'none'` to embed
+nothing.
 
 Presentation elements, like callouts and columns, come from
 [`@seminar/elements`](packages/elements), which is enabled as a plugin:

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   colophonStart,
   CONTENT_END,
+  MARKDOWN_END,
   partMarker,
   renderedNote,
   writeColophon,
@@ -21,6 +22,9 @@ function colophonLines(html: string): string[] {
 function lineOf(html: string, text: string): number {
   return html.slice(0, html.indexOf(text)).split('\n').length;
 }
+
+const directives =
+  'Directives in the Markdown: <code>:name[label]{attributes}</code> in text, <code>::name[label]{attributes}</code> on a line of its own, and <code>:::name[label]{attributes}</code> up to <code>:::</code> around blocks, see the syntax of decks (<a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>).';
 
 const made =
   'A slide deck made with <a href="https://seminar.run">Seminar</a> (<a href="https://seminar.run">https://seminar.run</a>)';
@@ -81,13 +85,36 @@ describe('writeColophon', () => {
 
   it('only describes what the page has', () => {
     const html =
-      `<div id="seminar-content">${colophonStart({ kind: 'source', title: 'Talk', label: 'About this page' })}<main><pre>---\n</pre></main>${CONTENT_END}</div>` +
+      `<div id="seminar-content">${colophonStart({ kind: 'markdown', title: 'Talk', label: 'About this page' })}<main><pre>---\n</pre></main>${CONTENT_END}</div>` +
       '<script type="module" src="./talk.js"></script>';
     const written = writeColophon(html);
     expect(colophonLines(written)).toEqual([
       `${made}: <cite>Talk</cite>.`,
-      `The MDX source of the deck: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, about the first 1 KB.`,
+      `The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, about the first 1 KB.`,
+      directives,
     ]);
+  });
+
+  it('tells the lines of both the Markdown and the document', () => {
+    const markdown = `<details><summary>Markdown source</summary><pre>\n## Slide\n\n${'Text\n'.repeat(400)}</pre></details>${MARKDOWN_END}`;
+    const html = `${colophonStart({ kind: 'both', title: 'Talk', slides: 1, label: 'About this page' })}${markdown}\n<main><section><h2 id="slide">Slide</h2>\n<p>Text</p></section></main>${CONTENT_END}`;
+    const written = writeColophon(html, {
+      images: { count: 1, withoutAlt: 0, embedded: ['SVG'] },
+      markdownImages: { count: 1, withoutAlt: 0, embedded: ['SVG'] },
+    });
+    const lines = colophonLines(written);
+    expect(lines.slice(1, 3)).toEqual([
+      `The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;pre&gt;</code> in <code>&lt;details&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, MARKDOWN_END))} up to <code>&lt;!--seminar-markdown-end--&gt;</code>, about the first 4 KB.`,
+      directives,
+    ]);
+    expect(lines[3]).toMatch(
+      /^Images: the Markdown has 1 image whose URL refers to an image embedded after the content/,
+    );
+    expect(lines[4]).toBe(
+      `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<main>'))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 5 KB.`,
+    );
+    expect(lines[5]).toMatch(/^Images: the slides have 1 image/);
+    expect(written).toContain(`</pre></details>${MARKDOWN_END}\n<main>`);
   });
 
   it('tells about images that are elements of their own', () => {
@@ -107,7 +134,7 @@ describe('writeColophon', () => {
   });
 
   it('leaves pages without the markers of their content as they are', () => {
-    const html = `${colophonStart({ kind: 'source', title: 'Talk', label: 'About this page' })}<main></main>`;
+    const html = `${colophonStart({ kind: 'markdown', title: 'Talk', label: 'About this page' })}<main></main>`;
     expect(writeColophon(html)).toBe(html);
   });
 });

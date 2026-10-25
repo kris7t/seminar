@@ -264,26 +264,30 @@ with a Content Security Policy that forbids inline scripts. Set
 
 ### Content for clients without JavaScript
 
-The page of each deck starts with its slides rendered as a plain document:
-headings, text, presenter notes, MathML for formulas, and code without
-highlighting. Text extractors and AI tools that can't open a browser can read
-the deck from it, and it stays in pages saved from the browser. Browsers that
-run the deck hide it, so it neither flashes nor reaches screen readers.
+The page of each deck starts with the deck in two forms for clients without
+JavaScript:
 
-The headings link to their slides, so following such a link with JavaScript
-shows the slide. Change the `content` option to embed something else:
+- Its Markdown source, collapsed, which reads as plain text: without MDX
+  comments, and with the sources of the slides that it includes from other
+  decks instead of the `::include` directives.
+- Its slides rendered as a plain document: headings, text, presenter notes,
+  MathML for formulas, and code without highlighting. The headings link to
+  their slides, so following such a link with JavaScript shows the slide.
+
+Text extractors and AI tools that can't open a browser can read the deck from
+them, and they stay in pages saved from the browser. Browsers that run the
+deck hide them, so they neither flash nor reach screen readers. Change the
+`content` option to embed something else:
 
 ```ts
-seminar({ content: 'source' });
+seminar({ content: 'markdown' });
 ```
 
-- `'ssr'`, the default, renders the deck on the server. If that fails, e.g.,
-  because a component needs a browser, the build warns and embeds the source
-  instead.
-- `'markdown'` embeds the source of the deck as Markdown that reads as plain
-  text: without MDX comments, and with the sources of the slides that it
-  includes from other decks instead of the `::include` directives.
-- `'source'` embeds the MDX source of the deck.
+- `'both'`, the default, embeds the Markdown before the rendered deck. If
+  rendering the deck on the server fails, e.g., because a component needs a
+  browser, the build warns and only embeds the Markdown.
+- `'ssr'` only embeds the rendered deck, or the Markdown if rendering fails.
+- `'markdown'` only embeds the Markdown.
 - `'none'` embeds nothing.
 
 ## Install manually

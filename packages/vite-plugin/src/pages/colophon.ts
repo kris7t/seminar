@@ -4,9 +4,9 @@ import { wrapLines } from './documents.ts';
 export interface ColophonContent {
   /**
    * The deck rendered as a document, its source as Markdown (see
-   * `deckMarkdown` in `@seminar/mdx`), or its source.
+   * `deckMarkdown` in `@seminar/mdx`), or both, the Markdown first.
    */
-  kind: 'document' | 'markdown' | 'source';
+  kind: 'document' | 'markdown' | 'both';
   /** The title of the deck. */
   title: string;
   /** The language of the deck, as a BCP 47 tag, if it's known. */
@@ -40,7 +40,10 @@ export interface ColophonImages {
 
 /** What a page has besides its content, which its colophon describes. */
 export interface ColophonFollowing {
+  /** The images of the document. */
   images?: ColophonImages | undefined;
+  /** The images of the Markdown, without `withoutAlt`. */
+  markdownImages?: ColophonImages | undefined;
 }
 
 /** A part of a page after its content, see {@link partMarker}. */
@@ -59,10 +62,16 @@ const PART_PATTERN = /<!--seminar-part:(fonts|styles|images|scripts)-->/g;
 /**
  * Marks the end of the content of a page, which stays in the page, so that
  * tools that read its source can find it. Neither documents rendered by React
- * nor the escaped source of a deck can have comments, so the markers of the
+ * nor the escaped Markdown of a deck can have comments, so the markers of the
  * colophon can't occur in them.
  */
 export const CONTENT_END = '<!--seminar-content-end-->';
+
+/**
+ * Marks the end of the Markdown of a deck before its document, like
+ * {@link CONTENT_END}.
+ */
+export const MARKDOWN_END = '<!--seminar-markdown-end-->';
 
 const START_PATTERN = /<!--seminar-colophon:([\w.~%]*)-->/;
 
@@ -138,21 +147,11 @@ function formatLine(line: string): string {
 }
 
 /**
- * Returns the line of the colophon about `images`: how many there are, where
- * their alt text is, so that tools don't miss it, and that their content is
- * only in their data. In the Markdown of a deck, their alt text is in the
- * text, and their URLs refer to the embedded images.
+ * Returns the line of the colophon about the `images` of the document: how
+ * many there are, where their alt text is, so that tools don't miss it, and
+ * that their content is only in their data.
  */
-function imagesLine(
-  { count, withoutAlt, embedded }: ColophonImages,
-  kind: ColophonContent['kind'],
-): string {
-  if (kind === 'markdown') {
-    const images = `${String(count)} ${count === 1 ? 'image' : 'images'}`;
-    return embedded === undefined
-      ? `Images: the Markdown has ${images} whose URL refers to the image file. Their content is only in the image files.`
-      : `Images: the Markdown has ${images} whose URL refers to an image embedded after the source, e.g., \`![Alt text](#seminar-image-N)\` to \`<image id="seminar-image-N">\` in \`<svg id="seminar-images">\` (base64 ${embedded.join('/')}). Their content is only in the image data in \`href\`, which text extraction leaves out.`;
-  }
+function imagesLine({ count, withoutAlt, embedded }: ColophonImages): string {
   const alt =
     withoutAlt === 0
       ? count === 1
@@ -164,6 +163,17 @@ function imagesLine(
       ? 'Each is an `<img>` with its alt text in `alt`. Their content is only in the image files'
       : `Each is an \`<svg role="img">\` with its alt text in \`aria-label\` and its title in \`<title>\`, whose \`<use href="#seminar-image-N">\` refers to \`<image id="seminar-image-N">\` in \`<svg id="seminar-images">\` (base64 ${embedded.join('/')}) after the slides. Their content is only in the image data`;
   return `Images: the slides have ${String(count)} ${count === 1 ? 'image' : 'images'}, ${alt}. ${shown}, which text extraction leaves out.`;
+}
+
+/**
+ * Returns the line of the colophon about the `images` of the Markdown, whose
+ * alt text is in the text: what their URLs refer to.
+ */
+function markdownImagesLine({ count, embedded }: ColophonImages): string {
+  const images = `${String(count)} ${count === 1 ? 'image' : 'images'}`;
+  return embedded === undefined
+    ? `Images: the Markdown has ${images} whose URL refers to the image file. Their content is only in the image files.`
+    : `Images: the Markdown has ${images} whose URL refers to an image embedded after the content, e.g., \`![Alt text](#seminar-image-N)\` to \`<image id="seminar-image-N">\` in \`<svg id="seminar-images">\` (base64 ${embedded.join('/')}). Their content is only in the image data in \`href\`, which text extraction leaves out.`;
 }
 
 /** The website of Seminar, which the colophon links to. */
@@ -217,11 +227,13 @@ function lineAt(text: string, index: number): number {
  *
  * The content is between the placeholder and {@link CONTENT_END}, which stays
  * in the page for tools that read its source, while the other markers are
- * removed. Leaves pages without them as they are.
+ * removed. With both the Markdown and the document of the deck, the Markdown
+ * ends with {@link MARKDOWN_END}, which stays, too, and the colophon tells
+ * the lines of both. Leaves pages without the markers as they are.
  */
 export function writeColophon(
   html: string,
-  { images }: ColophonFollowing = {},
+  { images, markdownImages }: ColophonFollowing = {},
 ): string {
   const start = START_PATTERN.exec(html);
   const end = start === null ? -1 : html.indexOf(CONTENT_END, start.index);
@@ -239,31 +251,44 @@ export function writeColophon(
       ? ''
       : `, ${String(deck.slides)} ${deck.slides === 1 ? 'slide' : 'slides'}`;
   const lang = deck.lang === undefined ? '' : ` in ${languageName(deck.lang)}`;
+  const hasDocument = deck.kind !== 'markdown';
+  const hasMarkdown = deck.kind !== 'document';
+  const markdown =
+    'The Markdown source of the deck, without comments and with the slides it includes from other decks';
   const lines = [
     // The URLs are in the text, too, so that tools can follow them after
     // text extraction.
     `A slide deck made with {seminar} ({seminarUrl}): {title}${slides}${lang}.`,
-    deck.kind === 'document'
-      ? `Slide content: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, with a \`<section>\` for each slide, about the first \0size\0.${deck.notes === true ? ' Speaker notes in an `<aside>` in the section of their slide.' : ''}`
-      : `The ${deck.kind === 'markdown' ? 'Markdown source of the deck, without comments and with the slides it includes from other decks' : 'MDX source of the deck'}: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, about the first \0size\0.`,
   ];
-  if (deck.kind === 'document' && deck.example !== undefined) {
+  // The Markdown first, which comes first in the page.
+  if (hasMarkdown) {
     lines.push(
-      'The `id` of the heading of each slide is its link in the deck, e.g., `#{example}`.',
+      deck.kind === 'both'
+        ? `${markdown}: \`<pre>\` in \`<details>\` on lines \0start\0–\0markdownEnd\0 up to \`${MARKDOWN_END}\`, about the first \0markdownSize\0.`
+        : `${markdown}: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, about the first \0size\0.`,
+      'Directives in the Markdown: `:name[label]{attributes}` in text, `::name[label]{attributes}` on a line of its own, and `:::name[label]{attributes}` up to `:::` around blocks, see the syntax of decks ({syntax}).',
     );
+    if (markdownImages !== undefined && markdownImages.count > 0) {
+      lines.push(markdownImagesLine(markdownImages));
+    }
   }
-  if (deck.kind === 'markdown') {
+  if (hasDocument) {
     lines.push(
-      'Directives: `:name[label]{attributes}` in text, `::name[label]{attributes}` on a line of its own, and `:::name[label]{attributes}` up to `:::` around blocks, see the syntax of decks ({syntax}).',
+      `Slide content: \`<main>\` on lines \0${deck.kind === 'both' ? 'mainStart' : 'start'}\0–\0end\0 up to \`${CONTENT_END}\`, with a \`<section>\` for each slide, about the first \0size\0.${deck.notes === true ? ' Speaker notes in an `<aside>` in the section of their slide.' : ''}`,
     );
-  }
-  if (deck.formulas !== undefined && deck.formulas > 0) {
-    lines.push(
-      `Formulas: the slides have ${String(deck.formulas)}, each a MathML \`<math>\` with its TeX source in \`<annotation encoding="application/x-tex">\`. Text extraction may give both, one after the other.`,
-    );
-  }
-  if (images !== undefined && images.count > 0) {
-    lines.push(imagesLine(images, deck.kind));
+    if (deck.example !== undefined) {
+      lines.push(
+        'The `id` of the heading of each slide is its link in the deck, e.g., `#{example}`.',
+      );
+    }
+    if (deck.formulas !== undefined && deck.formulas > 0) {
+      lines.push(
+        `Formulas: the slides have ${String(deck.formulas)}, each a MathML \`<math>\` with its TeX source in \`<annotation encoding="application/x-tex">\`. Text extraction may give both, one after the other.`,
+      );
+    }
+    if (images !== undefined && images.count > 0) {
+      lines.push(imagesLine(images));
+    }
   }
   const parts = [...rest.matchAll(PART_PATTERN)].map(([, part = '']) => part);
   if (parts.length > 0) {
@@ -296,24 +321,53 @@ export function writeColophon(
   const colophon = `\n${wrapLines(
     `<details><summary${langAttribute(deck.labelLang)}>${escapeHtml(deck.label).replaceAll('\0', '')}</summary>\n<p id="seminar-colophon" lang="en">${lines.map(text).join('<br>\n')}</p>\n</details>`,
   )}\n`;
-  const contentEnd = before.length + colophon.length + content.length;
+  const contentStart = before.length + colophon.length;
+  const contentEnd = contentStart + content.length;
+  const markdownEnd = deck.kind === 'both' ? content.indexOf(MARKDOWN_END) : -1;
   const page = before + colophon + content;
   const numbers = new Map([
     ['start', String(lineAt(page, before.length + 1))],
     ['end', String(lineAt(page, contentEnd))],
   ]);
-  const fill = (size: string) =>
-    colophon.replace(/\0(\w+)\0/g, (_, name: string) =>
-      name === 'size' ? size : (numbers.get(name) ?? ''),
+  if (markdownEnd >= 0) {
+    numbers.set(
+      'markdownEnd',
+      String(lineAt(page, contentStart + markdownEnd)),
     );
-  // The size of the content includes the colophon, whose size depends on the
-  // size it shows by a few bytes, so this measures it with the longest size.
-  const size = formatSize(
-    Buffer.byteLength(before + fill('1000 KB') + content),
+    numbers.set(
+      'mainStart',
+      String(
+        lineAt(
+          page,
+          contentStart +
+            Math.max(
+              content.indexOf('<main', markdownEnd),
+              markdownEnd + MARKDOWN_END.length,
+            ),
+        ),
+      ),
+    );
+  }
+  const fill = (size: string, markdownSize: string) =>
+    colophon.replace(/\0(\w+)\0/g, (_, name: string) =>
+      name === 'size'
+        ? size
+        : name === 'markdownSize'
+          ? markdownSize
+          : (numbers.get(name) ?? ''),
+    );
+  // The sizes of the content include the colophon, whose size depends on the
+  // sizes it shows by a few bytes, so this measures them with the longest.
+  const longest = before + fill('1000 KB', '1000 KB');
+  const size = formatSize(Buffer.byteLength(longest + content));
+  const markdownSize = formatSize(
+    Buffer.byteLength(
+      longest + content.slice(0, markdownEnd + MARKDOWN_END.length),
+    ),
   );
   return (
     before +
-    fill(size) +
+    fill(size, markdownSize) +
     content +
     CONTENT_END +
     rest.replaceAll(PART_PATTERN, '')

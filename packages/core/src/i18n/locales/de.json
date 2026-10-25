@@ -75,5 +75,6 @@
   "endOfPresentation": "Ende der Präsentation",
   "language": "Sprache",
   "skipToContent": "Zum Inhalt springen",
-  "aboutPage": "Über diese Seite"
+  "aboutPage": "Über diese Seite",
+  "markdownSource": "Markdown-Quelltext"
 }

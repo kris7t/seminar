@@ -31,6 +31,8 @@ export interface PageMessages {
   skipToContent: PageMessage;
   /** The label of the colophon, see `writeColophon`. */
   aboutPage: PageMessage;
+  /** The label of the Markdown of the deck before the document of the deck. */
+  markdownSource: PageMessage;
 }
 
 /** Returns the base language of the BCP 47 tag `lang`, e.g., `de` for `de-AT`. */
@@ -93,5 +95,6 @@ export async function readPageMessages(
   return {
     skipToContent: message('skipToContent'),
     aboutPage: message('aboutPage'),
+    markdownSource: message('markdownSource'),
   };
 }

@@ -95,18 +95,19 @@ function findPage(
  * the document become `svg` elements that use them, with their alt text,
  * while the images of the Markdown of the deck refer to them by their ids.
  *
- * @returns The files of the embedded images, and how many images the
- *   document shows.
+ * @returns The files of the embedded images, how many images the document
+ *   shows, and how many the Markdown refers to.
  */
 async function embedImages(
   bundle: Rolldown.OutputBundle,
   images: Map<string, string>,
   warn: (message: string) => void,
-): Promise<{ files: string[]; counts: ImageCounts }> {
+): Promise<{ files: string[]; counts: ImageCounts; references: number }> {
   const counts: ImageCounts = { count: 0, withoutAlt: 0 };
+  let references = 0;
   const page = findPage(bundle);
   if (page === undefined) {
-    return { files: [], counts };
+    return { files: [], counts, references };
   }
   let html = String(page.source);
   for (const file of markedImages(html)) {
@@ -115,7 +116,7 @@ async function embedImages(
     }
   }
   if (images.size === 0) {
-    return { files: [], counts };
+    return { files: [], counts, references };
   }
   const embedded = new Map<string, EmbeddedImage>();
   const unsized = new Map<string, string>();
@@ -141,7 +142,7 @@ async function embedImages(
     },
     (file) => embedded.get(file)?.dataUri ?? unsized.get(file) ?? '',
     (file) => {
-      counts.count += 1;
+      references += 1;
       return `#${images.get(file) ?? ''}`;
     },
   );
@@ -167,7 +168,7 @@ async function embedImages(
         /<body\b[^>]*>/,
         (tag) => `${tag}\n${partMarker('images')}${definitions}`,
       );
-  return { files: [...images.keys()], counts };
+  return { files: [...images.keys()], counts, references };
 }
 
 /** Generates the module of an image, which looks it up in the page. */
@@ -297,7 +298,7 @@ function shouldEmptyOutDir({ root, build }: ResolvedConfig): boolean {
  */
 export function seminarSelfContained(
   { keepUnicodeRanges = [] }: SelfContainedOptions = {},
-  content: DeckContent = 'ssr',
+  content: DeckContent = 'both',
 ): Plugin {
   const keep = keepUnicodeRanges.flatMap((range) => {
     const parsed = parseUnicodeRange(range);
@@ -400,10 +401,7 @@ export function seminarSelfContained(
           order: 'pre',
           handler(id) {
             // The document and the Markdown refer to the embedded images.
-            if (
-              (content !== 'ssr' && content !== 'markdown') ||
-              !isImageFile(id)
-            ) {
+            if (content === 'none' || !isImageFile(id)) {
               return undefined;
             }
             let imageId = images.get(id);
@@ -422,14 +420,17 @@ export function seminarSelfContained(
               this.warn(message);
             };
             inlineBundle(bundle, keep, warn);
-            const { files, counts } = await embedImages(bundle, images, warn);
+            const { files, counts, references } = await embedImages(
+              bundle,
+              images,
+              warn,
+            );
             const page = findPage(bundle);
             if (page !== undefined) {
+              const embedded = [...new Set(files.map(imageTypeName))];
               page.source = writeColophon(String(page.source), {
-                images: {
-                  ...counts,
-                  embedded: [...new Set(files.map(imageTypeName))],
-                },
+                images: { ...counts, embedded },
+                markdownImages: { count: references, withoutAlt: 0, embedded },
               });
             }
           },

@@ -75,5 +75,6 @@
   "endOfPresentation": "A prezentáció vége",
   "language": "Nyelv",
   "skipToContent": "Ugrás a tartalomhoz",
-  "aboutPage": "Az oldalról"
+  "aboutPage": "Az oldalról",
+  "markdownSource": "Markdown-forrás"
 }

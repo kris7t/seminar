@@ -13,6 +13,7 @@ describe('readPageMessages', () => {
     expect(await readPageMessages({ lang: 'de-AT' }, deckPath)).toEqual({
       skipToContent: { text: 'Zum Inhalt springen', lang: 'de' },
       aboutPage: { text: 'Über diese Seite', lang: 'de' },
+      markdownSource: { text: 'Markdown-Quelltext', lang: 'de' },
     });
   });
 
@@ -26,6 +27,7 @@ describe('readPageMessages', () => {
       skipToContent: { text: 'Pular para o conteúdo', lang: 'pt' },
       // Missing from the module.
       aboutPage: { text: 'About this page', lang: 'en' },
+      markdownSource: { text: 'Markdown source', lang: 'en' },
     });
   });
 
@@ -33,6 +35,7 @@ describe('readPageMessages', () => {
     expect(await readPageMessages({ lang: 'ja' }, deckPath)).toEqual({
       skipToContent: { text: 'Skip to content', lang: 'en' },
       aboutPage: { text: 'About this page', lang: 'en' },
+      markdownSource: { text: 'Markdown source', lang: 'en' },
     });
     expect(
       await readPageMessages(
@@ -42,6 +45,7 @@ describe('readPageMessages', () => {
     ).toEqual({
       skipToContent: { text: 'Skip to content', lang: 'en' },
       aboutPage: { text: 'About this page', lang: 'en' },
+      markdownSource: { text: 'Markdown source', lang: 'en' },
     });
   });
 });

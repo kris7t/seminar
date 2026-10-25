@@ -34,6 +34,7 @@ import {
 import {
   colophonStart,
   CONTENT_END,
+  MARKDOWN_END,
   RENDERED_NOTE_ID,
   renderedNote,
   writeColophon,
@@ -161,14 +162,15 @@ export type SyntaxPlugins = (
  * or only run it once, like text extractors:
  *
  * - `'ssr'`: the deck rendered on the server as a document (see `DeckDocument`
- *   in `@seminar/core`), or its source if that fails.
+ *   in `@seminar/core`), or its Markdown if that fails.
  * - `'markdown'`: the source of the deck as Markdown that reads as plain
  *   text, without comments and with the slides it includes from other decks
- *   (see `deckMarkdown` in `@seminar/mdx`), or its source if that fails.
- * - `'source'`: the MDX source of the deck.
+ *   (see `deckMarkdown` in `@seminar/mdx`).
+ * - `'both'`: the document, after its Markdown collapsed in a `details`
+ *   element, or only its Markdown if rendering the document fails.
  * - `'none'`: nothing, so that the page only has the deck.
  */
-export type DeckContent = 'ssr' | 'markdown' | 'source' | 'none';
+export type DeckContent = 'ssr' | 'markdown' | 'both' | 'none';
 
 /**
  * Generates the HTML page for a deck.
@@ -198,7 +200,7 @@ async function renderHtml(
   const pageTitle =
     typeof title === 'string' ? title : name.slice(0, -DECK_SUFFIX.length);
   const pageLang = typeof lang === 'string' ? lang : 'en';
-  const { skipToContent, aboutPage } = await readPageMessages(
+  const { skipToContent, aboutPage, markdownSource } = await readPageMessages(
     frontmatter,
     deckPath,
   );
@@ -209,49 +211,70 @@ async function renderHtml(
     labelLang: otherLang(aboutPage, pageLang),
   };
   const skipLang = otherLang(skipToContent, pageLang);
-  const sourceHtml = `${colophonStart({ kind: 'source', ...deck })}<main id="${MAIN_ID}"><pre>\n${escapeHtml(source)}</pre></main>${CONTENT_END}`;
+  const markdown = (): string | undefined => {
+    try {
+      return deckMarkdown(source, deckPath, {
+        syntaxPlugins: plugins,
+        imageUrl: referImages
+          ? (file) =>
+              isImageFile(file) && existsSync(file)
+                ? markReference(file)
+                : undefined
+          : undefined,
+      });
+    } catch (error) {
+      warn(
+        `${deckPath} could not be turned into Markdown, so its page leaves it out: ${String(error)}`,
+      );
+      return undefined;
+    }
+  };
+  let documentHtml: string | undefined;
+  if (content === 'ssr' || content === 'both') {
+    try {
+      documentHtml = await renderDocument()(deckPath);
+    } catch (error) {
+      warn(
+        `${deckPath} could not be rendered as a document, so its page shows its Markdown instead: ${String(error)}`,
+      );
+    }
+  }
+  const markdownText =
+    content === 'markdown' ||
+    content === 'both' ||
+    (content === 'ssr' && documentHtml === undefined)
+      ? markdown()
+      : undefined;
+  const markdownHtml =
+    markdownText === undefined
+      ? undefined
+      : `<pre>\n${escapeHtml(markdownText)}</pre>`;
   let contentHtml: string | undefined;
-  if (content === 'ssr') {
-    try {
-      const documentHtml = await renderDocument()(deckPath);
-      // React escapes text and attributes, so only the sections of slides,
-      // their notes, their headings, and MathML match these.
-      const example = /<h[1-4] id="([^"]*)"/.exec(documentHtml)?.[1];
-      contentHtml = `${colophonStart({
-        kind: 'document',
-        ...deck,
-        slides: documentHtml.split(' data-seminar-slide=').length - 1,
-        example: example === undefined ? undefined : unescapeHtml(example),
-        notes: documentHtml.includes(' data-seminar-notes='),
-        formulas: documentHtml.match(/<math[\s>]/g)?.length ?? 0,
-      })}<main id="${MAIN_ID}">${documentHtml}</main>${CONTENT_END}`;
-    } catch (error) {
-      warn(
-        `${deckPath} could not be rendered as a document, so its page shows the source instead: ${String(error)}`,
-      );
-      contentHtml = sourceHtml;
-    }
-  } else if (content === 'markdown') {
-    try {
-      contentHtml = `${colophonStart({ kind: 'markdown', ...deck })}<main id="${MAIN_ID}"><pre>\n${escapeHtml(
-        deckMarkdown(source, deckPath, {
-          syntaxPlugins: plugins,
-          imageUrl: referImages
-            ? (file) =>
-                isImageFile(file) && existsSync(file)
-                  ? markReference(file)
-                  : undefined
-            : undefined,
-        }),
-      )}</pre></main>${CONTENT_END}`;
-    } catch (error) {
-      warn(
-        `${deckPath} could not be turned into Markdown, so its page shows the source instead: ${String(error)}`,
-      );
-      contentHtml = sourceHtml;
-    }
-  } else if (content === 'source') {
-    contentHtml = sourceHtml;
+  if (documentHtml !== undefined) {
+    // React escapes text and attributes, so only the sections of slides,
+    // their notes, their headings, and MathML match these.
+    const example = /<h[1-4] id="([^"]*)"/.exec(documentHtml)?.[1];
+    const start = colophonStart({
+      kind: markdownHtml === undefined ? 'document' : 'both',
+      ...deck,
+      slides: documentHtml.split(' data-seminar-slide=').length - 1,
+      example: example === undefined ? undefined : unescapeHtml(example),
+      notes: documentHtml.includes(' data-seminar-notes='),
+      formulas: documentHtml.match(/<math[\s>]/g)?.length ?? 0,
+    });
+    // The Markdown is collapsed before the document, like the colophon.
+    const markdownLang = otherLang(markdownSource, pageLang);
+    const collapsed =
+      markdownHtml === undefined
+        ? ''
+        : `<details><summary${
+            markdownLang === undefined
+              ? ''
+              : ` lang="${escapeHtml(markdownLang)}"`
+          }>${escapeHtml(markdownSource.text)}</summary>${markdownHtml}</details>${MARKDOWN_END}`;
+    contentHtml = `${start}${collapsed}<main id="${MAIN_ID}">${documentHtml}</main>${CONTENT_END}`;
+  } else if (markdownHtml !== undefined) {
+    contentHtml = `${colophonStart({ kind: 'markdown', ...deck })}<main id="${MAIN_ID}">${markdownHtml}</main>${CONTENT_END}`;
   }
   return `<!doctype html>
 <html lang="${escapeHtml(pageLang)}">
@@ -439,14 +462,14 @@ function addInputs(
  *
  * The title and language of the page are taken from the `title` and `lang`
  * of the frontmatter, where the title defaults to the first heading. The page
- * starts with the `content` of the deck (see {@link DeckContent}), the deck
- * rendered as a document by default.
+ * starts with the `content` of the deck (see {@link DeckContent}), both its
+ * Markdown and the deck rendered as a document by default.
  *
  * Only works with Vite.
  */
 export function seminarEntries({
   syntaxPlugins,
-  content = 'ssr',
+  content = 'both',
 }: {
   syntaxPlugins?: SyntaxPlugins | undefined;
   content?: DeckContent | undefined;
@@ -477,7 +500,7 @@ export function seminarEntries({
       }
       const build = config.build;
       const ssr =
-        content === 'ssr' && command === 'serve'
+        (content === 'ssr' || content === 'both') && command === 'serve'
           ? serverResolveOptions(config)
           : undefined;
       return {
@@ -591,7 +614,8 @@ export function seminarEntries({
             },
           );
           page.source = writeColophon(resolved, {
-            images: references.count > 0 ? references : images,
+            images,
+            markdownImages: references,
           });
         }
       },

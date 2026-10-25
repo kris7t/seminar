@@ -63,21 +63,24 @@ function colophonOf(html: string): string {
   ).replaceAll('\n', ' ');
 }
 
-/** Expects `html` to start with the fixture deck rendered as a document. */
+/**
+ * Expects `html` to start with the fixture deck as Markdown, collapsed, and
+ * rendered as a document.
+ */
 function expectDocument(html: string) {
   const body = html.slice(html.indexOf('<body>'));
   // A link that skips the colophon, which tells tools where the content is,
   // under a label.
   expect(body).toMatch(
-    /^<body>\s*<a id="seminar-skip" href="#seminar-main">Skip to content<\/a>\s*<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main">/,
+    /^<body>\s*<a id="seminar-skip" href="#seminar-main">Skip to content<\/a>\s*<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<details><summary>Markdown source<\/summary><pre>\n---\nmouseNavigation: false\n[^]*?<\/pre><\/details><!--seminar-markdown-end--><main id="seminar-main">/,
   );
   expect(colophonOf(body)).toMatch(
-    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code>/,
+    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> The Markdown source of the deck, [^]*?<br> Directives in the Markdown: [^]*?<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code>/,
   );
   // Lines are broken at spaces, which mean the same.
   const content = body
     .slice(
-      body.indexOf('</details>\n<main') + '</details>\n'.length,
+      body.indexOf('<main id="seminar-main">'),
       body.indexOf('<!--seminar-content-end-->'),
     )
     .replaceAll('\n', ' ');
@@ -253,7 +256,7 @@ describe('seminarEntries', () => {
   });
 
   describe('content', () => {
-    it('falls back to the source of the deck with a warning', async () => {
+    it('falls back to the Markdown of the deck with a warning', async () => {
       const warn = vi.fn<(message: string) => void>();
       const logger = createLogger('silent');
       logger.warn = warn;
@@ -271,7 +274,7 @@ describe('seminarEntries', () => {
         /<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main"><pre>\nexport function Broken\(\)/,
       );
       expect(colophonOf(html ?? '')).toMatch(
-        /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A broken talk<\/cite>\.<br> The MDX source of the deck: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, about the first \d+ KB\.$/,
+        /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A broken talk<\/cite>\.<br> The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, about the first \d+ KB\.<br> Directives in the Markdown/,
       );
       expect(warn).toHaveBeenCalledWith(
         expect.stringMatching(
@@ -280,18 +283,36 @@ describe('seminarEntries', () => {
       );
     });
 
-    it('can be the source of the deck', async () => {
+    it('falls back to the Markdown of the deck for both', async () => {
+      const [html] = await serve(
+        {
+          root: fileURLToPath(
+            new URL('../test/fixtures-broken', import.meta.url),
+          ),
+          plugins: [seminar({ ...pluginOptions, content: 'both' }), react()],
+        },
+        ['/broken.html'],
+      );
+      expect(html).toMatch(
+        /<\/details>\n<main id="seminar-main"><pre>\nexport function Broken\(\)/,
+      );
+      expect(html).not.toContain('seminar-markdown-end');
+    });
+
+    it('can be both the Markdown and the document of the deck', async () => {
       const [html, entry] = await serve(
         {
-          plugins: [seminar({ ...pluginOptions, content: 'source' }), react()],
+          plugins: [seminar({ ...pluginOptions, content: 'both' }), react()],
         },
         ['/talk.html', '/talk.deck.mdx?seminar-entry'],
       );
       expect(html).toMatch(
-        /<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main"><pre>\n---\nmouseNavigation: false\n/,
+        /<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<details><summary>Markdown source<\/summary><pre>\n---\nmouseNavigation: false\n[^]*<\/pre><\/details><!--seminar-markdown-end--><main id="seminar-main"><section /,
       );
-      expect(html).toContain('&lt;Step&gt;Revealed later&lt;/Step&gt;');
-      expect(html).toContain('{/* Not for the audience */}');
+      expect(html).not.toContain('Not for the audience');
+      expect(colophonOf(html ?? '')).toMatch(
+        /<cite>A talk about slides<\/cite>, 4 slides\.<br> The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;pre&gt;<\/code> in <code>&lt;details&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-markdown-end--&gt;<\/code>, about the first \d+ KB\.<br> Directives in the Markdown: [^]*<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+/,
+      );
       expect(entry).toContain('scripting: initial-only');
     });
 
