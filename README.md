@@ -179,8 +179,9 @@ files, e.g., for hosting with a Content Security Policy.
 
 The page starts with the deck rendered as a plain document, which browsers
 that run the deck hide, so that clients without JavaScript, like text
-extractors, can read it. Pass `seminar({ content: 'source' })` to embed the
-MDX source instead, or `'none'` to embed nothing.
+extractors, can read it. Pass `seminar({ content: 'markdown' })` to embed the
+source as Markdown, without comments and with included slides, `'source'` for
+the MDX source, or `'none'` to embed nothing.
 
 Presentation elements, like callouts and columns, come from
 [`@seminar/elements`](packages/elements), which is enabled as a plugin:

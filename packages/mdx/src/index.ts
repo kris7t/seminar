@@ -14,6 +14,7 @@ export {
   type RemarkDirectiveComponentsOptions,
 } from './directives/remarkDirectiveComponents.ts';
 export { getContentUiLocale, type UiLocaleSource } from './deck/uiLocales.ts';
+export { deckMarkdown } from './deck/markdown.ts';
 export {
   getDeckFrontmatter,
   readDeckFrontmatter,

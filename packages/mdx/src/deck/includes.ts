@@ -55,7 +55,7 @@ export interface IncludeContext {
 }
 
 /** The slides of an included deck, as {@link buildSlides} creates them. */
-interface DeckStructure {
+export interface DeckStructure {
   depth: number;
   /** The language of the deck. */
   lang: string;
@@ -121,8 +121,12 @@ function findOriginal(
   return current;
 }
 
-/** Reads the slides of the deck at `deckPath`. */
-function readStructure(
+/**
+ * Reads the slides of the deck at `deckPath`, as another deck includes them,
+ * where only the `stack`, `onDependency`, and `syntaxPlugins` of `context`
+ * matter.
+ */
+export function readStructure(
   deckPath: string,
   context: IncludeContext,
 ): DeckStructure {

@@ -24,8 +24,9 @@ export interface SeminarPluginOptions extends RollupSeminarPluginOptions {
    * What the generated page of each deck starts with, for clients that don't
    * run JavaScript, like text extractors and AI tools that can't open a
    * browser: `'ssr'` for the deck rendered on the server as a document,
-   * `'source'` for its MDX source, or `'none'` for nothing. Defaults to
-   * `'ssr'`.
+   * `'markdown'` for its source as Markdown, without comments and with the
+   * slides it includes from other decks, `'source'` for its MDX source, or
+   * `'none'` for nothing. Defaults to `'ssr'`.
    *
    * Only applies if `entries` is enabled.
    */

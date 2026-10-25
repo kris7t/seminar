@@ -280,6 +280,9 @@ seminar({ content: 'source' });
 - `'ssr'`, the default, renders the deck on the server. If that fails, e.g.,
   because a component needs a browser, the build warns and embeds the source
   instead.
+- `'markdown'` embeds the source of the deck as Markdown that reads as plain
+  text: without MDX comments, and with the sources of the slides that it
+  includes from other decks instead of the `::include` directives.
 - `'source'` embeds the MDX source of the deck.
 - `'none'` embeds nothing.
 

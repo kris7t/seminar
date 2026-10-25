@@ -291,6 +291,27 @@ describe('seminarEntries', () => {
         /<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main"><pre>\n---\nmouseNavigation: false\n/,
       );
       expect(html).toContain('&lt;Step&gt;Revealed later&lt;/Step&gt;');
+      expect(html).toContain('{/* Not for the audience */}');
+      expect(entry).toContain('scripting: initial-only');
+    });
+
+    it('can be the source of the deck as Markdown', async () => {
+      const [html, entry] = await serve(
+        {
+          plugins: [
+            seminar({ ...pluginOptions, content: 'markdown' }),
+            react(),
+          ],
+        },
+        ['/talk.html', '/talk.deck.mdx?seminar-entry'],
+      );
+      expect(html).toContain(
+        'Someone, somewhere\n\n## Introduction\n\n&lt;Step&gt;Revealed later&lt;/Step&gt;',
+      );
+      expect(html).not.toContain('Not for the audience');
+      expect(colophonOf(html ?? '')).toMatch(
+        /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A talk about slides<\/cite>\.<br> The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;main&gt;<\/code> on lines \d+–\d+/,
+      );
       expect(entry).toContain('scripting: initial-only');
     });
 

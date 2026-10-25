@@ -2,8 +2,11 @@ import { wrapLines } from './documents.ts';
 
 /** What the content of a page is, which its colophon describes. */
 export interface ColophonContent {
-  /** The deck rendered as a document, or its source. */
-  kind: 'document' | 'source';
+  /**
+   * The deck rendered as a document, its source as Markdown (see
+   * `deckMarkdown` in `@seminar/mdx`), or its source.
+   */
+  kind: 'document' | 'markdown' | 'source';
   /** The title of the deck. */
   title: string;
   /** The language of the deck, as a BCP 47 tag, if it's known. */
@@ -224,7 +227,7 @@ export function writeColophon(
     `A slide deck made with {seminar}: {title}${slides}${lang}.`,
     deck.kind === 'document'
       ? `Slide content: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, with a \`<section>\` for each slide, about the first \0size\0.${deck.notes === true ? ' Speaker notes in an `<aside>` in the section of their slide.' : ''}`
-      : `The MDX source of the deck: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, about the first \0size\0.`,
+      : `The ${deck.kind === 'markdown' ? 'Markdown source of the deck, without comments and with the slides it includes from other decks' : 'MDX source of the deck'}: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, about the first \0size\0.`,
   ];
   if (deck.kind === 'document' && deck.example !== undefined) {
     lines.push(

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { readDeckFrontmatter } from '@seminar/mdx';
+import { deckMarkdown, readDeckFrontmatter } from '@seminar/mdx';
 import type { PluggableList } from 'unified';
 import {
   defaultClientConditions,
@@ -160,10 +160,13 @@ export type SyntaxPlugins = (
  *
  * - `'ssr'`: the deck rendered on the server as a document (see `DeckDocument`
  *   in `@seminar/core`), or its source if that fails.
+ * - `'markdown'`: the source of the deck as Markdown that reads as plain
+ *   text, without comments and with the slides it includes from other decks
+ *   (see `deckMarkdown` in `@seminar/mdx`), or its source if that fails.
  * - `'source'`: the MDX source of the deck.
  * - `'none'`: nothing, so that the page only has the deck.
  */
-export type DeckContent = 'ssr' | 'source' | 'none';
+export type DeckContent = 'ssr' | 'markdown' | 'source' | 'none';
 
 /**
  * Generates the HTML page for a deck.
@@ -181,11 +184,8 @@ async function renderHtml(
   warn: (message: string) => void,
 ): Promise<string> {
   const source = await readFile(deckPath, 'utf8');
-  const frontmatter = readDeckFrontmatter(
-    source,
-    deckPath,
-    (await syntaxPlugins?.(source, deckPath)) ?? [],
-  );
+  const plugins = (await syntaxPlugins?.(source, deckPath)) ?? [];
+  const frontmatter = readDeckFrontmatter(source, deckPath, plugins);
   const { title, lang } = frontmatter;
   const name = path.basename(deckPath);
   const pageTitle =
@@ -221,6 +221,15 @@ async function renderHtml(
     } catch (error) {
       warn(
         `${deckPath} could not be rendered as a document, so its page shows the source instead: ${String(error)}`,
+      );
+      contentHtml = sourceHtml;
+    }
+  } else if (content === 'markdown') {
+    try {
+      contentHtml = `${colophonStart({ kind: 'markdown', ...deck })}<main id="${MAIN_ID}"><pre>\n${escapeHtml(deckMarkdown(source, deckPath, plugins))}</pre></main>${CONTENT_END}`;
+    } catch (error) {
+      warn(
+        `${deckPath} could not be turned into Markdown, so its page shows the source instead: ${String(error)}`,
       );
       contentHtml = sourceHtml;
     }
