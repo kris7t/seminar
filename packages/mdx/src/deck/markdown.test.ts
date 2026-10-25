@@ -48,6 +48,21 @@ describe('deckMarkdown', () => {
     ).toBe('## Title {#title}\n\nText more.\n\n- Item\n');
   });
 
+  it('removes imports and the frontmatter of the presentation', () => {
+    expect(
+      markdown(
+        "---\ntitle: Talk\nlang: hu # Hungarian\ndepth: 2\nmath:\n  macros:\n    R: '\\\\mathbb{R}'\nmouseNavigation: false\n---\n\nimport { Step } from '@seminar/core';\n\nexport const answer = 42;\n\n## Title\n\n<Step>Text</Step>\n",
+      ),
+    ).toBe(
+      "---\ntitle: Talk\nlang: hu # Hungarian\ndepth: 2\nmath:\n  macros:\n    R: '\\\\mathbb{R}'\n---\n\nexport const answer = 42;\n\n## Title\n\n<Step>Text</Step>\n",
+    );
+    expect(
+      markdown(
+        "---\ntheme: ./theme.tsx\n---\n\nimport { Step } from '@seminar/core';\n\n## Title\n",
+      ),
+    ).toBe('## Title\n');
+  });
+
   it('keeps comments in code', () => {
     const source = '## Code\n\n```js\n{/* kept */}\n```\n';
     expect(markdown(source)).toBe(source);

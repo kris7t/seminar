@@ -7,6 +7,7 @@ import type { LeafDirective } from 'mdast-util-directive';
 import type { PluggableList } from 'unified';
 import type { Node } from 'unist';
 import type { VFile } from 'vfile';
+import { isMap, parseDocument } from 'yaml';
 
 import { isLocal } from '../content/remarkImages.ts';
 import { hasDirective } from '../directives/directives.ts';
@@ -84,11 +85,11 @@ function collectComments(node: Nodes, comments: Nodes[]) {
 const BLANK_LINE = /^[ \t]*(?:\n|$)/;
 
 /**
- * Removes the comment from `start` to `end` of `source`: its lines, if it's on
- * lines of its own, without leaving two blank lines, or else the comment with
- * a space before it, if it's between words.
+ * Removes the node from `start` to `end` of `source`, e.g., a comment: its
+ * lines, if it's on lines of its own, without leaving two blank lines, or
+ * else the node with a space before it, if it's between words.
  */
-function removeComment(source: string, start: number, end: number): Edit {
+function removeNode(source: string, start: number, end: number): Edit {
   const lineStart = source.lastIndexOf('\n', start - 1) + 1;
   const newline = source.indexOf('\n', end);
   const lineEnd = newline < 0 ? source.length : newline + 1;
@@ -108,6 +109,44 @@ function removeComment(source: string, start: number, end: number): Edit {
     end: afterBlank && blank !== null ? lineEnd + blank[0].length : lineEnd,
     text: '',
   };
+}
+
+/** Whether `node` only imports modules, e.g., components. */
+function isImports(node: RootContent): boolean {
+  return (
+    node.type === 'mdxjsEsm' &&
+    node.data?.estree?.body.every(
+      (statement) => statement.type === 'ImportDeclaration',
+    ) === true
+  );
+}
+
+/**
+ * Keys of the frontmatter that only set up how the deck is presented, rather
+ * than how its content reads, unlike `title`, `lang`, `depth`, which tells
+ * which headings start slides, and the options of plugins, e.g., the macros
+ * of math.
+ */
+const PRESENTATION_KEYS = [
+  'theme',
+  'uiLanguages',
+  'mouseNavigation',
+  'mirrorPointer',
+];
+
+/**
+ * Returns the frontmatter `value` without {@link PRESENTATION_KEYS}, keeping
+ * its comments and formatting, or `undefined` if nothing else is left.
+ */
+function readableFrontmatter(value: string): string | undefined {
+  const document = parseDocument(value);
+  if (!isMap(document.contents)) {
+    return undefined;
+  }
+  for (const key of PRESENTATION_KEYS) {
+    document.delete(key);
+  }
+  return document.contents.items.length === 0 ? undefined : String(document);
 }
 
 /** Options of {@link deckMarkdown}. */
@@ -276,8 +315,24 @@ function readMarkdownSource(
     const place = range(comment);
     return place === undefined
       ? []
-      : [removeComment(source, place.start, place.end)];
+      : [removeNode(source, place.start, place.end)];
   });
+  for (const node of tree.children) {
+    const place = range(node);
+    if (place === undefined) {
+      continue;
+    }
+    if (isImports(node)) {
+      edits.push(removeNode(source, place.start, place.end));
+    } else if (node.type === 'yaml') {
+      const frontmatter = readableFrontmatter(node.value);
+      edits.push(
+        frontmatter === undefined
+          ? removeNode(source, place.start, place.end)
+          : { ...place, text: `---\n${frontmatter}---` },
+      );
+    }
+  }
   if (imageUrl !== undefined) {
     edits.push(...imageEdits(source, tree, range, deckPath, imageUrl));
   }
@@ -328,6 +383,8 @@ function startsSlide(node: RootContent, depth: number): boolean {
 /**
  * Returns the source of a deck as Markdown that reads as plain text, e.g., for
  * AI tools that read the page of the deck: without its MDX and HTML comments,
+ * its imports, and the keys of its frontmatter that only set up how it's
+ * presented, keeping `title`, `lang`, `depth`, and the options of plugins,
  * and with the sources of the slides that it includes from other decks with
  * `::include`, instead of the directives. The headings of included content
  * slides are at the level of content slides of the deck, and included recaps

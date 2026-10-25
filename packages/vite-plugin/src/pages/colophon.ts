@@ -285,8 +285,8 @@ export function writeColophon(
     }
     lines.push(
       deck.kind === 'both' && deck.component !== undefined
-        ? `Components in the Markdown, e.g., \`<${deck.component}>\`, may be interactive; each is rendered in \`<main>\` as it first appears, with all of its steps shown.`
-        : 'Interactive components are rendered in `<main>` as they first appear, with all of their steps shown.',
+        ? `Components in the Markdown, e.g., \`<${deck.component}>\`, may be interactive; each is rendered in \`<main>\` as it first appears.`
+        : 'Interactive components are rendered in `<main>` as they first appear.',
     );
     if (deck.formulas !== undefined && deck.formulas > 0) {
       lines.push(

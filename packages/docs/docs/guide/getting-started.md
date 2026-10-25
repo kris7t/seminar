@@ -268,7 +268,8 @@ The page of each deck starts with the deck in two forms for clients without
 JavaScript:
 
 - Its Markdown source, collapsed, which reads as plain text: without MDX
-  comments, and with the sources of the slides that it includes from other
+  comments, imports, and the settings of the presentation in the frontmatter,
+  like `theme`, and with the sources of the slides that it includes from other
   decks instead of the `::include` directives.
 - Its slides rendered as a plain document: headings, text, presenter notes,
   MathML for formulas, and code without highlighting. The headings link to

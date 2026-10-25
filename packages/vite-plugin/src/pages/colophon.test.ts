@@ -27,10 +27,10 @@ const directives =
   'Directives in the Markdown: <code>:name[label]{attributes}</code> in text, <code>::name[label]{attributes}</code> on a line of its own, and <code>:::name[label]{attributes}</code> up to <code>:::</code> around blocks, see the syntax of decks (<a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>).';
 
 const interactive =
-  'Interactive components are rendered in <code>&lt;main&gt;</code> as they first appear, with all of their steps shown.';
+  'Interactive components are rendered in <code>&lt;main&gt;</code> as they first appear.';
 
 const interactiveBoth =
-  'Components in the Markdown, e.g., <code>&lt;Step&gt;</code>, may be interactive; each is rendered in <code>&lt;main&gt;</code> as it first appears, with all of its steps shown.';
+  'Components in the Markdown, e.g., <code>&lt;Step&gt;</code>, may be interactive; each is rendered in <code>&lt;main&gt;</code> as it first appears.';
 
 const made =
   'A slide deck made with <a href="https://seminar.run">Seminar</a> (<a href="https://seminar.run">https://seminar.run</a>)';

@@ -72,10 +72,10 @@ function expectDocument(html: string) {
   // A link that skips the colophon, which tells tools where the content is,
   // under a label.
   expect(body).toMatch(
-    /^<body>\s*<a id="seminar-skip" href="#seminar-main">Skip to content<\/a>\s*<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<details><summary>Markdown source<\/summary><pre>\n---\nmouseNavigation: false\n[^]*?<\/pre><\/details><!--seminar-markdown-end--><main id="seminar-main">/,
+    /^<body>\s*<a id="seminar-skip" href="#seminar-main">Skip to content<\/a>\s*<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<details><summary>Markdown source<\/summary><pre>\n# A _talk_ about slides\n[^]*?<\/pre><\/details><!--seminar-markdown-end--><main id="seminar-main">/,
   );
   expect(colophonOf(body)).toMatch(
-    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> The Markdown source of the deck, [^]*?<br> Directives in the Markdown: [^]*?<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Components in the Markdown, e\.g\., <code>&lt;Step&gt;<\/code>, may be interactive; each is rendered in <code>&lt;main&gt;<\/code> as it first appears, with all of its steps shown\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code>/,
+    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> The Markdown source of the deck, [^]*?<br> Directives in the Markdown: [^]*?<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Components in the Markdown, e\.g\., <code>&lt;Step&gt;<\/code>, may be interactive; each is rendered in <code>&lt;main&gt;<\/code> as it first appears\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code>/,
   );
   // Lines are broken at spaces, which mean the same.
   const content = body
@@ -307,7 +307,7 @@ describe('seminarEntries', () => {
         ['/talk.html', '/talk.deck.mdx?seminar-entry'],
       );
       expect(html).toMatch(
-        /<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<details><summary>Markdown source<\/summary><pre>\n---\nmouseNavigation: false\n[^]*<\/pre><\/details><!--seminar-markdown-end--><main id="seminar-main"><section /,
+        /<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<details><summary>Markdown source<\/summary><pre>\n# A _talk_ about slides\n[^]*<\/pre><\/details><!--seminar-markdown-end--><main id="seminar-main"><section /,
       );
       expect(html).not.toContain('Not for the audience');
       expect(colophonOf(html ?? '')).toMatch(
