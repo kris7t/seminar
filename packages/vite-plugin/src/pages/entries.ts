@@ -149,6 +149,17 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * Returns the name of the first component in `markdown`, e.g., `Step` for
+ * `<Step>`, outside of code, if any.
+ */
+function findComponent(markdown: string): string | undefined {
+  const text = markdown
+    .replaceAll(/^ {0,3}(`{3,}|~{3,})[^]*?^ {0,3}\1[`~]*[ \t]*$/gm, '')
+    .replaceAll(/(`+)[^]*?\1/g, '');
+  return /<([A-Z][\w.]*)(?=[\s/>])/.exec(text)?.[1];
+}
+
+/**
  * Returns the remark plugins that extend the syntax of the deck at
  * `deckPath` with `source`, which are needed to parse it.
  */
@@ -261,6 +272,8 @@ async function renderHtml(
       example: example === undefined ? undefined : unescapeHtml(example),
       notes: documentHtml.includes(' data-seminar-notes='),
       formulas: documentHtml.match(/<math[\s>]/g)?.length ?? 0,
+      component:
+        markdownText === undefined ? undefined : findComponent(markdownText),
     });
     // The Markdown is collapsed before the document, like the colophon.
     const markdownLang = otherLang(markdownSource, pageLang);

@@ -21,6 +21,8 @@ export interface ColophonContent {
   example?: string | undefined;
   /** Whether the document has presenter notes. */
   notes?: boolean | undefined;
+  /** The name of a component in the Markdown, as an example. */
+  component?: string | undefined;
   /** How many formulas the document has as MathML. */
   formulas?: number | undefined;
 }
@@ -281,6 +283,11 @@ export function writeColophon(
         'The `id` of the heading of each slide is its link in the deck, e.g., `#{example}`.',
       );
     }
+    lines.push(
+      deck.kind === 'both' && deck.component !== undefined
+        ? `Components in the Markdown, e.g., \`<${deck.component}>\`, may be interactive; each is rendered in \`<main>\` as it first appears, with all of its steps shown.`
+        : 'Interactive components are rendered in `<main>` as they first appear, with all of their steps shown.',
+    );
     if (deck.formulas !== undefined && deck.formulas > 0) {
       lines.push(
         `Formulas: the slides have ${String(deck.formulas)}, each a MathML \`<math>\` with its TeX source in \`<annotation encoding="application/x-tex">\`. Text extraction may give both, one after the other.`,
