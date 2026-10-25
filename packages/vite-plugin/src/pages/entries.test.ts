@@ -72,7 +72,7 @@ function expectDocument(html: string) {
     /^<body>\s*<a id="seminar-skip" href="#seminar-main">Skip to content<\/a>\s*<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main">/,
   );
   expect(colophonOf(body)).toMatch(
-    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code>/,
+    /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code>/,
   );
   // Lines are broken at spaces, which mean the same.
   const content = body
@@ -271,7 +271,7 @@ describe('seminarEntries', () => {
         /<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<main id="seminar-main"><pre>\nexport function Broken\(\)/,
       );
       expect(colophonOf(html ?? '')).toMatch(
-        /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A broken talk<\/cite>\.<br> The MDX source of the deck: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, about the first \d+ KB\.$/,
+        /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A broken talk<\/cite>\.<br> The MDX source of the deck: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, about the first \d+ KB\.$/,
       );
       expect(warn).toHaveBeenCalledWith(
         expect.stringMatching(
@@ -310,7 +310,7 @@ describe('seminarEntries', () => {
       );
       expect(html).not.toContain('Not for the audience');
       expect(colophonOf(html ?? '')).toMatch(
-        /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A talk about slides<\/cite>\.<br> The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;main&gt;<\/code> on lines \d+–\d+/,
+        /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>\.<br> The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;main&gt;<\/code> on lines \d+–\d+/,
       );
       expect(entry).toContain('scripting: initial-only');
     });

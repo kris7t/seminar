@@ -87,7 +87,7 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toMatch(
-      /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a>: <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code> with its TeX source in <code>&lt;annotation encoding="application\/x-tex"&gt;<\/code>\. Text extraction may give both, one after the other\.<br> Images: the slides have 1 image, with alt text\. .* \(base64 SVG\) after the slides\. Their content is only in the image data, which text extraction leaves out\.<br> Followed by fonts, images, and scripts, about [\d.]+ [KM]B\.$/,
+      /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code> with its TeX source in <code>&lt;annotation encoding="application\/x-tex"&gt;<\/code>\. Text extraction may give both, one after the other\.<br> Images: the slides have 1 image, with alt text\. .* \(base64 SVG\) after the slides\. Their content is only in the image data, which text extraction leaves out\.<br> Followed by fonts, images, and scripts, about [\d.]+ [KM]B\.$/,
     );
     // The lines of the content are right.
     const line = (text: string) =>
@@ -99,6 +99,24 @@ describe('seminarSelfContained', () => {
     expect(html.slice(0, html.indexOf('</head>'))).not.toMatch(/\n\s*\n/);
     expect(html).not.toMatch(/<!--seminar-(?!content-end-->)/);
     // The slides look the image up instead of having it in the script.
+    expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);
+  }, 60_000);
+
+  it('refers to the embedded images in the Markdown of the deck', async () => {
+    const { html } = await buildApp({ content: 'markdown' });
+    expect(html).toContain(
+      '![A diagram](#seminar-image-0){#diagram}\n</pre></main>',
+    );
+    expect(html).toMatch(
+      /<image id="seminar-image-0" href="data:image\/svg\+xml;base64,[^"]+"/,
+    );
+    const colophon = (
+      /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
+    ).replaceAll('\n', ' ');
+    expect(colophon).toContain(
+      '<br> Directives: <code>:name[label]{attributes}</code> in text, <code>::name[label]{attributes}</code> on a line of its own, and <code>:::name[label]{attributes}</code> up to <code>:::</code> around blocks, see the syntax of decks (<a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>).<br> Images: the Markdown has 1 image whose URL refers to an image embedded after the source, e.g., <code>![Alt text](#seminar-image-N)</code> to <code>&lt;image id="seminar-image-N"&gt;</code> in <code>&lt;svg id="seminar-images"&gt;</code> (base64 SVG). Their content is only in the image data in <code>href</code>, which text extraction leaves out.<br>',
+    );
+    // The slides look the image up, too.
     expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);
   }, 60_000);
 
@@ -120,6 +138,29 @@ describe('seminarSelfContained', () => {
     expect(html).toContain(
       `<div id="end-diagram"><img src="/${asset ?? ''}" alt="A diagram"/></div>`,
     );
+  }, 60_000);
+
+  it('links to the assets of images in the Markdown in other modes', async () => {
+    const { files, html } = await buildApp(
+      { content: 'markdown', selfContained: false },
+      { assetsInlineLimit: 0 },
+    );
+    const asset = files.find((file) => /^assets\/diagram-.*\.svg$/.test(file));
+    expect(asset).toBeDefined();
+    expect(html).toContain(`![A diagram](/${asset ?? ''}){#diagram}`);
+    expect(html).not.toContain('seminar-images');
+    expect(html.replaceAll('\n', ' ')).toContain(
+      'Images: the Markdown has 1 image whose URL refers to the image file. Their content is only in the image files.',
+    );
+  }, 60_000);
+
+  it('links to images next to the deck in the Markdown if they are inlined', async () => {
+    const { html } = await buildApp({
+      content: 'markdown',
+      selfContained: false,
+    });
+    expect(html).toContain('![A diagram](diagram.svg){#diagram}');
+    expect(html).not.toMatch(/<pre>[^]*data:image/);
   }, 60_000);
 
   it('puts the inlined code into the body after the deck', async () => {

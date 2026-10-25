@@ -140,9 +140,19 @@ function formatLine(line: string): string {
 /**
  * Returns the line of the colophon about `images`: how many there are, where
  * their alt text is, so that tools don't miss it, and that their content is
- * only in their data.
+ * only in their data. In the Markdown of a deck, their alt text is in the
+ * text, and their URLs refer to the embedded images.
  */
-function imagesLine({ count, withoutAlt, embedded }: ColophonImages): string {
+function imagesLine(
+  { count, withoutAlt, embedded }: ColophonImages,
+  kind: ColophonContent['kind'],
+): string {
+  if (kind === 'markdown') {
+    const images = `${String(count)} ${count === 1 ? 'image' : 'images'}`;
+    return embedded === undefined
+      ? `Images: the Markdown has ${images} whose URL refers to the image file. Their content is only in the image files.`
+      : `Images: the Markdown has ${images} whose URL refers to an image embedded after the source, e.g., \`![Alt text](#seminar-image-N)\` to \`<image id="seminar-image-N">\` in \`<svg id="seminar-images">\` (base64 ${embedded.join('/')}). Their content is only in the image data in \`href\`, which text extraction leaves out.`;
+  }
   const alt =
     withoutAlt === 0
       ? count === 1
@@ -158,6 +168,12 @@ function imagesLine({ count, withoutAlt, embedded }: ColophonImages): string {
 
 /** The website of Seminar, which the colophon links to. */
 const SEMINAR_URL = 'https://seminar.run';
+
+/**
+ * The summary of the syntax of decks in the documentation, which the colophon
+ * of the Markdown of decks links to for their directives.
+ */
+const SYNTAX_URL = `${SEMINAR_URL}/guide/getting-started#syntax-at-a-glance`;
 
 /** Id of the note that the script of the page adds to the colophon. */
 export const RENDERED_NOTE_ID = 'seminar-colophon-rendered';
@@ -224,7 +240,9 @@ export function writeColophon(
       : `, ${String(deck.slides)} ${deck.slides === 1 ? 'slide' : 'slides'}`;
   const lang = deck.lang === undefined ? '' : ` in ${languageName(deck.lang)}`;
   const lines = [
-    `A slide deck made with {seminar}: {title}${slides}${lang}.`,
+    // The URLs are in the text, too, so that tools can follow them after
+    // text extraction.
+    `A slide deck made with {seminar} ({seminarUrl}): {title}${slides}${lang}.`,
     deck.kind === 'document'
       ? `Slide content: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, with a \`<section>\` for each slide, about the first \0size\0.${deck.notes === true ? ' Speaker notes in an `<aside>` in the section of their slide.' : ''}`
       : `The ${deck.kind === 'markdown' ? 'Markdown source of the deck, without comments and with the slides it includes from other decks' : 'MDX source of the deck'}: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, about the first \0size\0.`,
@@ -234,13 +252,18 @@ export function writeColophon(
       'The `id` of the heading of each slide is its link in the deck, e.g., `#{example}`.',
     );
   }
+  if (deck.kind === 'markdown') {
+    lines.push(
+      'Directives: `:name[label]{attributes}` in text, `::name[label]{attributes}` on a line of its own, and `:::name[label]{attributes}` up to `:::` around blocks, see the syntax of decks ({syntax}).',
+    );
+  }
   if (deck.formulas !== undefined && deck.formulas > 0) {
     lines.push(
       `Formulas: the slides have ${String(deck.formulas)}, each a MathML \`<math>\` with its TeX source in \`<annotation encoding="application/x-tex">\`. Text extraction may give both, one after the other.`,
     );
   }
   if (images !== undefined && images.count > 0) {
-    lines.push(imagesLine(images));
+    lines.push(imagesLine(images, deck.kind));
   }
   const parts = [...rest.matchAll(PART_PATTERN)].map(([, part = '']) => part);
   if (parts.length > 0) {
@@ -254,6 +277,8 @@ export function writeColophon(
   // in after formatting, so that they stay text, or markup.
   const values = new Map<string, string>([
     ['seminar', `<a href="${SEMINAR_URL}">Seminar</a>`],
+    ['seminarUrl', `<a href="${SEMINAR_URL}">${SEMINAR_URL}</a>`],
+    ['syntax', `<a href="${SYNTAX_URL}">${SYNTAX_URL}</a>`],
     // In the language of the deck, unlike the colophon.
     [
       'title',

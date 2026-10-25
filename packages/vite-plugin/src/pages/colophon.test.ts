@@ -22,7 +22,8 @@ function lineOf(html: string, text: string): number {
   return html.slice(0, html.indexOf(text)).split('\n').length;
 }
 
-const made = 'A slide deck made with <a href="https://seminar.run">Seminar</a>';
+const made =
+  'A slide deck made with <a href="https://seminar.run">Seminar</a> (<a href="https://seminar.run">https://seminar.run</a>)';
 
 describe('writeColophon', () => {
   it('tells what the page is, where its content is, and what follows it', () => {

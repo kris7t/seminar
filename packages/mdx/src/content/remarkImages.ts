@@ -57,7 +57,7 @@ function isBlank(node: PhrasingContent): boolean {
 }
 
 /** Whether `url` refers to a file next to the deck, which is imported. */
-function isLocal(url: string): boolean {
+export function isLocal(url: string): boolean {
   return url !== '' && !/^(?:[a-z][a-z\d+.-]*:|\/|#|\?)/i.test(url);
 }
 

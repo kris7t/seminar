@@ -7,8 +7,17 @@ import type { Plugin } from 'vite';
 /** Prefix of the markers that documents have instead of the URLs of images. */
 const MARKER = 'seminar-asset:';
 
-/** Finds the markers of images, whose paths are encoded with {@link mark}. */
-const MARKER_PATTERN = /seminar-asset:([\w.~%-]+)/g;
+/**
+ * Prefix of the markers that the Markdown of decks has instead of the URLs of
+ * images, which refer to the images embedded into the page by their ids.
+ */
+const REFERENCE_MARKER = 'seminar-asset-reference:';
+
+/**
+ * Finds the markers of images, whose paths are encoded with {@link mark}, and
+ * whether they are references.
+ */
+const MARKER_PATTERN = /seminar-asset(-reference)?:([\w.~%-]+)/g;
 
 /** Media types of the images that documents may refer to, by extension. */
 const IMAGE_TYPES: Readonly<Record<string, string>> = {
@@ -42,15 +51,24 @@ export function isImageFile(id: string): boolean {
 }
 
 /** Returns the marker of the image at `file`, without characters to escape. */
-function mark(file: string): string {
+function mark(file: string, prefix = MARKER): string {
   return (
-    MARKER +
+    prefix +
     encodeURIComponent(file).replaceAll(
       /[!'()*]/g,
       (character) =>
         `%${(character.codePointAt(0) ?? 0).toString(16).toUpperCase()}`,
     )
   );
+}
+
+/**
+ * Returns the marker of a reference to the image at `file`, which
+ * {@link resolveImages} replaces with a link to the image embedded into the
+ * page, without characters to escape.
+ */
+export function markReference(file: string): string {
+  return mark(file, REFERENCE_MARKER);
 }
 
 /**
@@ -70,12 +88,17 @@ export function imageMarkers(): Plugin {
   };
 }
 
-/** Returns the files of the images that `html` has markers of. */
-export function markedImages(html: string): string[] {
+/**
+ * Returns the files of the images that `html` has markers of, or only those
+ * that it has markers of references to, or of other markers.
+ */
+export function markedImages(html: string, references?: boolean): string[] {
   return [
     ...new Set(
-      [...html.matchAll(MARKER_PATTERN)].map(([, file = '']) =>
-        decodeURIComponent(file),
+      [...html.matchAll(MARKER_PATTERN)].flatMap(([, reference, file = '']) =>
+        references === undefined || references === (reference !== undefined)
+          ? [decodeURIComponent(file)]
+          : [],
       ),
     ),
   ];
@@ -121,14 +144,16 @@ export function countImage(
 
 /**
  * Replaces the markers of images in `html`: `img` elements with markers as
- * their `src` with what `element` returns, and other markers, e.g., in
- * styles, with what `url` returns. The documents rendered by React have their
- * attributes in double quotes.
+ * their `src` with what `element` returns, references (see
+ * {@link markReference}) with what `reference` returns, or else `url`, and
+ * other markers, e.g., in styles, with what `url` returns. The documents
+ * rendered by React have their attributes in double quotes.
  */
 export function resolveImages(
   html: string,
   element: (file: string, attributes: ImageAttributes) => string,
   url: (file: string) => string,
+  reference: (file: string) => string = url,
 ): string {
   return html
     .replaceAll(/<img\b([^>]*?)\/?>/g, (tag, attributeText: string) => {
@@ -140,8 +165,10 @@ export function resolveImages(
       const [file] = markedImages(attributes.get('src') ?? '');
       return file === undefined ? tag : element(file, attributes);
     })
-    .replaceAll(MARKER_PATTERN, (_, file: string) =>
-      url(decodeURIComponent(file)),
+    .replaceAll(
+      MARKER_PATTERN,
+      (_, isReference: string | undefined, file: string) =>
+        (isReference === undefined ? url : reference)(decodeURIComponent(file)),
     );
 }
 

@@ -1,19 +1,45 @@
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
 import { deckMarkdown } from './markdown.ts';
 
+const FIXTURES = fileURLToPath(new URL('../test/fixtures/', import.meta.url));
+
 /** Where the decks in the tests are, so that they include the fixtures. */
-const HOST_PATH = fileURLToPath(
-  new URL('../test/fixtures/host.deck.mdx', import.meta.url),
-);
+const HOST_PATH = path.join(FIXTURES, 'host.deck.mdx');
 
 function markdown(source: string): string {
   return deckMarkdown(source, HOST_PATH);
 }
 
 describe('deckMarkdown', () => {
+  it('changes the URLs of images next to the deck', () => {
+    const imageUrl = (file: string) => `#${path.relative(FIXTURES, file)}`;
+    expect(
+      deckMarkdown(
+        '## Images\n\n![A diagram](./diagram.svg "Title"){#diagram}\n\n![Remote](https://example.com/a.png) ![Spaced](<my image.png>)\n\n![Referenced][ref]\n\n[ref]: ./sub/ref.png\n[link]: ./other.png\n',
+        HOST_PATH,
+        { imageUrl },
+      ),
+    ).toBe(
+      '## Images\n\n![A diagram](#diagram.svg "Title"){#diagram}\n\n![Remote](https://example.com/a.png) ![Spaced](#my image.png)\n\n![Referenced][ref]\n\n[ref]: #sub/ref.png\n[link]: ./other.png\n',
+    );
+  });
+
+  it('changes the URLs of images next to the deck of included slides', () => {
+    expect(
+      deckMarkdown(
+        '## Host\n\n::include[./images.deck.mdx#picture]\n',
+        HOST_PATH,
+        { imageUrl: (file) => `#${path.relative(FIXTURES, file)}` },
+      ),
+    ).toBe(
+      '## Host\n\n## Picture {#picture}\n\n![A picture](#assets/picture.png)\n',
+    );
+  });
+
   it('removes MDX comments', () => {
     expect(
       markdown(

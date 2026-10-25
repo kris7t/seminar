@@ -92,7 +92,8 @@ function findPage(
  * Embeds the images that the page uses into it once, in a hidden `svg`
  * element, which both the document and the slides use: the modules of
  * `images` look them up (see {@link imageModule}), and the `img` elements of
- * the document become `svg` elements that use them, with their alt text.
+ * the document become `svg` elements that use them, with their alt text,
+ * while the images of the Markdown of the deck refer to them by their ids.
  *
  * @returns The files of the embedded images, and how many images the
  *   document shows.
@@ -139,6 +140,10 @@ async function embedImages(
       return imageElement(unsized.get(file) ?? '', attributes);
     },
     (file) => embedded.get(file)?.dataUri ?? unsized.get(file) ?? '',
+    (file) => {
+      counts.count += 1;
+      return `#${images.get(file) ?? ''}`;
+    },
   );
   const definitions = imageDefinitions(IMAGES_ID, [
     ...embedded.values(),
@@ -394,7 +399,11 @@ export function seminarSelfContained(
           // Before Vite inlines the image into the script.
           order: 'pre',
           handler(id) {
-            if (content !== 'ssr' || !isImageFile(id)) {
+            // The document and the Markdown refer to the embedded images.
+            if (
+              (content !== 'ssr' && content !== 'markdown') ||
+              !isImageFile(id)
+            ) {
               return undefined;
             }
             let imageId = images.get(id);

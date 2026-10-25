@@ -41,7 +41,9 @@ import {
 import {
   countImage,
   imageElement,
+  isImageFile,
   markedImages,
+  markReference,
   readDataUri,
   resolveImages,
   type ImageCounts,
@@ -175,6 +177,10 @@ export type DeckContent = 'ssr' | 'markdown' | 'source' | 'none';
  * it is hidden by a media query instead of a script, so it doesn't flash
  * before the deck is rendered, stays in pages saved from the browser, and
  * isn't read by screen readers next to the slides.
+ *
+ * With `referImages`, the images of the Markdown of the deck refer to the
+ * images of the build, i.e., their assets, or the images embedded into
+ * self-contained pages (see `seminarSelfContained`).
  */
 async function renderHtml(
   deckPath: string,
@@ -182,6 +188,7 @@ async function renderHtml(
   content: DeckContent,
   renderDocument: () => RenderDocument,
   warn: (message: string) => void,
+  referImages = false,
 ): Promise<string> {
   const source = await readFile(deckPath, 'utf8');
   const plugins = (await syntaxPlugins?.(source, deckPath)) ?? [];
@@ -226,7 +233,17 @@ async function renderHtml(
     }
   } else if (content === 'markdown') {
     try {
-      contentHtml = `${colophonStart({ kind: 'markdown', ...deck })}<main id="${MAIN_ID}"><pre>\n${escapeHtml(deckMarkdown(source, deckPath, plugins))}</pre></main>${CONTENT_END}`;
+      contentHtml = `${colophonStart({ kind: 'markdown', ...deck })}<main id="${MAIN_ID}"><pre>\n${escapeHtml(
+        deckMarkdown(source, deckPath, {
+          syntaxPlugins: plugins,
+          imageUrl: referImages
+            ? (file) =>
+                isImageFile(file) && existsSync(file)
+                  ? markReference(file)
+                  : undefined
+            : undefined,
+        }),
+      )}</pre></main>${CONTENT_END}`;
     } catch (error) {
       warn(
         `${deckPath} could not be turned into Markdown, so its page shows the source instead: ${String(error)}`,
@@ -334,14 +351,14 @@ if (!matchMedia(${JSON.stringify(INITIAL_ONLY_QUERY)}).matches) {
 
 /**
  * Returns the URL of the asset of the image at `file` in `bundle` from the
- * page `pageName`, or its data URI if Vite inlined it into the scripts.
+ * page `pageName`, if Vite emitted one.
  */
-async function imageUrl(
+function assetUrl(
   bundle: Rolldown.OutputBundle,
   file: string,
   pageName: string,
   { root, base }: ResolvedConfig,
-): Promise<string> {
+): string | undefined {
   const asset = Object.values(bundle).find(
     (output) =>
       output.type === 'asset' &&
@@ -350,7 +367,7 @@ async function imageUrl(
       ),
   );
   if (asset === undefined) {
-    return readDataUri(file);
+    return undefined;
   }
   // Like Vite, relative to the page with a relative base.
   return base === '' || base.startsWith('.')
@@ -524,6 +541,7 @@ export function seminarEntries({
         (message) => {
           this.warn(message);
         },
+        config.command === 'build',
       );
     },
 
@@ -540,11 +558,18 @@ export function seminarEntries({
             continue;
           }
           const html = String(page.source);
+          // The URLs of the images of the document, or their data URIs if
+          // Vite inlined them into the scripts.
           const urls = new Map<string, string>();
-          for (const file of markedImages(html)) {
-            urls.set(file, await imageUrl(bundle, file, page.fileName, config));
+          for (const file of markedImages(html, false)) {
+            urls.set(
+              file,
+              assetUrl(bundle, file, page.fileName, config) ??
+                (await readDataUri(file)),
+            );
           }
           const images: ImageCounts = { count: 0, withoutAlt: 0 };
+          const references: ImageCounts = { count: 0, withoutAlt: 0 };
           const resolved = resolveImages(
             html,
             (file, attributes) => {
@@ -552,8 +577,22 @@ export function seminarEntries({
               return imageElement(urls.get(file) ?? '', attributes);
             },
             (file) => urls.get(file) ?? '',
+            // The Markdown links to the images instead of embedding them,
+            // where they are next to the deck if Vite didn't emit them.
+            (file) => {
+              references.count += 1;
+              return (
+                assetUrl(bundle, file, page.fileName, config) ??
+                path
+                  .relative(path.join(root, path.dirname(page.fileName)), file)
+                  .split(path.sep)
+                  .join('/')
+              );
+            },
           );
-          page.source = writeColophon(resolved, { images });
+          page.source = writeColophon(resolved, {
+            images: references.count > 0 ? references : images,
+          });
         }
       },
     },
