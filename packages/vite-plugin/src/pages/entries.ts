@@ -287,7 +287,12 @@ async function renderHtml(
           }>${escapeHtml(markdownSource.text)}</summary>${markdownHtml}</details>${MARKDOWN_END}`;
     contentHtml = `${start}${collapsed}<main id="${MAIN_ID}">${documentHtml}</main>${CONTENT_END}`;
   } else if (markdownHtml !== undefined) {
-    contentHtml = `${colophonStart({ kind: 'markdown', ...deck })}<main id="${MAIN_ID}">${markdownHtml}</main>${CONTENT_END}`;
+    contentHtml = `${colophonStart({
+      kind: 'markdown',
+      ...deck,
+      component:
+        markdownText === undefined ? undefined : findComponent(markdownText),
+    })}<main id="${MAIN_ID}">${markdownHtml}</main>${CONTENT_END}`;
   }
   return `<!doctype html>
 <html lang="${escapeHtml(pageLang)}">

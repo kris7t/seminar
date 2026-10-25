@@ -75,7 +75,7 @@ function expectDocument(html: string) {
     /^<body>\s*<a id="seminar-skip" href="#seminar-main">Skip to content<\/a>\s*<div id="seminar-content">\n<details><summary>About this page<\/summary>\n<p id="seminar-colophon" lang="en">[^]*?<\/p>\n<\/details>\n<details><summary>Markdown source<\/summary><pre>\n# A _talk_ about slides\n[^]*?<\/pre><\/details><!--seminar-markdown-end--><main id="seminar-main">/,
   );
   expect(colophonOf(body)).toMatch(
-    /^This is a slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\. The page contains it twice: once as Markdown source, and once as rendered HTML\.<br> Markdown: [^]*? Components such as <code>&lt;Step&gt;<\/code> are rendered in place in the HTML below, including interactive ones\.<br> HTML: the <code>&lt;main&gt;<\/code> on lines \d+–\d+, ending at <code>&lt;!--seminar-content-end--&gt;<\/code> \(within the first \d+ KB of the page\)\. Each slide is a <code>&lt;section&gt;<\/code>, and the <code>id<\/code> of its heading links to it in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: there is 1 in the HTML, as MathML <code>&lt;math&gt;<\/code>/,
+    /^This is a slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\. The page contains it twice: once as Markdown source, and once as rendered HTML\.<br> Markdown: [^]*? Components such as <code>&lt;Step&gt;<\/code> appear as written, so anything they compute or keep as state, like their initial values, is not in the Markdown; the HTML below has them rendered in place\.<br> HTML: the <code>&lt;main&gt;<\/code> on lines \d+–\d+, ending at <code>&lt;!--seminar-content-end--&gt;<\/code> \(within the first \d+ KB of the page\)\. Each slide is a <code>&lt;section&gt;<\/code>, and the <code>id<\/code> of its heading links to it in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Formulas: there is 1 in the HTML, as MathML <code>&lt;math&gt;<\/code>/,
   );
   // Lines are broken at spaces, which mean the same.
   const content = body
@@ -332,6 +332,10 @@ describe('seminarEntries', () => {
       expect(html).not.toContain('Not for the audience');
       expect(colophonOf(html ?? '')).toMatch(
         /^This is a slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>\.<br> Markdown: the <code>&lt;pre&gt;<\/code> in <code>&lt;main&gt;<\/code> on lines \d+–\d+/,
+      );
+      // Without the HTML, which would render the components.
+      expect(colophonOf(html ?? '')).toContain(
+        'Components such as <code>&lt;Step&gt;</code> appear as written, so anything they compute or keep as state, like their initial values, is not in the Markdown.',
       );
       expect(entry).toContain('scripting: initial-only');
     });

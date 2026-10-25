@@ -280,10 +280,15 @@ export function writeColophon(
         : ''
     }`,
   ];
-  // Where tools that read the Markdown wonder what its components do.
-  const componentsInHtml =
-    deck.kind === 'both' && deck.component !== undefined
-      ? ` Components such as \`<${deck.component}>\` are rendered in place in the HTML below, including interactive ones.`
+  // Where tools that read the Markdown wonder what its components show, which
+  // they would otherwise guess, e.g., that an interactive one starts empty.
+  const componentsInMarkdown =
+    hasMarkdown && deck.component !== undefined
+      ? ` Components such as \`<${deck.component}>\` appear as written, so anything they compute or keep as state, like their initial values, is not in the Markdown${
+          deck.kind === 'both'
+            ? '; the HTML below has them rendered in place'
+            : ''
+        }.`
       : undefined;
   // The Markdown first, which comes first in the page.
   if (hasMarkdown) {
@@ -292,12 +297,12 @@ export function writeColophon(
         deck.kind === 'both'
           ? `Markdown: the \`<pre>\` in \`<details>\` on lines \0start\0–\0markdownEnd\0, ending at \`${MARKDOWN_END}\` (within the first \0markdownSize\0 of the page).`
           : `Markdown: the \`<pre>\` in \`<main>\` on lines \0start\0–\0end\0, ending at \`${CONTENT_END}\` (within the first \0size\0 of the page).`
-      } Directives use the generic syntax: \`:name[label]{attributes}\` inline, \`::name[label]{attributes}\` on their own line, and \`:::name[label]{attributes}\` … \`:::\` around blocks, as documented at {syntax}.${componentsInHtml ?? ''}`,
+      } Directives use the generic syntax: \`:name[label]{attributes}\` inline, \`::name[label]{attributes}\` on their own line, and \`:::name[label]{attributes}\` … \`:::\` around blocks, as documented at {syntax}.${componentsInMarkdown ?? ''}`,
     );
   }
   if (hasDocument) {
     const components =
-      componentsInHtml === undefined
+      componentsInMarkdown === undefined
         ? ' Interactive components are rendered in place.'
         : '';
     const heading =

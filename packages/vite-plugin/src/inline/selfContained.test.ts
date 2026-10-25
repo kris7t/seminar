@@ -114,7 +114,7 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toContain(
-      'as documented at <a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>.<br> Images: there is 1. The image data is base64 SVG in <code>&lt;image id="seminar-image-N"&gt;</code> elements inside <code>&lt;svg id="seminar-images"&gt;</code> after the content, which text extraction drops. The Markdown refers to each image as <code>![Alt text](#seminar-image-N)</code>.<br>',
+      'as documented at <a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>. Components such as <code>&lt;Step&gt;</code> appear as written, so anything they compute or keep as state, like their initial values, is not in the Markdown.<br> Images: there is 1. The image data is base64 SVG in <code>&lt;image id="seminar-image-N"&gt;</code> elements inside <code>&lt;svg id="seminar-images"&gt;</code> after the content, which text extraction drops. The Markdown refers to each image as <code>![Alt text](#seminar-image-N)</code>.<br>',
     );
     // The slides look the image up, too.
     expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);
