@@ -87,7 +87,7 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toMatch(
-      /^A slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> Slide content: <code>&lt;main&gt;<\/code> on lines \d+–\d+ up to <code>&lt;!--seminar-content-end--&gt;<\/code>, with a <code>&lt;section&gt;<\/code> for each slide, about the first \d+ KB\.<br> The <code>id<\/code> of the heading of each slide is its link in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\.<br> Interactive components are rendered in <code>&lt;main&gt;<\/code> as they first appear\.<br> Formulas: the slides have 1, each a MathML <code>&lt;math&gt;<\/code> with its TeX source in <code>&lt;annotation encoding="application\/x-tex"&gt;<\/code>\. Text extraction may give both, one after the other\.<br> Images: the slides have 1 image, with alt text\. .* \(base64 SVG\) after the slides\. Their content is only in the image data, which text extraction leaves out\.<br> Followed by fonts, images, and scripts, about [\d.]+ [KM]B\.$/,
+      /^This is a slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> HTML: the <code>&lt;main&gt;<\/code> on lines \d+–\d+, ending at <code>&lt;!--seminar-content-end--&gt;<\/code> \(within the first \d+ KB of the page\)\. Each slide is a <code>&lt;section&gt;<\/code>, and the <code>id<\/code> of its heading links to it in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\. Interactive components are rendered in place\.<br> Formulas: there is 1 in the HTML, as MathML <code>&lt;math&gt;<\/code> with the TeX source in <code>&lt;annotation encoding="application\/x-tex"&gt;<\/code>, so text extraction may show both\.<br> Images: there is 1, with alt text\. The image data is base64 SVG in <code>&lt;image id="seminar-image-N"&gt;<\/code> elements inside <code>&lt;svg id="seminar-images"&gt;<\/code> after the content, which text extraction drops\. The HTML shows each image as an <code>&lt;svg role="img"&gt;<\/code> with the alt text in <code>aria-label<\/code> and a <code>&lt;use href="#seminar-image-N"&gt;<\/code>\.<br> After the content come fonts, images, and scripts, about [\d.]+ [KM]B\.$/,
     );
     // The lines of the content are right.
     const line = (text: string) =>
@@ -114,7 +114,7 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toContain(
-      '<br> Directives in the Markdown: <code>:name[label]{attributes}</code> in text, <code>::name[label]{attributes}</code> on a line of its own, and <code>:::name[label]{attributes}</code> up to <code>:::</code> around blocks, see the syntax of decks (<a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>).<br> Images: the Markdown has 1 image whose URL refers to an image embedded after the content, e.g., <code>![Alt text](#seminar-image-N)</code> to <code>&lt;image id="seminar-image-N"&gt;</code> in <code>&lt;svg id="seminar-images"&gt;</code> (base64 SVG). Their content is only in the image data in <code>href</code>, which text extraction leaves out.<br>',
+      'as documented at <a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>.<br> Images: there is 1. The image data is base64 SVG in <code>&lt;image id="seminar-image-N"&gt;</code> elements inside <code>&lt;svg id="seminar-images"&gt;</code> after the content, which text extraction drops. The Markdown refers to each image as <code>![Alt text](#seminar-image-N)</code>.<br>',
     );
     // The slides look the image up, too.
     expect(html).toMatch(/getElementById\([`"']seminar-image-0[`"']\)/);
@@ -129,7 +129,7 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toMatch(
-      /<br> Images: the Markdown has 1 image whose URL refers to an image embedded after the content[^]*<br> Slide content: [^]*<br> Images: the slides have 1 image, with alt text\. /,
+      /<br> Images: there is 1, with alt text\. [^]* The Markdown refers to each image as <code>!\[Alt text\]\(#seminar-image-N\)<\/code>, and the HTML shows it as an <code>&lt;svg role="img"&gt;<\/code>/,
     );
   }, 60_000);
 
@@ -163,7 +163,7 @@ describe('seminarSelfContained', () => {
     expect(html).toContain(`![A diagram](/${asset ?? ''}){#diagram}`);
     expect(html).not.toContain('seminar-images');
     expect(html.replaceAll('\n', ' ')).toContain(
-      'Images: the Markdown has 1 image whose URL refers to the image file. Their content is only in the image files.',
+      'Images: there is 1. The images are separate files. The Markdown links to them.',
     );
   }, 60_000);
 

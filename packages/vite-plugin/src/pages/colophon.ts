@@ -149,33 +149,49 @@ function formatLine(line: string): string {
 }
 
 /**
- * Returns the line of the colophon about the `images` of the document: how
- * many there are, where their alt text is, so that tools don't miss it, and
- * that their content is only in their data.
+ * Returns the line of the colophon about the images of the slides: how many
+ * there are, whether they have alt text, where their data is, so that tools
+ * can look at them, and how the Markdown and the HTML of the page refer to
+ * them. The HTML tells about alt text, which the Markdown has in the text.
  */
-function imagesLine({ count, withoutAlt, embedded }: ColophonImages): string {
+function imagesLine(
+  images: ColophonImages | undefined,
+  markdownImages: ColophonImages | undefined,
+): string | undefined {
+  const shown = images ?? markdownImages;
+  if (shown === undefined || shown.count === 0) {
+    return undefined;
+  }
+  const { count, embedded } = shown;
   const alt =
-    withoutAlt === 0
-      ? count === 1
-        ? 'with alt text'
-        : 'all with alt text'
-      : `${String(withoutAlt)} without alt text`;
-  const shown =
+    images === undefined
+      ? ''
+      : images.withoutAlt === 0
+        ? count === 1
+          ? ', with alt text'
+          : ', all with alt text'
+        : `, ${String(images.withoutAlt)} without alt text`;
+  const markdown =
+    markdownImages === undefined
+      ? undefined
+      : embedded === undefined
+        ? 'the Markdown links to them'
+        : 'the Markdown refers to each image as `![Alt text](#seminar-image-N)`';
+  const html =
+    images === undefined
+      ? undefined
+      : embedded === undefined
+        ? 'the HTML shows each image as an `<img>` with its alt text in `alt`'
+        : `the HTML shows ${markdown === undefined ? 'each image' : 'it'} as an \`<svg role="img">\` with the alt text in \`aria-label\` and a \`<use href="#seminar-image-N">\``;
+  const references = [markdown, html].filter(
+    (reference) => reference !== undefined,
+  );
+  const where =
     embedded === undefined
-      ? 'Each is an `<img>` with its alt text in `alt`. Their content is only in the image files'
-      : `Each is an \`<svg role="img">\` with its alt text in \`aria-label\` and its title in \`<title>\`, whose \`<use href="#seminar-image-N">\` refers to \`<image id="seminar-image-N">\` in \`<svg id="seminar-images">\` (base64 ${embedded.join('/')}) after the slides. Their content is only in the image data`;
-  return `Images: the slides have ${String(count)} ${count === 1 ? 'image' : 'images'}, ${alt}. ${shown}, which text extraction leaves out.`;
-}
-
-/**
- * Returns the line of the colophon about the `images` of the Markdown, whose
- * alt text is in the text: what their URLs refer to.
- */
-function markdownImagesLine({ count, embedded }: ColophonImages): string {
-  const images = `${String(count)} ${count === 1 ? 'image' : 'images'}`;
-  return embedded === undefined
-    ? `Images: the Markdown has ${images} whose URL refers to the image file. Their content is only in the image files.`
-    : `Images: the Markdown has ${images} whose URL refers to an image embedded after the content, e.g., \`![Alt text](#seminar-image-N)\` to \`<image id="seminar-image-N">\` in \`<svg id="seminar-images">\` (base64 ${embedded.join('/')}). Their content is only in the image data in \`href\`, which text extraction leaves out.`;
+      ? 'The images are separate files'
+      : `The image data is base64 ${embedded.join('/')} in \`<image id="seminar-image-N">\` elements inside \`<svg id="seminar-images">\` after the content, which text extraction drops`;
+  const sentence = references.join(', and ');
+  return `Images: there ${count === 1 ? 'is 1' : `are ${String(count)}`}${alt}. ${where}. ${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
 }
 
 /** The website of Seminar, which the colophon links to. */
@@ -255,52 +271,59 @@ export function writeColophon(
   const lang = deck.lang === undefined ? '' : ` in ${languageName(deck.lang)}`;
   const hasDocument = deck.kind !== 'markdown';
   const hasMarkdown = deck.kind !== 'document';
-  const markdown =
-    'The Markdown source of the deck, without comments and with the slides it includes from other decks';
   const lines = [
     // The URLs are in the text, too, so that tools can follow them after
     // text extraction.
-    `A slide deck made with {seminar} ({seminarUrl}): {title}${slides}${lang}.`,
+    `This is a slide deck made with {seminar} ({seminarUrl}): {title}${slides}${lang}.${
+      deck.kind === 'both'
+        ? ' The page contains it twice: once as Markdown source, and once as rendered HTML.'
+        : ''
+    }`,
   ];
+  // Where tools that read the Markdown wonder what its components do.
+  const componentsInHtml =
+    deck.kind === 'both' && deck.component !== undefined
+      ? ` Components such as \`<${deck.component}>\` are rendered in place in the HTML below, including interactive ones.`
+      : undefined;
   // The Markdown first, which comes first in the page.
   if (hasMarkdown) {
     lines.push(
-      deck.kind === 'both'
-        ? `${markdown}: \`<pre>\` in \`<details>\` on lines \0start\0–\0markdownEnd\0 up to \`${MARKDOWN_END}\`, about the first \0markdownSize\0.`
-        : `${markdown}: \`<main>\` on lines \0start\0–\0end\0 up to \`${CONTENT_END}\`, about the first \0size\0.`,
-      'Directives in the Markdown: `:name[label]{attributes}` in text, `::name[label]{attributes}` on a line of its own, and `:::name[label]{attributes}` up to `:::` around blocks, see the syntax of decks ({syntax}).',
+      `${
+        deck.kind === 'both'
+          ? `Markdown: the \`<pre>\` in \`<details>\` on lines \0start\0–\0markdownEnd\0, ending at \`${MARKDOWN_END}\` (within the first \0markdownSize\0 of the page).`
+          : `Markdown: the \`<pre>\` in \`<main>\` on lines \0start\0–\0end\0, ending at \`${CONTENT_END}\` (within the first \0size\0 of the page).`
+      } Directives use the generic syntax: \`:name[label]{attributes}\` inline, \`::name[label]{attributes}\` on their own line, and \`:::name[label]{attributes}\` … \`:::\` around blocks, as documented at {syntax}.${componentsInHtml ?? ''}`,
     );
-    if (markdownImages !== undefined && markdownImages.count > 0) {
-      lines.push(markdownImagesLine(markdownImages));
-    }
   }
   if (hasDocument) {
+    const components =
+      componentsInHtml === undefined
+        ? ' Interactive components are rendered in place.'
+        : '';
+    const heading =
+      deck.example === undefined
+        ? ''
+        : ', and the `id` of its heading links to it in the deck, e.g., `#{example}`';
     lines.push(
-      `Slide content: \`<main>\` on lines \0${deck.kind === 'both' ? 'mainStart' : 'start'}\0–\0end\0 up to \`${CONTENT_END}\`, with a \`<section>\` for each slide, about the first \0size\0.${deck.notes === true ? ' Speaker notes in an `<aside>` in the section of their slide.' : ''}`,
-    );
-    if (deck.example !== undefined) {
-      lines.push(
-        'The `id` of the heading of each slide is its link in the deck, e.g., `#{example}`.',
-      );
-    }
-    lines.push(
-      deck.kind === 'both' && deck.component !== undefined
-        ? `Components in the Markdown, e.g., \`<${deck.component}>\`, may be interactive; each is rendered in \`<main>\` as it first appears.`
-        : 'Interactive components are rendered in `<main>` as they first appear.',
+      `HTML: the \`<main>\` on lines \0${deck.kind === 'both' ? 'mainStart' : 'start'}\0–\0end\0, ending at \`${CONTENT_END}\` (within the first \0size\0 of the page). Each slide is a \`<section>\`${deck.notes === true ? ', with its speaker notes in an `<aside>`' : ''}${heading}.${components}`,
     );
     if (deck.formulas !== undefined && deck.formulas > 0) {
       lines.push(
-        `Formulas: the slides have ${String(deck.formulas)}, each a MathML \`<math>\` with its TeX source in \`<annotation encoding="application/x-tex">\`. Text extraction may give both, one after the other.`,
+        `Formulas: there ${deck.formulas === 1 ? 'is 1' : `are ${String(deck.formulas)}`} in the HTML, as MathML \`<math>\` with the TeX source in \`<annotation encoding="application/x-tex">\`, so text extraction may show both.`,
       );
     }
-    if (images !== undefined && images.count > 0) {
-      lines.push(imagesLine(images));
-    }
+  }
+  const imageLine = imagesLine(
+    hasDocument ? images : undefined,
+    hasMarkdown ? markdownImages : undefined,
+  );
+  if (imageLine !== undefined) {
+    lines.push(imageLine);
   }
   const parts = [...rest.matchAll(PART_PATTERN)].map(([, part = '']) => part);
   if (parts.length > 0) {
     lines.push(
-      `Followed by ${list(parts)}, about ${formatSize(
+      `After the content come ${list(parts)}, about ${formatSize(
         Buffer.byteLength(rest.replaceAll(PART_PATTERN, '')),
       )}.`,
     );

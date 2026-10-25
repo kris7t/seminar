@@ -23,17 +23,11 @@ function lineOf(html: string, text: string): number {
   return html.slice(0, html.indexOf(text)).split('\n').length;
 }
 
-const directives =
-  'Directives in the Markdown: <code>:name[label]{attributes}</code> in text, <code>::name[label]{attributes}</code> on a line of its own, and <code>:::name[label]{attributes}</code> up to <code>:::</code> around blocks, see the syntax of decks (<a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>).';
-
-const interactive =
-  'Interactive components are rendered in <code>&lt;main&gt;</code> as they first appear.';
-
-const interactiveBoth =
-  'Components in the Markdown, e.g., <code>&lt;Step&gt;</code>, may be interactive; each is rendered in <code>&lt;main&gt;</code> as it first appears.';
+const markdownSource =
+  'Directives use the generic syntax: <code>:name[label]{attributes}</code> inline, <code>::name[label]{attributes}</code> on their own line, and <code>:::name[label]{attributes}</code> … <code>:::</code> around blocks, as documented at <a href="https://seminar.run/guide/getting-started#syntax-at-a-glance">https://seminar.run/guide/getting-started#syntax-at-a-glance</a>.';
 
 const made =
-  'A slide deck made with <a href="https://seminar.run">Seminar</a> (<a href="https://seminar.run">https://seminar.run</a>)';
+  'This is a slide deck made with <a href="https://seminar.run">Seminar</a> (<a href="https://seminar.run">https://seminar.run</a>)';
 
 describe('writeColophon', () => {
   it('tells what the page is, where its content is, and what follows it', () => {
@@ -58,13 +52,11 @@ describe('writeColophon', () => {
     });
     expect(colophonLines(written)).toEqual([
       `${made}: <cite lang="hu">A &lt;talk&gt; about \`code\` {and} more</cite>, 12 slides in Hungarian.`,
-      `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>' + CONTENT_END))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 7 KB. Speaker notes in an <code>&lt;aside&gt;</code> in the section of their slide.`,
-      'The <code>id</code> of the heading of each slide is its link in the deck, e.g., <code>#intro</code>.',
-      interactive,
-      'Formulas: the slides have 2, each a MathML <code>&lt;math&gt;</code> with its TeX source in <code>&lt;annotation encoding="application/x-tex"&gt;</code>. Text extraction may give both, one after the other.',
-      'Images: the slides have 3 images, 1 without alt text. Each is an <code>&lt;svg role="img"&gt;</code> with its alt text in <code>aria-label</code> and its title in <code>&lt;title&gt;</code>, whose <code>&lt;use href="#seminar-image-N"&gt;</code> refers to <code>&lt;image id="seminar-image-N"&gt;</code> in <code>&lt;svg id="seminar-images"&gt;</code> (base64 PNG/JPEG) after the slides. Their content is only in the image data, which text extraction leaves out.',
+      `HTML: the <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>' + CONTENT_END))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 7 KB of the page). Each slide is a <code>&lt;section&gt;</code>, with its speaker notes in an <code>&lt;aside&gt;</code>, and the <code>id</code> of its heading links to it in the deck, e.g., <code>#intro</code>. Interactive components are rendered in place.`,
+      'Formulas: there are 2 in the HTML, as MathML <code>&lt;math&gt;</code> with the TeX source in <code>&lt;annotation encoding="application/x-tex"&gt;</code>, so text extraction may show both.',
+      'Images: there are 3, 1 without alt text. The image data is base64 PNG/JPEG in <code>&lt;image id="seminar-image-N"&gt;</code> elements inside <code>&lt;svg id="seminar-images"&gt;</code> after the content, which text extraction drops. The HTML shows each image as an <code>&lt;svg role="img"&gt;</code> with the alt text in <code>aria-label</code> and a <code>&lt;use href="#seminar-image-N"&gt;</code>.',
       // Rounded up, so that reading as much doesn't stop short.
-      'Followed by fonts, images, and scripts, about 2.6 MB.',
+      'After the content come fonts, images, and scripts, about 2.6 MB.',
     ]);
     // Collapsed under its label, before the content.
     expect(written).toContain(
@@ -97,8 +89,7 @@ describe('writeColophon', () => {
     const written = writeColophon(html);
     expect(colophonLines(written)).toEqual([
       `${made}: <cite>Talk</cite>.`,
-      `The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, about the first 1 KB.`,
-      directives,
+      `Markdown: the <code>&lt;pre&gt;</code> in <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 1 KB of the page). ${markdownSource}`,
     ]);
   });
 
@@ -109,19 +100,12 @@ describe('writeColophon', () => {
       images: { count: 1, withoutAlt: 0, embedded: ['SVG'] },
       markdownImages: { count: 1, withoutAlt: 0, embedded: ['SVG'] },
     });
-    const lines = colophonLines(written);
-    expect(lines.slice(1, 3)).toEqual([
-      `The Markdown source of the deck, without comments and with the slides it includes from other decks: <code>&lt;pre&gt;</code> in <code>&lt;details&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, MARKDOWN_END))} up to <code>&lt;!--seminar-markdown-end--&gt;</code>, about the first 5 KB.`,
-      directives,
+    expect(colophonLines(written)).toEqual([
+      `${made}: <cite>Talk</cite>, 1 slide. The page contains it twice: once as Markdown source, and once as rendered HTML.`,
+      `Markdown: the <code>&lt;pre&gt;</code> in <code>&lt;details&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, MARKDOWN_END))}, ending at <code>&lt;!--seminar-markdown-end--&gt;</code> (within the first 4 KB of the page). ${markdownSource} Components such as <code>&lt;Step&gt;</code> are rendered in place in the HTML below, including interactive ones.`,
+      `HTML: the <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<main>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 4 KB of the page). Each slide is a <code>&lt;section&gt;</code>.`,
+      'Images: there is 1, with alt text. The image data is base64 SVG in <code>&lt;image id="seminar-image-N"&gt;</code> elements inside <code>&lt;svg id="seminar-images"&gt;</code> after the content, which text extraction drops. The Markdown refers to each image as <code>![Alt text](#seminar-image-N)</code>, and the HTML shows it as an <code>&lt;svg role="img"&gt;</code> with the alt text in <code>aria-label</code> and a <code>&lt;use href="#seminar-image-N"&gt;</code>.',
     ]);
-    expect(lines[3]).toMatch(
-      /^Images: the Markdown has 1 image whose URL refers to an image embedded after the content/,
-    );
-    expect(lines[4]).toBe(
-      `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<main>'))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 5 KB.`,
-    );
-    expect(lines[5]).toBe(interactiveBoth);
-    expect(lines[6]).toMatch(/^Images: the slides have 1 image/);
     expect(written).toContain(`</pre></details>${MARKDOWN_END}\n<main>`);
   });
 
@@ -136,9 +120,8 @@ describe('writeColophon', () => {
     );
     expect(colophonLines(written)).toEqual([
       `${made}: <cite>Talk</cite>, 1 slide.`,
-      `Slide content: <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))} up to <code>&lt;!--seminar-content-end--&gt;</code>, with a <code>&lt;section&gt;</code> for each slide, about the first 1 KB.`,
-      interactive,
-      'Images: the slides have 1 image, with alt text. Each is an <code>&lt;img&gt;</code> with its alt text in <code>alt</code>. Their content is only in the image files, which text extraction leaves out.',
+      `HTML: the <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 1 KB of the page). Each slide is a <code>&lt;section&gt;</code>. Interactive components are rendered in place.`,
+      'Images: there is 1, with alt text. The images are separate files. The HTML shows each image as an <code>&lt;img&gt;</code> with its alt text in <code>alt</code>.',
     ]);
   });
 
