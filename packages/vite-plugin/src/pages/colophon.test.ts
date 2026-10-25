@@ -2,12 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   colophonStart,
-  CONTENT_END,
-  MARKDOWN_END,
   partMarker,
   renderedNote,
   writeColophon,
 } from './colophon.ts';
+import { CONTENT_END, MARKDOWN_END } from './ids.ts';
 
 /** Returns the lines of the colophon of `html`. */
 function colophonLines(html: string): string[] {
@@ -52,7 +51,7 @@ describe('writeColophon', () => {
     });
     expect(colophonLines(written)).toEqual([
       `${made}: <cite lang="hu">A &lt;talk&gt; about \`code\` {and} more</cite>, 12 slides in Hungarian.`,
-      `HTML: the <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>' + CONTENT_END))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 7 KB of the page). Each slide is a <code>&lt;section&gt;</code>, with its speaker notes in an <code>&lt;aside&gt;</code>, and the <code>id</code> of its heading links to it in the deck, e.g., <code>#intro</code>. Interactive components are rendered in place.`,
+      `HTML: the <code>&lt;main id="seminar-main"&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>' + CONTENT_END))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 7 KB of the page). Each slide is a <code>&lt;section&gt;</code>, with its speaker notes in an <code>&lt;aside&gt;</code>, and the <code>id</code> of its heading links to it in the deck, e.g., <code>#intro</code>. Interactive components are rendered in place.`,
       'Formulas: there are 2 in the HTML, as MathML <code>&lt;math&gt;</code> with the TeX source in <code>&lt;annotation encoding="application/x-tex"&gt;</code>, so text extraction may show both.',
       'Images: there are 3, 1 without alt text. The image data is base64 PNG/JPEG in <code>&lt;image id="seminar-image-N"&gt;</code> elements inside <code>&lt;svg id="seminar-images"&gt;</code> after the content, which text extraction drops. The HTML shows each image as an <code>&lt;svg role="img"&gt;</code> with the alt text in <code>aria-label</code> and a <code>&lt;use href="#seminar-image-N"&gt;</code>.',
       // Rounded up, so that reading as much doesn't stop short.
@@ -89,7 +88,7 @@ describe('writeColophon', () => {
     const written = writeColophon(html);
     expect(colophonLines(written)).toEqual([
       `${made}: <cite>Talk</cite>.`,
-      `Markdown: the <code>&lt;pre&gt;</code> in <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 1 KB of the page). ${markdownSource}`,
+      `Markdown: the <code>&lt;pre id="seminar-markdown"&gt;</code> in <code>&lt;main id="seminar-main"&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 1 KB of the page). ${markdownSource}`,
     ]);
   });
 
@@ -102,8 +101,8 @@ describe('writeColophon', () => {
     });
     expect(colophonLines(written)).toEqual([
       `${made}: <cite>Talk</cite>, 1 slide. The page contains it twice: once as Markdown source, and once as rendered HTML.`,
-      `Markdown: the <code>&lt;pre&gt;</code> in <code>&lt;details&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, MARKDOWN_END))}, ending at <code>&lt;!--seminar-markdown-end--&gt;</code> (within the first 4 KB of the page). ${markdownSource} Components such as <code>&lt;Step&gt;</code> appear as written, so anything they compute or keep as state, like their initial values, is not in the Markdown; the HTML below has them rendered in place.`,
-      `HTML: the <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<main>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 4 KB of the page). Each slide is a <code>&lt;section&gt;</code>.`,
+      `Markdown: the <code>&lt;pre id="seminar-markdown"&gt;</code> in <code>&lt;details&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, MARKDOWN_END))}, ending at <code>&lt;!--seminar-markdown-end--&gt;</code> (within the first 4 KB of the page). ${markdownSource} Components such as <code>&lt;Step&gt;</code> appear as written, so anything they compute or keep as state, like their initial values, is not in the Markdown; the HTML below has them rendered in place.`,
+      `HTML: the <code>&lt;main id="seminar-main"&gt;</code> on lines ${String(lineOf(written, '<main>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 4 KB of the page). Each slide is a <code>&lt;section&gt;</code>.`,
       'Images: there is 1, with alt text. The image data is base64 SVG in <code>&lt;image id="seminar-image-N"&gt;</code> elements inside <code>&lt;svg id="seminar-images"&gt;</code> after the content, which text extraction drops. The Markdown refers to each image as <code>![Alt text](#seminar-image-N)</code>, and the HTML shows it as an <code>&lt;svg role="img"&gt;</code> with the alt text in <code>aria-label</code> and a <code>&lt;use href="#seminar-image-N"&gt;</code>.',
     ]);
     expect(written).toContain(`</pre></details>${MARKDOWN_END}\n<main>`);
@@ -120,7 +119,7 @@ describe('writeColophon', () => {
     );
     expect(colophonLines(written)).toEqual([
       `${made}: <cite>Talk</cite>, 1 slide.`,
-      `HTML: the <code>&lt;main&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 1 KB of the page). Each slide is a <code>&lt;section&gt;</code>. Interactive components are rendered in place.`,
+      `HTML: the <code>&lt;main id="seminar-main"&gt;</code> on lines ${String(lineOf(written, '<details>'))}–${String(lineOf(written, '</main>'))}, ending at <code>&lt;!--seminar-content-end--&gt;</code> (within the first 1 KB of the page). Each slide is a <code>&lt;section&gt;</code>. Interactive components are rendered in place.`,
       'Images: there is 1, with alt text. The images are separate files. The HTML shows each image as an <code>&lt;img&gt;</code> with its alt text in <code>alt</code>.',
     ]);
   });

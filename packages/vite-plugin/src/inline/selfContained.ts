@@ -10,11 +10,13 @@ import {
   isEmptyInput,
   removeInputs,
 } from '../decks.ts';
+import type { DeckContent } from '../pages/entries.ts';
 import {
   EMOTION_ID,
+  IMAGE_PREFIX,
+  IMAGES_ID,
   STYLESHEETS_ID,
-  type DeckContent,
-} from '../pages/entries.ts';
+} from '../pages/ids.ts';
 import { partMarker, writeColophon } from '../pages/colophon.ts';
 import {
   countImage,
@@ -44,12 +46,6 @@ export interface SelfContainedOptions {
    */
   keepUnicodeRanges?: string[] | undefined;
 }
-
-/** Id of the element that holds the images embedded into a page. */
-const IMAGES_ID = 'seminar-images';
-
-/** Prefix of the ids of the images embedded into a page. */
-const IMAGE_PREFIX = 'seminar-image-';
 
 function escapeRegExp(text: string): string {
   return text.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');

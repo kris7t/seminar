@@ -87,7 +87,7 @@ describe('seminarSelfContained', () => {
       /<p id="seminar-colophon" lang="en">([^]*?)<\/p>/.exec(html)?.[1] ?? ''
     ).replaceAll('\n', ' ');
     expect(colophon).toMatch(
-      /^This is a slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> HTML: the <code>&lt;main&gt;<\/code> on lines \d+–\d+, ending at <code>&lt;!--seminar-content-end--&gt;<\/code> \(within the first \d+ KB of the page\)\. Each slide is a <code>&lt;section&gt;<\/code>, and the <code>id<\/code> of its heading links to it in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\. Interactive components are rendered in place\.<br> Formulas: there is 1 in the HTML, as MathML <code>&lt;math&gt;<\/code> with the TeX source in <code>&lt;annotation encoding="application\/x-tex"&gt;<\/code>, so text extraction may show both\.<br> Images: there is 1, with alt text\. The image data is base64 SVG in <code>&lt;image id="seminar-image-N"&gt;<\/code> elements inside <code>&lt;svg id="seminar-images"&gt;<\/code> after the content, which text extraction drops\. The HTML shows each image as an <code>&lt;svg role="img"&gt;<\/code> with the alt text in <code>aria-label<\/code> and a <code>&lt;use href="#seminar-image-N"&gt;<\/code>\.<br> After the content come fonts, images, and scripts, about [\d.]+ [KM]B\.$/,
+      /^This is a slide deck made with <a href="https:\/\/seminar\.run">Seminar<\/a> \(<a href="https:\/\/seminar\.run">https:\/\/seminar\.run<\/a>\): <cite>A talk about slides<\/cite>, 4 slides\.<br> HTML: the <code>&lt;main id="seminar-main"&gt;<\/code> on lines \d+–\d+, ending at <code>&lt;!--seminar-content-end--&gt;<\/code> \(within the first \d+ KB of the page\)\. Each slide is a <code>&lt;section&gt;<\/code>, and the <code>id<\/code> of its heading links to it in the deck, e\.g\., <code>#a-talk-about-slides<\/code>\. Interactive components are rendered in place\.<br> Formulas: there is 1 in the HTML, as MathML <code>&lt;math&gt;<\/code> with the TeX source in <code>&lt;annotation encoding="application\/x-tex"&gt;<\/code>, so text extraction may show both\.<br> Images: there is 1, with alt text\. The image data is base64 SVG in <code>&lt;image id="seminar-image-N"&gt;<\/code> elements inside <code>&lt;svg id="seminar-images"&gt;<\/code> after the content, which text extraction drops\. The HTML shows each image as an <code>&lt;svg role="img"&gt;<\/code> with the alt text in <code>aria-label<\/code> and a <code>&lt;use href="#seminar-image-N"&gt;<\/code>\.<br> After the content come fonts, images, and scripts, about [\d.]+ [KM]B\.$/,
     );
     // The lines of the content are right.
     const line = (text: string) =>
@@ -173,7 +173,7 @@ describe('seminarSelfContained', () => {
       selfContained: false,
     });
     expect(html).toContain('![A diagram](diagram.svg){#diagram}');
-    expect(html).not.toMatch(/<pre>[^]*data:image/);
+    expect(html).not.toMatch(/<pre id="seminar-markdown">[^]*data:image/);
   }, 60_000);
 
   it('puts the inlined code into the body after the deck', async () => {

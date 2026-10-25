@@ -1,4 +1,14 @@
 import { wrapLines } from './documents.ts';
+import {
+  COLOPHON_ID,
+  CONTENT_END,
+  IMAGE_PREFIX,
+  IMAGES_ID,
+  MAIN_ID,
+  MARKDOWN_END,
+  MARKDOWN_ID,
+  RENDERED_NOTE_ID,
+} from './ids.ts';
 
 /** What the content of a page is, which its colophon describes. */
 export interface ColophonContent {
@@ -60,20 +70,6 @@ export function partMarker(part: PagePart): string {
 }
 
 const PART_PATTERN = /<!--seminar-part:(fonts|styles|images|scripts)-->/g;
-
-/**
- * Marks the end of the content of a page, which stays in the page, so that
- * tools that read its source can find it. Neither documents rendered by React
- * nor the escaped Markdown of a deck can have comments, so the markers of the
- * colophon can't occur in them.
- */
-export const CONTENT_END = '<!--seminar-content-end-->';
-
-/**
- * Marks the end of the Markdown of a deck before its document, like
- * {@link CONTENT_END}.
- */
-export const MARKDOWN_END = '<!--seminar-markdown-end-->';
 
 const START_PATTERN = /<!--seminar-colophon:([\w.~%]*)-->/;
 
@@ -176,20 +172,20 @@ function imagesLine(
       ? undefined
       : embedded === undefined
         ? 'the Markdown links to them'
-        : 'the Markdown refers to each image as `![Alt text](#seminar-image-N)`';
+        : `the Markdown refers to each image as \`![Alt text](#${IMAGE_PREFIX}N)\``;
   const html =
     images === undefined
       ? undefined
       : embedded === undefined
         ? 'the HTML shows each image as an `<img>` with its alt text in `alt`'
-        : `the HTML shows ${markdown === undefined ? 'each image' : 'it'} as an \`<svg role="img">\` with the alt text in \`aria-label\` and a \`<use href="#seminar-image-N">\``;
+        : `the HTML shows ${markdown === undefined ? 'each image' : 'it'} as an \`<svg role="img">\` with the alt text in \`aria-label\` and a \`<use href="#${IMAGE_PREFIX}N">\``;
   const references = [markdown, html].filter(
     (reference) => reference !== undefined,
   );
   const where =
     embedded === undefined
       ? 'The images are separate files'
-      : `The image data is base64 ${embedded.join('/')} in \`<image id="seminar-image-N">\` elements inside \`<svg id="seminar-images">\` after the content, which text extraction drops`;
+      : `The image data is base64 ${embedded.join('/')} in \`<image id="${IMAGE_PREFIX}N">\` elements inside \`<svg id="${IMAGES_ID}">\` after the content, which text extraction drops`;
   const sentence = references.join(', and ');
   return `Images: there ${count === 1 ? 'is 1' : `are ${String(count)}`}${alt}. ${where}. ${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
 }
@@ -202,9 +198,6 @@ const SEMINAR_URL = 'https://seminar.run';
  * of the Markdown of decks links to for their directives.
  */
 const SYNTAX_URL = `${SEMINAR_URL}/guide/getting-started#syntax-at-a-glance`;
-
-/** Id of the note that the script of the page adds to the colophon. */
-export const RENDERED_NOTE_ID = 'seminar-colophon-rendered';
 
 /**
  * Returns the note that the script of the page adds to the end of the
@@ -295,8 +288,8 @@ export function writeColophon(
     lines.push(
       `${
         deck.kind === 'both'
-          ? `Markdown: the \`<pre>\` in \`<details>\` on lines \0start\0–\0markdownEnd\0, ending at \`${MARKDOWN_END}\` (within the first \0markdownSize\0 of the page).`
-          : `Markdown: the \`<pre>\` in \`<main>\` on lines \0start\0–\0end\0, ending at \`${CONTENT_END}\` (within the first \0size\0 of the page).`
+          ? `Markdown: the \`<pre id="${MARKDOWN_ID}">\` in \`<details>\` on lines \0start\0–\0markdownEnd\0, ending at \`${MARKDOWN_END}\` (within the first \0markdownSize\0 of the page).`
+          : `Markdown: the \`<pre id="${MARKDOWN_ID}">\` in \`<main id="${MAIN_ID}">\` on lines \0start\0–\0end\0, ending at \`${CONTENT_END}\` (within the first \0size\0 of the page).`
       } Directives use the generic syntax: \`:name[label]{attributes}\` inline, \`::name[label]{attributes}\` on their own line, and \`:::name[label]{attributes}\` … \`:::\` around blocks, as documented at {syntax}.${componentsInMarkdown ?? ''}`,
     );
   }
@@ -310,7 +303,7 @@ export function writeColophon(
         ? ''
         : ', and the `id` of its heading links to it in the deck, e.g., `#{example}`';
     lines.push(
-      `HTML: the \`<main>\` on lines \0${deck.kind === 'both' ? 'mainStart' : 'start'}\0–\0end\0, ending at \`${CONTENT_END}\` (within the first \0size\0 of the page). Each slide is a \`<section>\`${deck.notes === true ? ', with its speaker notes in an `<aside>`' : ''}${heading}.${components}`,
+      `HTML: the \`<main id="${MAIN_ID}">\` on lines \0${deck.kind === 'both' ? 'mainStart' : 'start'}\0–\0end\0, ending at \`${CONTENT_END}\` (within the first \0size\0 of the page). Each slide is a \`<section>\`${deck.notes === true ? ', with its speaker notes in an `<aside>`' : ''}${heading}.${components}`,
     );
     if (deck.formulas !== undefined && deck.formulas > 0) {
       lines.push(
@@ -354,7 +347,7 @@ export function writeColophon(
   // On lines of its own, whose numbers don't change its lines, so the lines
   // can be found with placeholders.
   const colophon = `\n${wrapLines(
-    `<details><summary${langAttribute(deck.labelLang)}>${escapeHtml(deck.label).replaceAll('\0', '')}</summary>\n<p id="seminar-colophon" lang="en">${lines.map(text).join('<br>\n')}</p>\n</details>`,
+    `<details><summary${langAttribute(deck.labelLang)}>${escapeHtml(deck.label).replaceAll('\0', '')}</summary>\n<p id="${COLOPHON_ID}" lang="en">${lines.map(text).join('<br>\n')}</p>\n</details>`,
   )}\n`;
   const contentStart = before.length + colophon.length;
   const contentEnd = contentStart + content.length;

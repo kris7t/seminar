@@ -31,14 +31,7 @@ import {
   renderDocumentModule,
   type RenderDocument,
 } from './documents.ts';
-import {
-  colophonStart,
-  CONTENT_END,
-  MARKDOWN_END,
-  RENDERED_NOTE_ID,
-  renderedNote,
-  writeColophon,
-} from './colophon.ts';
+import { colophonStart, renderedNote, writeColophon } from './colophon.ts';
 import {
   countImage,
   imageElement,
@@ -49,16 +42,24 @@ import {
   resolveImages,
   type ImageCounts,
 } from '../inline/images.ts';
+import {
+  COLOPHON_ID,
+  CONTENT_END,
+  CONTENT_ID,
+  EMOTION_ID,
+  MAIN_ID,
+  MARKDOWN_END,
+  MARKDOWN_ID,
+  RENDERED_NOTE_ID,
+  ROOT_ID,
+  SKIP_ID,
+  SLIDES_ID,
+  STYLESHEETS_ID,
+} from './ids.ts';
 import { otherLang, readPageMessages } from './messages.ts';
 
 /** Query that marks the script that renders a deck. */
 const ENTRY_QUERY = '?seminar-entry';
-
-/**
- * ID of the element at the start of the body that holds the contents of the
- * deck as HTML, for clients without JavaScript, like text extractors.
- */
-const CONTENT_ID = 'seminar-content';
 
 /**
  * Media query of environments where the style sheet of the page hides the
@@ -72,42 +73,12 @@ const SCRIPTING_QUERY = '(scripting: enabled)';
  */
 const INITIAL_ONLY_QUERY = '(scripting: initial-only)';
 
-/** ID of the colophon at the start of the content, see `writeColophon`. */
-const COLOPHON_ID = 'seminar-colophon';
-
-/** ID of the element that the deck is rendered into. */
-const ROOT_ID = 'seminar-root';
-
-/** ID of the link at the start of the page that skips to the content. */
-const SKIP_ID = 'seminar-skip';
-
-/** ID of the `main` element of the content of the deck. */
-const MAIN_ID = 'seminar-main';
-
 /**
  * Shows the link that skips to the content over the rendered deck. Since it's
  * only needed once the link is focused, it's with the other style sheets after
  * the deck, so that the start of the page, which tools read first, stays short.
  */
 const SKIP_FOCUS_STYLE = `#${SKIP_ID}:focus { position: fixed; top: 0; left: 0; z-index: 2147483647; padding: 0.5em 1em; background: white; color: black; }`;
-
-/**
- * ID of the area of the slide, the `main` element of the rendered deck (see
- * `Deck` in `@seminar/core`).
- */
-const SLIDES_ID = 'seminar-slides';
-
-/**
- * ID of the element in the body of the page that holds the style sheets of
- * self-contained pages, which Vite would otherwise add to the head.
- */
-export const STYLESHEETS_ID = 'seminar-stylesheets';
-
-/**
- * ID of the element in the body of the page that holds the styles of Emotion,
- * which would otherwise be added to the head.
- */
-export const EMOTION_ID = 'seminar-emotion';
 
 /** Prefix of the virtual modules that render decks. */
 const ENTRY_PREFIX = '\0seminar-entry:';
@@ -259,7 +230,7 @@ async function renderHtml(
   const markdownHtml =
     markdownText === undefined
       ? undefined
-      : `<pre>\n${escapeHtml(markdownText)}</pre>`;
+      : `<pre id="${MARKDOWN_ID}">\n${escapeHtml(markdownText)}</pre>`;
   let contentHtml: string | undefined;
   if (documentHtml !== undefined) {
     // React escapes text and attributes, so only the sections of slides,
