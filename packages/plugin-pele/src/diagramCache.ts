@@ -1,6 +1,8 @@
 import { defineCache, type CacheDefinition } from '@seminar/core';
 import { forgetTextWidths, render } from 'pele/core';
 
+import { annotate } from './annotate.ts';
+
 /**
  * Prefix of the ids in the SVG of cached diagrams, which each rendering of a
  * slide replaces with a prefix of its own, since a slide may be rendered
@@ -89,12 +91,12 @@ export const diagramCache: CacheDefinition<DiagramInput, RenderedDiagram> =
   defineCache(
     async (input: DiagramInput): Promise<RenderedDiagram> => {
       await loadFonts(input);
-      const { svg } = render(input.source, {
+      const { svg, type } = render(input.source, {
         fontFamily: input.fontFamily,
         fontSize: input.fontSize,
         idPrefix: ID_PLACEHOLDER,
       });
-      return { parts: splitIds(svg) };
+      return { parts: splitIds(annotate(svg, type, input.source)) };
     },
     { transitionHold: 1000, maxUnusedEntries: 64 },
   );

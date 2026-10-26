@@ -16,7 +16,7 @@ import {
   parseAttributeWords,
 } from '@seminar/mdx';
 
-import { findSteps } from './steps.ts';
+import { findSteps } from './steps/index.ts';
 
 /** Name that decks import the {@link Diagram} component as. */
 const DIAGRAM = '_SeminarPeleDiagram';
