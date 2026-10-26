@@ -5,15 +5,24 @@ import {
   useCached,
   useMeasure,
   useSlideElementId,
+  useSlideElementRegistry,
   useSlideView,
   WITH_PREVIOUS,
   type ComponentTheme,
   type StepProps,
 } from '@seminar/core';
 import { register } from 'pele/core';
-import { useId, useMemo, useState, type JSX } from 'react';
+import {
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type JSX,
+} from 'react';
 
 import { diagramCache, joinIds, type RenderedDiagram } from './diagramCache.ts';
+import { findItems } from './items.ts';
 
 /** A type of diagrams of Pele, e.g., the default export of `pele/diagrams/flowchart`. */
 export type PeleDiagram = Parameters<typeof register>[number];
@@ -117,9 +126,16 @@ interface RenderedSvgProps {
   font: Font;
   /** The prefix of the ids of the diagram in this rendering of the slide. */
   prefix: string;
+  /** The name of the diagram on the slide, if any. */
+  name: string | undefined;
 }
 
-function RenderedSvg({ source, font, prefix }: RenderedSvgProps): JSX.Element {
+function RenderedSvg({
+  source,
+  font,
+  prefix,
+  name,
+}: RenderedSvgProps): JSX.Element {
   const result = useCached(diagramCache, {
     source,
     fontFamily: font.family,
@@ -135,6 +151,21 @@ function RenderedSvg({ source, font, prefix }: RenderedSvgProps): JSX.Element {
     () => (diagram === undefined ? '' : joinIds(diagram, prefix)),
     [diagram, prefix],
   );
+  const ref = useRef<HTMLDivElement>(null);
+  const register = useSlideElementRegistry();
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (name === undefined || root === null || html === '') {
+      return undefined;
+    }
+    // The items of a named diagram are named after it, e.g., `pipeline.A`.
+    const unregister = [...findItems(root)].map(([id, element]) =>
+      register(`${name}.${id}`, element),
+    );
+    return () => {
+      for (const done of unregister) done();
+    };
+  }, [register, name, html]);
   if (result.status === 'error') {
     return (
       <DiagramError
@@ -147,6 +178,7 @@ function RenderedSvg({ source, font, prefix }: RenderedSvgProps): JSX.Element {
   }
   return (
     <DiagramSvg
+      ref={ref}
       className={diagramClasses.svg}
       // Rendered by Pele, which escapes the text of the diagram.
       // eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml
@@ -185,7 +217,7 @@ function DiagramContent({ source, name }: DiagramContentProps): JSX.Element {
   return (
     <div ref={setElement}>
       {font !== undefined && (
-        <RenderedSvg source={source} font={font} prefix={prefix} />
+        <RenderedSvg source={source} font={font} prefix={prefix} name={name} />
       )}
     </div>
   );
@@ -194,7 +226,9 @@ function DiagramContent({ source, name }: DiagramContentProps): JSX.Element {
 /**
  * A Mermaid diagram, rendered by Pele in the font of the slide. It's shown
  * with the previous step, like images, unless it's placed otherwise. Its `id`
- * names it on the slide, e.g., to point callouts at it. Documents show its
+ * names it on the slide, e.g., to point callouts at it, and its items, like
+ * nodes and edges with ids, after it, e.g., `pipeline.A` for the node `A` of
+ * the diagram `pipeline`. Documents show its
  * `source` in a plain `pre` instead, with `mermaid` in `data-lang`.
  *
  * MDX decks render ` ```mermaid ` code blocks like this, with the attributes

@@ -84,6 +84,7 @@ export {
   useSlideElement,
   useSlideElementId,
   useSlideElementRef,
+  useSlideElementRegistry,
   type SlideElementProps,
   type SlideElementReference,
 } from './slide/SlideElements.tsx';

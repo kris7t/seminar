@@ -125,6 +125,27 @@ export function useSlideElementRef(name: string): RefCallback<Element> {
   );
 }
 
+const NO_REGISTRATION = (): (() => void) => () => undefined;
+
+/**
+ * Returns a function that registers an element as the element called `name`
+ * on the enclosing slide, for {@link useSlideElement}, and returns a function
+ * that unregisters it, e.g., for the parts of a figure that a component
+ * doesn't render itself, like the nodes of a diagram. Warns if there are
+ * several elements called `name`. Outside of slides, it does nothing.
+ */
+export function useSlideElementRegistry(): (
+  name: string,
+  element: Element,
+) => () => void {
+  const store = use(SlideElementContext);
+  return useCallback(
+    (name: string, element: Element) =>
+      store === undefined ? NO_REGISTRATION() : store.register(name, element),
+    [store],
+  );
+}
+
 const NO_ELEMENT = (): undefined => undefined;
 const NO_SUBSCRIPTION = (): (() => void) => () => undefined;
 

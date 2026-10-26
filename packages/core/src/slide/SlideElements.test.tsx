@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,12 +11,49 @@ import {
   SlideElement,
   useSlideElement,
   useSlideElementId,
+  useSlideElementRegistry,
 } from './SlideElements.tsx';
 
 /** Shows the id of the element called `name` in the same rendering. */
 function Finder({ name }: { name: string }) {
   const element = useSlideElement(name);
   return <output data-testid="found">{element?.id ?? 'none'}</output>;
+}
+
+/**
+ * Names an element that it doesn't render itself, like the parts of a figure,
+ * marked with the id of the rendering.
+ */
+function Figure({ name }: { name: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const renderingId = useId();
+  const register = useSlideElementRegistry();
+  useLayoutEffect(() => {
+    const part = ref.current?.querySelector('b');
+    return part === null || part === undefined
+      ? undefined
+      : register(name, part);
+  }, [register, name]);
+  return (
+    <>
+      <span
+        ref={ref}
+        // eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml
+        dangerouslySetInnerHTML={{ __html: `<b title="${renderingId}"></b>` }}
+      />
+      <i data-testid="rendering">{renderingId}</i>
+    </>
+  );
+}
+
+/** Shows the mark of the element called `name` in the same rendering. */
+function MarkOf({ name }: { name: string }) {
+  const element = useSlideElement(name);
+  return (
+    <output data-testid="mark">
+      {element?.getAttribute('title') ?? 'none'}
+    </output>
+  );
 }
 
 function IdOf({ name }: { name: string }) {
@@ -64,6 +101,22 @@ describe('SlideElement', () => {
     expect(
       screen.getAllByTestId('found').map(({ textContent }) => textContent),
     ).toEqual(ids);
+  });
+
+  it('names elements that components register in each rendering', () => {
+    renderMirrors(
+      <Slide id="first" title="First">
+        <Figure name="figure.part" />
+        <MarkOf name="figure.part" />
+      </Slide>,
+    );
+    const renderings = screen
+      .getAllByTestId('rendering')
+      .map(({ textContent }) => textContent);
+    expect(new Set(renderings).size).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getAllByTestId('mark').map(({ textContent }) => textContent),
+    ).toEqual(renderings);
   });
 
   it('keeps names outside of slides', () => {

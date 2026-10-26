@@ -1,10 +1,20 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { Deck, DeckDocument, Slide } from '@seminar/core';
+import { Deck, DeckDocument, Slide, useSlideElement } from '@seminar/core';
 import flowchart from 'pele/diagrams/flowchart';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { Diagram, diagramClasses } from './Diagram.tsx';
+
+/** Shows the classes of the element called `name` on the slide. */
+function ClassOf({ name }: { name: string }) {
+  const element = useSlideElement(name);
+  return (
+    <output data-testid="found">
+      {element?.getAttribute('class') ?? 'none'}
+    </output>
+  );
+}
 
 const SOURCE = 'flowchart LR\n  accTitle: Steps\n  A[Parse] --> B[Render]';
 
@@ -26,6 +36,21 @@ describe('Diagram', () => {
     expect(name).toMatch(/^seminar-.+-steps$/);
     expect(svg?.getAttribute('aria-labelledby')).toBe(`${name}-title`);
     expect(svg?.querySelector('title')?.id).toBe(`${name}-title`);
+  });
+
+  it('names the items of the diagram after it', async () => {
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Diagram source={SOURCE} diagrams={[flowchart]} id="steps" />
+          <ClassOf name="steps.B" />
+        </Slide>
+      </Deck>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('found').textContent).toMatch(/\bpele-node\b/);
+    });
+    expect(document.querySelector('[data-id="B"]')?.textContent).toBe('Render');
   });
 
   it('shows the source of diagrams it cannot render', async () => {

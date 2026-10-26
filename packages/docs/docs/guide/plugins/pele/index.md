@@ -51,6 +51,25 @@ flowchart LR
 ::callout[The pipeline]{for=pipeline}
 ````
 
+## Pointing at nodes
+
+The nodes, clusters, and edges of a named diagram are named after it, with a
+dot and their id in Mermaid, so callouts can point at them:
+
+````mdx
+```mermaid #pipeline
+flowchart LR
+  parse[Parse] e1@--> render[Render]
+```
+
+::callout[Turns MDX into a tree]{for=pipeline.parse}
+::callout[Runs in the browser]{for=pipeline.e1}
+````
+
+Give edges an id, like `e1@` in `A e1@--> B`, to point at them. Nodes of mind
+maps without an id are named by their text, and if two items have the same id,
+the name refers to the first of them. Give them ids, like `ex1[Examples]`.
+
 ## Styling diagrams
 
 Diagrams are `Diagram` components. Their text is three quarters of the size
