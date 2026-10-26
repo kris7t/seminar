@@ -45,6 +45,16 @@ export interface DiagramStep {
   steps?: readonly DiagramStep[] | undefined;
 }
 
+/**
+ * A formula in the labels of a diagram, typeset as SVG that fills the box
+ * that Pele puts it in, with its size in ems of the text around it.
+ */
+export interface DiagramFormula {
+  svg: string;
+  width: number;
+  height: number;
+}
+
 /** Props of a {@link Diagram}. */
 export interface DiagramProps extends Omit<
   StepProps,
@@ -56,6 +66,8 @@ export interface DiagramProps extends Omit<
   diagrams?: readonly PeleDiagram[] | undefined;
   /** The steps of the items of the diagram, in order. */
   steps?: readonly DiagramStep[] | undefined;
+  /** The formulas in the labels of the diagram, like `$$x^2$$`, by their TeX. */
+  formulas?: Readonly<Record<string, DiagramFormula>> | undefined;
 }
 
 export type DiagramClassKey =
@@ -164,8 +176,11 @@ interface DiagramTarget {
   html: string;
 }
 
+const NO_FORMULAS: Readonly<Record<string, DiagramFormula>> = {};
+
 interface RenderedSvgProps {
   source: string;
+  formulas: Readonly<Record<string, DiagramFormula>>;
   font: Font;
   /** The prefix of the ids of the diagram in this rendering of the slide. */
   prefix: string;
@@ -176,6 +191,7 @@ interface RenderedSvgProps {
 
 function RenderedSvg({
   source,
+  formulas,
   font,
   prefix,
   name,
@@ -183,6 +199,7 @@ function RenderedSvg({
 }: RenderedSvgProps): JSX.Element {
   const result = useCached(diagramCache, {
     source,
+    formulas,
     fontFamily: font.family,
     fontSize: font.size,
   });
@@ -242,6 +259,7 @@ function RenderedSvg({
 
 interface DiagramContentProps {
   source: string;
+  formulas: Readonly<Record<string, DiagramFormula>>;
   name: string | undefined;
   onTarget: (target: DiagramTarget | undefined) => void;
 }
@@ -249,6 +267,7 @@ interface DiagramContentProps {
 /** Renders the diagram once it knows the font of the slide around it. */
 function DiagramContent({
   source,
+  formulas,
   name,
   onTarget,
 }: DiagramContentProps): JSX.Element {
@@ -277,6 +296,7 @@ function DiagramContent({
       {font !== undefined && (
         <RenderedSvg
           source={source}
+          formulas={formulas}
           font={font}
           prefix={prefix}
           name={name}
@@ -399,6 +419,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
     source,
     diagrams = [],
     steps = [],
+    formulas = NO_FORMULAS,
     className,
     ...stepProps
   } = useThemeProps({ props: inProps, name: 'SeminarDiagram' });
@@ -434,6 +455,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
       {kind !== 'probe' && (
         <DiagramContent
           source={source}
+          formulas={formulas}
           name={stepProps.id}
           onTarget={setTarget}
         />

@@ -118,6 +118,15 @@ function loadFont(font: string, bases: string[]): Promise<Font> {
 export async function createMathRenderer(
   { font, macros, tags }: MathOptions,
   bases: string[],
+  {
+    fontCache = 'local',
+  }: {
+    /**
+     * Where formulas keep their glyphs: in definitions of their own, which
+     * they refer to by ids, or in their paths, without ids.
+     */
+    fontCache?: 'local' | 'none';
+  } = {},
 ): Promise<MathRenderer> {
   const { fontData, dynamicPrefix } = await loadFont(font, bases);
   let reportError: ((message: string) => void) | undefined;
@@ -138,7 +147,7 @@ export async function createMathRenderer(
     dynamicPrefix,
     // Each formula has its own copies of the glyphs, since slides are
     // rendered separately.
-    fontCache: 'local',
+    fontCache,
     linebreaks: { inline: false },
   });
   // Load all glyphs up front, since MathJax would otherwise restart the

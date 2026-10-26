@@ -85,6 +85,31 @@ describe('Diagram', () => {
     expect([hidden('B'), hidden('L_A_B_0')]).toEqual([[false], [false]]);
   });
 
+  it('shows the formulas in labels, in the size of the text', async () => {
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Diagram
+            source={'flowchart LR\n  A["$$x$$"]'}
+            diagrams={[flowchart]}
+            formulas={{
+              x: { svg: '<svg data-formula="x"></svg>', width: 2, height: 1 },
+            }}
+          />
+        </Slide>
+      </Deck>,
+    );
+    await waitFor(() => {
+      expect(document.querySelector('[data-formula="x"]')).not.toBeNull();
+    });
+    const box = document.querySelector('[data-formula="x"]')?.parentElement;
+    expect(box?.getAttribute('class')).toBe('pele-math');
+    // Twice as wide as the text is high.
+    expect(Number(box?.getAttribute('width'))).toBe(
+      2 * Number(box?.getAttribute('height')),
+    );
+  });
+
   it('shows the source of diagrams it cannot render', async () => {
     render(
       <Deck>

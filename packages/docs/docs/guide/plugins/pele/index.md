@@ -52,6 +52,22 @@ flowchart LR
 ::callout[The pipeline]{for=pipeline}
 ````
 
+## Math in labels
+
+Write TeX between `$$` in labels, like in Mermaid:
+
+````mdx
+```mermaid
+flowchart LR
+  A["$$\sum_i x_i$$"] --> B["Mean $$\bar{x}$$"]
+```
+````
+
+Formulas are typeset with MathJax when the deck is compiled, like
+[math](../mathjax/index.md) on slides, with the font and the macros of the
+`math` options of the deck. They don't need `@seminar/plugin-mathjax` to be
+enabled, which would also make dollar signs in the text of slides math.
+
 ## Revealing items in steps
 
 The items of flowcharts, state diagrams, sequence diagrams, mind maps, and

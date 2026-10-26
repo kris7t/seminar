@@ -96,7 +96,7 @@ function findMath(
 }
 
 /** Removes attributes that MathJax only needs for interactive features. */
-function cleanSvg(node: ElementContent): ElementContent[] {
+export function cleanSvg(node: ElementContent): ElementContent[] {
   if (node.type !== 'element') {
     return [node];
   }
@@ -184,7 +184,10 @@ function serializeMathml(math: ElementContent): string {
   );
 }
 
-function findElement(node: Element, tagName: string): Element | undefined {
+export function findElement(
+  node: Element,
+  tagName: string,
+): Element | undefined {
   for (const child of node.children) {
     if (child.type === 'element') {
       if (child.tagName === tagName) {

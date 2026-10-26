@@ -95,6 +95,18 @@ describe('rehypePele', () => {
     expect(messages).toEqual(['6:1 The diagram has no `C` to step']);
   });
 
+  it('typesets the formulas in labels', async () => {
+    const { code, messages } = await compileDeck(
+      '```mermaid\nflowchart LR\n  A["$$x^2$$"] --> B["$$\\undefinedMacro$$"]\n```',
+    );
+    expect(messages).toEqual([
+      '1:1 Cannot render math: Undefined control sequence \\undefinedMacro',
+    ]);
+    expect(code.replaceAll(/\s+/g, '')).toMatch(
+      /formulas:\{"x\^2":\{"svg":"<svgxmlns=[^}]*"width":\d/,
+    );
+  });
+
   it('reports diagrams that cannot be parsed where they fail, and keeps them as code', async () => {
     const { code, messages } = await compileDeck(
       '# Deck\n\n```mermaid\nflowchart LR\n  A -->\n```',

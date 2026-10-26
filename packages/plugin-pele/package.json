@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@seminar/mdx": "0.1.1",
+    "@seminar/plugin-mathjax": "0.1.1",
     "@types/hast": "^3.0.5",
     "mdast-util-mdx-jsx": "^3.2.0",
     "pele": "~1.10.0",

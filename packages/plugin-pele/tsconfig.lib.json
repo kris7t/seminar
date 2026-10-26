@@ -12,6 +12,7 @@
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [
     { "path": "../core/tsconfig.lib.json" },
-    { "path": "../mdx/tsconfig.lib.json" }
+    { "path": "../mdx/tsconfig.lib.json" },
+    { "path": "../plugin-mathjax/tsconfig.lib.json" }
   ]
 }

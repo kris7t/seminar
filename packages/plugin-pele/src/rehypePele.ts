@@ -4,7 +4,11 @@ import path from 'node:path';
 
 import type { Element, ElementContent, Root, RootContent } from 'hast';
 import type { MdxJsxFlowElementHast } from 'mdast-util-mdx-jsx';
-import { detectType, parse, PeleError } from 'pele';
+import {
+  createFormulaTypesetter,
+  type FormulaTypesetter,
+} from '@seminar/plugin-mathjax/compile';
+import { detectType, parse, PeleError, render } from 'pele';
 import type { VFile } from 'vfile';
 
 import {
@@ -16,6 +20,7 @@ import {
   parseAttributeWords,
 } from '@seminar/mdx';
 
+import type { DiagramFormula } from './Diagram.tsx';
 import { findSteps } from './steps/index.ts';
 
 /** Name that decks import the {@link Diagram} component as. */
@@ -98,6 +103,20 @@ function diagramSpecifier(type: string, file: VFile): string {
   return require.resolve(specifier).split(path.sep).join('/');
 }
 
+/** Returns the TeX of the formulas in the labels of a diagram, like `$$x$$`. */
+function formulasOf(source: string): Set<string> {
+  const formulas = new Set<string>();
+  if (source.includes('$$')) {
+    render(source, {
+      math: (tex) => {
+        formulas.add(tex);
+        return { svg: '<svg></svg>', width: 1, height: 1 };
+      },
+    });
+  }
+  return formulas;
+}
+
 /** Returns the name that decks import the diagram type `type` as. */
 function diagramName(type: string): string {
   return `_SeminarPele_${type}`;
@@ -114,15 +133,19 @@ function diagramName(type: string): string {
  * diagram on the slide, e.g., for callouts. Diagrams that Pele can't parse
  * are reported, and left as code blocks.
  *
+ * Formulas in labels, like `$$x^2$$`, are typeset with MathJax, in the font
+ * and with the macros of the math of the deck (see `@seminar/plugin-mathjax`).
+ *
  * Runs before other plugins of the compiler, e.g., syntax highlighting, which
  * would take the diagrams for code. Enabled by the `mdx` config of
  * `@seminar/plugin-pele`.
  */
-export function rehypePele(): (tree: Root, file: VFile) => void {
-  return (tree, file) => {
+export function rehypePele(): (tree: Root, file: VFile) => Promise<void> {
+  return async (tree, file) => {
     const found: DiagramBlock[] = [];
     findBlocks(tree, found);
     const types = new Set<string>();
+    let typesetter: Promise<FormulaTypesetter> | undefined;
     for (const block of found) {
       const type = detectType(block.source);
       // The source starts on the line after the fence.
@@ -151,6 +174,18 @@ export function rehypePele(): (tree: Root, file: VFile) => void {
               : { line: start.line + 1 + line, column: 1 },
         });
       });
+      const formulas: Record<string, DiagramFormula> = {};
+      for (const tex of formulasOf(block.source)) {
+        typesetter ??= createFormulaTypesetter(file);
+        const formula = (await typesetter)(tex, (message) => {
+          file.message(`Cannot render math: ${message}`, {
+            place: block.pre.position,
+          });
+        });
+        if (formula !== undefined) {
+          formulas[tex] = formula;
+        }
+      }
       const element: MdxJsxFlowElementHast = {
         type: 'mdxJsxFlowElement',
         name: DIAGRAM,
@@ -160,6 +195,14 @@ export function rehypePele(): (tree: Root, file: VFile) => void {
           ...(steps.length === 0
             ? []
             : [createExpressionAttribute('steps', JSON.stringify(steps))]),
+          ...(Object.keys(formulas).length === 0
+            ? []
+            : [
+                createExpressionAttribute(
+                  'formulas',
+                  `(${JSON.stringify(formulas)})`,
+                ),
+              ]),
           // Like the attributes of `:step`, e.g., `#id .class step group=…`.
           ...getStepProps(attributes, file).map(([name, value]) =>
             createStringAttribute(name, value),

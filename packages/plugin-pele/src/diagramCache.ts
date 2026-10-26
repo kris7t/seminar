@@ -2,6 +2,7 @@ import { defineCache, type CacheDefinition } from '@seminar/core';
 import { forgetTextWidths, render } from 'pele/core';
 
 import { annotate } from './annotate.ts';
+import type { DiagramFormula } from './Diagram.tsx';
 
 /**
  * Prefix of the ids in the SVG of cached diagrams, which each rendering of a
@@ -24,6 +25,8 @@ const ID_PATTERN = new RegExp(
 export interface DiagramInput {
   /** The Mermaid source of the diagram. */
   source: string;
+  /** The formulas in the labels of the diagram, by their TeX. */
+  formulas: Readonly<Record<string, DiagramFormula>>;
   /** The family of the font of the text, as in CSS. */
   fontFamily: string;
   /** The size of the font of the text, in pixels. */
@@ -95,6 +98,17 @@ export const diagramCache: CacheDefinition<DiagramInput, RenderedDiagram> =
         fontFamily: input.fontFamily,
         fontSize: input.fontSize,
         idPrefix: ID_PLACEHOLDER,
+        // Typeset when the deck was compiled, in ems.
+        math: (tex, size) => {
+          const formula = input.formulas[tex];
+          return (
+            formula && {
+              svg: formula.svg,
+              width: formula.width * size,
+              height: formula.height * size,
+            }
+          );
+        },
       });
       return { parts: splitIds(annotate(svg, type, input.source)) };
     },
