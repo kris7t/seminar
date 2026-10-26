@@ -21,6 +21,7 @@ export const libraries = [
   'elements',
   'theme-default',
   'plugin-mathjax',
+  'plugin-pele',
   'plugin-shiki',
   'rollup-plugin',
   'vite-plugin',

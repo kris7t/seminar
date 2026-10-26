@@ -138,16 +138,16 @@ You can also supply individual choices:
 npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained --install
 ```
 
-| Option                | Choice                                                        |
-| --------------------- | ------------------------------------------------------------- |
-| `--plugins`           | Comma-separated `elements`, `mathjax`, and `shiki`, or `none` |
-| `--theme default`     | Use the packaged theme                                        |
-| `--theme custom`      | Create an editable `src/theme.ts` with Roboto fonts           |
-| `--self-contained`    | Inline scripts and assets into each HTML file (default)       |
-| `--no-self-contained` | Keep scripts and assets in separate files for web hosting     |
-| `--install`           | Install dependencies after creating the project (default)     |
-| `--no-install`        | Leave dependency installation for later                       |
-| `--yes`               | Use defaults for any choices not supplied                     |
+| Option                | Choice                                                                |
+| --------------------- | --------------------------------------------------------------------- |
+| `--plugins`           | Comma-separated `elements`, `mathjax`, `pele`, and `shiki`, or `none` |
+| `--theme default`     | Use the packaged theme                                                |
+| `--theme custom`      | Create an editable `src/theme.ts` with Roboto fonts                   |
+| `--self-contained`    | Inline scripts and assets into each HTML file (default)               |
+| `--no-self-contained` | Keep scripts and assets in separate files for web hosting             |
+| `--install`           | Install dependencies after creating the project (default)             |
+| `--no-install`        | Leave dependency installation for later                               |
+| `--yes`               | Use defaults for any choices not supplied                             |
 
 `--yes` also installs dependencies unless you supply `--no-install`.
 
@@ -230,7 +230,7 @@ override `defaultTheme` with `theme: '@/another-theme.ts'` in its
 Install the plugins you want to add:
 
 ```sh
-npm install @seminar/elements @seminar/plugin-mathjax @seminar/plugin-shiki
+npm install @seminar/elements @seminar/plugin-mathjax @seminar/plugin-pele @seminar/plugin-shiki
 ```
 
 Enable them in the `plugins` option of `seminar()`:
@@ -240,13 +240,15 @@ seminar({
   plugins: [
     '@seminar/elements',
     '@seminar/plugin-mathjax',
+    '@seminar/plugin-pele',
     '@seminar/plugin-shiki',
   ],
 });
 ```
 
 They provide [callouts and columns](plugins/elements/index.md),
-[math](plugins/mathjax/index.md), and [syntax highlighting](plugins/shiki/index.md). The
+[math](plugins/mathjax/index.md), [diagrams](plugins/pele/index.md), and
+[syntax highlighting](plugins/shiki/index.md). The
 initializer installs and configures the ones you select during setup.
 
 ### Separate scripts and assets

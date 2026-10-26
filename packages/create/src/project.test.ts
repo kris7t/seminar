@@ -32,10 +32,11 @@ afterEach(() => {
   for (const directory of temporary.splice(0))
     rmSync(directory, { recursive: true, force: true });
 });
-const plugins: Plugin[] = ['elements', 'mathjax', 'shiki'];
+const plugins: Plugin[] = ['elements', 'mathjax', 'pele', 'shiki'];
 const packages: Record<Plugin, string> = {
   elements: '@seminar/elements',
   mathjax: '@seminar/plugin-mathjax',
+  pele: '@seminar/plugin-pele',
   shiki: '@seminar/plugin-shiki',
 };
 const read = (directory: string, file: string) =>
@@ -46,7 +47,7 @@ interface Manifest {
   devDependencies: Record<string, string>;
 }
 
-for (let mask = 0; mask < 8; mask++) {
+for (let mask = 0; mask < 1 << plugins.length; mask++) {
   const selected = plugins.filter((_, index) => (mask & (1 << index)) !== 0);
   for (const theme of ['default', 'custom'] as const) {
     it(`creates a ${theme} theme project with ${selected.join(', ') || 'no plugins'}`, () => {
@@ -80,6 +81,7 @@ for (let mask = 0; mask < 8; mask++) {
       }
       expect(deck.includes(':::column[')).toBe(selected.includes('elements'));
       expect(deck.includes('$')).toBe(selected.includes('mathjax'));
+      expect(deck.includes('```mermaid')).toBe(selected.includes('pele'));
       expect(deck.includes('```ts')).toBe(selected.includes('shiki'));
       expect(manifest.devDependencies).toHaveProperty('@seminar/mdx');
       expect(manifest.devDependencies).toHaveProperty('@seminar/vite-plugin');

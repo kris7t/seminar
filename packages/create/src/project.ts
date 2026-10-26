@@ -9,7 +9,7 @@ import {
 import path from 'node:path';
 
 /** Optional plugins offered by the initializer. */
-export type Plugin = 'elements' | 'mathjax' | 'shiki';
+export type Plugin = 'elements' | 'mathjax' | 'pele' | 'shiki';
 /** Whether to use the packaged theme or generate an editable theme. */
 export type Theme = 'default' | 'custom';
 /** The choices needed to create a presentation project. */
@@ -36,6 +36,11 @@ export const PLUGINS: readonly {
     value: 'mathjax',
     title: 'MathJax — math formulas',
     package: '@seminar/plugin-mathjax',
+  },
+  {
+    value: 'pele',
+    title: 'Pele — Mermaid diagrams',
+    package: '@seminar/plugin-pele',
   },
   {
     value: 'shiki',
@@ -107,6 +112,17 @@ What have we learned?
 ### A little math
 
 Euler's identity: $e^{i\\pi} + 1 = 0$.
+`
+      : ''
+  }${
+    plugins.includes('pele')
+      ? `
+### How it fits together
+
+\`\`\`mermaid
+flowchart LR
+  idea[Idea] --> slides[Slides] --> talk[Talk]
+\`\`\`
 `
       : ''
   }${

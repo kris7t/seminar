@@ -75,7 +75,9 @@ export const answer = 42;
 ````
 
 They're shown as plain text, unless a plugin highlights them, like
-[`@seminar/plugin-shiki`](../plugins/shiki/index.md).
+[`@seminar/plugin-shiki`](../plugins/shiki/index.md). With
+[`@seminar/plugin-pele`](../plugins/pele/index.md), ` ```mermaid ` blocks are
+diagrams.
 
 ## Presenter notes
 

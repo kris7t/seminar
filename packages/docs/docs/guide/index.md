@@ -53,5 +53,7 @@ syntax, and compiler features. You can also
    fonts, and macros.
    - [Dynamic math](plugins/mathjax/dynamic.md): math that changes while you
      present.
-3. [Highlighting code](plugins/shiki/index.md) with `@seminar/plugin-shiki`: themes,
+3. [Diagrams](plugins/pele/index.md) with `@seminar/plugin-pele`: Mermaid
+   diagrams in the font and colors of the theme.
+4. [Highlighting code](plugins/shiki/index.md) with `@seminar/plugin-shiki`: themes,
    and other languages.

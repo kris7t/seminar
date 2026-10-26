@@ -8,6 +8,7 @@ export default defineConfig({
       plugins: [
         '@seminar/elements',
         '@seminar/plugin-mathjax',
+        '@seminar/plugin-pele',
         '@seminar/plugin-shiki',
       ],
     }),

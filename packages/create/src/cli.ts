@@ -14,7 +14,7 @@ const HELP = `Usage: create-seminar [directory] [options]
 
 Create a Seminar presentation with Vite.
 
-  --plugins <list>          Comma-separated elements,mathjax,shiki, or none
+  --plugins <list>          Comma-separated elements,mathjax,pele,shiki, or none
   --theme <default|custom>  Use the default theme or create src/theme.ts with Roboto
   --self-contained         Inline scripts and assets into HTML (default)
   --no-self-contained      Keep scripts and assets in separate files
@@ -45,7 +45,7 @@ function pluginList(value: string): Plugin[] {
   for (const item of values) {
     if (!PLUGINS.some((plugin) => plugin.value === item))
       throw new Error(
-        `Unknown plugin ${JSON.stringify(item)}. Choose elements, mathjax, shiki, or none.`,
+        `Unknown plugin ${JSON.stringify(item)}. Choose elements, mathjax, pele, shiki, or none.`,
       );
   }
   return PLUGINS.filter((plugin) => values.includes(plugin.value)).map(
@@ -209,7 +209,7 @@ export async function run(
   if (questions.length > 0) {
     if (!interactive)
       throw new Error(
-        'Supply a directory, --plugins elements,mathjax,shiki (or none), and --theme default|custom; or use --yes for defaults. Builds are self-contained unless --no-self-contained is supplied.',
+        'Supply a directory, --plugins elements,mathjax,pele,shiki (or none), and --theme default|custom; or use --yes for defaults. Builds are self-contained unless --no-self-contained is supplied.',
       );
     const answers = await ask(questions);
     if (directory === undefined && typeof answers['directory'] === 'string')

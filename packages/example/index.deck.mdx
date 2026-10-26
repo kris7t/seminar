@@ -199,6 +199,20 @@ export function fibonacci(n: number): number {
 
 :step The deck contains only the highlighted code, not the highlighter.
 
+### Diagrams
+
+Mermaid diagrams are rendered by `@seminar/plugin-pele` in the font and colors
+of the theme:
+
+```mermaid #pipeline
+flowchart LR
+  deck[".deck.mdx"] --> compile["Compile with MDX"]
+  compile --> bundle["Bundle with Vite"]
+  bundle --> page["Self-contained page"]
+```
+
+:step The deck contains only the types of diagrams it uses.
+
 ## Interactive slides
 
 Widgets in the presenter view

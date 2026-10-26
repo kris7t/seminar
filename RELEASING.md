@@ -23,7 +23,7 @@ release. No manual version commit or tag is needed.
 In **staged** mode, packages wait on npm for a maintainer to approve them with
 2FA. The Actions summary and GitHub release notes list each package's stage ID.
 Use npm's staged-publishing interface, or `npm stage approve <stage-id>`, to
-approve them in the listed dependency order. Once all nine are approved,
+approve them in the listed dependency order. Once all ten are approved,
 publish the draft GitHub release. Approval cannot be automated using OIDC.
 
 In **direct** mode, packages become available on npm during the workflow, and
@@ -58,7 +58,7 @@ permission to create and publish packages in the `@seminar` scope and the
 unscoped `create-seminar` package, and run the workflow in staged mode.
 Staging creates a public `0.0.0-stage` placeholder for
 new packages, so their publisher settings become available before the actual
-release is approved. Configure OIDC for all nine packages, then remove the
+release is approved. Configure OIDC for all ten packages, then remove the
 secret. A token used for a direct bootstrap also needs npm's 2FA bypass.
 
 ## Recover a partial release
@@ -95,7 +95,7 @@ npm run release:smoke
 doesn't commit or tag anything. Stable versions use npm's `latest` tag;
 prerelease versions use `next`.
 
-`release:pack` starts from clean package build directories and produces nine
+`release:pack` starts from clean package build directories and produces ten
 tarballs plus an integrity manifest in `artifacts/npm/`. It checks public
 exports, README files, licenses, and excludes tests and build metadata. Each
 package's `prepack` hook also builds that package and copies the root license

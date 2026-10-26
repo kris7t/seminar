@@ -71,5 +71,9 @@ export {
 export { parseAttributeWords } from './directives/attributeWords.ts';
 export { getAttributes, type Attributes } from './directives/directives.ts';
 export { getStepProps } from './steps/remarkSteps.ts';
-export { createEsm, createStringAttribute } from './utils/estree.ts';
+export {
+  createEsm,
+  createExpressionAttribute,
+  createStringAttribute,
+} from './utils/estree.ts';
 export { EXPLICIT_JSX, EXPLICIT_JSX_HAST } from './utils/jsx.ts';

@@ -28,6 +28,7 @@
     "@seminar/elements": "0.1.1",
     "@seminar/mdx": "0.1.1",
     "@seminar/plugin-mathjax": "0.1.1",
+    "@seminar/plugin-pele": "0.1.1",
     "@seminar/plugin-shiki": "0.1.1",
     "@seminar/theme-default": "0.1.1",
     "@seminar/vite-plugin": "0.1.1",

@@ -91,6 +91,7 @@ and presentation controls:
 - [Recaps and includes](packages/docs/docs/guide/core/reuse.md)
 - [Elements](packages/docs/docs/guide/plugins/elements/index.md): callouts and columns
 - [Math](packages/docs/docs/guide/plugins/mathjax/index.md) with MathJax
+- [Diagrams](packages/docs/docs/guide/plugins/pele/index.md) with Pele
 - [Highlighting code](packages/docs/docs/guide/plugins/shiki/index.md) with Shiki
 - [Developers](packages/docs/docs/developer/index.md): components, plugins, and themes
 
@@ -154,6 +155,7 @@ and selection of text fields, selected text, and the ripples of buttons.
 | [`@seminar/elements`](packages/elements)             | Reusable presentation elements and MDX directives              |
 | [`@seminar/mdx`](packages/mdx)                       | Compiles decks written in MDX                                  |
 | [`@seminar/plugin-mathjax`](packages/plugin-mathjax) | Math typeset with MathJax                                      |
+| [`@seminar/plugin-pele`](packages/plugin-pele)       | Mermaid diagrams rendered with Pele                            |
 | [`@seminar/plugin-shiki`](packages/plugin-shiki)     | Syntax highlighting of code blocks with Shiki                  |
 | [`@seminar/rollup-plugin`](packages/rollup-plugin)   | Rollup and Vite plugin for `.deck.mdx` files                   |
 | [`@seminar/vite-plugin`](packages/vite-plugin)       | Vite plugin with HTML pages and self-contained builds          |

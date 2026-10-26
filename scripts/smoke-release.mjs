@@ -92,7 +92,7 @@ try {
     `import seminar, { type SeminarPluginOptions } from '@seminar/vite-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
-const options = { plugins: ['@seminar/elements', '@seminar/plugin-mathjax', '@seminar/plugin-shiki'] } satisfies SeminarPluginOptions;
+const options = { plugins: ['@seminar/elements', '@seminar/plugin-mathjax', '@seminar/plugin-pele', '@seminar/plugin-shiki'] } satisfies SeminarPluginOptions;
 export default defineConfig({ plugins: [seminar(options), react()] });
 `,
   );
@@ -134,6 +134,11 @@ The identity $x^2 + y^2 = z^2$ is typeset at build time.
 const answer = 42;
 \`\`\`
 
+\`\`\`mermaid
+flowchart LR
+  A --> B
+\`\`\`
+
 <Probe />
 `,
   );
@@ -148,7 +153,7 @@ export const deck = Deck;
     [
       '--input-type=module',
       '-e',
-      `for (const name of ['@seminar/core', '@seminar/elements', '@seminar/mdx', '@seminar/rollup-plugin', '@seminar/vite-plugin', '@seminar/plugin-mathjax/compile', '@seminar/plugin-mathjax/render', '@seminar/plugin-shiki/rehype']) await import(name);`,
+      `for (const name of ['@seminar/core', '@seminar/elements', '@seminar/mdx', '@seminar/rollup-plugin', '@seminar/vite-plugin', '@seminar/plugin-mathjax/compile', '@seminar/plugin-mathjax/render', '@seminar/plugin-pele/rehype', '@seminar/plugin-shiki/rehype']) await import(name);`,
     ],
     { cwd: directory, stdio: 'inherit' },
   );
@@ -172,7 +177,11 @@ export const deck = Deck;
     'The deck must contain its own scripts',
   );
   for (const options of [
-    { plugins: 'elements,mathjax,shiki', theme: 'custom', selfContained: true },
+    {
+      plugins: 'elements,mathjax,pele,shiki',
+      theme: 'custom',
+      selfContained: true,
+    },
     { plugins: 'none', theme: 'default', selfContained: false },
   ]) {
     const starter = mkdtempSync(path.join(os.tmpdir(), 'seminar-starter-'));

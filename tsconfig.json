@@ -9,6 +9,7 @@
     { "path": "./packages/rollup-plugin" },
     { "path": "./packages/vite-plugin" },
     { "path": "./packages/plugin-mathjax" },
+    { "path": "./packages/plugin-pele" },
     { "path": "./packages/plugin-shiki" },
     { "path": "./packages/theme-default" },
     { "path": "./packages/example" }
