@@ -337,6 +337,32 @@ describe('SlideTransitions', () => {
       expect(shownAfter()).toBeLessThan(SETTLE_DEADLINE);
     });
 
+    it('lays out the slide to wait for the fonts it needs', async () => {
+      const transitions = new SlideTransitions();
+      // Like browsers, which only load fonts once they lay out text that
+      // needs them, and don't lay out on their own while they hold a change.
+      const layout = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
+      let loadingSince: number | undefined;
+      Object.defineProperty(document, 'fonts', {
+        configurable: true,
+        value: {
+          get status() {
+            if (layout.mock.calls.length === 0) return 'loaded';
+            loadingSince ??= performance.now();
+            return performance.now() - loadingSince < 50 ? 'loading' : 'loaded';
+          },
+        },
+      });
+      try {
+        const { shown, shownAfter } = runShown(transitions, () => undefined);
+        await shown;
+        expect(shownAfter()).toBeGreaterThanOrEqual(45);
+      } finally {
+        layout.mockRestore();
+        delete (document as { fonts?: unknown }).fonts;
+      }
+    });
+
     it('measures again while settling', async () => {
       const transitions = new SlideTransitions();
       const measure = vi.fn();

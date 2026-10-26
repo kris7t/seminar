@@ -274,6 +274,9 @@ function prefersReducedMotion(frame: HTMLElement): boolean {
 /** Whether `frame` shows content that is still loading, e.g., images. */
 function isLoading(frame: HTMLElement): boolean {
   const doc = frame.ownerDocument;
+  // Browsers only start loading fonts once they lay out text that needs them,
+  // which they don't do on their own while they hold a view transition.
+  frame.getBoundingClientRect();
   // Not every environment loads fonts, e.g., jsdom.
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (doc.fonts?.status === 'loading') {
