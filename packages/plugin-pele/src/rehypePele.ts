@@ -16,6 +16,8 @@ import {
   parseAttributeWords,
 } from '@seminar/mdx';
 
+import { findSteps } from './steps.ts';
+
 /** Name that decks import the {@link Diagram} component as. */
 const DIAGRAM = '_SeminarPeleDiagram';
 
@@ -123,15 +125,15 @@ export function rehypePele(): (tree: Root, file: VFile) => void {
     const types = new Set<string>();
     for (const block of found) {
       const type = detectType(block.source);
+      // The source starts on the line after the fence.
+      const start = block.pre.position?.start;
       try {
         parse(block.source);
       } catch (error) {
-        const start = block.pre.position?.start;
         file.message(`Cannot render diagram: ${String(error)}`, {
           place:
             error instanceof PeleError && start !== undefined && error.line > 0
-              ? // The source starts on the line after the fence.
-                { line: start.line + error.line, column: error.column }
+              ? { line: start.line + error.line, column: error.column }
               : block.pre.position,
         });
         continue;
@@ -141,12 +143,23 @@ export function rehypePele(): (tree: Root, file: VFile) => void {
       }
       types.add(type);
       const { attributes } = parseAttributeWords(block.meta);
+      const steps = findSteps(block.source, file, (message, line) => {
+        file.message(message, {
+          place:
+            start === undefined
+              ? block.pre.position
+              : { line: start.line + 1 + line, column: 1 },
+        });
+      });
       const element: MdxJsxFlowElementHast = {
         type: 'mdxJsxFlowElement',
         name: DIAGRAM,
         attributes: [
           createStringAttribute('source', block.source),
           createExpressionAttribute('diagrams', `[${diagramName(type)}]`),
+          ...(steps.length === 0
+            ? []
+            : [createExpressionAttribute('steps', JSON.stringify(steps))]),
           // Like the attributes of `:step`, e.g., `#id .class step group=…`.
           ...getStepProps(attributes, file).map(([name, value]) =>
             createStringAttribute(name, value),

@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
 import { Deck, DeckDocument, Slide, useSlideElement } from '@seminar/core';
 import flowchart from 'pele/diagrams/flowchart';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { Diagram, diagramClasses } from './Diagram.tsx';
 
@@ -19,6 +20,10 @@ function ClassOf({ name }: { name: string }) {
 const SOURCE = 'flowchart LR\n  accTitle: Steps\n  A[Parse] --> B[Render]';
 
 describe('Diagram', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('renders the diagram on the slide', async () => {
     render(
       <Deck>
@@ -51,6 +56,33 @@ describe('Diagram', () => {
       expect(screen.getByTestId('found').textContent).toMatch(/\bpele-node\b/);
     });
     expect(document.querySelector('[data-id="B"]')?.textContent).toBe('Render');
+  });
+
+  it('shows the items of the diagram in their steps', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Diagram
+            source={'flowchart LR\n  A[Parse] --> B[Render]'}
+            diagrams={[flowchart]}
+            steps={[{ items: ['B', 'L_A_B_0'], props: { title: 'Render' } }]}
+          />
+        </Slide>
+      </Deck>,
+    );
+    await screen.findByText('Render');
+    const hidden = (id: string) =>
+      [...document.querySelectorAll(`[data-id="${id}"]`)].map((element) =>
+        element.classList.contains(diagramClasses.hidden),
+      );
+    expect([hidden('A'), hidden('B'), hidden('L_A_B_0')]).toEqual([
+      [false],
+      [true],
+      [true],
+    ]);
+    await user.keyboard('{ArrowRight}');
+    expect([hidden('B'), hidden('L_A_B_0')]).toEqual([[false], [false]]);
   });
 
   it('shows the source of diagrams it cannot render', async () => {

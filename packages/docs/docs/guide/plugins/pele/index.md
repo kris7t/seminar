@@ -39,7 +39,8 @@ with the line of the error.
 
 Diagrams are shown with the previous step, like images. The first line of
 the block takes the attributes of `:step` after `mermaid`, e.g., to show the
-diagram in a step of its own, or to give it a name that
+diagram in a step of its own, which the steps of its items come in, or to give
+it a name that
 [callouts](../elements/callouts.md) can point at:
 
 ````mdx
@@ -50,6 +51,50 @@ flowchart LR
 
 ::callout[The pipeline]{for=pipeline}
 ````
+
+## Revealing items in steps
+
+Nodes, subgraphs, and edges of flowcharts can be shown in steps of their own.
+The layout of the diagram stays the same, with room for the items that aren't
+shown yet. Write `%% step` before a statement to show what it's about in a new
+step:
+
+````mdx
+```mermaid
+flowchart LR
+  source[".deck.mdx"] --> compile["Compile"]
+  %% step
+  compile --> bundle["Bundle"]
+  %% step
+  subgraph browser [Browser]
+    page["Page"]
+  end
+```
+````
+
+A statement is about its edges, the nodes that it gives a label or a shape,
+like `bundle["Bundle"]`, and the subgraph that it opens. Nodes that it only
+names, like `compile` in `compile --> bundle["Bundle"]`, keep their own step.
+
+Steps take the attributes of `:step` after `step`, e.g., `%% step only` or
+`%% step group=emit` to show the items with other content of the slide.
+List the items in brackets to step them wherever they are, with `A->B` for the
+edges from `A` to `B`:
+
+```text
+%% step[compile, source->compile] only
+```
+
+In flowcharts, a node or an edge with an id can also take its step in its
+shape data: `bundle["Bundle"]@{ step }` or `e1@{ step: "group=emit" }`.
+
+Items in a subgraph are shown with it, unless they have steps of their own,
+which come in the step of the subgraph. An edge without a step of its own is
+shown with the later of its ends. You get a warning for an edge that is shown
+before both of its ends.
+
+Style the appearances of the items as `SeminarDiagram-hidden`,
+`SeminarDiagram-dimmed`, and so on, in the `root` of `SeminarDiagram`.
 
 ## Pointing at nodes
 

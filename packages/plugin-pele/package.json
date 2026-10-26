@@ -65,6 +65,7 @@
     "@seminar/core": "0.1.1",
     "@seminar/plugin-shiki": "0.1.1",
     "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "react": "^19.3.1",
     "vitest": "^5.0.4"
   },

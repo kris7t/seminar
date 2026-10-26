@@ -78,6 +78,23 @@ describe('rehypePele', () => {
     expect(code).toContain('step: ""');
   });
 
+  it('steps the items of diagrams', async () => {
+    const { code, messages } = await compileDeck(
+      '```mermaid\nflowchart LR\n  A --> B\n  %% step only\n  B[Render]\n```',
+    );
+    expect(messages).toEqual([]);
+    expect(code.replaceAll(/\s+/g, '')).toContain(
+      'steps:[{"items":["B","L_A_B_0"],"props":{"only":"","title":"Render"},"steps":[]}]',
+    );
+  });
+
+  it('reports problems with the steps of items where they are', async () => {
+    const { messages } = await compileDeck(
+      '# Deck\n\n```mermaid\nflowchart LR\n  A --> B\n  %% step[C]\n```',
+    );
+    expect(messages).toEqual(['6:1 The diagram has no `C` to step']);
+  });
+
   it('reports diagrams that cannot be parsed where they fail, and keeps them as code', async () => {
     const { code, messages } = await compileDeck(
       '# Deck\n\n```mermaid\nflowchart LR\n  A -->\n```',

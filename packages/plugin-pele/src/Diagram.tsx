@@ -1,18 +1,23 @@
 import { alpha, generateUtilityClasses } from '@mui/material';
 import { styled, useThemeProps } from '@mui/material/styles';
+import { useForkRef } from '@mui/material/utils';
 import {
+  appearanceClass,
   Step,
   useCached,
   useMeasure,
   useSlideElementId,
   useSlideElementRegistry,
   useSlideView,
+  useStepAppearance,
   WITH_PREVIOUS,
   type ComponentTheme,
+  type RankedAppearance,
   type StepProps,
 } from '@seminar/core';
 import { register } from 'pele/core';
 import {
+  useCallback,
   useId,
   useLayoutEffect,
   useMemo,
@@ -27,6 +32,19 @@ import { findItems } from './items.ts';
 /** A type of diagrams of Pele, e.g., the default export of `pele/diagrams/flowchart`. */
 export type PeleDiagram = Parameters<typeof register>[number];
 
+/**
+ * A step of the items of a diagram, e.g., of nodes and edges, which shows the
+ * elements with their ids as their `data-id`.
+ */
+export interface DiagramStep {
+  /** The ids of the items that the step shows. */
+  items: readonly string[];
+  /** The props of the step, like those of `Step`, e.g., `group` or `only`. */
+  props?: Readonly<Record<string, string>> | undefined;
+  /** The steps nested in this step, e.g., of the items in a cluster. */
+  steps?: readonly DiagramStep[] | undefined;
+}
+
 /** Props of a {@link Diagram}. */
 export interface DiagramProps extends Omit<
   StepProps,
@@ -36,12 +54,22 @@ export interface DiagramProps extends Omit<
   source: string;
   /** The types of diagrams that `source` may use, which are registered with Pele. */
   diagrams?: readonly PeleDiagram[] | undefined;
+  /** The steps of the items of the diagram, in order. */
+  steps?: readonly DiagramStep[] | undefined;
 }
 
-export type DiagramClassKey = 'root' | 'svg' | 'error';
+export type DiagramClassKey =
+  'root' | 'svg' | 'error' | 'hidden' | 'dimmed' | 'collapsed';
 
 export const diagramClasses: Record<DiagramClassKey, string> =
-  generateUtilityClasses('SeminarDiagram', ['root', 'svg', 'error']);
+  generateUtilityClasses('SeminarDiagram', [
+    'root',
+    'svg',
+    'error',
+    'hidden',
+    'dimmed',
+    'collapsed',
+  ]);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -88,6 +116,13 @@ const DiagramRoot = styled(Step, {
     '--pele-border': palette.primary.main,
     '--pele-accent': palette.primary.main,
     '--pele-radius': `${String(theme.shape.borderRadius)}px`,
+    // The appearances of the steps of items, like those of `Step`. The
+    // layout of the diagram doesn't change, even for collapsed items.
+    [`& .${diagramClasses.hidden}`]: { visibility: 'hidden', opacity: 0 },
+    [`& .${diagramClasses.dimmed}`]: {
+      opacity: 'var(--SeminarStep-dim-opacity, 0.35)',
+    },
+    [`& .${diagramClasses.collapsed}`]: { display: 'none' },
     ...Object.fromEntries(
       series.map((color, index) => [
         `--pele-series-${String(index + 1)}`,
@@ -121,6 +156,14 @@ interface Font {
   size: number;
 }
 
+/** The rendered SVG of a diagram in a rendering of the slide. */
+interface DiagramTarget {
+  /** The element with the SVG. */
+  root: Element;
+  /** The SVG, which is replaced when it changes. */
+  html: string;
+}
+
 interface RenderedSvgProps {
   source: string;
   font: Font;
@@ -128,6 +171,7 @@ interface RenderedSvgProps {
   prefix: string;
   /** The name of the diagram on the slide, if any. */
   name: string | undefined;
+  onTarget: (target: DiagramTarget | undefined) => void;
 }
 
 function RenderedSvg({
@@ -135,6 +179,7 @@ function RenderedSvg({
   font,
   prefix,
   name,
+  onTarget,
 }: RenderedSvgProps): JSX.Element {
   const result = useCached(diagramCache, {
     source,
@@ -152,6 +197,14 @@ function RenderedSvg({
     [diagram, prefix],
   );
   const ref = useRef<HTMLDivElement>(null);
+  // Tells the steps of the items about every new SVG.
+  const targetRef = useCallback(
+    (root: HTMLDivElement | null) => {
+      onTarget(root === null ? undefined : { root, html });
+    },
+    [onTarget, html],
+  );
+  const forkedRef = useForkRef(ref, targetRef);
   const register = useSlideElementRegistry();
   useLayoutEffect(() => {
     const root = ref.current;
@@ -178,7 +231,7 @@ function RenderedSvg({
   }
   return (
     <DiagramSvg
-      ref={ref}
+      ref={forkedRef}
       className={diagramClasses.svg}
       // Rendered by Pele, which escapes the text of the diagram.
       // eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml
@@ -190,10 +243,15 @@ function RenderedSvg({
 interface DiagramContentProps {
   source: string;
   name: string | undefined;
+  onTarget: (target: DiagramTarget | undefined) => void;
 }
 
 /** Renders the diagram once it knows the font of the slide around it. */
-function DiagramContent({ source, name }: DiagramContentProps): JSX.Element {
+function DiagramContent({
+  source,
+  name,
+  onTarget,
+}: DiagramContentProps): JSX.Element {
   const [element, setElement] = useState<HTMLDivElement | null>(null);
   const [font, setFont] = useState<Font>();
   useMeasure(element, () => {
@@ -217,9 +275,107 @@ function DiagramContent({ source, name }: DiagramContentProps): JSX.Element {
   return (
     <div ref={setElement}>
       {font !== undefined && (
-        <RenderedSvg source={source} font={font} prefix={prefix} name={name} />
+        <RenderedSvg
+          source={source}
+          font={font}
+          prefix={prefix}
+          name={name}
+          onTarget={onTarget}
+        />
       )}
     </div>
+  );
+}
+
+interface ItemAppearanceProps {
+  items: readonly string[];
+  target: DiagramTarget | undefined;
+  /** How the diagram looks, which its items inherit. */
+  enclosing: RankedAppearance;
+}
+
+/** Shows the items of a step of a diagram like the step around it. */
+function ItemAppearance({
+  items,
+  target,
+  enclosing,
+}: ItemAppearanceProps): null {
+  const className = appearanceClass(
+    'SeminarDiagram',
+    useStepAppearance(),
+    enclosing,
+  );
+  useLayoutEffect(() => {
+    if (target === undefined || className === undefined) {
+      return undefined;
+    }
+    const elements = items.flatMap((item) => [
+      ...target.root.querySelectorAll(`[data-id=${JSON.stringify(item)}]`),
+    ]);
+    for (const element of elements) {
+      element.classList.add(className);
+    }
+    return () => {
+      for (const element of elements) {
+        element.classList.remove(className);
+      }
+    };
+  }, [items, target, className]);
+  return null;
+}
+
+interface ItemStepProps {
+  step: DiagramStep;
+  target: DiagramTarget | undefined;
+  enclosing: RankedAppearance;
+}
+
+/**
+ * A step of the items of a diagram, whose element marks its place among the
+ * steps: after the steps before it, and inside the step that it's nested in.
+ */
+function ItemStep({ step, target, enclosing }: ItemStepProps): JSX.Element {
+  return (
+    <Step component="span" hidden {...step.props}>
+      <ItemAppearance
+        items={step.items}
+        target={target}
+        enclosing={enclosing}
+      />
+      {step.steps?.map((nested, index) => (
+        <ItemStep
+          // Steps don't change while the slide is shown.
+          // eslint-disable-next-line @eslint-react/no-array-index-key
+          key={index}
+          step={nested}
+          target={target}
+          enclosing={enclosing}
+        />
+      ))}
+    </Step>
+  );
+}
+
+interface ItemStepsProps {
+  steps: readonly DiagramStep[];
+  target: DiagramTarget | undefined;
+}
+
+function ItemSteps({ steps, target }: ItemStepsProps): JSX.Element {
+  // How the diagram looks, which is the step around the steps of its items.
+  const enclosing = useStepAppearance();
+  return (
+    <>
+      {steps.map((step, index) => (
+        <ItemStep
+          // eslint-disable-next-line @eslint-react/no-array-index-key
+          key={index}
+          step={step}
+          target={target}
+          enclosing={enclosing}
+        />
+      ))}
+    </>
   );
 }
 
@@ -242,10 +398,12 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
   const {
     source,
     diagrams = [],
+    steps = [],
     className,
     ...stepProps
   } = useThemeProps({ props: inProps, name: 'SeminarDiagram' });
   const { kind } = useSlideView();
+  const [target, setTarget] = useState<DiagramTarget>();
   if (kind === 'document') {
     // Pele only renders diagrams in the browser.
     return (
@@ -274,8 +432,14 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
     >
       {/* Probes have no layout to measure fonts in. */}
       {kind !== 'probe' && (
-        <DiagramContent source={source} name={stepProps.id} />
+        <DiagramContent
+          source={source}
+          name={stepProps.id}
+          onTarget={setTarget}
+        />
       )}
+      {/* Probes find the steps, too. */}
+      <ItemSteps steps={steps} target={target} />
     </DiagramRoot>
   );
 }

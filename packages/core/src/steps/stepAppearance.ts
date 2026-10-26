@@ -1,6 +1,6 @@
 import { generateUtilityClass } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
-import { createContext, type Context } from 'react';
+import { createContext, use, type Context } from 'react';
 
 import type { StepPhase } from './StepStore.ts';
 
@@ -192,3 +192,13 @@ export function appearanceClass(
  */
 export const StepAppearanceContext: Context<RankedAppearance> =
   createContext<RankedAppearance>(SHOWN);
+
+/**
+ * Returns how the closest enclosing step looks, including what it inherits
+ * from the steps around it, e.g., to show elements that a component doesn't
+ * render inside the step, like the parts of a figure, the same way with the
+ * class from {@link appearanceClass}.
+ */
+export function useStepAppearance(): RankedAppearance {
+  return use(StepAppearanceContext);
+}

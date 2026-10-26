@@ -151,9 +151,12 @@ export {
 export type { StepPath, StepPhase } from './steps/StepStore.ts';
 export type { StepRange } from './steps/stepRange.ts';
 export {
+  appearanceClass,
   BUILT_IN_APPEARANCE_RANKS,
   BUILT_IN_STEP_BEHAVIORS,
+  useStepAppearance,
   type BuiltInStepBehavior,
+  type RankedAppearance,
   type StepAppearance,
   type StepAppearanceOverrides,
   type StepAppearances,

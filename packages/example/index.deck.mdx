@@ -207,7 +207,9 @@ of the theme:
 ```mermaid #pipeline
 flowchart LR
   deck[".deck.mdx"] --> compile["Compile with MDX"]
+  %% step
   compile --> bundle["Bundle with Vite"]
+  %% step
   bundle --> page["Self-contained page"]
 ```
 
