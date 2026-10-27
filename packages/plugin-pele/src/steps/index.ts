@@ -6,6 +6,18 @@ import type { DiagramStep } from '../Diagram.tsx';
 import { architectureAdapter } from './architecture.ts';
 import { blockAdapter } from './block.ts';
 import { c4Adapter } from './c4.ts';
+import {
+  ganttAdapter,
+  gitAdapter,
+  journeyAdapter,
+  packetAdapter,
+  pieAdapter,
+  quadrantAdapter,
+  radarAdapter,
+  sankeyAdapter,
+  timelineAdapter,
+  treemapAdapter,
+} from './charts.ts';
 import { classAdapter } from './class.ts';
 import { erAdapter } from './er.ts';
 import { flowchartAdapter } from './flowchart.ts';
@@ -75,6 +87,36 @@ function adapterOf(
   }
   if (model.type === 'block') {
     return blockAdapter(model, header, lines);
+  }
+  if (model.type === 'pie') {
+    return pieAdapter(model, lines);
+  }
+  if (model.type === 'timeline') {
+    return timelineAdapter(model, lines);
+  }
+  if (model.type === 'journey') {
+    return journeyAdapter(model, lines);
+  }
+  if (model.type === 'quadrantChart') {
+    return quadrantAdapter(model, lines);
+  }
+  if (model.type === 'gantt') {
+    return ganttAdapter(model, lines);
+  }
+  if (model.type === 'packet') {
+    return packetAdapter(model, lines);
+  }
+  if (model.type === 'radar') {
+    return radarAdapter(model);
+  }
+  if (model.type === 'treemap') {
+    return treemapAdapter(model, lines);
+  }
+  if (model.type === 'sankey') {
+    return sankeyAdapter(model, header, lines);
+  }
+  if (model.type === 'gitGraph') {
+    return gitAdapter(model, lines);
   }
   return undefined;
 }

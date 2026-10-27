@@ -23,11 +23,15 @@ function itemsOf(steps: readonly DiagramStep[]): unknown[] {
   );
 }
 
-/** The ids of the elements of a diagram. */
+/** The ids of the elements of a diagram, as the DOM has them. */
 function elementIds(source: string): Set<string> {
+  const svg = new DOMParser().parseFromString(
+    render(source).svg,
+    'image/svg+xml',
+  );
   return new Set(
-    [...render(source).svg.matchAll(/ data-id="([^"]*)"/g)].map(
-      ([, id]) => id ?? '',
+    [...svg.querySelectorAll('[data-id]')].map(
+      (element) => element.getAttribute('data-id') ?? '',
     ),
   );
 }
@@ -109,8 +113,8 @@ describe('findSteps', () => {
     expect(stepsOf('flowchart LR\n  %% step\n  A\n').messages).toEqual([
       '1: Cannot tell what the step is about, list its items like `%% step[A, A->B]`',
     ]);
-    expect(stepsOf('pie\n  %% step\n  "a": 1').messages).toEqual([
-      "1: Steps of items aren't supported in diagrams of the type `pie`",
+    expect(stepsOf('xychart-beta\n  %% step\n  bar [1, 2]').messages).toEqual([
+      "1: Steps of items aren't supported in diagrams of the type `xychart`",
     ]);
   });
 
@@ -415,6 +419,164 @@ describe('findSteps', () => {
       ['2-a-b'],
       ['e', '1-b-e'],
     ]);
+    const ids = elementIds(source);
+    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
+  });
+  it.each([
+    {
+      type: 'pie charts',
+      source: ['pie', '  "Dogs" : 386', '  %% step', '  "Cats" : 85'],
+      steps: [['Cats']],
+    },
+    {
+      type: 'timelines',
+      source: [
+        'timeline',
+        '  title History',
+        '  section Early',
+        '    2002 : LinkedIn',
+        '    %% step',
+        '    2004 : Facebook',
+        '         : Google',
+        '  %% step',
+        '  section Late',
+        '    2006 : Twitter',
+      ],
+      steps: [['2004'], ['Late', '2006']],
+    },
+    {
+      type: 'timelines without sections',
+      source: [
+        'timeline',
+        '  2002 : LinkedIn',
+        '  %% step',
+        '  2004 : Facebook',
+      ],
+      steps: [['2004']],
+    },
+    {
+      type: 'user journeys without sections',
+      source: ['journey', '  Tea: 5: Me', '  %% step', '  Code: 3: Me'],
+      steps: [['Code']],
+    },
+    {
+      type: 'Gantt charts without sections',
+      source: [
+        'gantt',
+        '  dateFormat YYYY-MM-DD',
+        '  Design :a1, 2024-01-01, 3d',
+        '  %% step',
+        '  Code :after a1, 2d',
+      ],
+      steps: [['task1']],
+    },
+    {
+      type: 'user journeys',
+      source: [
+        'journey',
+        '  section Work',
+        '    Make tea: 5: Me',
+        '    %% step',
+        '    Code: 3: Me, Cat',
+        '  %% step',
+        '  section Home',
+        '    Sleep: 5: Me',
+      ],
+      steps: [['Code'], ['Home', 'Sleep']],
+    },
+    {
+      type: 'quadrant charts',
+      source: [
+        'quadrantChart',
+        '  x-axis Low --> High',
+        '  A: [0.3, 0.6]',
+        '  %% step',
+        '  B: [0.7, 0.2]',
+      ],
+      steps: [['B']],
+    },
+    {
+      type: 'Gantt charts',
+      source: [
+        'gantt',
+        '  dateFormat YYYY-MM-DD',
+        '  section Build',
+        '    Design :a1, 2024-01-01, 3d',
+        '    %% step',
+        '    Code :after a1, 2d',
+        '  %% step',
+        '  section Ship',
+        '    Release :milestone, m1, 2024-01-06, 0d',
+      ],
+      steps: [['task1'], ['Ship', 'm1']],
+    },
+    {
+      type: 'packet diagrams',
+      source: [
+        'packet-beta',
+        '  0-15: "Source"',
+        '  %% step',
+        '  16-31: "Destination"',
+        '  %% step',
+        '  +8: "Flags"',
+      ],
+      steps: [['16-31'], ['32-39']],
+    },
+    {
+      type: 'radar charts',
+      source: [
+        'radar-beta',
+        '  axis a, b, c',
+        '  curve x{1, 2, 3}',
+        '  %% step',
+        '  curve y["Why"]{3, 2, 1}, z{2, 2, 2}',
+      ],
+      steps: [['y', 'z']],
+    },
+    {
+      type: 'treemaps',
+      source: [
+        'treemap-beta',
+        '  "Root"',
+        '    "A"',
+        '      "A1": 10',
+        '    %% step',
+        '    "B"',
+        '      "B1": 5',
+      ],
+      steps: [['B', 'B1']],
+    },
+    {
+      type: 'Sankey diagrams',
+      source: [
+        'sankey-beta',
+        '  A,B,10',
+        '  %% step',
+        '  A,C,5',
+        '  %% step',
+        '  B,C,7',
+      ],
+      steps: [['C', 'A->C'], ['B->C']],
+    },
+    {
+      type: 'git graphs',
+      source: [
+        'gitGraph',
+        '  commit id: "init"',
+        '  %% step',
+        '  branch dev',
+        '  commit id: "work"',
+        '  checkout main',
+        '  %% step',
+        '  merge dev id: "merged"',
+      ],
+      steps: [['dev', 'work'], ['merged']],
+    },
+  ])('steps the items of $type', ({ source: lines, steps: expected }) => {
+    const source = lines.join('\n');
+    const { steps, messages } = stepsOf(source);
+    expect(messages).toEqual([]);
+    expect(itemsOf(steps)).toEqual(expected);
     const ids = elementIds(source);
     expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
   });

@@ -111,3 +111,51 @@ export function parseAlone<Type extends DiagramModel['type']>(
 export function emptyItems(): Items {
   return { labels: new Map(), parents: new Map(), ends: new Map() };
 }
+
+/** An item that a line of the source of a diagram declares. */
+export interface LineItem {
+  id: string;
+  label: string;
+  parent: string | undefined;
+}
+
+/**
+ * Steps of the items of diagrams that declare one item on each line, like
+ * outlines or charts. A statement is about its item, which has its shape
+ * data, too, if the type of diagrams has it.
+ *
+ * @param declared The items in the order that they are declared.
+ * @param isItem Whether a statement line declares an item.
+ */
+export function itemPerLineAdapter(
+  declared: readonly LineItem[],
+  lines: readonly Line[],
+  isItem: (line: Line) => boolean,
+): Adapter {
+  const items: Items = emptyItems();
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const { id, label, parent } of declared) {
+    if (seen.has(id)) {
+      duplicates.add(id);
+    }
+    seen.add(id);
+    items.labels.set(id, label);
+    if (parent !== undefined) {
+      items.parents.set(id, parent);
+    }
+  }
+  items.duplicates = duplicates;
+  const itemLines = lines.filter((line) => isStatement(line) && isItem(line));
+  const byLine = new Map<number, string>();
+  if (itemLines.length === declared.length) {
+    itemLines.forEach((line, index) => {
+      byLine.set(line.index, declared[index]?.id ?? '');
+    });
+  }
+  const about = (line: Line) => {
+    const id = byLine.get(line.index);
+    return id === undefined ? undefined : [id];
+  };
+  return { items, about, shapeDataItem: (line) => about(line)?.[0] };
+}

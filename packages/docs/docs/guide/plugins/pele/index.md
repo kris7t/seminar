@@ -70,11 +70,9 @@ enabled, which would also make dollar signs in the text of slides math.
 
 ## Revealing items in steps
 
-The items of flowcharts, state, sequence, class, entity relationship,
-requirement, architecture, C4, and block diagrams, mind maps, and kanban
-boards can be shown in steps of their own. The layout of the diagram stays
-the same, with room for the items that aren't shown yet. Write `%% step`
-before a statement to show what it's about in a new step:
+The items of the diagrams of Mermaid, except XY charts, can be shown in steps
+of their own. The layout of the diagram stays the same, with room for the
+items that aren't shown yet. Write `%% step` before a statement to show what it's about in a new step:
 
 ````mdx
 ```mermaid
@@ -103,6 +101,10 @@ What a statement is about depends on the type of the diagram:
 | C4               | the element or relation that it declares, or the boundary that it opens                                          |
 | Block            | the blocks that it places, the composite block that it opens, or its edges                                       |
 | Mind map, kanban | its node, or its column or card                                                                                  |
+| Charts           | its item, like the slice of a pie chart, the period of a timeline, or the task of a Gantt chart                  |
+| Radar            | its curves                                                                                                       |
+| Sankey           | its link, and the nodes that it mentions first                                                                   |
+| Git graph        | the commit that it makes, like with `commit` or `merge`, or the branch that it creates                           |
 
 Items that a statement only names, like `compile` in
 `compile --> bundle["Bundle"]`, keep their own step.
@@ -122,11 +124,11 @@ diagram has it: nodes and edges with ids in flowcharts, like
 sequence diagrams, and cards in kanban boards.
 
 Items are shown with the items that they are in, like subgraphs, composite
-states, blocks, namespaces, groups, boundaries, or the nodes of mind maps
-that they are under, unless they have steps of their own, which come in the
-step of the item around them. An edge without a step of its own is shown with
-the later of its ends, and the edges of mind maps with the nodes that they
-lead to. You get a warning for an edge that is shown before both of its ends.
+states, blocks, namespaces, groups, boundaries, sections, branches, or the
+nodes of mind maps and treemaps that they are under, unless they have steps of
+their own, which come in the step of the item around them. An edge without a
+step of its own is shown with the later of its ends, and the edges of mind
+maps with the nodes that they lead to. You get a warning for an edge that is shown before both of its ends.
 
 Style the appearances of the items as `SeminarDiagram-hidden`,
 `SeminarDiagram-dimmed`, and so on, in the `root` of `SeminarDiagram`.
