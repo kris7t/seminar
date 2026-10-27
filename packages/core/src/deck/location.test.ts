@@ -26,6 +26,19 @@ describe('parseLocation', () => {
       group: 'my group',
     });
   });
+
+  it('parses names of groups with dots', () => {
+    expect(parseLocation('#intro&step=pipeline.page.1', IDS)).toEqual({
+      slideIndex: 0,
+      step: [1],
+      group: 'pipeline.page',
+    });
+    expect(parseLocation('#intro&step=figure%2E2.1', IDS)).toEqual({
+      slideIndex: 0,
+      step: [1],
+      group: 'figure.2',
+    });
+  });
 });
 
 describe('formatLocation', () => {
@@ -35,6 +48,8 @@ describe('formatLocation', () => {
       { slideIndex: 1, step: [2, 1] },
       { slideIndex: 0, step: [], group: 'parse' },
       { slideIndex: 1, step: [1], group: 'my group' },
+      { slideIndex: 0, step: [1], group: 'pipeline.page' },
+      { slideIndex: 0, step: [], group: 'figure.2' },
     ]) {
       expect(parseLocation(formatLocation(location, IDS), IDS)).toEqual(
         location,
@@ -43,5 +58,8 @@ describe('formatLocation', () => {
     expect(formatLocation({ slideIndex: 0, step: [1], group: 'a' }, IDS)).toBe(
       '#intro&step=a.1',
     );
+    expect(
+      formatLocation({ slideIndex: 0, step: [1], group: 'figure.2' }, IDS),
+    ).toBe('#intro&step=figure%2E2.1');
   });
 });

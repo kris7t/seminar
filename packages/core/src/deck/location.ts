@@ -47,16 +47,38 @@ function parseStep(
   if (step === undefined || step === '') {
     return { step: path };
   }
-  const [first = '', ...rest] = step.split('.');
-  // A step path may start with the name of a group instead of a number.
-  const group = NUMBER_PATTERN.test(first) ? undefined : first;
-  for (const segment of group === undefined ? [first, ...rest] : rest) {
+  // Segments are decoded after splitting, so that `%2E` in a group name
+  // doesn't separate segments (see `formatGroup`).
+  const segments = step.split('.').map(decode);
+  // A step path may start with the name of a group instead of a number, which
+  // may contain dots, e.g., the name of an item of a diagram.
+  const groupLength = segments.findIndex((segment) =>
+    NUMBER_PATTERN.test(segment),
+  );
+  const groupSegments = segments.slice(
+    0,
+    groupLength < 0 ? segments.length : groupLength,
+  );
+  for (const segment of segments.slice(groupSegments.length)) {
     if (!NUMBER_PATTERN.test(segment)) {
       break;
     }
     path.push(Number.parseInt(segment, 10));
   }
-  return group === undefined ? { step: path } : { step: path, group };
+  return groupSegments.length === 0
+    ? { step: path }
+    : { step: path, group: groupSegments.join('.') };
+}
+
+/**
+ * Encodes the name of a group for a step path, escaping its dots if a part of
+ * the name would be mistaken for a step number otherwise.
+ */
+function formatGroup(group: string): string {
+  const encoded = encodeURIComponent(group);
+  return group.split('.').some((segment) => NUMBER_PATTERN.test(segment))
+    ? encoded.replaceAll('.', '%2E')
+    : encoded;
 }
 
 /**
@@ -66,7 +88,8 @@ function parseStep(
  * or `slide=<n>` with a 1-based slide number. `<path>` is a step path with dot-separated step numbers, e.g., `2.1`
  * (see {@link StepPath}), which may start with the name of a step group
  * instead, e.g., `parse` for its first step, or `parse.1` for the first step
- * nested in it. Invalid parts of the step path are dropped.
+ * nested in it. The name of the group extends to the first step number, so
+ * that it may contain dots, e.g., `pipeline.page.1`. Invalid parts of the step path are dropped.
  *
  * @returns `undefined` if the hash does not refer to a slide.
  */
@@ -76,8 +99,8 @@ export function parseLocation(
   aliases: ReadonlyMap<string, number> = new Map(),
 ): DeckLocation | undefined {
   const fragment = hash.startsWith('#') ? hash.slice(1) : hash;
-  const [slide = '', ...params] = fragment.split('&').map(decode);
-  const slideIndex = parseSlide(slide, slideIds, aliases);
+  const [slide = '', ...params] = fragment.split('&');
+  const slideIndex = parseSlide(decode(slide), slideIds, aliases);
   if (slideIndex === undefined) {
     return undefined;
   }
@@ -98,7 +121,7 @@ export function formatLocation(
       ? `slide=${String(slideIndex + 1)}`
       : encodeURIComponent(id);
   const segments = [
-    ...(group === undefined ? [] : [encodeURIComponent(group)]),
+    ...(group === undefined ? [] : [formatGroup(group)]),
     ...step.map(String),
   ];
   return segments.length === 0
