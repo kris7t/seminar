@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffectEvent, useLayoutEffect, useState } from 'react';
 
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
 import { useSlideElement } from './SlideElements.tsx';
@@ -95,10 +95,49 @@ function sameBox(a: SlideBox, b: SlideBox): boolean {
 }
 
 /**
+ * Calls `measure` when the slide view around `element` changes, or its fonts
+ * or images load, which may move the element without resizing it, e.g., when
+ * a diagram above it renders.
+ */
+function useMeasureOnLayout(
+  element: Element | undefined,
+  measure: () => void,
+): void {
+  const onMeasure = useEffectEvent(measure);
+  useLayoutEffect(() => {
+    const frame = element?.closest(`[${SLIDE_VIEW_ATTRIBUTE}]`) ?? undefined;
+    const view = frame?.ownerDocument.defaultView ?? undefined;
+    if (frame === undefined || view === undefined) {
+      return undefined;
+    }
+    const onChange = () => {
+      onMeasure();
+    };
+    const observer = new view.MutationObserver(onChange);
+    observer.observe(frame, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+    });
+    frame.addEventListener('load', onChange, true);
+    const fonts =
+      'fonts' in frame.ownerDocument ? frame.ownerDocument.fonts : undefined;
+    fonts?.addEventListener('loadingdone', onChange);
+    return () => {
+      observer.disconnect();
+      frame.removeEventListener('load', onChange, true);
+      fonts?.removeEventListener('loadingdone', onChange);
+    };
+  }, [element]);
+}
+
+/**
  * Returns the box of `target` on the slide, in the logical pixels of the
  * slide, whatever the scale of the view the slide is shown in. `target` is an
  * element or the name of an element on the slide (see `useSlideElement`).
- * Measures again when the element or the window is resized.
+ * Measures again when the element or the window is resized, and when the
+ * slide changes around it.
  *
  * @returns The box, or `undefined` without a target, before it's measured,
  *   or outside of a slide view.
@@ -108,14 +147,16 @@ export function useSlideBox(
 ): SlideBox | undefined {
   const element = useSlideElement(target);
   const [box, setBox] = useState<SlideBox | undefined>();
-  useMeasure(element, () => {
+  const measure = () => {
     const next = element === undefined ? undefined : measureInSlide(element);
     setBox((previous) =>
       previous !== undefined && next !== undefined && sameBox(previous, next)
         ? previous
         : next,
     );
-  });
+  };
+  useMeasure(element, measure);
+  useMeasureOnLayout(element, measure);
   return box;
 }
 

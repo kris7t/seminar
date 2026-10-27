@@ -59,6 +59,32 @@ describe('slide boxes', () => {
     ]);
   });
 
+  it('measures again when the slide changes around the element', async () => {
+    let top = 0;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: HTMLElement) {
+        return this.dataset['testid'] === 'frame'
+          ? rect(0, 0, 1280, 720)
+          : rect(0, top, 10, 10);
+      },
+    );
+    act(() => {
+      render(<Measured />);
+    });
+    expect(JSON.parse(screen.getByTestId('box').textContent)).toMatchObject({
+      y: 0,
+    });
+    // E.g., a diagram above the element renders, which doesn't resize it.
+    top = 300;
+    await act(async () => {
+      screen.getByTestId('frame').prepend(document.createElement('svg'));
+      await Promise.resolve();
+    });
+    expect(JSON.parse(screen.getByTestId('box').textContent)).toMatchObject({
+      y: 300,
+    });
+  });
+
   it('parses points in pixels and percentages', () => {
     expect(parseSlidePoint('120, 40%')).toEqual([
       { value: 120, relative: false },
