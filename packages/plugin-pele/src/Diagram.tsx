@@ -433,15 +433,32 @@ interface ItemStepProps {
   step: DiagramStep;
   target: DiagramTarget | undefined;
   enclosing: RankedAppearance;
+  /** The name of the diagram on the slide, if any. */
+  name: string | undefined;
 }
 
 /**
  * A step of the items of a diagram, whose element marks its place among the
  * steps: after the steps before it, and inside the step that it's nested in.
+ * In a named diagram, it's in the group named after its first item, e.g.,
+ * `pipeline.compile`, unless it has a group.
  */
-function ItemStep({ step, target, enclosing }: ItemStepProps): JSX.Element {
+function ItemStep({
+  step,
+  target,
+  enclosing,
+  name,
+}: ItemStepProps): JSX.Element {
+  const [first] = step.items;
+  const group =
+    name === undefined || first === undefined ? undefined : `${name}.${first}`;
   return (
-    <Step component="span" hidden {...step.props}>
+    <Step
+      component="span"
+      hidden
+      {...(group === undefined ? {} : { group })}
+      {...step.props}
+    >
       <ItemAppearance
         items={step.items}
         target={target}
@@ -455,6 +472,7 @@ function ItemStep({ step, target, enclosing }: ItemStepProps): JSX.Element {
           step={nested}
           target={target}
           enclosing={enclosing}
+          name={name}
         />
       ))}
     </Step>
@@ -464,9 +482,10 @@ function ItemStep({ step, target, enclosing }: ItemStepProps): JSX.Element {
 interface ItemStepsProps {
   steps: readonly DiagramStep[];
   target: DiagramTarget | undefined;
+  name: string | undefined;
 }
 
-function ItemSteps({ steps, target }: ItemStepsProps): JSX.Element {
+function ItemSteps({ steps, target, name }: ItemStepsProps): JSX.Element {
   // How the diagram looks, which is the step around the steps of its items.
   const enclosing = useStepAppearance();
   return (
@@ -478,6 +497,7 @@ function ItemSteps({ steps, target }: ItemStepsProps): JSX.Element {
           step={step}
           target={target}
           enclosing={enclosing}
+          name={name}
         />
       ))}
     </>
@@ -563,7 +583,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
         />
       )}
       {/* Probes find the steps, too. */}
-      <ItemSteps steps={steps} target={target} />
+      <ItemSteps steps={steps} target={target} name={stepProps.id} />
     </DiagramRoot>
   );
 }

@@ -159,45 +159,6 @@ Then that.
     ]);
   });
 
-  it('reports groups used only once on a slide', async () => {
-    const file = await compile(
-      `
-## One
-
-- :step{group=a} A
-- :step{group=typo} B
-
-<Step group="a">C</Step>
-
-## Two
-
-- :step{group=a} D
-`,
-      { ...seminarMdxOptions() },
-    );
-    expect(file.messages.map(String)).toEqual([
-      '5:1-5:22: The step group `typo` is only used once on the slide',
-      '11:1-11:19: The step group `a` is only used once on the slide',
-    ]);
-  });
-
-  it('warns about with on groups that already exist', async () => {
-    const file = await compile(
-      `
-- :step{group=a with=initial} A
-- :step{group=b} B
-- :step{group=a} C
-- :step{group=b with=previous} D
-  - :step{group=b with=initial} E
-`,
-      { ...seminarMdxOptions() },
-    );
-    expect(file.messages.map(String)).toEqual([
-      '5:1-6:34: Ignoring `with=previous` on the step group `b`, which is placed by its first element',
-      '6:3-6:34: Ignoring `with=initial` on the step group `b`, which is placed by its first element',
-    ]);
-  });
-
   it('keeps braces that are not attribute blocks', async () => {
     expect(await content('- Set \\{x}')).toEqual([
       '<ul>\n<ListItem>Set {x}</ListItem>\n</ul>',
@@ -223,13 +184,12 @@ Then that.
 
 :step{in=a} Callout
 
-:step{in=typo} Lost
+:step{in=diagram} In a group of a component, e.g., of a diagram
 `,
       { ...seminarMdxOptions() },
     );
-    expect(file.messages.map(String)).toEqual([
-      expect.stringContaining('There is no step group `typo`'),
-    ]);
+    // Components may have groups that the compiler doesn't see.
+    expect(file.messages).toEqual([]);
     expect(
       await content('- :step{group=a} A\n\n:step{in=a .note} Callout'),
     ).toEqual([
@@ -246,15 +206,11 @@ Then that.
 
 :step{after=a} After
 
-:step{after=typo} Lost
+:step{after=diagram} After a group of a component
 `,
       { ...seminarMdxOptions() },
     );
-    expect(file.messages.map(String)).toEqual([
-      expect.stringContaining(
-        'There is no step group `typo` on the slide to place a step after',
-      ),
-    ]);
+    expect(file.messages).toEqual([]);
     expect(
       await content(
         '- :step{group=a title="First item"} A\n\n:step{after=a} B',

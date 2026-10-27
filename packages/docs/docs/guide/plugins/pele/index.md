@@ -157,6 +157,11 @@ edges from `A` to `B`:
 %% step[compile, source->compile] only
 ```
 
+Steps are in [groups](../../core/steps.md#groups) for the whole slide, e.g.,
+to show the items of two diagrams together, or to nest other steps in them
+with `in`. In a named diagram, a step without a `group` is in the group named
+after its first item, like `pipeline.bundle`.
+
 Items can also take their step in their shape data, where the type of the
 diagram has it: nodes and edges with ids in flowcharts, like
 `bundle["Bundle"]@{ step }` or `e1@{ step: "group=emit" }`, participants in
@@ -190,6 +195,10 @@ an id, like the nodes of mind maps, are named by their text, and if two items
 have the same name, it refers to the first of them. Give them ids, like
 `ex1[Examples]`. The references to rules in railroad diagrams aren't named,
 because the rules have their names.
+
+Only the items of named diagrams have names, which keeps the items of
+different diagrams apart. Groups name steps, not elements, so callouts can't
+point at them.
 
 ## Styling diagrams
 

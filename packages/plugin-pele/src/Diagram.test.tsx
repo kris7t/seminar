@@ -1,9 +1,15 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { Deck, DeckDocument, Slide, useSlideElement } from '@seminar/core';
+import {
+  Deck,
+  DeckDocument,
+  Slide,
+  Step,
+  useSlideElement,
+} from '@seminar/core';
 import flowchart from 'pele/diagrams/flowchart';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Diagram, diagramClasses } from './Diagram.tsx';
 
@@ -50,6 +56,10 @@ const WIDE =
   'flowchart LR\n  A[Parse] --> B[Render] --> C[Show] --> D[Present]';
 
 describe('Diagram', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '#');
+  });
+
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
@@ -114,6 +124,48 @@ describe('Diagram', () => {
     ]);
     await user.keyboard('{ArrowRight}');
     expect([hidden('B'), hidden('L_A_B_0')]).toEqual([[false], [false]]);
+  });
+
+  it('names the steps of items of named diagrams after them', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Diagram
+            source={'flowchart LR\n  A[Parse] --> B[Render] --> C[Show]'}
+            diagrams={[flowchart]}
+            id="pipeline"
+            steps={[{ items: ['B'] }, { items: ['C'] }]}
+          />
+          <Step group="pipeline.C" data-testid="note">
+            Shown with C
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    await screen.findByText('Show');
+    const shown = () =>
+      [
+        !document
+          .querySelector('[data-id="B"]')
+          ?.classList.contains(diagramClasses.hidden),
+        !document
+          .querySelector('[data-id="C"]')
+          ?.classList.contains(diagramClasses.hidden),
+        getComputedStyle(screen.getByTestId('note')).visibility !== 'hidden',
+      ].join(' ');
+    const seen = [shown()];
+    for (let i = 0; i < 3; i += 1) {
+      await user.keyboard('{ArrowRight}');
+      seen.push(shown());
+    }
+    // `B`, `C`, and the note, which is shown with `C`.
+    expect(seen).toEqual([
+      'false false false',
+      'true false false',
+      'true true true',
+      'true true true',
+    ]);
   });
 
   it('shows the formulas in labels, in the size of the text', async () => {
