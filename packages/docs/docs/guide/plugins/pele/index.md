@@ -70,8 +70,8 @@ enabled, which would also make dollar signs in the text of slides math.
 
 ## Revealing items in steps
 
-The items of flowcharts, state diagrams, sequence diagrams, mind maps, and
-kanban boards can be shown in steps of their own. The layout of the diagram
+The items of flowcharts, state diagrams, sequence diagrams, class diagrams,
+entity relationship diagrams, mind maps, and kanban boards can be shown in steps of their own. The layout of the diagram
 stays the same, with room for the items that aren't shown yet. Write
 `%% step` before a statement to show what it's about in a new step:
 
@@ -95,6 +95,8 @@ What a statement is about depends on the type of the diagram:
 | Flowchart        | its edges, the nodes that it gives a label or a shape, like `bundle["Bundle"]`, and the subgraph that it opens   |
 | State            | its transitions, and the states that it declares, like `A: waiting` or `state A {`                               |
 | Sequence         | its messages or notes, the participant that it declares, or the block that it opens, like `loop`, with its frame |
+| Class            | its relations, its note, the class that it declares with `class`, and the namespace that it opens                |
+| Entity relation  | its relationships, the entity that it declares, like `CUSTOMER {`, and the subgraph that it opens                |
 | Mind map, kanban | its node, or its column or card                                                                                  |
 
 Items that a statement only names, like `compile` in
@@ -115,7 +117,7 @@ diagram has it: nodes and edges with ids in flowcharts, like
 sequence diagrams, and cards in kanban boards.
 
 Items are shown with the items that they are in, like subgraphs, composite
-states, blocks, or the nodes of mind maps that they are under, unless they
+states, blocks, namespaces, or the nodes of mind maps that they are under, unless they
 have steps of their own, which come in the step of the item around them. An
 edge without a step of its own is shown with the later of its ends, and the
 edges of mind maps with the nodes that they lead to. You get a warning for an

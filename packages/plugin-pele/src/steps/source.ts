@@ -58,6 +58,31 @@ export function isStatement({ text }: Line): boolean {
 }
 
 /**
+ * Returns the statement lines of `lines` that aren't in bodies in braces,
+ * e.g., the members of classes, which aren't statements of their own.
+ *
+ * @param opensBody Whether a statement opens a body, rather than, e.g., a
+ *   namespace whose lines are statements.
+ */
+export function statementsOutsideBodies(
+  lines: readonly Line[],
+  opensBody: (text: string) => boolean,
+): Line[] {
+  const result: Line[] = [];
+  let inBody = false;
+  for (const line of lines.filter(isStatement)) {
+    const text = line.text.trim();
+    if (inBody) {
+      inBody = !text.startsWith('}');
+      continue;
+    }
+    result.push(line);
+    inBody = text.endsWith('{') && opensBody(text);
+  }
+  return result;
+}
+
+/**
  * Parses `text` alone, after the `header` of a diagram, e.g., `flowchart LR`,
  * trying each of `closers` after it to close a block that it opens.
  *

@@ -237,4 +237,79 @@ describe('findSteps', () => {
     expect(messages).toEqual([]);
     expect(itemsOf(steps)).toEqual([['t2'], ['done', 't3']]);
   });
+  it('steps the classes, notes, and relations of class diagrams', () => {
+    const source = [
+      'classDiagram',
+      '  class Shape',
+      '  %% step',
+      '  namespace Round {',
+      '    class Circle {',
+      '      %% step',
+      '      +radius: float',
+      '    }',
+      '    %% step',
+      '    class Ellipse',
+      '  }',
+      '  %% step',
+      '  Shape <|-- Circle : extends',
+      '  Shape <|-- Ellipse',
+      '  %% step',
+      '  Shape <|-- Circle',
+      '  %% step',
+      '  note for Shape "abstract"',
+      '  %% step',
+      '  Circle : +area() float',
+    ].join('\n');
+    const { steps, messages } = stepsOf(source);
+    expect(messages).toEqual([
+      '5: Cannot tell what the step is about, list its items like `%% step[A, A->B]`',
+      '18: Cannot tell what the step is about, list its items like `%% step[A, A->B]`',
+    ]);
+    expect(itemsOf(steps)).toEqual([
+      [['Round', 'Circle'], [['Ellipse', 'id_Shape_Ellipse_2']]],
+      ['id_Shape_Circle_1'],
+      ['id_Shape_Circle_3'],
+      ['note0', 'edgeNote0'],
+    ]);
+    const ids = elementIds(source);
+    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
+    expect(steps[1]?.props?.['title']).toBe('extends');
+    const nested =
+      'classDiagram\n  namespace A {\n    %% step\n    namespace B {\n      class X\n    }\n  }';
+    expect(itemsOf(stepsOf(nested).steps)).toEqual([['A.B', 'X']]);
+    expect(elementIds(nested)).toContain('A.B');
+  });
+
+  it('steps the entities and relationships of entity relationship diagrams', () => {
+    const source = [
+      'erDiagram',
+      '  CUSTOMER ||--o{ ORDER : places',
+      '  %% step',
+      '  subgraph Shipping',
+      '    %% step',
+      '    ORDER ||--|{ ITEM : contains',
+      '  end',
+      '  %% step',
+      '  CUSTOMER ||--o{ ORDER : returns',
+      '  %% step',
+      '  p[Person] {',
+      '    string name',
+      '  }',
+    ].join('\n');
+    const { steps, messages } = stepsOf(source);
+    expect(messages).toEqual([]);
+    expect(itemsOf(steps)).toEqual([
+      // Entities in the subgraph are in its step, and so is the relationship
+      // before it, which is shown with `ORDER`.
+      [
+        ['ORDER', 'ITEM', 'Shipping', 'id_entity-CUSTOMER-0_entity-ORDER-1_0'],
+        [['id_entity-ORDER-1_entity-ITEM-2_1']],
+      ],
+      ['id_entity-CUSTOMER-0_entity-ORDER-1_2'],
+      ['p'],
+    ]);
+    const ids = elementIds(source);
+    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
+    expect(steps[2]?.props?.['title']).toBe('Person');
+  });
 });

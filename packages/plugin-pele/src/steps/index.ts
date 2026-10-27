@@ -3,6 +3,8 @@ import { parse, type DiagramModel } from 'pele';
 import type { VFile } from 'vfile';
 
 import type { DiagramStep } from '../Diagram.tsx';
+import { classAdapter } from './class.ts';
+import { erAdapter } from './er.ts';
 import { flowchartAdapter } from './flowchart.ts';
 import { kanbanAdapter, mindmapAdapter } from './outline.ts';
 import { sequenceAdapter } from './sequence.ts';
@@ -51,6 +53,12 @@ function adapterOf(
   }
   if (model.type === 'kanban') {
     return kanbanAdapter(model, lines);
+  }
+  if (model.type === 'class') {
+    return classAdapter(model, header, lines);
+  }
+  if (model.type === 'er') {
+    return erAdapter(model, header, lines);
   }
   return undefined;
 }
