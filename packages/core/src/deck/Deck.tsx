@@ -80,6 +80,8 @@ import {
   useSwipeNavigation,
 } from '../interaction/useSwipeNavigation.ts';
 import { DeckMenu } from '../menu/DeckMenu.tsx';
+import { PrintDialog } from '../print/PrintDialog.tsx';
+import { PrintView, type PrintOptions } from '../print/PrintView.tsx';
 import { MenuButton } from '../menu/MenuButton.tsx';
 import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
 import { uiTheme } from '../menu/uiTheme.ts';
@@ -656,6 +658,21 @@ function InteractiveDeck({
   const closeGoToSlide = useCallback(() => {
     setGoToSlideOpen(false);
   }, []);
+  const [printOpen, setPrintOpen] = useState(false);
+  // The options of the pages being prepared for printing, if any.
+  const [printing, setPrinting] = useState<PrintOptions>();
+  const openPrint = useCallback(() => {
+    setPrintOpen(true);
+  }, []);
+  const closePrint = useCallback(() => {
+    setPrintOpen(false);
+    setPrinting(undefined);
+  }, []);
+  const print = useCallback(() => {
+    // Blocks until the print dialog of the browser is closed.
+    window.print();
+    closePrint();
+  }, [closePrint]);
   const presentation = usePresentation(presenterView);
   const closePresenterView = presenterView.close;
   const onEscape = useCallback(() => {
@@ -700,6 +717,7 @@ function InteractiveDeck({
     onLaserPointer,
     onResetTimer,
     onEscape,
+    onPrint: openPrint,
   });
   const onClick = useClickNavigation(
     next,
@@ -1035,8 +1053,16 @@ function InteractiveDeck({
                       slides={slides}
                       shownIndex={showOverview ? undefined : slideIndex}
                       priorityIndex={showOverview ? overviewIndex : slideIndex}
-                      paused={swipe.moving}
+                      paused={swipe.moving || printing !== undefined}
                     />
+                    {printing !== undefined && (
+                      <PrintView
+                        slides={slides}
+                        spares={spares}
+                        options={printing}
+                        onReady={print}
+                      />
+                    )}
                     {showOverview && (
                       <SlideOverview
                         slides={slides}
@@ -1075,10 +1101,17 @@ function InteractiveDeck({
                               }
                             : undefined
                         }
+                        onPrint={openPrint}
                       />
                       <GoToSlideDialog
                         open={goToSlideOpen}
                         onClose={closeGoToSlide}
+                      />
+                      <PrintDialog
+                        open={printOpen}
+                        preparing={printing !== undefined}
+                        onPrint={setPrinting}
+                        onClose={closePrint}
                       />
                       {presenterView.audience !== undefined && (
                         <AudienceWindow

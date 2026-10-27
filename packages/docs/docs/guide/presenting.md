@@ -101,6 +101,17 @@ state and return to the first step of its range.
 including transient values, resets every slide and recap to the first step
 of its own range, and shows the first non-spare slide of the deck.
 
+## Printing
+
+Choose **Print…** in the menu, or press Ctrl+P (Cmd+P on macOS), to print
+the deck with a page for each slide, as large as the slide. To get a PDF,
+choose to save as PDF in the print dialog of the browser.
+
+Slides with steps are [split into pages](core/steps.md#splitting-into-pages)
+by default, so that everything they show is on some page. Choose **A page
+for every step** to print each step instead. Turn on **Include spare slides**
+to print spare slides, too, where they are in the deck.
+
 ## Interface language
 
 If the deck offers several interface languages, choose **Language** in the
@@ -127,4 +138,5 @@ deck's content keeps its own [language](core/decks.md#languages).
 | L                     | Switch between ordinary and laser pointers         |
 | R                     | Reset elapsed time in the presenter view           |
 | S                     | Switch between text selection and click navigation |
+| Ctrl+P                | Print the deck                                     |
 | Escape                | Unfocus, close the overview or presenter view      |

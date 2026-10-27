@@ -226,7 +226,7 @@ skipped steps can still be chosen from the step tree.
 ## Splitting into pages
 
 A slide with steps becomes as few pages as possible when it's split into
-pages, e.g., for a PDF, so that everything shown at some step is on some
+pages, e.g., for [printing](../presenting.md#printing), so that everything shown at some step is on some
 page. A page shows the slide at a step, and a step becomes a page just before
 something is hidden, collapsed, or covered, and at the end of the slide:
 

@@ -113,6 +113,7 @@ const KEY_NAMES: Readonly<Record<string, MessageKey>> = {
   PgUp: 'keyPageUp',
   PgDn: 'keyPageDown',
   Shift: 'keyShift',
+  Ctrl: 'keyCtrl',
 };
 
 /**

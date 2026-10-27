@@ -78,5 +78,13 @@
   "language": "Sprache",
   "skipToContent": "Zum Inhalt springen",
   "aboutPage": "Über diese Seite",
-  "markdownSource": "Markdown-Quelltext"
+  "markdownSource": "Markdown-Quelltext",
+  "print": "Drucken",
+  "printEllipsis": "Drucken…",
+  "pages": "Seiten",
+  "splitPages": "So wenige Seiten pro Folie wie nötig",
+  "everyStep": "Eine Seite pro Schritt",
+  "includeSpareSlides": "Reservefolien einschließen",
+  "preparingPages": "Seiten werden vorbereitet…",
+  "keyCtrl": "Strg"
 }

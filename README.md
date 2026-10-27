@@ -121,6 +121,7 @@ long-press, or use the menu button in the top right corner for all actions.
 | L                     | Turn the pointer into a laser pointer, or back |
 | R                     | Reset the time elapsed in the presenter view   |
 | S                     | Select text with the mouse instead of clicking |
+| Ctrl+P                | Print the deck, e.g., to save it as a PDF      |
 | Esc                   | Unfocus, close the overview or presenter view  |
 
 Clicking a slide or scrolling down goes to the next step, and Shift+click or

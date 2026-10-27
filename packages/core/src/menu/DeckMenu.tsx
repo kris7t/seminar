@@ -13,6 +13,7 @@ import LastPageIcon from '@mui/icons-material/LastPage';
 import MouseIcon from '@mui/icons-material/Mouse';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import PrintIcon from '@mui/icons-material/Print';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import RestorePageIcon from '@mui/icons-material/RestorePage';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -75,6 +76,8 @@ export interface DeckMenuProps {
   onPresenterView: () => void;
   /** Settings of the presenter view, if it's open. */
   presenterSettings?: PresenterSettings | undefined;
+  /** Asks how to print the deck. */
+  onPrint: () => void;
 }
 
 interface Item {
@@ -148,6 +151,7 @@ export function DeckMenu({
   presenterView,
   onPresenterView,
   presenterSettings,
+  onPrint,
 }: DeckMenuProps): JSX.Element {
   const { lang: uiLang, t, locales, setLang } = useUiLanguage();
   // Where the menu of the languages is open, if it is.
@@ -358,6 +362,14 @@ export function DeckMenu({
             },
           ],
         ]),
+    [
+      {
+        label: t('printEllipsis'),
+        icon: PrintIcon,
+        shortcut: 'Ctrl+P',
+        action: onPrint,
+      },
+    ],
     [
       {
         label: t('textSelection'),

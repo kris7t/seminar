@@ -42,6 +42,8 @@ export interface KeyboardNavigationOptions {
    * @returns Whether Escape was handled.
    */
   onEscape: () => boolean;
+  /** Asks how to print the deck. */
+  onPrint: () => void;
 }
 
 /**
@@ -69,6 +71,8 @@ export interface KeyboardNavigationOptions {
  *   and Escape closes the overview without going anywhere.
  * - Escape leaves the presenter view, or moves the focus away from the focused
  *   element, so that the keys it uses navigate again.
+ * - Ctrl+`p` (Cmd+`p` on macOS) asks how to print the deck, instead of
+ *   printing the current slide as it's shown.
  *
  * Keys used by the focused element are left to it (see {@link usesKey}).
  *
@@ -107,6 +111,7 @@ export function useKeyboardNavigation(
     onLaserPointer,
     onResetTimer,
     onEscape,
+    onPrint,
   }: KeyboardNavigationOptions,
 ): void {
   useEffect(() => {
@@ -171,6 +176,17 @@ export function useKeyboardNavigation(
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        !event.defaultPrevented &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === 'p'
+      ) {
+        event.preventDefault();
+        onPrint();
+        return;
+      }
       if (
         event.defaultPrevented ||
         event.altKey ||
@@ -346,5 +362,6 @@ export function useKeyboardNavigation(
     onLaserPointer,
     onResetTimer,
     onEscape,
+    onPrint,
   ]);
 }

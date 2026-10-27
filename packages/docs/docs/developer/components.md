@@ -91,7 +91,8 @@ shows the first non-spare slide (or the first slide if all are spare).
 - `audience`: the slide shown to the audience, either in the deck window when
   not presenting, or in the audience window,
 - `thumbnail`: a small rendering of the slide for the overview,
-- `preview`: the previews of the next step and slide, and
+- `preview`: the previews of the next step and slide,
+- `print`: a page with the slide at a step, when printing the deck, and
 - `probe`: an invisible rendering that finds the steps of a slide.
 
 `interactive` is `true` in the one view that the presenter interacts with:

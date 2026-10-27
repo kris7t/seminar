@@ -78,5 +78,13 @@
   "language": "Nyelv",
   "skipToContent": "Ugrás a tartalomhoz",
   "aboutPage": "Az oldalról",
-  "markdownSource": "Markdown-forrás"
+  "markdownSource": "Markdown-forrás",
+  "print": "Nyomtatás",
+  "printEllipsis": "Nyomtatás…",
+  "pages": "Oldalak",
+  "splitPages": "Diánként annyi oldal, amennyi szükséges",
+  "everyStep": "Minden lépés külön oldalon",
+  "includeSpareSlides": "Tartalék diákkal együtt",
+  "preparingPages": "Oldalak előkészítése…",
+  "keyCtrl": "Ctrl"
 }

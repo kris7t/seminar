@@ -78,5 +78,13 @@
   "language": "Langue",
   "skipToContent": "Aller au contenu",
   "aboutPage": "À propos de cette page",
-  "markdownSource": "Source Markdown"
+  "markdownSource": "Source Markdown",
+  "print": "Imprimer",
+  "printEllipsis": "Imprimer…",
+  "pages": "Pages",
+  "splitPages": "Aussi peu de pages par diapositive que nécessaire",
+  "everyStep": "Une page par étape",
+  "includeSpareSlides": "Inclure les diapositives de réserve",
+  "preparingPages": "Préparation des pages…",
+  "keyCtrl": "Ctrl"
 }

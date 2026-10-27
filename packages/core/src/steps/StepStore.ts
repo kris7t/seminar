@@ -504,6 +504,13 @@ export class StepStore {
   getRange = (): StepRange | undefined => this.#range;
 
   /**
+   * Returns the steps in the range of the slide in order, starting with `[]`
+   * if it's in the range. The result is stable while the steppers and the
+   * range don't change.
+   */
+  getStates = (): readonly StepPath[] => this.#positionsInRange();
+
+  /**
    * Sets how the slide is split into pages (see {@link getSplitPaths}).
    *
    * @param split The `split` of the slide.

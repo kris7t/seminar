@@ -78,5 +78,13 @@
   "language": "Language",
   "skipToContent": "Skip to content",
   "aboutPage": "About this page",
-  "markdownSource": "Markdown source"
+  "markdownSource": "Markdown source",
+  "print": "Print",
+  "printEllipsis": "Print…",
+  "pages": "Pages",
+  "splitPages": "As few pages per slide as needed",
+  "everyStep": "A page for every step",
+  "includeSpareSlides": "Include spare slides",
+  "preparingPages": "Preparing pages…",
+  "keyCtrl": "Ctrl"
 }
