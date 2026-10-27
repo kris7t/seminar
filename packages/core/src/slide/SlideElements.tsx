@@ -15,6 +15,7 @@ import {
 } from 'react';
 
 import { DocumentSlideContext } from '../masters/DocumentMasters.tsx';
+import { StepStoreContext } from '../steps/StepStoreContext.ts';
 
 /**
  * The elements named in one rendering of a slide, e.g., with `{#name}` in
@@ -125,7 +126,16 @@ export function useSlideElementRef(name: string): RefCallback<Element> {
   );
 }
 
-const NO_REGISTRATION = (): (() => void) => () => undefined;
+/** Options of registering an element, see {@link useSlideElementRegistry}. */
+export interface SlideElementOptions {
+  /**
+   * The step group that shows the element, if it isn't inside the elements of
+   * the group, e.g., a node of a diagram that a step elsewhere shows. Steps
+   * nested in the step of the element, like callouts pointing at it, are
+   * nested in the step of the group.
+   */
+  group?: string | undefined;
+}
 
 /**
  * Returns a function that registers an element as the element called `name`
@@ -137,12 +147,24 @@ const NO_REGISTRATION = (): (() => void) => () => undefined;
 export function useSlideElementRegistry(): (
   name: string,
   element: Element,
+  options?: SlideElementOptions,
 ) => () => void {
   const store = use(SlideElementContext);
+  const steps = use(StepStoreContext);
   return useCallback(
-    (name: string, element: Element) =>
-      store === undefined ? NO_REGISTRATION() : store.register(name, element),
-    [store],
+    (name: string, element: Element, { group }: SlideElementOptions = {}) => {
+      if (store === undefined) {
+        return () => undefined;
+      }
+      const unregister = store.register(name, element);
+      const removeFromGroup =
+        group === undefined ? undefined : steps.addToGroup(element, group);
+      return () => {
+        unregister();
+        removeFromGroup?.();
+      };
+    },
+    [store, steps],
   );
 }
 

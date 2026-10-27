@@ -201,6 +201,54 @@ describe('SlideElement', () => {
     expect(isCurrent('pointer')).toBe(true);
   });
 
+  it('nests steps in the step of the group of an element', async () => {
+    const user = userEvent.setup();
+    function Pointer() {
+      return (
+        <Step in={useSlideElement('figure.part')} data-testid="pointer">
+          Pointer
+        </Step>
+      );
+    }
+    // The part isn't inside the step that shows it, like a node of a diagram.
+    function Figure() {
+      const ref = useRef<HTMLSpanElement>(null);
+      const register = useSlideElementRegistry();
+      useLayoutEffect(() => {
+        const element = ref.current;
+        return element === null
+          ? undefined
+          : register('figure.part', element, { group: 'shown' });
+      }, [register]);
+      return (
+        <>
+          <span ref={ref}>Part</span>
+          <Step data-testid="first">First</Step>
+          <Step group="shown" data-testid="shown">
+            Shows the part
+          </Step>
+        </>
+      );
+    }
+    render(
+      <Deck>
+        <Slide>
+          <Pointer />
+          <Figure />
+        </Slide>
+      </Deck>,
+    );
+    const isCurrent = (testId: string) =>
+      screen.getByTestId(testId).classList.contains(stepClasses.current);
+    await user.keyboard('{ArrowRight}');
+    expect(isCurrent('first')).toBe(true);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=shown');
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=shown.1');
+    expect(isCurrent('pointer')).toBe(true);
+  });
+
   it('nests steps in their default only if they are not placed', async () => {
     const user = userEvent.setup();
     render(

@@ -215,6 +215,39 @@ interface DiagramTarget {
 
 const NO_FORMULAS: Readonly<Record<string, DiagramFormula>> = {};
 
+/**
+ * Returns the group of `step` in the diagram called `name`: its own, or the
+ * one named after its first item, e.g., `pipeline.compile`.
+ */
+function groupOf(
+  step: DiagramStep,
+  name: string | undefined,
+): string | undefined {
+  const [first] = step.items;
+  return (
+    step.props?.['group'] ??
+    (name === undefined || first === undefined ? undefined : `${name}.${first}`)
+  );
+}
+
+/** Returns the groups of the steps that show each item of `steps`. */
+function groupsOfItems(
+  steps: readonly DiagramStep[],
+  name: string | undefined,
+  groups = new Map<string, string>(),
+): Map<string, string> {
+  for (const step of steps) {
+    const group = groupOf(step, name);
+    if (group !== undefined) {
+      for (const item of step.items) {
+        groups.set(item, group);
+      }
+    }
+    groupsOfItems(step.steps ?? [], name, groups);
+  }
+  return groups;
+}
+
 /** Returns the factor of `scale`, or 1 if it isn't a positive number. */
 function scaleOf(scale: number | string): number {
   const factor = Number(scale);
@@ -230,6 +263,8 @@ interface RenderedSvgProps {
   prefix: string;
   /** The name of the diagram on the slide, if any. */
   name: string | undefined;
+  /** The groups of the steps that show the items, by their ids. */
+  groups: ReadonlyMap<string, string>;
   onTarget: (target: DiagramTarget | undefined) => void;
 }
 
@@ -240,6 +275,7 @@ function RenderedSvg({
   scale,
   prefix,
   name,
+  groups,
   onTarget,
 }: RenderedSvgProps): JSX.Element {
   const result = useCached(diagramCache, {
@@ -275,14 +311,15 @@ function RenderedSvg({
     if (name === undefined || root === null || html === '') {
       return undefined;
     }
-    // The items of a named diagram are named after it, e.g., `pipeline.A`.
+    // The items of a named diagram are named after it, e.g., `pipeline.A`,
+    // and are in the steps that show them, e.g., for callouts pointing at them.
     const unregister = [...findItems(root)].map(([id, element]) =>
-      register(`${name}.${id}`, element),
+      register(`${name}.${id}`, element, { group: groups.get(id) }),
     );
     return () => {
       for (const done of unregister) done();
     };
-  }, [register, name, html]);
+  }, [register, name, groups, html]);
   if (result.status === 'error') {
     return (
       <DiagramError
@@ -317,6 +354,7 @@ interface DiagramContentProps {
   width: string | undefined;
   scale: number;
   name: string | undefined;
+  groups: ReadonlyMap<string, string>;
   onTarget: (target: DiagramTarget | undefined) => void;
 }
 
@@ -330,6 +368,7 @@ function DiagramContent({
   width,
   scale,
   name,
+  groups,
   onTarget,
 }: DiagramContentProps): JSX.Element {
   const [element, setElement] = useState<HTMLDivElement | null>(null);
@@ -385,6 +424,7 @@ function DiagramContent({
           scale={scale}
           prefix={prefix}
           name={name}
+          groups={groups}
           onTarget={onTarget}
         />
       )}
@@ -449,15 +489,13 @@ function ItemStep({
   enclosing,
   name,
 }: ItemStepProps): JSX.Element {
-  const [first] = step.items;
-  const group =
-    name === undefined || first === undefined ? undefined : `${name}.${first}`;
+  const group = groupOf(step, name);
   return (
     <Step
       component="span"
       hidden
-      {...(group === undefined ? {} : { group })}
       {...step.props}
+      {...(group === undefined ? {} : { group })}
     >
       <ItemAppearance
         items={step.items}
@@ -539,6 +577,10 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
   } = useThemeProps({ props: inProps, name: 'SeminarDiagram' });
   const { kind } = useSlideView();
   const [target, setTarget] = useState<DiagramTarget>();
+  const groups = useMemo(
+    () => groupsOfItems(steps, stepProps.id),
+    [steps, stepProps.id],
+  );
   if (kind === 'document') {
     // Pele only renders diagrams in the browser.
     return (
@@ -579,6 +621,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
           width={cssLength(width)}
           scale={scaleOf(scale)}
           name={stepProps.id}
+          groups={groups}
           onTarget={setTarget}
         />
       )}

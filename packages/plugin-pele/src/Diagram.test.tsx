@@ -168,6 +168,45 @@ describe('Diagram', () => {
     ]);
   });
 
+  it('nests steps pointing at items in the steps that show them', async () => {
+    const user = userEvent.setup();
+    function Pointer() {
+      return (
+        <Step in={useSlideElement('pipeline.B')} data-testid="pointer">
+          Points at B
+        </Step>
+      );
+    }
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Pointer />
+          <Diagram
+            source={'flowchart LR\n  A[Parse] --> B[Render] --> C[Show]'}
+            diagrams={[flowchart]}
+            id="pipeline"
+            steps={[{ items: ['B'] }, { items: ['C'] }]}
+          />
+        </Slide>
+      </Deck>,
+    );
+    await screen.findByText('Render');
+    await waitFor(() => {
+      expect(
+        document
+          .querySelector('[data-id="B"]')
+          ?.classList.contains(diagramClasses.hidden),
+      ).toBe(true);
+    });
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=pipeline.B');
+    await user.keyboard('{ArrowRight}');
+    // Nested in the step of `B`, before `C`.
+    expect(window.location.hash).toBe('#slide=1&step=pipeline.B.1');
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=pipeline.C');
+  });
+
   it('shows the formulas in labels, in the size of the text', async () => {
     render(
       <Deck>

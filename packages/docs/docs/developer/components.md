@@ -243,6 +243,11 @@ unique on their slide:
   an `anchor` prop.
 - `<SlideElement name="arch" component="img" …>` renders an element with a
   name. MDX turns elements with an `id`, like `<img id="arch">`, into these.
+- `useSlideElementRegistry()` returns a function that names an element that
+  the component doesn't render itself, like a node of a diagram, until the
+  function that it returns is called. With `{ group }`, the element is also
+  in the step of that step group, even if it isn't inside its elements, so
+  that callouts pointing at it come in that step.
 
 In MDX, components get the name of `#name` or `id=name` as their `id` prop,
 so they should pass it on to `useSlideElementRef`, `SlideElement`, or a

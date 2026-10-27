@@ -198,7 +198,8 @@ because the rules have their names.
 
 Only the items of named diagrams have names, which keeps the items of
 different diagrams apart. Groups name steps, not elements, so callouts can't
-point at them.
+point at them. A callout pointing at an item comes in the step that shows the
+item, like it would for the other elements of a slide.
 
 ## Styling diagrams
 

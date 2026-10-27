@@ -311,6 +311,8 @@ export class StepStore {
   readonly #owners = new Map<Element, StepNode>();
   readonly #listeners = new Set<() => void>();
   readonly #groups = new Map<string, StepNode>();
+  /** Elements in the steps of groups that they aren't inside of. */
+  readonly #elementGroups = new Map<Element, string>();
   readonly #statuses = new WeakMap<StepNode, StepStatus>();
   readonly #position: StepPosition;
   #unsubscribePosition: (() => void) | undefined;
@@ -366,6 +368,26 @@ export class StepStore {
         this.#nodes.delete(node);
       }
       this.#invalidateLayout();
+    };
+  }
+
+  /**
+   * Puts `element` in the step of the group `name`, as if it was inside the
+   * elements of the group, e.g., a part of a figure that a step elsewhere
+   * shows, so that steps nested in the step of the element, like callouts
+   * pointing at it, are nested in that step. Unlike the elements of the group,
+   * it doesn't place the step.
+   *
+   * @returns A function that takes the element out of the group.
+   */
+  addToGroup(element: Element, name: string): () => void {
+    this.#elementGroups.set(element, name);
+    this.#invalidateLayout();
+    return () => {
+      if (this.#elementGroups.get(element) === name) {
+        this.#elementGroups.delete(element);
+        this.#invalidateLayout();
+      }
     };
   }
 
@@ -1055,7 +1077,8 @@ export class StepStore {
 
   /**
    * Finds the closest stepper enclosing `element` of `node`, or that
-   * `element` is an element of, if `inclusive`.
+   * `element` is an element of, if `inclusive`, including the steppers of the
+   * groups that elements are added to (see {@link addToGroup}).
    */
   #findParent(
     node: StepNode,
@@ -1068,6 +1091,14 @@ export class StepStore {
       ancestor !== null;
       ancestor = ancestor.parentElement
     ) {
+      const group = this.#findGroup(
+        this.#elementGroups.get(ancestor),
+        node,
+        anchors,
+      );
+      if (group !== undefined) {
+        return group;
+      }
       const owner = this.#owners.get(ancestor);
       if (owner !== undefined && owner !== node && anchors.has(owner)) {
         return owner;
