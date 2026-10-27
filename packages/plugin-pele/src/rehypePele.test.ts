@@ -80,10 +80,10 @@ describe('rehypePele', () => {
 
   it('takes the size of diagrams after the language', async () => {
     const { code } = await compileDeck(
-      '```mermaid width=600 zoom=1.5 fontSize=12\nflowchart LR\n  A --> B\n```',
+      '```mermaid width=600 scale=1.5 fontSize=12\nflowchart LR\n  A --> B\n```',
     );
     expect(code).toContain('width: "600"');
-    expect(code).toContain('zoom: "1.5"');
+    expect(code).toContain('scale: "1.5"');
     expect(code).toContain('fontSize: "12"');
   });
 

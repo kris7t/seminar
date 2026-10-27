@@ -80,11 +80,11 @@ export interface DiagramProps extends Omit<
    * How large the diagram is, compared to its size with the text of diagrams
    * of the slide, e.g., `1.5`. Defaults to 1.
    */
-  zoom?: number | string | undefined;
+  scale?: number | string | undefined;
   /**
-   * The size of the text of the diagram, before zooming, in logical slide
+   * The size of the text of the diagram, before scaling, in logical slide
    * pixels or any CSS length, e.g., `0.6em` of the text around it. Defaults
-   * to `0.75em`. Unlike zooming, it keeps the space between nodes.
+   * to `0.75em`. Unlike scaling, it keeps the space between nodes.
    */
   fontSize?: number | string | undefined;
 }
@@ -171,7 +171,7 @@ const DiagramSvg = styled('div', {
   display: 'flex',
   justifyContent: 'center',
   maxWidth: '100%',
-  // Zoomed, but not wider than the diagram, like Pele does.
+  // Scaled, but not wider than the diagram, like Pele does.
   '& > svg': {
     width: 'var(--SeminarDiagram-width)',
     maxWidth: '100%',
@@ -215,9 +215,9 @@ interface DiagramTarget {
 
 const NO_FORMULAS: Readonly<Record<string, DiagramFormula>> = {};
 
-/** Returns the factor of `zoom`, or 1 if it isn't a positive number. */
-function zoomOf(zoom: number | string): number {
-  const factor = Number(zoom);
+/** Returns the factor of `scale`, or 1 if it isn't a positive number. */
+function scaleOf(scale: number | string): number {
+  const factor = Number(scale);
   return Number.isFinite(factor) && factor > 0 ? factor : 1;
 }
 
@@ -225,7 +225,7 @@ interface RenderedSvgProps {
   source: string;
   formulas: Readonly<Record<string, DiagramFormula>>;
   layout: Layout;
-  zoom: number;
+  scale: number;
   /** The prefix of the ids of the diagram in this rendering of the slide. */
   prefix: string;
   /** The name of the diagram on the slide, if any. */
@@ -237,7 +237,7 @@ function RenderedSvg({
   source,
   formulas,
   layout,
-  zoom,
+  scale,
   prefix,
   name,
   onTarget,
@@ -247,8 +247,8 @@ function RenderedSvg({
     formulas,
     fontFamily: layout.family,
     fontSize: layout.size,
-    // Laid out to fit the width at the size before zooming.
-    maxWidth: layout.width > 0 ? Math.floor(layout.width / zoom) : undefined,
+    // Laid out to fit the width at the size before scaling.
+    maxWidth: layout.width > 0 ? Math.floor(layout.width / scale) : undefined,
   });
   // Keeps showing the diagram while it changes, e.g., while editing.
   const [previous, setPrevious] = useState<RenderedDiagram>();
@@ -301,7 +301,7 @@ function RenderedSvg({
         diagram === undefined
           ? undefined
           : ({
-              '--SeminarDiagram-width': `${String(diagram.width * zoom)}px`,
+              '--SeminarDiagram-width': `${String(diagram.width * scale)}px`,
             } as CSSProperties)
       }
       // Rendered by Pele, which escapes the text of the diagram.
@@ -315,7 +315,7 @@ interface DiagramContentProps {
   source: string;
   formulas: Readonly<Record<string, DiagramFormula>>;
   width: string | undefined;
-  zoom: number;
+  scale: number;
   name: string | undefined;
   onTarget: (target: DiagramTarget | undefined) => void;
 }
@@ -328,7 +328,7 @@ function DiagramContent({
   source,
   formulas,
   width,
-  zoom,
+  scale,
   name,
   onTarget,
 }: DiagramContentProps): JSX.Element {
@@ -382,7 +382,7 @@ function DiagramContent({
           source={source}
           formulas={formulas}
           layout={layout}
-          zoom={zoom}
+          scale={scale}
           prefix={prefix}
           name={name}
           onTarget={onTarget}
@@ -489,12 +489,13 @@ function ItemSteps({ steps, target }: ItemStepsProps): JSX.Element {
  * with the previous step, like images, unless it's placed otherwise. Its `id`
  * names it on the slide, e.g., to point callouts at it, and its items, like
  * nodes and edges with ids, after it, e.g., `pipeline.A` for the node `A` of
- * the diagram `pipeline`. Documents show its
- * `source` in a plain `pre` instead, with `mermaid` in `data-lang`.
+ * the diagram `pipeline`. Documents show its `source` in a plain `pre`
+ * instead, with `mermaid` in `data-lang`.
  *
  * It takes the width available, or its `width`, and diagrams wider than that
- * are laid out to fit it. Its `zoom` scales it, e.g., `1.5` for larger text,
- * and wide diagrams are laid out to fit at the size before zooming.
+ * are laid out to fit it. Its `scale` makes it larger or smaller, e.g., `1.5`
+ * for larger text, and wide diagrams are laid out to fit at the size before
+ * scaling.
  *
  * MDX decks render ` ```mermaid ` code blocks like this, with the attributes
  * after the language, e.g., ` ```mermaid #pipeline step `.
@@ -510,7 +511,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
     steps = [],
     formulas = NO_FORMULAS,
     width,
-    zoom = 1,
+    scale = 1,
     fontSize,
     className,
     style,
@@ -556,7 +557,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
           source={source}
           formulas={formulas}
           width={cssLength(width)}
-          zoom={zoomOf(zoom)}
+          scale={scaleOf(scale)}
           name={stepProps.id}
           onTarget={setTarget}
         />

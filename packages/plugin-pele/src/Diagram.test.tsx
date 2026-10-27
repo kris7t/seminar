@@ -141,18 +141,18 @@ describe('Diagram', () => {
     );
   });
 
-  it('lays out wide diagrams to fit their width before zooming', async () => {
+  it('lays out wide diagrams to fit their width before scaling', async () => {
     stubWidths(300);
     render(
       <Deck>
         <Slide title="Diagram">
-          <Diagram source={WIDE} diagrams={[flowchart]} zoom="1.5" />
+          <Diagram source={WIDE} diagrams={[flowchart]} scale="1.5" />
         </Slide>
       </Deck>,
     );
     await screen.findByText('Present');
     const [width, height] = sizeOfSvg();
-    // Laid out from top to bottom to fit 200 pixels, zoomed to 300 at most.
+    // Laid out from top to bottom to fit 200 pixels, scaled to 300 at most.
     expect(width).toBeGreaterThan(0);
     expect(width).toBeLessThanOrEqual(200);
     expect(height).toBeGreaterThan(width);

@@ -64,14 +64,14 @@ The first line of the block also takes the size of the diagram:
 - `width` sets its width, in logical slide pixels or any CSS length. Diagrams
   are laid out in it even if it's more than available, and shown smaller to
   fit, like images.
-- `zoom` scales it, e.g., `zoom=1.5` for larger text. Zoomed diagrams are laid
-  out to fit their width before zooming.
-- `fontSize` sets the size of its text before zooming, in logical slide pixels
-  or any CSS length, e.g., `0.6em` of the text around it. Unlike zooming, it
+- `scale` makes it larger or smaller, e.g., `scale=1.5` for larger text.
+  Scaled diagrams are laid out to fit their width before scaling.
+- `fontSize` sets the size of its text before scaling, in logical slide pixels
+  or any CSS length, e.g., `0.6em` of the text around it. Unlike scaling, it
   keeps the space between nodes, so smaller text squeezes in more.
 
 ````mdx
-```mermaid width=600 zoom=1.5
+```mermaid width=600 scale=1.5
 flowchart LR
   A --> B
 ```
