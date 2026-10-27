@@ -1,5 +1,10 @@
 import { parse } from 'pele/core';
 
+/** The id of the `index`th series of an XY chart, from 0. */
+export function seriesId(index: number): string {
+  return `series-${String(index + 1)}`;
+}
+
 import {
   BLOCK_ENDS,
   BLOCK_STARTS,
@@ -38,6 +43,30 @@ function annotateFrames(svg: string, source: string): string {
   return svg.replaceAll(
     pattern,
     (match) => `<g data-id="${frames[index++] ?? ''}"${match.slice(2)}`,
+  );
+}
+
+/**
+ * Gives the series of an XY chart ids by their order, like `series-1`, which
+ * is also the order of their colors, e.g., `--pele-series-1`.
+ */
+function annotateSeries(svg: string): string {
+  let index = 0;
+  return svg.replaceAll(
+    /<g class="pele-series /g,
+    (match) => `<g data-id="${seriesId(index++)}"${match.slice(2)}`,
+  );
+}
+
+/**
+ * Moves the ids of the references to rules of a railroad diagram to
+ * `data-rule`, so that the id of a rule is only on the rule, which steps
+ * show without the references to it in other rules.
+ */
+function annotateReferences(svg: string): string {
+  return svg.replaceAll(
+    /(<g class="pele-node pele-nonterminal"[^>]*?) data-id=/g,
+    '$1 data-rule=',
   );
 }
 
@@ -108,7 +137,7 @@ function annotateEdges(svg: string): string {
 /**
  * Gives the elements of a diagram of `type` that Pele renders without an id
  * the ids that steps of their items need, e.g., the frames of the blocks of
- * sequence diagrams, and the edges of mind maps.
+ * sequence diagrams, the edges of mind maps, and the series of XY charts.
  */
 export function annotate(svg: string, type: string, source: string): string {
   switch (type) {
@@ -116,6 +145,10 @@ export function annotate(svg: string, type: string, source: string): string {
       return annotateFrames(svg, source);
     case 'mindmap':
       return annotateEdges(svg);
+    case 'xychart':
+      return annotateSeries(svg);
+    case 'railroad':
+      return annotateReferences(svg);
     default:
       return svg;
   }

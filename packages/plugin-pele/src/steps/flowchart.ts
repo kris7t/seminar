@@ -1,4 +1,4 @@
-import type { FlowchartModel } from 'pele';
+import type { AgentflowModel, FlowchartModel } from 'pele';
 
 import {
   emptyItems,
@@ -12,15 +12,19 @@ import {
 /** A label that marks a node whose id a statement doesn't show plainly. */
 const MARKER = 'seminar-step-marker';
 
+/** A flowchart, or a diagram written like one, e.g., of agent workflows. */
+type FlowModel = FlowchartModel | AgentflowModel;
+
 /** Parses a statement alone, closing a subgraph that it opens. */
 function parseStatement(
   header: string,
   text: string,
-): FlowchartModel | undefined {
-  return parseAlone(header, text, 'flowchart', ['', '\nend']);
+  type: FlowModel['type'],
+): FlowModel | undefined {
+  return parseAlone(header, text, type, ['', '\nend']);
 }
 
-function itemsOf(model: FlowchartModel): Items {
+function itemsOf(model: FlowModel): Items {
   const items = emptyItems();
   for (const [id, node] of model.nodes) {
     items.labels.set(id, node.text ?? id);
@@ -45,7 +49,7 @@ function itemsOf(model: FlowchartModel): Items {
  * they occur, which a statement parsed alone doesn't know.
  */
 function edgesOfLines(
-  model: FlowchartModel,
+  model: FlowModel,
   header: string,
   lines: readonly Line[],
 ): Map<number, string[]> {
@@ -59,7 +63,7 @@ function edgesOfLines(
   }
   const result = new Map<number, string[]>();
   for (const line of lines.filter(isStatement)) {
-    const statement = parseStatement(header, line.text);
+    const statement = parseStatement(header, line.text, model.type);
     if (statement === undefined) {
       continue;
     }
@@ -80,12 +84,13 @@ function edgesOfLines(
 }
 
 /**
- * Steps of the items of flowcharts. A statement is about its edges, the nodes
+ * Steps of the items of flowcharts, swimlanes, and agent workflows. A
+ * statement is about its edges, the nodes
  * that it gives a label or a shape, but not those that it only refers to, and
  * the subgraph that it opens. Items are in the subgraphs around them.
  */
 export function flowchartAdapter(
-  model: FlowchartModel,
+  model: FlowModel,
   header: string,
   lines: readonly Line[],
 ): Adapter {
@@ -93,7 +98,7 @@ export function flowchartAdapter(
   return {
     items: itemsOf(model),
     about: (line) => {
-      const statement = parseStatement(header, line.text);
+      const statement = parseStatement(header, line.text, model.type);
       if (statement === undefined) {
         return undefined;
       }
@@ -115,6 +120,7 @@ export function flowchartAdapter(
       const marked = parseStatement(
         header,
         `${before}@{ label: "${MARKER}" }${after}`,
+        model.type,
       );
       return [...(marked?.nodes.values() ?? [])].find(
         (node) => node.text === MARKER,

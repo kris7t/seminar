@@ -1,9 +1,15 @@
 import { parse, render } from 'pele';
+import { register } from 'pele/core';
+import sequence from 'pele/diagrams/sequence';
 import { VFile } from 'vfile';
 import { describe, expect, it } from 'vitest';
 
+import { annotate } from '../annotate.ts';
 import type { DiagramStep } from '../Diagram.tsx';
 import { findSteps } from './index.ts';
+
+// For the annotations of sequence diagrams.
+register(sequence);
 
 function stepsOf(source: string): {
   steps: DiagramStep[];
@@ -25,8 +31,9 @@ function itemsOf(steps: readonly DiagramStep[]): unknown[] {
 
 /** The ids of the elements of a diagram, as the DOM has them. */
 function elementIds(source: string): Set<string> {
+  const { svg: rendered, type } = render(source);
   const svg = new DOMParser().parseFromString(
-    render(source).svg,
+    annotate(rendered, type, source),
     'image/svg+xml',
   );
   return new Set(
@@ -113,8 +120,8 @@ describe('findSteps', () => {
     expect(stepsOf('flowchart LR\n  %% step\n  A\n').messages).toEqual([
       '1: Cannot tell what the step is about, list its items like `%% step[A, A->B]`',
     ]);
-    expect(stepsOf('xychart-beta\n  %% step\n  bar [1, 2]').messages).toEqual([
-      "1: Steps of items aren't supported in diagrams of the type `xychart`",
+    expect(stepsOf('info\n  %% step\n  showInfo').messages).toEqual([
+      "1: Steps of items aren't supported in diagrams of the type `info`",
     ]);
   });
 
@@ -185,9 +192,8 @@ describe('findSteps', () => {
       [['i1', 'i2'], [['i3']]],
       ['i5'],
     ]);
-    // The frames of blocks get their ids when diagrams are rendered.
     const ids = elementIds(source);
-    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual(['i1']);
+    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
   });
 
   it('steps participants in their shape data', () => {
@@ -571,6 +577,154 @@ describe('findSteps', () => {
         '  merge dev id: "merged"',
       ],
       steps: [['dev', 'work'], ['merged']],
+    },
+    {
+      type: 'XY charts',
+      source: [
+        'xychart',
+        '  x-axis [jan, feb, mar]',
+        '  bar [1, 2, 3]',
+        '  %% step',
+        '  line [3, 2, 1]',
+      ],
+      steps: [['series-2']],
+    },
+    {
+      type: 'swimlanes',
+      source: [
+        'swimlane-beta LR',
+        '  subgraph Customer',
+        '    request[Request]',
+        '  end',
+        '  %% step',
+        '  subgraph Support',
+        '    triage[Triage]',
+        '  end',
+        '  request --> triage',
+      ],
+      steps: [['triage', 'Support', 'L_request_triage_0']],
+    },
+    {
+      type: 'agent workflows',
+      source: [
+        'agentflow-beta TB',
+        '  flow intake["Intake"]',
+        '    receive["Receive"]@{ shape: input }',
+        '  end',
+        '  %% step',
+        '  validate["Validate"]@{ shape: task }',
+        '  receive --> validate',
+      ],
+      steps: [['validate', 'L_receive_validate_0']],
+    },
+    {
+      type: 'tree views',
+      source: [
+        'treeView-beta',
+        '  project/',
+        '    %% step',
+        '    src/',
+        '      index.js ## entry point',
+        '    package.json',
+      ],
+      steps: [['src', 'index.js']],
+    },
+    {
+      type: 'Ishikawa diagrams',
+      source: [
+        'ishikawa-beta',
+        '  Blurry Photo',
+        '  Process',
+        '    Out of focus',
+        '  %% step',
+        '  Equipment',
+        '    Dirty lens',
+      ],
+      steps: [['Equipment']],
+    },
+    {
+      type: 'Cynefin diagrams',
+      source: [
+        'cynefin-beta',
+        '  complex',
+        '    "Market research"',
+        '    %% step',
+        '    "Experiments"',
+        '  %% step',
+        '  complicated',
+        '    "Analysis"',
+        '  %% step',
+        '  complex --> complicated : "Pattern"',
+      ],
+      steps: [
+        ['Experiments'],
+        ['complicated', 'Analysis'],
+        ['complex-complicated'],
+      ],
+    },
+    {
+      type: 'Wardley maps',
+      source: [
+        'wardley-beta',
+        '  anchor Business [0.95, 0.63]',
+        '  %% step',
+        '  component Cup of Tea [0.79, 0.61]',
+        '  component Kettle [0.43, 0.35]',
+        '  Business -> Cup of Tea',
+        '  %% step',
+        '  Cup of Tea -> Kettle',
+        '  evolve Kettle 0.62',
+      ],
+      steps: [['Cup of Tea', 'Business-Cup of Tea'], ['Cup of Tea-Kettle']],
+    },
+    {
+      type: 'event models',
+      source: [
+        'eventmodeling',
+        '  timeframe 01 ui CartUI',
+        '  %% step',
+        '  timeframe 02 command AddItem',
+        '  timeframe 03 event ItemAdded',
+      ],
+      // `03` is shown with the diagram, so the relation to it is shown with `02`.
+      steps: [['02', '01-02', '02-03']],
+    },
+    {
+      type: 'Venn diagrams',
+      source: [
+        'venn-beta',
+        '  set Desirable',
+        '  set Feasible',
+        '  %% step',
+        '  union Desirable,Feasible["Buildable"]',
+      ],
+      steps: [['Desirable|Feasible']],
+    },
+    {
+      type: 'railroad diagrams',
+      source: [
+        'railroad-ebnf-beta',
+        '  expression = term ( "+" term )* ;',
+        '  %% step',
+        '  term = "x" | "(" expression ")" ;',
+      ],
+      steps: [['term']],
+    },
+    {
+      type: 'use case diagrams',
+      source: [
+        'usecase-beta',
+        '  actor Customer',
+        '  systemBoundary Store',
+        '    Browse("Browse catalog")',
+        '    %% step',
+        '    Checkout("Checkout")',
+        '  end',
+        '  Customer --> Browse',
+        '  %% step',
+        '  Customer --> Checkout',
+      ],
+      steps: [['Checkout'], ['edge-1']],
     },
   ])('steps the items of $type', ({ source: lines, steps: expected }) => {
     const source = lines.join('\n');

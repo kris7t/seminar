@@ -70,9 +70,9 @@ enabled, which would also make dollar signs in the text of slides math.
 
 ## Revealing items in steps
 
-The items of the diagrams of Mermaid, except XY charts, can be shown in steps
-of their own. The layout of the diagram stays the same, with room for the
-items that aren't shown yet. Write `%% step` before a statement to show what it's about in a new step:
+The items of diagrams can be shown in steps of their own. The layout of the
+diagram stays the same, with room for the items that aren't shown yet. Write
+`%% step` before a statement to show what it's about in a new step:
 
 ````mdx
 ```mermaid
@@ -105,6 +105,16 @@ What a statement is about depends on the type of the diagram:
 | Radar            | its curves                                                                                                       |
 | Sankey           | its link, and the nodes that it mentions first                                                                   |
 | Git graph        | the commit that it makes, like with `commit` or `merge`, or the branch that it creates                           |
+| XY chart         | its series, `bar` or `line`, named `series-1`, `series-2`, and so on                                             |
+| Swimlane, agents | the same as in flowcharts, with `flow` like `subgraph`                                                           |
+| Use case         | its relationships, the actors and use cases that it declares, and the system boundary that it opens              |
+| Tree view        | its file or directory                                                                                            |
+| Ishikawa         | its category, with its causes                                                                                    |
+| Cynefin          | the domain that it opens, its item, or its transition                                                            |
+| Wardley          | the anchor or component that it declares, with its evolution, or its link                                        |
+| Event modeling   | its time frame                                                                                                   |
+| Venn             | its set or union                                                                                                 |
+| Railroad         | the rule that it starts                                                                                          |
 
 Items that a statement only names, like `compile` in
 `compile --> bundle["Bundle"]`, keep their own step.
@@ -151,6 +161,8 @@ flowchart LR
 Give edges an id, like `e1@` in `A e1@--> B`, to point at them. Nodes of mind
 maps without an id are named by their text, and if two items have the same id,
 the name refers to the first of them. Give them ids, like `ex1[Examples]`.
+The references to rules in railroad diagrams aren't named, because the rules
+have their names.
 
 ## Styling diagrams
 

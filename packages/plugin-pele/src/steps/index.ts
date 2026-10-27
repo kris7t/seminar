@@ -17,9 +17,20 @@ import {
   sankeyAdapter,
   timelineAdapter,
   treemapAdapter,
+  xyChartAdapter,
 } from './charts.ts';
 import { classAdapter } from './class.ts';
 import { erAdapter } from './er.ts';
+import {
+  cynefinAdapter,
+  eventModelingAdapter,
+  ishikawaAdapter,
+  railroadAdapter,
+  treeViewAdapter,
+  usecaseAdapter,
+  vennAdapter,
+  wardleyAdapter,
+} from './extensions.ts';
 import { flowchartAdapter } from './flowchart.ts';
 import { kanbanAdapter, mindmapAdapter } from './outline.ts';
 import { requirementAdapter } from './requirement.ts';
@@ -55,7 +66,7 @@ function adapterOf(
   header: string,
   lines: readonly Line[],
 ): Adapter | undefined {
-  if (model.type === 'flowchart') {
+  if (model.type === 'flowchart' || model.type === 'agentflow') {
     return flowchartAdapter(model, header, lines);
   }
   if (model.type === 'state') {
@@ -117,6 +128,33 @@ function adapterOf(
   }
   if (model.type === 'gitGraph') {
     return gitAdapter(model, lines);
+  }
+  if (model.type === 'xychart') {
+    return xyChartAdapter(model, lines);
+  }
+  if (model.type === 'treeView') {
+    return treeViewAdapter(model, lines);
+  }
+  if (model.type === 'ishikawa') {
+    return ishikawaAdapter(model, lines);
+  }
+  if (model.type === 'cynefin') {
+    return cynefinAdapter(model);
+  }
+  if (model.type === 'wardley') {
+    return wardleyAdapter(model, header);
+  }
+  if (model.type === 'eventmodeling') {
+    return eventModelingAdapter(model);
+  }
+  if (model.type === 'venn') {
+    return vennAdapter(model, lines);
+  }
+  if (model.type === 'railroad') {
+    return railroadAdapter(model);
+  }
+  if (model.type === 'usecase') {
+    return usecaseAdapter(model, header, lines);
   }
   return undefined;
 }

@@ -9,7 +9,10 @@ import type {
   SankeyModel,
   TimelineModel,
   TreemapModel,
+  XyChartModel,
 } from 'pele';
+
+import { seriesId } from '../annotate.ts';
 
 import {
   emptyItems,
@@ -295,4 +298,20 @@ export function gitAdapter(model: GitModel, lines: readonly Line[]): Adapter {
     about: (line) =>
       next === commits.length ? result.get(line.index) : undefined,
   };
+}
+
+/** Steps of the series of XY charts, i.e., bars or lines, one on each line. */
+export function xyChartAdapter(
+  model: XyChartModel,
+  lines: readonly Line[],
+): Adapter {
+  return itemPerLineAdapter(
+    model.plots.map(({ type, title }, index) => ({
+      id: seriesId(index),
+      label: title === '' ? type : title,
+      parent: undefined,
+    })),
+    lines,
+    (line) => startsWith(line, ['bar', 'line']),
+  );
 }
