@@ -664,15 +664,37 @@ function InteractiveDeck({
   const openPrint = useCallback(() => {
     setPrintOpen(true);
   }, []);
+  // Whether the pages are ready, and only wait for our dialog to close.
+  const [printReady, setPrintReady] = useState(false);
   const closePrint = useCallback(() => {
     setPrintOpen(false);
     setPrinting(undefined);
+    setPrintReady(false);
   }, []);
-  const print = useCallback(() => {
-    // Blocks until the print dialog of the browser is closed.
-    window.print();
-    closePrint();
-  }, [closePrint]);
+  const onPrintReady = useCallback(() => {
+    setPrintOpen(false);
+    setPrintReady(true);
+  }, []);
+  // The print dialog of the browser blocks the page, which it keeps showing
+  // behind it, including animations, so print once our dialog is closed.
+  useEffect(() => {
+    if (!printReady) {
+      return undefined;
+    }
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    // After the next frame is painted.
+    const frame = requestAnimationFrame(() => {
+      timeout = setTimeout(() => {
+        // Blocks until the print dialog of the browser is closed.
+        window.print();
+        closePrint();
+      }, 0);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+    };
+  }, [printReady, closePrint]);
   const presentation = usePresentation(presenterView);
   const closePresenterView = presenterView.close;
   const onEscape = useCallback(() => {
@@ -1060,7 +1082,7 @@ function InteractiveDeck({
                         slides={slides}
                         spares={spares}
                         options={printing}
-                        onReady={print}
+                        onReady={onPrintReady}
                       />
                     )}
                     {showOverview && (

@@ -79,6 +79,9 @@ async function print(
 ): Promise<string[]> {
   let printed: string[] | undefined;
   vi.spyOn(window, 'print').mockImplementation(() => {
+    // Nothing shows that the pages are being prepared behind the dialog of
+    // the browser.
+    expect(screen.queryByRole('progressbar')).toBeNull();
     printed = sheets();
   });
   await user.keyboard('{Control>}p{/Control}');
