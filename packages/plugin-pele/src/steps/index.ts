@@ -3,10 +3,14 @@ import { parse, type DiagramModel } from 'pele';
 import type { VFile } from 'vfile';
 
 import type { DiagramStep } from '../Diagram.tsx';
+import { architectureAdapter } from './architecture.ts';
+import { blockAdapter } from './block.ts';
+import { c4Adapter } from './c4.ts';
 import { classAdapter } from './class.ts';
 import { erAdapter } from './er.ts';
 import { flowchartAdapter } from './flowchart.ts';
 import { kanbanAdapter, mindmapAdapter } from './outline.ts';
+import { requirementAdapter } from './requirement.ts';
 import { sequenceAdapter } from './sequence.ts';
 import {
   isStatement,
@@ -59,6 +63,18 @@ function adapterOf(
   }
   if (model.type === 'er') {
     return erAdapter(model, header, lines);
+  }
+  if (model.type === 'requirement') {
+    return requirementAdapter(model, header, lines);
+  }
+  if (model.type === 'architecture') {
+    return architectureAdapter(model, lines);
+  }
+  if (model.type === 'c4') {
+    return c4Adapter(model, header);
+  }
+  if (model.type === 'block') {
+    return blockAdapter(model, header, lines);
   }
   return undefined;
 }

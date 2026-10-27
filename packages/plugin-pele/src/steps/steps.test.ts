@@ -312,4 +312,110 @@ describe('findSteps', () => {
     expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
     expect(steps[2]?.props?.['title']).toBe('Person');
   });
+  it('steps the services, groups, and edges of architecture diagrams', () => {
+    const source = [
+      'architecture-beta',
+      '  service web(internet)[Web]',
+      '  %% step',
+      '  group api(cloud)[API]',
+      '  service server(server)[Server] in api',
+      '  %% step',
+      '  service db(database)[Database] in api',
+      '  web:R -- L:server',
+      '  %% step',
+      '  server:R -- L:db',
+    ].join('\n');
+    const { steps, messages } = stepsOf(source);
+    expect(messages).toEqual([]);
+    expect(itemsOf(steps)).toEqual([
+      // The edge between services in the group is in the step of the group.
+      [
+        ['api', 'server', 'web-server'],
+        [['db'], ['server-db']],
+      ],
+    ]);
+    const ids = elementIds(source);
+    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  it('steps the requirements and relations of requirement diagrams', () => {
+    const source = [
+      'requirementDiagram',
+      '  requirement fast {',
+      '    id: 1',
+      '    text: be fast',
+      '  }',
+      '  %% step',
+      '  element cache {',
+      '    type: module',
+      '  }',
+      '  %% step',
+      '  cache - satisfies -> fast',
+      '  %% step',
+      '  cache - verifies -> fast',
+    ].join('\n');
+    const { steps, messages } = stepsOf(source);
+    expect(messages).toEqual([]);
+    expect(itemsOf(steps)).toEqual([
+      ['cache'],
+      ['cache-fast-0'],
+      ['cache-fast-1'],
+    ]);
+    const ids = elementIds(source);
+    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  it('steps the elements, boundaries, and relations of C4 diagrams', () => {
+    const source = [
+      'C4Context',
+      '  Person(customer, "Customer")',
+      '  %% step',
+      '  Enterprise_Boundary(bank, "Bank") {',
+      '    System(core, "Core")',
+      '    %% step',
+      '    SystemDb(db, "Ledger")',
+      '  }',
+      '  Rel(customer, core, "Uses")',
+      '  %% step',
+      '  Rel(core, db, "Reads")',
+    ].join('\n');
+    const { steps, messages } = stepsOf(source);
+    expect(messages).toEqual([]);
+    expect(itemsOf(steps)).toEqual([
+      [
+        ['bank', 'core', 'customer-core'],
+        [['db'], ['core-db']],
+      ],
+    ]);
+    const ids = elementIds(source);
+    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  it('steps the blocks and edges of block diagrams', () => {
+    const source = [
+      'block-beta',
+      '  columns 3',
+      '  a["Source"] b',
+      '  %% step',
+      '  block',
+      '    c',
+      '    %% step',
+      '    d',
+      '  end',
+      '  a --> b',
+      '  %% step',
+      '  a --> b',
+      '  %% step',
+      '  b --> e["Sink"]',
+    ].join('\n');
+    const { steps, messages } = stepsOf(source);
+    expect(messages).toEqual([]);
+    expect(itemsOf(steps)).toEqual([
+      [['id-1', 'c'], [['d']]],
+      ['2-a-b'],
+      ['e', '1-b-e'],
+    ]);
+    const ids = elementIds(source);
+    expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
+  });
 });
