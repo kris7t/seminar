@@ -52,6 +52,31 @@ flowchart LR
 ::callout[The pipeline]{for=pipeline}
 ````
 
+## Size
+
+Diagrams take the width available to them, e.g., of their column. Diagrams
+wider than that are laid out again to fit it, e.g., flowcharts from top to
+bottom, and narrower ones keep their size, with their text three quarters of
+the size of the text of the slide.
+
+`width` sets the width, in logical slide pixels or any CSS length. Diagrams
+are laid out in it even if it's more than available, and shown smaller to fit,
+like images. `zoom` scales the diagram, e.g., `zoom=1.5` for larger text.
+Zoomed diagrams are laid out to fit their width before zooming:
+
+````mdx
+```mermaid width=600 zoom=1.5
+flowchart LR
+  A --> B
+```
+````
+
+`fontSize` sets the size of the text before zooming, in logical slide pixels
+or any CSS length, e.g., `fontSize=0.6em` of the text around the diagram.
+Unlike zooming, it keeps the space between nodes, so smaller text squeezes in
+more. Set it for every diagram with the `fontSize` of the `root` of
+`SeminarDiagram` in the theme.
+
 ## Math in labels
 
 Write TeX between `$$` in labels, like in Mermaid:

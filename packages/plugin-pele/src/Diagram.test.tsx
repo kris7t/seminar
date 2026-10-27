@@ -3,7 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { Deck, DeckDocument, Slide, useSlideElement } from '@seminar/core';
 import flowchart from 'pele/diagrams/flowchart';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Diagram, diagramClasses } from './Diagram.tsx';
 
@@ -19,9 +19,40 @@ function ClassOf({ name }: { name: string }) {
 
 const SOURCE = 'flowchart LR\n  accTitle: Steps\n  A[Parse] --> B[Render]';
 
+/**
+ * Makes elements as wide as their width in pixels, if any, up to `available`
+ * with a `max-width` of `100%`, or else `available`, since jsdom has no
+ * layout.
+ */
+function stubWidths(available: number) {
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(
+    function (this: HTMLElement) {
+      const width = /^(\d+)px$/.exec(this.style.width)?.[1];
+      if (width === undefined) return available;
+      return this.style.maxWidth === '100%'
+        ? Math.min(Number(width), available)
+        : Number(width);
+    },
+  );
+}
+
+/** Returns the width and height of the SVG of the diagram. */
+function sizeOfSvg(): [width: number, height: number] {
+  const [, , width = 0, height = 0] = (
+    document.querySelector('svg')?.getAttribute('viewBox') ?? ''
+  )
+    .split(' ')
+    .map(Number);
+  return [width, height];
+}
+
+const WIDE =
+  'flowchart LR\n  A[Parse] --> B[Render] --> C[Show] --> D[Present]';
+
 describe('Diagram', () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it('renders the diagram on the slide', async () => {
@@ -108,6 +139,86 @@ describe('Diagram', () => {
     expect(Number(box?.getAttribute('width'))).toBe(
       2 * Number(box?.getAttribute('height')),
     );
+  });
+
+  it('lays out wide diagrams to fit their width before zooming', async () => {
+    stubWidths(300);
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Diagram source={WIDE} diagrams={[flowchart]} zoom="1.5" />
+        </Slide>
+      </Deck>,
+    );
+    await screen.findByText('Present');
+    const [width, height] = sizeOfSvg();
+    // Laid out from top to bottom to fit 200 pixels, zoomed to 300 at most.
+    expect(width).toBeGreaterThan(0);
+    expect(width).toBeLessThanOrEqual(200);
+    expect(height).toBeGreaterThan(width);
+    expect(
+      document
+        .querySelector<HTMLElement>(`.${diagramClasses.svg}`)
+        ?.style.getPropertyValue('--SeminarDiagram-width'),
+    ).toBe(`${String(width * 1.5)}px`);
+  });
+
+  it('lays out diagrams in their width, even if more than available', async () => {
+    stubWidths(300);
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Diagram source={WIDE} diagrams={[flowchart]} width={2000} />
+        </Slide>
+      </Deck>,
+    );
+    await screen.findByText('Present');
+    const [width, height] = sizeOfSvg();
+    // Still from left to right, and shown smaller to fit, like images.
+    expect(width).toBeGreaterThan(300);
+    expect(height).toBeLessThan(width);
+    const box = document.querySelector<HTMLElement>(
+      `.${diagramClasses.svg}`,
+    )?.parentElement;
+    expect(box?.style.width).toBe('2000px');
+    expect(box?.style.maxWidth).toBe('100%');
+  });
+
+  it('renders the text of diagrams in their font size', async () => {
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Diagram source={SOURCE} diagrams={[flowchart]} fontSize={10} />
+        </Slide>
+      </Deck>,
+    );
+    await screen.findByText('Parse');
+    const root = document.querySelector<HTMLElement>(`.${diagramClasses.root}`);
+    expect(root?.style.fontSize).toBe('10px');
+    expect(root?.querySelector('svg')?.getAttribute('style')).toMatch(
+      /\bfont:10px /,
+    );
+  });
+
+  it('keeps the size of diagrams narrower than their width', async () => {
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(1000);
+    render(
+      <Deck>
+        <Slide title="Diagram">
+          <Diagram source={SOURCE} diagrams={[flowchart]} />
+        </Slide>
+      </Deck>,
+    );
+    await screen.findByText('Parse');
+    const content = document.querySelector<HTMLElement>(
+      `.${diagramClasses.svg}`,
+    );
+    const width = content?.querySelector('svg')?.getAttribute('width');
+    expect(Number(width)).toBeLessThan(1000);
+    expect(content?.style.getPropertyValue('--SeminarDiagram-width')).toBe(
+      `${width ?? ''}px`,
+    );
+    expect(content?.parentElement?.style.width).toBe('100%');
   });
 
   it('shows the source of diagrams it cannot render', async () => {

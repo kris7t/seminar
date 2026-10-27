@@ -23,6 +23,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type JSX,
 } from 'react';
 
@@ -68,6 +69,24 @@ export interface DiagramProps extends Omit<
   steps?: readonly DiagramStep[] | undefined;
   /** The formulas in the labels of the diagram, like `$$x^2$$`, by their TeX. */
   formulas?: Readonly<Record<string, DiagramFormula>> | undefined;
+  /**
+   * The width of the diagram, in logical slide pixels or any CSS length, e.g.,
+   * `50%`. Defaults to the width available, e.g., of the column. Wider
+   * diagrams are laid out to fit it, and narrower ones keep their size. If it's
+   * more than available, the diagram is shown smaller to fit, like images.
+   */
+  width?: number | string | undefined;
+  /**
+   * How large the diagram is, compared to its size with the text of diagrams
+   * of the slide, e.g., `1.5`. Defaults to 1.
+   */
+  zoom?: number | string | undefined;
+  /**
+   * The size of the text of the diagram, before zooming, in logical slide
+   * pixels or any CSS length, e.g., `0.6em` of the text around it. Defaults
+   * to `0.75em`. Unlike zooming, it keeps the space between nodes.
+   */
+  fontSize?: number | string | undefined;
 }
 
 export type DiagramClassKey =
@@ -152,6 +171,12 @@ const DiagramSvg = styled('div', {
   display: 'flex',
   justifyContent: 'center',
   maxWidth: '100%',
+  // Zoomed, but not wider than the diagram, like Pele does.
+  '& > svg': {
+    width: 'var(--SeminarDiagram-width)',
+    maxWidth: '100%',
+    height: 'auto',
+  },
 });
 
 const DiagramError = styled('pre', {
@@ -163,9 +188,21 @@ const DiagramError = styled('pre', {
   color: theme.palette.error.main,
 }));
 
-interface Font {
+/** Where a diagram is rendered, as measured on the slide. */
+interface Layout {
+  /** The family of the font of the slide, as in CSS. */
   family: string;
+  /** The size of the font of the diagram, in pixels. */
   size: number;
+  /** The width of the diagram, in pixels, even if more than available. */
+  width: number;
+}
+
+/** Returns `value` in CSS, with numbers in pixels, like the width of columns. */
+function cssLength(value: number | string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const text = String(value).trim();
+  return text !== '' && Number.isFinite(Number(text)) ? `${text}px` : text;
 }
 
 /** The rendered SVG of a diagram in a rendering of the slide. */
@@ -178,10 +215,17 @@ interface DiagramTarget {
 
 const NO_FORMULAS: Readonly<Record<string, DiagramFormula>> = {};
 
+/** Returns the factor of `zoom`, or 1 if it isn't a positive number. */
+function zoomOf(zoom: number | string): number {
+  const factor = Number(zoom);
+  return Number.isFinite(factor) && factor > 0 ? factor : 1;
+}
+
 interface RenderedSvgProps {
   source: string;
   formulas: Readonly<Record<string, DiagramFormula>>;
-  font: Font;
+  layout: Layout;
+  zoom: number;
   /** The prefix of the ids of the diagram in this rendering of the slide. */
   prefix: string;
   /** The name of the diagram on the slide, if any. */
@@ -192,7 +236,8 @@ interface RenderedSvgProps {
 function RenderedSvg({
   source,
   formulas,
-  font,
+  layout,
+  zoom,
   prefix,
   name,
   onTarget,
@@ -200,8 +245,10 @@ function RenderedSvg({
   const result = useCached(diagramCache, {
     source,
     formulas,
-    fontFamily: font.family,
-    fontSize: font.size,
+    fontFamily: layout.family,
+    fontSize: layout.size,
+    // Laid out to fit the width at the size before zooming.
+    maxWidth: layout.width > 0 ? Math.floor(layout.width / zoom) : undefined,
   });
   // Keeps showing the diagram while it changes, e.g., while editing.
   const [previous, setPrevious] = useState<RenderedDiagram>();
@@ -250,6 +297,13 @@ function RenderedSvg({
     <DiagramSvg
       ref={forkedRef}
       className={diagramClasses.svg}
+      style={
+        diagram === undefined
+          ? undefined
+          : ({
+              '--SeminarDiagram-width': `${String(diagram.width * zoom)}px`,
+            } as CSSProperties)
+      }
       // Rendered by Pele, which escapes the text of the diagram.
       // eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml
       dangerouslySetInnerHTML={{ __html: html }}
@@ -260,29 +314,43 @@ function RenderedSvg({
 interface DiagramContentProps {
   source: string;
   formulas: Readonly<Record<string, DiagramFormula>>;
+  width: string | undefined;
+  zoom: number;
   name: string | undefined;
   onTarget: (target: DiagramTarget | undefined) => void;
 }
 
-/** Renders the diagram once it knows the font of the slide around it. */
+/**
+ * Renders the diagram once it knows the font of the slide around it, and the
+ * width available for it.
+ */
 function DiagramContent({
   source,
   formulas,
+  width,
+  zoom,
   name,
   onTarget,
 }: DiagramContentProps): JSX.Element {
   const [element, setElement] = useState<HTMLDivElement | null>(null);
-  const [font, setFont] = useState<Font>();
+  const probeRef = useRef<HTMLDivElement>(null);
+  const [layout, setLayout] = useState<Layout>();
   useMeasure(element, () => {
     const style = element?.ownerDocument.defaultView?.getComputedStyle(element);
-    if (style === undefined) {
+    if (probeRef.current === null || style === undefined) {
       return;
     }
     // Not every environment computes fonts, e.g., jsdom.
     const family = style.fontFamily || 'sans-serif';
     const size = Number.parseFloat(style.fontSize) || 16;
-    if (font?.family !== family || font.size !== size) {
-      setFont({ family, size });
+    // In logical slide pixels, like the font, however the slide is scaled.
+    const measured = probeRef.current.offsetWidth;
+    if (
+      layout?.family !== family ||
+      layout.size !== size ||
+      layout.width !== measured
+    ) {
+      setLayout({ family, size, width: measured });
     }
   });
   const id = useId();
@@ -292,12 +360,29 @@ function DiagramContent({
       ? `seminar-diagram-${id.replace(/[^\w-]/g, '')}`
       : elementId;
   return (
-    <div ref={setElement}>
-      {font !== undefined && (
+    <div
+      ref={setElement}
+      style={{ position: 'relative', width: width ?? '100%', maxWidth: '100%' }}
+    >
+      {/*
+       * Diagrams wider than available are laid out in their width, and shown
+       * smaller, like images.
+       */}
+      <div
+        ref={probeRef}
+        style={{
+          position: 'absolute',
+          width: width ?? '100%',
+          height: 0,
+          visibility: 'hidden',
+        }}
+      />
+      {layout !== undefined && (
         <RenderedSvg
           source={source}
           formulas={formulas}
-          font={font}
+          layout={layout}
+          zoom={zoom}
           prefix={prefix}
           name={name}
           onTarget={onTarget}
@@ -407,6 +492,10 @@ function ItemSteps({ steps, target }: ItemStepsProps): JSX.Element {
  * the diagram `pipeline`. Documents show its
  * `source` in a plain `pre` instead, with `mermaid` in `data-lang`.
  *
+ * It takes the width available, or its `width`, and diagrams wider than that
+ * are laid out to fit it. Its `zoom` scales it, e.g., `1.5` for larger text,
+ * and wide diagrams are laid out to fit at the size before zooming.
+ *
  * MDX decks render ` ```mermaid ` code blocks like this, with the attributes
  * after the language, e.g., ` ```mermaid #pipeline step `.
  *
@@ -420,7 +509,11 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
     diagrams = [],
     steps = [],
     formulas = NO_FORMULAS,
+    width,
+    zoom = 1,
+    fontSize,
     className,
+    style,
     ...stepProps
   } = useThemeProps({ props: inProps, name: 'SeminarDiagram' });
   const { kind } = useSlideView();
@@ -432,6 +525,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
         component="pre"
         defaultAttachment={WITH_PREVIOUS}
         className={className}
+        style={style}
         data-lang="mermaid"
         {...stepProps}
       >
@@ -449,6 +543,11 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
           ? diagramClasses.root
           : `${diagramClasses.root} ${className}`
       }
+      style={
+        fontSize === undefined
+          ? style
+          : { ...style, fontSize: cssLength(fontSize) }
+      }
       {...stepProps}
     >
       {/* Probes have no layout to measure fonts in. */}
@@ -456,6 +555,8 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
         <DiagramContent
           source={source}
           formulas={formulas}
+          width={cssLength(width)}
+          zoom={zoomOf(zoom)}
           name={stepProps.id}
           onTarget={setTarget}
         />

@@ -31,6 +31,11 @@ export interface DiagramInput {
   fontFamily: string;
   /** The size of the font of the text, in pixels. */
   fontSize: number;
+  /**
+   * The width that diagrams wider than it are laid out to fit, in pixels, if
+   * any. Narrower diagrams keep their width.
+   */
+  maxWidth: number | undefined;
 }
 
 /** A diagram rendered by Pele, see {@link diagramCache}. */
@@ -40,6 +45,10 @@ export interface RenderedDiagram {
    * prefix of the ids of a rendering, see {@link joinIds}.
    */
   parts: readonly string[];
+  /** The width of the diagram, in pixels. */
+  width: number;
+  /** The height of the diagram, in pixels. */
+  height: number;
 }
 
 /** Splits `svg` where it refers to ids that start with {@link ID_PLACEHOLDER}. */
@@ -48,7 +57,10 @@ export function splitIds(svg: string): string[] {
 }
 
 /** Returns the SVG of `diagram` with `prefix` as the prefix of its ids. */
-export function joinIds(diagram: RenderedDiagram, prefix: string): string {
+export function joinIds(
+  diagram: Pick<RenderedDiagram, 'parts'>,
+  prefix: string,
+): string {
   return diagram.parts.join(prefix);
 }
 
@@ -94,9 +106,10 @@ export const diagramCache: CacheDefinition<DiagramInput, RenderedDiagram> =
   defineCache(
     async (input: DiagramInput): Promise<RenderedDiagram> => {
       await loadFonts(input);
-      const { svg, type } = render(input.source, {
+      const { svg, type, width, height } = render(input.source, {
         fontFamily: input.fontFamily,
         fontSize: input.fontSize,
+        ...(input.maxWidth === undefined ? {} : { maxWidth: input.maxWidth }),
         idPrefix: ID_PLACEHOLDER,
         // Typeset when the deck was compiled, in ems.
         math: (tex, size) => {
@@ -110,7 +123,11 @@ export const diagramCache: CacheDefinition<DiagramInput, RenderedDiagram> =
           );
         },
       });
-      return { parts: splitIds(annotate(svg, type, input.source)) };
+      return {
+        parts: splitIds(annotate(svg, type, input.source)),
+        width,
+        height,
+      };
     },
     { transitionHold: 1000, maxUnusedEntries: 64 },
   );

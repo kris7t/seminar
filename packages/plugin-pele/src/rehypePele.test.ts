@@ -78,6 +78,15 @@ describe('rehypePele', () => {
     expect(code).toContain('step: ""');
   });
 
+  it('takes the size of diagrams after the language', async () => {
+    const { code } = await compileDeck(
+      '```mermaid width=600 zoom=1.5 fontSize=12\nflowchart LR\n  A --> B\n```',
+    );
+    expect(code).toContain('width: "600"');
+    expect(code).toContain('zoom: "1.5"');
+    expect(code).toContain('fontSize: "12"');
+  });
+
   it('steps the items of diagrams', async () => {
     const { code, messages } = await compileDeck(
       '```mermaid\nflowchart LR\n  A --> B\n  %% step only\n  B[Render]\n```',
