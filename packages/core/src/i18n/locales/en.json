@@ -86,5 +86,10 @@
   "everyStep": "A page for every step",
   "includeSpareSlides": "Include spare slides",
   "preparingPages": "Preparing pages…",
-  "keyCtrl": "Ctrl"
+  "keyCtrl": "Ctrl",
+  "layout": "Layout",
+  "layoutSlides": "Slides",
+  "layoutNotes": "Slide with notes",
+  "layoutGrid": "Several slides per sheet",
+  "slidesPerSheet": "Slides per sheet"
 }

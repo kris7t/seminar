@@ -86,5 +86,10 @@
   "everyStep": "Eine Seite pro Schritt",
   "includeSpareSlides": "Reservefolien einschließen",
   "preparingPages": "Seiten werden vorbereitet…",
-  "keyCtrl": "Strg"
+  "keyCtrl": "Strg",
+  "layout": "Layout",
+  "layoutSlides": "Folien",
+  "layoutNotes": "Folie mit Notizen",
+  "layoutGrid": "Mehrere Folien pro Blatt",
+  "slidesPerSheet": "Folien pro Blatt"
 }

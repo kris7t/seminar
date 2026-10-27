@@ -104,8 +104,18 @@ of its own range, and shows the first non-spare slide of the deck.
 ## Printing
 
 Choose **Print…** in the menu, or press Ctrl+P (Cmd+P on macOS), to print
-the deck with a page for each slide, as large as the slide. To get a PDF,
-choose to save as PDF in the print dialog of the browser.
+the deck. To get a PDF, choose to save as PDF in the print dialog of the
+browser. The **Layout** decides what goes on each sheet:
+
+- **Slides**: each slide on a sheet as large as the slide.
+- **Slide with notes**: each slide across a portrait sheet, with the
+  presenter notes of the slide below it, as a handout.
+- **Several slides per sheet**: 2 or 6 slides on a portrait sheet, or 4 on
+  a landscape one.
+
+For the handouts, choose the paper, like A4 or Letter, in the print dialog of
+the browser: the slides fit its width. Browsers that can't fit them, like
+some versions of Firefox, print them at the width of A4 or Letter instead.
 
 Slides with steps are [split into pages](core/steps.md#splitting-into-pages)
 by default, so that everything they show is on some page. Choose **A page

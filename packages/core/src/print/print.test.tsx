@@ -4,26 +4,45 @@ import { useEffect, useState, type JSX } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
+import { Notes } from '../notes/Notes.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { slideNumberClasses } from '../slide/SlideNumber.tsx';
 import { Step, stepClasses } from '../steps/Step.tsx';
 import { useTransitionHold } from '../transitions/settling.ts';
 import { useSlideView } from '../view/SlideViewContext.ts';
-import { PAGE_ATTRIBUTE } from './PrintView.tsx';
+import { PAGE_ATTRIBUTE, SHEET_ATTRIBUTE } from './PrintView.tsx';
 
 /**
- * Returns the pages as `slide: text`, with the text of the steps shown, but
+ * Returns a page as `slide: text`, with the text of the steps shown, but
  * without the slide number.
  */
-function pages(): string[] {
-  return [...document.querySelectorAll(`[${PAGE_ATTRIBUTE}]`)].map((page) => {
-    const shown = page.cloneNode(true) as Element;
-    for (const element of shown.querySelectorAll(
-      `.${stepClasses.hidden}, .${stepClasses.collapsed}, .${slideNumberClasses.root}`,
-    )) {
-      element.remove();
+function pageText(page: Element): string {
+  const shown = page.cloneNode(true) as Element;
+  for (const element of shown.querySelectorAll(
+    `.${stepClasses.hidden}, .${stepClasses.collapsed}, .${slideNumberClasses.root}`,
+  )) {
+    element.remove();
+  }
+  return `${page.getAttribute(PAGE_ATTRIBUTE) ?? '?'}: ${shown.textContent.trim()}`;
+}
+
+/**
+ * Returns the sheets of paper, each as its pages, separated by `|`, and the
+ * rest of its text, like notes, after `+`.
+ */
+function sheets(): string[] {
+  return [...document.querySelectorAll(`[${SHEET_ATTRIBUTE}]`)].map((sheet) => {
+    const rest = sheet.cloneNode(true) as Element;
+    for (const page of rest.querySelectorAll(`[${PAGE_ATTRIBUTE}]`)) {
+      page.remove();
     }
-    return `${page.getAttribute(PAGE_ATTRIBUTE) ?? '?'}: ${shown.textContent.trim()}`;
+    const text = rest.textContent.trim();
+    return [
+      [...sheet.querySelectorAll(`[${PAGE_ATTRIBUTE}]`)]
+        .map(pageText)
+        .join(' | '),
+      ...(text === '' ? [] : [text]),
+    ].join(' + ');
   });
 }
 
@@ -38,6 +57,7 @@ function renderDeck(extra?: JSX.Element) {
       <Slide title="First">
         <Shown>A</Shown>
         <Shown>B</Shown>
+        <Notes>Say hello.</Notes>
       </Slide>
       <Slide title="Second">
         <Step>C</Step>
@@ -50,8 +70,8 @@ function renderDeck(extra?: JSX.Element) {
 }
 
 /**
- * Prints with the dialog after choosing `choose`, and returns the pages
- * printed.
+ * Prints with the dialog after choosing `choose`, and returns the sheets
+ * printed (see {@link sheets}).
  */
 async function print(
   user: ReturnType<typeof userEvent.setup>,
@@ -59,7 +79,7 @@ async function print(
 ): Promise<string[]> {
   let printed: string[] | undefined;
   vi.spyOn(window, 'print').mockImplementation(() => {
-    printed = pages();
+    printed = sheets();
   });
   await user.keyboard('{Control>}p{/Control}');
   await screen.findByRole('dialog');
@@ -93,7 +113,7 @@ describe('printing', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
-    expect(pages()).toEqual([]);
+    expect(sheets()).toEqual([]);
   });
 
   it('prints every step, and spare slides', async () => {
@@ -114,6 +134,86 @@ describe('printing', () => {
       '2: SecondC',
       '2: SecondCD',
       '3: Spare',
+    ]);
+  });
+
+  it('prints the slides with their notes', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    expect(
+      await print(user, async () => {
+        await user.click(
+          screen.getByRole('radio', { name: 'Slide with notes' }),
+        );
+      }),
+    ).toEqual([
+      '1: FirstA',
+      // The notes come after the last page of the slide.
+      '1: FirstB + Say hello.',
+      '2: SecondCD',
+    ]);
+  });
+
+  it('prints several slides on each sheet', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    expect(
+      await print(user, async () => {
+        await user.click(
+          screen.getByRole('radio', { name: 'Several slides per sheet' }),
+        );
+        await user.click(
+          screen.getByRole('combobox', { name: 'Slides per sheet' }),
+        );
+        await user.click(screen.getByRole('option', { name: '2' }));
+        await user.click(screen.getByRole('radio', { name: /every step/ }));
+      }),
+    ).toEqual([
+      '1: First | 1: FirstA',
+      '1: FirstB | 2: Second',
+      '2: SecondC | 2: SecondCD',
+    ]);
+  });
+
+  it('lays out slides whose steps change once they are shown', async () => {
+    const user = userEvent.setup();
+    // Like diagrams, whose items get their steps once they are rendered.
+    function Later() {
+      const [shown, setShown] = useState(false);
+      useEffect(() => {
+        const timeout = setTimeout(() => {
+          setShown(true);
+        }, 0);
+        return () => {
+          clearTimeout(timeout);
+        };
+      }, []);
+      return shown ? (
+        <>
+          <Shown>E</Shown>
+          <Shown>F</Shown>
+        </>
+      ) : null;
+    }
+    renderDeck(
+      <Slide title="Fourth">
+        <Later />
+      </Slide>,
+    );
+    expect(
+      await print(user, async () => {
+        await user.click(
+          screen.getByRole('radio', { name: 'Several slides per sheet' }),
+        );
+        await user.click(
+          screen.getByRole('combobox', { name: 'Slides per sheet' }),
+        );
+        await user.click(screen.getByRole('option', { name: '2' }));
+      }),
+    ).toEqual([
+      '1: FirstA | 1: FirstB',
+      '2: SecondCD | 4: FourthE',
+      '4: FourthF',
     ]);
   });
 
@@ -152,7 +252,7 @@ describe('printing', () => {
     const printing = print(user).finally(() => {
       printed = true;
     });
-    await screen.findByText('Loading');
+    await screen.findAllByText('Loading');
     await new Promise((resolve) => {
       setTimeout(resolve, 300);
     });

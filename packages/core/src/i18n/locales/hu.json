@@ -86,5 +86,10 @@
   "everyStep": "Minden lépés külön oldalon",
   "includeSpareSlides": "Tartalék diákkal együtt",
   "preparingPages": "Oldalak előkészítése…",
-  "keyCtrl": "Ctrl"
+  "keyCtrl": "Ctrl",
+  "layout": "Elrendezés",
+  "layoutSlides": "Diák",
+  "layoutNotes": "Dia jegyzetekkel",
+  "layoutGrid": "Több dia laponként",
+  "slidesPerSheet": "Diák laponként"
 }

@@ -1,4 +1,5 @@
-import { Box, GlobalStyles } from '@mui/material';
+import { Box, GlobalStyles, ThemeProvider, useTheme } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
 import {
   Component,
   Suspense,
@@ -13,7 +14,9 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import { compareStepPaths } from '../steps/stepRange.ts';
+import { useDeck } from '../deck/DeckContext.ts';
+import { uiTheme } from '../menu/uiTheme.ts';
+import { getSlideNotes } from '../notes/Notes.tsx';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
@@ -24,7 +27,21 @@ import {
   type SlideView,
 } from '../view/SlideViewContext.ts';
 import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
+import { PagePlan, type PlannedPage } from './PagePlan.ts';
 import { PrintTransitions } from './PrintTransitions.ts';
+
+/**
+ * How the pages of the slides are laid out on the sheets of paper:
+ *
+ * - `'slides'`: each page on a sheet as large as the slide.
+ * - `'notes'`: each page on a sheet of the paper chosen when printing, with
+ *   the notes of the slide below its last page.
+ * - `'grid'`: several pages on each sheet of the paper chosen when printing.
+ */
+export type PrintLayout = 'slides' | 'notes' | 'grid';
+
+/** Numbers of pages that the `'grid'` layout can put on a sheet. */
+export type PagesPerSheet = 2 | 4 | 6;
 
 /** How slides are printed. */
 export interface PrintOptions {
@@ -36,6 +53,9 @@ export interface PrintOptions {
   pages: 'split' | 'steps';
   /** Whether to print spare slides, too. */
   spares: boolean;
+  layout: PrintLayout;
+  /** Number of pages on a sheet in the `'grid'` layout. */
+  perSheet: PagesPerSheet;
 }
 
 /** Id of the element with the pages, the only one shown when printing. */
@@ -44,10 +64,43 @@ export const PRINT_ID = 'seminar-print';
 /** Data attribute of pages with the number of their slide. */
 export const PAGE_ATTRIBUTE = 'data-seminar-page';
 
-const PRINT_STYLES = `
+/** Data attribute of the sheets of paper that the pages are on. */
+export const SHEET_ATTRIBUTE = 'data-seminar-sheet';
+
+/** How the `'grid'` layout arranges the pages on a sheet. */
+const GRIDS: Readonly<
+  Record<
+    PagesPerSheet,
+    { columns: number; orientation: 'portrait' | 'landscape' }
+  >
+> = {
+  2: { columns: 1, orientation: 'portrait' },
+  4: { columns: 2, orientation: 'landscape' },
+  6: { columns: 2, orientation: 'portrait' },
+};
+
+/** Margin of the sheets of paper chosen when printing. */
+const SHEET_MARGIN = '15mm';
+
+/** Space between the pages on a sheet. */
+const SHEET_GAP = '8mm';
+
+/**
+ * Width of the sheets of paper chosen when printing, without their margins,
+ * on screen, and when printing in browsers that can't fit the slides to the
+ * paper, about that of A4 and Letter in portrait.
+ */
+const SHEET_WIDTH = 680;
+
+function printStyles({ layout, perSheet }: PrintOptions): string {
+  const page =
+    layout === 'slides'
+      ? `size: ${String(SLIDE_WIDTH)}px ${String(SLIDE_HEIGHT)}px; margin: 0;`
+      : // The paper is chosen when printing, but not its orientation.
+        `size: ${layout === 'grid' ? GRIDS[perSheet].orientation : 'portrait'}; margin: ${SHEET_MARGIN};`;
+  return `
 @page {
-  size: ${String(SLIDE_WIDTH)}px ${String(SLIDE_HEIGHT)}px;
-  margin: 0;
+  ${page}
 }
 
 @media print {
@@ -65,9 +118,11 @@ const PRINT_STYLES = `
 
   #${PRINT_ID} {
     position: static !important;
+    width: auto !important;
   }
 }
 `;
+}
 
 /** How often to check whether the pages are ready, in milliseconds. */
 const CHECK_INTERVAL = 50;
@@ -120,7 +175,7 @@ function Pending(): null {
   return null;
 }
 
-/** Leaves out a slide that fails to render. */
+/** Leaves out a page that fails to render. */
 class PrintBoundary extends Component<
   { children: ReactNode },
   { failed: boolean }
@@ -140,89 +195,130 @@ interface PageProps {
   index: number;
   slide: ReactNode;
   store: StepStore;
+  theme: Theme;
+  /** Whether the page only plans the pages, rather than being printed. */
+  measuring?: boolean;
 }
 
-/** A page with the slide at the step of `store`. */
-function Page({ index, slide, store }: PageProps): JSX.Element {
+/** A page with the slide at the step of `store`, as large as the slide. */
+function Page({
+  index,
+  slide,
+  store,
+  theme,
+  measuring = false,
+}: PageProps): JSX.Element {
   const view = useMemo<SlideView>(
     () => ({ index, kind: 'print', interactive: false }),
     [index],
   );
   return (
-    <Box
-      {...{
-        [SLIDE_VIEW_ATTRIBUTE]: 'print',
-        [PAGE_ATTRIBUTE]: String(index + 1),
-      }}
-      sx={{
-        position: 'relative',
-        width: SLIDE_WIDTH,
-        height: SLIDE_HEIGHT,
-        overflow: 'hidden',
-        bgcolor: 'background.default',
-        color: 'text.primary',
-        breakBefore: 'page',
-        '&:first-of-type': { breakBefore: 'auto' },
-        printColorAdjust: 'exact',
-        WebkitPrintColorAdjust: 'exact',
-      }}
-    >
-      <StepStoreContext value={store}>
-        <SlideViewProvider view={view}>
-          <Suspense fallback={<Pending />}>{slide}</Suspense>
-        </SlideViewProvider>
-      </StepStoreContext>
-    </Box>
+    <ThemeProvider theme={theme}>
+      <Box
+        {...{
+          [SLIDE_VIEW_ATTRIBUTE]: 'print',
+          ...(measuring ? {} : { [PAGE_ATTRIBUTE]: String(index + 1) }),
+        }}
+        sx={{
+          position: 'relative',
+          width: SLIDE_WIDTH,
+          height: SLIDE_HEIGHT,
+          overflow: 'hidden',
+          bgcolor: 'background.default',
+          color: 'text.primary',
+          printColorAdjust: 'exact',
+          WebkitPrintColorAdjust: 'exact',
+        }}
+      >
+        <StepStoreContext value={store}>
+          <SlideViewProvider view={view}>
+            <Suspense fallback={<Pending />}>{slide}</Suspense>
+          </SlideViewProvider>
+        </StepStoreContext>
+      </Box>
+    </ThemeProvider>
   );
 }
 
 /** A page with the slide at `path`. */
 function PageAt({
-  index,
-  slide,
   path,
-}: {
-  index: number;
-  slide: ReactNode;
-  path: StepPath;
-}): JSX.Element {
+  ...props
+}: Omit<PageProps, 'store'> & { path: StepPath }): JSX.Element {
   const [store] = useState(() => new StepStore({ target: path }));
-  return <Page index={index} slide={slide} store={store} />;
+  return <Page store={store} {...props} />;
 }
 
 /**
- * The pages of a slide. The last step of the slide is a page in any case,
- * whose steps tell which other steps to make pages of, before it.
+ * A page scaled to the width available, e.g., on a sheet of the paper chosen
+ * when printing, which only CSS knows.
  */
-function SlidePages({
-  index,
-  slide,
-  pages,
+function FittedPage({
+  columns,
+  children,
 }: {
-  index: number;
-  slide: ReactNode;
-  pages: PrintOptions['pages'];
+  /** Number of pages side by side, for browsers that can't fit them. */
+  columns: number;
+  children: ReactNode;
 }): JSX.Element {
-  const [store] = useState(() => new StepStore({ toEnd: true }));
-  const paths = useSyncExternalStore(
-    store.subscribe,
-    pages === 'split' ? store.getSplitPaths : store.getStates,
-  );
-  const last = useSyncExternalStore(store.subscribe, store.getPath);
   return (
-    <>
-      {paths
-        .filter((path) => compareStepPaths(path, last) < 0)
-        .map((path) => (
-          <PageAt
-            key={path.join('.')}
-            index={index}
-            slide={slide}
-            path={path}
-          />
-        ))}
-      <Page index={index} slide={slide} store={store} />
-    </>
+    <Box sx={{ containerType: 'inline-size', breakInside: 'avoid' }}>
+      <Box
+        sx={{
+          position: 'relative',
+          aspectRatio: `${String(SLIDE_WIDTH)} / ${String(SLIDE_HEIGHT)}`,
+          overflow: 'hidden',
+          // Inside, unlike outlines, which spill onto the sheet before it.
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            inset: 0,
+            border: 1,
+            borderColor: 'divider',
+            pointerEvents: 'none',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            transformOrigin: '0 0',
+            scale: String(SHEET_WIDTH / columns / SLIDE_WIDTH),
+            [`@supports (scale: calc(1px / 1px))`]: {
+              scale: `calc(100cqi / ${String(SLIDE_WIDTH)}px)`,
+            },
+          }}
+        >
+          {children}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+/** Styles of the contents of notes, which may be Markdown. */
+const NOTES_STYLES = {
+  typography: 'body2',
+  '& > :first-of-type, & > * > :first-of-type': { mt: 0 },
+  '& > :last-child, & > * > :last-child': { mb: 0 },
+  '& p, & ul, & ol': { my: 1 },
+  '& ul, & ol': { pl: 3 },
+} as const;
+
+/** A sheet of paper, which starts a new sheet when printing. */
+function Sheet({ children }: { children: ReactNode }): JSX.Element {
+  return (
+    <Box
+      {...{ [SHEET_ATTRIBUTE]: '' }}
+      sx={{
+        breakBefore: 'page',
+        '&:first-of-type': { breakBefore: 'auto' },
+      }}
+    >
+      {children}
+    </Box>
   );
 }
 
@@ -236,9 +332,9 @@ export interface PrintViewProps {
 }
 
 /**
- * Renders the slides as pages for printing outside of the
- * viewport, and replaces the rest of the document with them when printing.
- * Each page is as large as a slide.
+ * Renders the slides as pages for printing outside of the viewport, and
+ * replaces the rest of the document with them when printing. The pages are
+ * laid out on sheets of paper according to the `layout` of `options`.
  */
 export function PrintView({
   slides,
@@ -246,7 +342,28 @@ export function PrintView({
   options,
   onReady,
 }: PrintViewProps): JSX.Element {
+  const theme = useTheme();
+  const { slideLangs } = useDeck();
   const [transitions] = useState(() => new PrintTransitions());
+  // The stores of the slides, which show their last steps.
+  const [stores] = useState(
+    () =>
+      new Map(
+        slides.flatMap((_, index) =>
+          options.spares || spares[index] !== true
+            ? [[index, new StepStore({ toEnd: true })] as const]
+            : [],
+        ),
+      ),
+  );
+  const [plan] = useState(
+    () => new PagePlan(stores, options.pages === 'steps'),
+  );
+  const pages = useSyncExternalStore(
+    plan.subscribe,
+    plan.getPages,
+    plan.getPages,
+  );
   const ref = useRef<HTMLDivElement>(null);
   const ready = useEffectEvent(onReady);
   useEffect(() => {
@@ -265,26 +382,103 @@ export function PrintView({
       controller.abort();
     };
   }, [transitions]);
+  const { layout } = options;
+  const columns = layout === 'grid' ? GRIDS[options.perSheet].columns : 1;
+  const renderPage = ({ index, path }: PlannedPage): ReactNode => {
+    const page = (
+      <PageAt index={index} slide={slides[index]} theme={theme} path={path} />
+    );
+    return (
+      <PrintBoundary>
+        {layout === 'slides' ? (
+          page
+        ) : (
+          <FittedPage columns={columns}>{page}</FittedPage>
+        )}
+      </PrintBoundary>
+    );
+  };
+  let sheets: ReactNode;
+  if (layout === 'grid') {
+    const { perSheet } = options;
+    sheets = Array.from(
+      { length: Math.ceil(pages.length / perSheet) },
+      (_, sheet) => (
+        // Sheets are positional.
+        // eslint-disable-next-line @eslint-react/no-array-index-key
+        <Sheet key={sheet}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${String(columns)}, minmax(0, 1fr))`,
+              gap: SHEET_GAP,
+            }}
+          >
+            {pages
+              .slice(sheet * perSheet, (sheet + 1) * perSheet)
+              .map((page) => (
+                <Box key={page.key}>{renderPage(page)}</Box>
+              ))}
+          </Box>
+        </Sheet>
+      ),
+    );
+  } else {
+    sheets = pages.map((page, i) => {
+      const notes =
+        layout === 'notes' && pages[i + 1]?.index !== page.index
+          ? getSlideNotes(slides[page.index])
+          : undefined;
+      return (
+        <Sheet key={page.key}>
+          {renderPage(page)}
+          {notes !== undefined && (
+            <Box
+              lang={slideLangs[page.index]}
+              sx={[NOTES_STYLES, { mt: SHEET_GAP }]}
+            >
+              {notes}
+            </Box>
+          )}
+        </Sheet>
+      );
+    });
+  }
   return createPortal(
     <SlideTransitionsContext value={transitions}>
-      <GlobalStyles styles={PRINT_STYLES} />
-      <Box
-        ref={ref}
-        id={PRINT_ID}
-        inert
-        aria-hidden
-        sx={{ position: 'fixed', left: -100000, top: 0 }}
-      >
-        {slides.map((slide, index) =>
-          options.spares || spares[index] !== true ? (
-            // Slides are positional, see `Deck`.
-            // eslint-disable-next-line @eslint-react/no-array-index-key
-            <PrintBoundary key={index}>
-              <SlidePages index={index} slide={slide} pages={options.pages} />
-            </PrintBoundary>
-          ) : null,
-        )}
+      <GlobalStyles styles={printStyles(options)} />
+      {/* The slides at their last steps, which plan the pages. */}
+      <Box inert aria-hidden sx={{ position: 'fixed', left: -100000, top: 0 }}>
+        {[...stores].map(([index, store]) => (
+          <PrintBoundary key={index}>
+            <Page
+              index={index}
+              slide={slides[index]}
+              store={store}
+              theme={theme}
+              measuring
+            />
+          </PrintBoundary>
+        ))}
       </Box>
+      {/* Handouts are on white paper, whatever the slides look like. */}
+      <ThemeProvider theme={layout === 'slides' ? theme : uiTheme}>
+        <Box
+          ref={ref}
+          id={PRINT_ID}
+          inert
+          aria-hidden
+          sx={{
+            position: 'fixed',
+            left: -100000,
+            top: 0,
+            width: layout === 'slides' ? 'auto' : SHEET_WIDTH,
+            color: 'text.primary',
+          }}
+        >
+          {sheets}
+        </Box>
+      </ThemeProvider>
     </SlideTransitionsContext>,
     document.body,
   );

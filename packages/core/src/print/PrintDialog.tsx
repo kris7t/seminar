@@ -10,15 +10,19 @@ import {
   FormControlLabel,
   FormLabel,
   LinearProgress,
+  MenuItem,
   Radio,
   RadioGroup,
+  Select,
   Stack,
 } from '@mui/material';
 import { useState, type JSX, type SyntheticEvent } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
-import type { PrintOptions } from './PrintView.tsx';
+import type { PagesPerSheet, PrintLayout, PrintOptions } from './PrintView.tsx';
+
+const PER_SHEET: readonly PagesPerSheet[] = [2, 4, 6];
 
 export interface PrintDialogProps {
   open: boolean;
@@ -61,15 +65,66 @@ function PrintForm({
   const { spares } = useDeck();
   const [pages, setPages] = useState<PrintOptions['pages']>('split');
   const [includeSpares, setIncludeSpares] = useState(false);
+  const [layout, setLayout] = useState<PrintLayout>('slides');
+  const [perSheet, setPerSheet] = useState<PagesPerSheet>(4);
   const onSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onPrint({ pages, spares: includeSpares });
+    onPrint({ pages, spares: includeSpares, layout, perSheet });
   };
   return (
     <form onSubmit={onSubmit} noValidate>
       <DialogTitle>{t('print')}</DialogTitle>
       <DialogContent>
         <Stack sx={{ gap: 2 }}>
+          <FormControl disabled={preparing}>
+            <FormLabel id="seminar-print-layout">{t('layout')}</FormLabel>
+            <RadioGroup
+              aria-labelledby="seminar-print-layout"
+              value={layout}
+              onChange={(event) => {
+                setLayout(event.target.value as PrintLayout);
+              }}
+            >
+              <FormControlLabel
+                value="slides"
+                control={<Radio />}
+                label={t('layoutSlides')}
+              />
+              <FormControlLabel
+                value="notes"
+                control={<Radio />}
+                label={t('layoutNotes')}
+              />
+              {/* The number of slides follows the label, without moving the
+                  options when the layout changes. */}
+              <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
+                <FormControlLabel
+                  value="grid"
+                  control={<Radio />}
+                  label={t('layoutGrid')}
+                  sx={{ mr: 0 }}
+                />
+                <Select
+                  size="small"
+                  value={perSheet}
+                  disabled={preparing}
+                  onChange={(event) => {
+                    setPerSheet(event.target.value);
+                    // Choosing a number of slides chooses the layout, too.
+                    setLayout('grid');
+                  }}
+                  inputProps={{ 'aria-label': t('slidesPerSheet') }}
+                  sx={{ minWidth: 80 }}
+                >
+                  {PER_SHEET.map((count) => (
+                    <MenuItem key={count} value={count}>
+                      {count}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </Stack>
+            </RadioGroup>
+          </FormControl>
           <FormControl disabled={preparing}>
             <FormLabel id="seminar-print-pages">{t('pages')}</FormLabel>
             <RadioGroup
