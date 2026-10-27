@@ -496,6 +496,29 @@ More
     });
   });
 
+  describe('splitting into pages', () => {
+    it('passes split as a prop rather than a master', async () => {
+      expect(
+        (await slides('## A {split=none}\n\n## B {split="1, parse"}')).map(
+          ({ split, master }) => ({ split, master }),
+        ),
+      ).toEqual([
+        { split: 'none', master: 'content' },
+        { split: '1, parse', master: 'content' },
+      ]);
+    });
+
+    it('reports bare splits and invalid values', async () => {
+      const file = await compile('## A {split}\n\n## B {split="1, 2-3"}', {
+        ...seminarMdxOptions(),
+      });
+      expect(file.messages.map(String)).toEqual([
+        expect.stringContaining('A bare `split` on a slide'),
+        expect.stringContaining('not `2-3`'),
+      ]);
+    });
+  });
+
   describe('spare slides', () => {
     it('marks slides as spare, along with the slides in spare divisions', async () => {
       expect(

@@ -24,16 +24,31 @@ function renderDeck(props: { defaultShowToc?: boolean } = {}) {
   );
 }
 
-/** Returns the entries of the step tree, marking the current one with `*`. */
+const MARKS: Record<string, string> = {
+  'Exported as a page': 'page',
+  'Covers other content': 'overlay',
+};
+
+/**
+ * Returns the entries of the step tree, marking the current one with `*`,
+ * and listing their icons in brackets, e.g., `[page]`.
+ */
 function entries(): string[] {
   const nav = screen.getByRole('navigation', { name: 'Steps' });
   return within(nav)
     .getAllByRole('button')
-    .map(
-      (button) =>
+    .map((button) => {
+      const label =
+        button.querySelector('.MuiListItemText-root')?.textContent ?? '';
+      const marks = [...button.querySelectorAll('svg title')].map(
+        (title) => ` [${MARKS[title.textContent] ?? title.textContent}]`,
+      );
+      return (
         (button.getAttribute('aria-current') === 'step' ? '*' : '') +
-        button.textContent,
-    );
+        label +
+        marks.join('')
+      );
+    });
 }
 
 describe('StepTree', () => {
@@ -50,10 +65,11 @@ describe('StepTree', () => {
     expect(entries()).toEqual([
       '*Start of the slide',
       'Intro',
-      'detail · more',
-      'Figure (1/2)',
+      // The figure may change in its steps, so it needs a page before them.
+      'detail · more [page]',
+      'Figure (1/2) [page]',
       'Figure (2/2)',
-      'Step 4',
+      'Step 4 [page]',
     ]);
   });
 
@@ -65,7 +81,7 @@ describe('StepTree', () => {
         </Slide>
       </Deck>,
     );
-    expect(entries()).toEqual(['*Start of the slide', 'Short']);
+    expect(entries()).toEqual(['*Start of the slide', 'Short [page]']);
     expect(screen.getByText('A long text').hasAttribute('title')).toBe(false);
   });
 
@@ -97,9 +113,9 @@ describe('StepTree', () => {
   it('goes to steps and highlights the current one', async () => {
     const user = userEvent.setup();
     renderDeck();
-    await user.click(screen.getByRole('button', { name: 'detail · more' }));
+    await user.click(screen.getByRole('button', { name: /^detail · more/ }));
     expect(window.location.hash).toBe('#slide=1&step=1.1');
-    expect(entries()[2]).toBe('*detail · more');
+    expect(entries()[2]).toBe('*detail · more [page]');
     // The focus stays where it was, so that Space goes to the next step.
     await user.keyboard(' ');
     expect(window.location.hash).toBe('#slide=1&step=2');

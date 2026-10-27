@@ -66,6 +66,10 @@ and a behavior like `only` shows it only during its step.
 A callout:callout[Belongs to parsing]{in=parse} disappears before rendering.
 ```
 
+Callouts are [overlays](../../core/steps.md#splitting-into-pages): when the
+slide is split into pages, what they may cover also gets a page before them,
+unless they have `overlay=false`.
+
 ## Size and look
 
 Callouts fit their text, up to a width of 360 pixels.

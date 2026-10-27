@@ -13,11 +13,20 @@ import {
   type StepRange,
 } from './stepRange.ts';
 import {
+  BUILT_IN_APPEARANCE_RANKS,
   moreHidden,
   SHOWN,
   type RankedAppearance,
   type RankedAppearances,
 } from './stepAppearance.ts';
+import {
+  parseSlideSplit,
+  planSplit,
+  type SlideSplit,
+  type SlideSplitProp,
+  type SplitMode,
+  type StepSplit,
+} from './stepSplit.ts';
 
 /**
  * Position of a slide in its steps.
@@ -115,6 +124,16 @@ export interface StepOptions {
    * which applies along with those of the other elements of the stepper.
    */
   fades?: FadeValues | undefined;
+  /**
+   * How the stepper asks for pages when the slide is split into pages, where
+   * a missing mode is taken from the stepper it is nested in.
+   */
+  split?: StepSplit | undefined;
+  /**
+   * Whether the stepper may cover other content, which then also needs a page
+   * without it when the slide is split into pages, e.g., callouts.
+   */
+  overlay?: boolean | undefined;
 }
 
 /** A stepper registered in a {@link StepStore}. */
@@ -138,6 +157,8 @@ export interface StepTreeEntry {
    * steps nested in it, or the empty string if it shows no text.
    */
   label: string;
+  /** Whether a stepper of the step may cover other content. */
+  overlay: boolean;
   /** The steps nested in the step. */
   children: readonly StepTreeEntry[];
 }
@@ -324,6 +345,11 @@ export class StepStore {
   /** The paths of the steps in the range, while the layout and range last. */
   #rangeCache: StepPath[] | undefined;
   #tree: readonly StepTreeEntry[] | undefined;
+  #split: SlideSplitProp | undefined;
+  #slideSplit: SlideSplit | undefined;
+  #legibleRank: number = BUILT_IN_APPEARANCE_RANKS.dimmed;
+  /** The paths of the pages, while the layout, range, and split last. */
+  #splitCache: readonly StepPath[] | undefined;
   #path: StepPath = [];
   #pathValid = false;
 
@@ -470,11 +496,44 @@ export class StepStore {
     this.#range = range;
     this.#bounds = range === undefined ? {} : parseStepRange(range);
     this.#rangeCache = undefined;
+    this.#splitCache = undefined;
     this.#invalidatePath();
   }
 
   /** Returns the range set by {@link setRange}, which is stable. */
   getRange = (): StepRange | undefined => this.#range;
+
+  /**
+   * Sets how the slide is split into pages (see {@link getSplitPaths}).
+   *
+   * @param split The `split` of the slide.
+   * @param legibleRank The rank of the most hidden appearance that pages
+   *   still show content in, e.g., that of `dimmed`.
+   */
+  setSplit(split: SlideSplitProp | undefined, legibleRank: number): void {
+    if (split === this.#split && legibleRank === this.#legibleRank) {
+      return;
+    }
+    this.#split = split;
+    this.#slideSplit = parseSlideSplit(split);
+    this.#legibleRank = legibleRank;
+    this.#splitCache = undefined;
+    this.#invalidatePath();
+  }
+
+  /**
+   * Returns the steps in the range of the slide to make pages of when the
+   * slide is split into pages, e.g., for a PDF, in order. Each stepper asks
+   * for pages by its `split` (see `SplitMode` and `SplitPoint`), and the last
+   * step is always a page. Content of overlays, i.e., steppers that may cover
+   * other content, is left out of the pages that show the content they may
+   * cover, if possible. The result is stable while the steppers, the range,
+   * and the split don't change.
+   */
+  getSplitPaths = (): readonly StepPath[] => {
+    this.#splitCache ??= this.#computeSplitPaths();
+    return this.#splitCache;
+  };
 
   /** Whether `path` is in the range of steps of the slide. */
   isInRange(path: StepPath): boolean {
@@ -774,6 +833,10 @@ export class StepStore {
       entries.push({
         path,
         label: labels.join(' · '),
+        overlay: steppers.some(
+          ([node, { first, last }]) =>
+            first <= step && step <= last && this.#isOverlay(node),
+        ),
         children: this.#computeTree(path),
       });
     }
@@ -868,6 +931,7 @@ export class StepStore {
     this.#positionsCache = undefined;
     this.#rangeCache = undefined;
     this.#tree = undefined;
+    this.#splitCache = undefined;
     this.#invalidatePath();
   }
 
@@ -1222,19 +1286,150 @@ export class StepStore {
    * Returns how `node` looks, at least as hidden as the steppers it is nested
    * in, whether in the DOM or explicitly.
    */
-  #computeAppearance(node: StepNode, visited: Set<StepNode>): RankedAppearance {
+  #computeAppearance(
+    node: StepNode,
+    visited: Set<StepNode>,
+    path = this.getPath(),
+  ): RankedAppearance {
     if (visited.has(node)) {
       // Groups may nest in each other in a cycle.
       return SHOWN;
     }
     visited.add(node);
     const { anchors, parents } = this.#getLayout();
-    const { phase } = this.#computePlace(node);
+    const { phase } = this.#computePlace(node, path);
     const own = anchors.get(node)?.options.appearances?.[phase] ?? SHOWN;
     const parent = parents.get(node);
     return parent === undefined
       ? own
-      : moreHidden(own, this.#computeAppearance(parent, visited));
+      : moreHidden(own, this.#computeAppearance(parent, visited, path));
+  }
+
+  /** Whether an element of `node` is an overlay. */
+  #isOverlay(node: StepNode): boolean {
+    return [...node.elements.values()].some(({ overlay }) => overlay === true);
+  }
+
+  /**
+   * Returns the split mode of `node`: `'each'` if an element asks for it,
+   * `'none'` if all of them do, or else `'auto'`, where elements without a
+   * mode take that of the stepper `node` is nested in, or of the slide.
+   */
+  #splitModeOf(node: StepNode, visited: Set<StepNode>): SplitMode {
+    const parent = this.#getLayout().parents.get(node);
+    let inherited: SplitMode | undefined;
+    const getInherited = () => {
+      inherited ??=
+        parent === undefined || visited.has(parent)
+          ? (this.#slideSplit?.mode ?? 'auto')
+          : this.#splitModeOf(parent, visited.add(node));
+      return inherited;
+    };
+    const modes = [...node.elements.values()].map(
+      ({ split }) => split?.mode ?? getInherited(),
+    );
+    if (modes.includes('each')) {
+      return 'each';
+    }
+    return modes.every((mode) => mode === 'none') ? 'none' : 'auto';
+  }
+
+  #computeSplitPaths(): readonly StepPath[] {
+    const states = this.#positionsInRange();
+    const { anchors } = this.#getLayout();
+    const nodes = [...anchors.keys()];
+    const isLegible = (node: StepNode, path: StepPath) =>
+      this.#computeAppearance(node, new Set(), path).rank <= this.#legibleRank;
+    const legibleStates = (
+      node: StepNode,
+      when: (place: StepPlace) => boolean = () => true,
+    ) =>
+      new Set(
+        states.flatMap((path, index) =>
+          when(this.#computePlace(node, path)) && isLegible(node, path)
+            ? [index]
+            : [],
+        ),
+      );
+    const overlays = nodes.filter((node) => this.#isOverlay(node));
+    const covered = new Set(
+      states.flatMap((path, index) =>
+        overlays.some((node) => isLegible(node, path)) ? [index] : [],
+      ),
+    );
+    // Content is read without overlays before they cover it, unless it's
+    // shown along with them, which then likely don't cover it.
+    const uncoveredOf = (unit: ReadonlySet<number>): ReadonlySet<number> => {
+      const shown = [...unit].sort((a, b) => a - b);
+      const firstCovered = shown.find((index) => covered.has(index));
+      const before = shown.filter(
+        (index) => firstCovered === undefined || index < firstCovered,
+      );
+      return before.length > 0 ? new Set(before) : unit;
+    };
+    // Content outside of steps is shown in every state.
+    const units: ReadonlySet<number>[] = [uncoveredOf(new Set(states.keys()))];
+    const forced: number[] = [];
+    for (const node of nodes) {
+      const mode = this.#splitModeOf(node, new Set());
+      const count = anchors.get(node)?.options.count ?? 1;
+      const nodeUnits =
+        mode === 'none'
+          ? []
+          : mode === 'each'
+            ? // Content shown before the stepper, e.g., by `Steps`, too.
+              Array.from({ length: count + 1 }, (_, index) =>
+                legibleStates(
+                  node,
+                  ({ stepIndex }) =>
+                    Math.min(stepIndex, count - 1) === index - 1,
+                ),
+              )
+            : [legibleStates(node)];
+      const overlay = this.#isOverlay(node);
+      for (const unit of nodeUnits) {
+        units.push(overlay ? unit : uncoveredOf(unit));
+      }
+      const turn = states.flatMap((path, index) => {
+        const { phase } = this.#computePlace(node, path);
+        return phase === 'current' || phase === 'open' ? [index] : [];
+      });
+      const first = turn[0];
+      const last = turn.at(-1);
+      if (first === undefined || last === undefined) {
+        continue;
+      }
+      const points = new Set(
+        [...node.elements.values()].flatMap(({ split }) => [
+          ...(split?.points ?? []),
+        ]),
+      );
+      if (points.has('before') && first > 0) {
+        forced.push(first - 1);
+      }
+      if (points.has('initial')) {
+        forced.push(first);
+      }
+      if (points.has('last')) {
+        forced.push(last);
+      }
+    }
+    for (const { group, path } of this.#slideSplit?.pages ?? []) {
+      const groupPath = group === undefined ? [] : this.#groupPath(group);
+      if (groupPath === undefined) {
+        continue;
+      }
+      const target = [...groupPath, ...path];
+      const index = states.findIndex(
+        (state) => compareStepPaths(state, target) === 0,
+      );
+      if (index >= 0) {
+        forced.push(index);
+      }
+    }
+    return planSplit(states.length, units, forced).map(
+      (index) => states[index] ?? [],
+    );
   }
 
   #computePlace(node: StepNode, path = this.getPath()): StepPlace {

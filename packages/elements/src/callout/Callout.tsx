@@ -594,6 +594,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
           component={block ? 'aside' : 'small'}
           role={block ? undefined : 'note'}
           defaultBehavior="scoped"
+          defaultOverlay
           className={className}
           {...stepProps}
         >
@@ -655,6 +656,8 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         <CalloutRoot
           component={element}
           defaultBehavior="scoped"
+          // Callouts float over the content around them.
+          defaultOverlay
           className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
           ownerState={ownerState}
           // Callouts are nested in the step of the element they point at.

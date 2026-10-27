@@ -196,6 +196,11 @@ so style those in `SeminarSteps` as well. Decks then use `:step{blur}` or
 `{steps=blur}`. A step nested in a blurred step is blurred with it, while a
 blurred step nested in a dimmed or hidden step stays dimmed or hidden.
 
+When slides are split into pages, content counts as shown up to
+`legibleStepAppearance` in the theme, which defaults to `dimmed`, and needs
+a page of its own if it's more hidden, e.g., `{ legibleStepAppearance:
+'shown' }` makes pages of dimmed steps, too.
+
 Appearances apply at once, without CSS transitions: the audience and
 presenter views fade the whole slide from one step to the next instead, see
 [Transitions](#transitions). Transitions on appearance classes

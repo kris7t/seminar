@@ -151,6 +151,14 @@ export {
 } from './steps/Steps.tsx';
 export type { StepPath, StepPhase } from './steps/StepStore.ts';
 export type { StepRange } from './steps/stepRange.ts';
+export type {
+  OverlayProp,
+  SlideSplitProp,
+  SplitMode,
+  SplitPoint,
+  SplitProp,
+  SplitWord,
+} from './steps/stepSplit.ts';
 export {
   appearanceClass,
   BUILT_IN_APPEARANCE_RANKS,

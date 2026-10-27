@@ -277,7 +277,31 @@ export const FLAGS: ReadonlySet<string> = new Set(['spare', 'noslide']);
  * Props of slides that may be bare words, e.g., `cut`, rather than masters,
  * which are passed as empty strings.
  */
-export const BARE_PROPS: ReadonlySet<string> = new Set(['cut']);
+export const BARE_PROPS: ReadonlySet<string> = new Set(['cut', 'split']);
+
+const SPLIT_MODES: ReadonlySet<string> = new Set(['auto', 'none', 'each']);
+
+/**
+ * Returns what is wrong with the `split` of a slide, if anything: it has to
+ * be a mode, like `none`, or a list of step paths, like `1, parse`, which may
+ * also have a mode.
+ */
+export function checkSlideSplit(value: string): string | undefined {
+  if (value.trim() === '' || value === 'true') {
+    return 'A bare `split` on a slide would only make a page of the slide before its steps. Write `split=0` if you mean that, or put `split` on a step.';
+  }
+  if (value === 'false') {
+    return undefined;
+  }
+  const invalid = value
+    .split(/[\s,]+/)
+    .filter(
+      (word) => word !== '' && !SPLIT_MODES.has(word) && !isStepBound(word),
+    );
+  return invalid.length === 0
+    ? undefined
+    : `Expected \`split\` of a slide to be \`auto\`, \`none\`, \`each\`, or step paths like \`2\`, \`1.1\`, or \`group.1\`, not ${invalid.map((word) => `\`${word}\``).join(', ')}`;
+}
 
 /**
  * Applies the attributes of a `:slide` directive to a slide.

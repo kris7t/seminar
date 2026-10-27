@@ -34,6 +34,7 @@ import {
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepStore.ts';
 import { StepBehaviorContext } from './StepBehaviorContext.ts';
+import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
 import type { FadeProps } from '../transitions/fades.ts';
 import { SlideViewContext } from '../view/SlideViewContext.ts';
 import { TogetherContext } from './TogetherContext.ts';
@@ -214,6 +215,26 @@ export interface StepProps
    * over the default of the slide and theme.
    */
   defaultBehavior?: StepBehavior | undefined;
+  /**
+   * How the step asks for pages when the slide is split into pages, e.g., for
+   * a PDF (see {@link SplitProp}). Its mode defaults to `defaultSplit`, then to
+   * the mode of the step it is nested in, and then to the `split` of the
+   * slide.
+   */
+  split?: SplitProp | undefined;
+  /**
+   * What `split` leaves out. Wrapper components can use this to choose how
+   * they ask for pages.
+   */
+  defaultSplit?: SplitProp | undefined;
+  /**
+   * Whether the step may cover other content, which then also needs a page
+   * without it when the slide is split into pages. Defaults to
+   * `defaultOverlay`, which wrapper components can use, e.g., callouts.
+   */
+  overlay?: OverlayProp | undefined;
+  /** Whether the step is an overlay unless `overlay` says otherwise. */
+  defaultOverlay?: OverlayProp | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   children?: ReactNode | ((state: StepState) => ReactNode);
@@ -338,6 +359,10 @@ export function Step(inProps: StepProps): JSX.Element {
     title,
     behavior: themeBehavior,
     defaultBehavior,
+    split,
+    defaultSplit,
+    overlay,
+    defaultOverlay,
     cut,
     fade,
     fadeIn,
@@ -393,6 +418,9 @@ export function Step(inProps: StepProps): JSX.Element {
     title,
     appearances,
     fades: { cut, fade, fadeIn, fadeOut, fadeBefore, fadeAfter },
+    split,
+    defaultSplit,
+    overlay: parseOverlay(overlay) ?? parseOverlay(defaultOverlay),
   });
   const { phase, inherited } = step;
   const elementId = useSlideElementId(id ?? '');

@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import {
   Deck,
@@ -205,6 +211,28 @@ describe('Diagram', () => {
     expect(window.location.hash).toBe('#slide=1&step=pipeline.B.1');
     await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=pipeline.C');
+  });
+
+  it('makes pages of the items of diagrams in their steps', async () => {
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="Diagram">
+          <Diagram
+            source={'flowchart LR\n  A[Parse] --> B[Render] --> C[Show]'}
+            diagrams={[flowchart]}
+            id="pipeline"
+            steps={[{ items: ['B'], props: { only: '' } }, { items: ['C'] }]}
+          />
+        </Slide>
+      </Deck>,
+    );
+    await screen.findByText('Render');
+    const nav = screen.getByRole('navigation', { name: 'Steps' });
+    expect(
+      within(nav)
+        .getAllByRole('button')
+        .map((button) => button.querySelector('svg title') !== null),
+    ).toEqual([false, true, true]);
   });
 
   it('shows the formulas in labels, in the size of the text', async () => {

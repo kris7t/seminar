@@ -57,6 +57,12 @@ elements:
 shorthand like `only` or `behavior` is given, e.g., `scoped` for callouts. It
 takes precedence over the default of the slide and the theme.
 
+`defaultSplit` and `defaultOverlay` set how the component asks for pages when
+the slide is split into pages (see
+[Splitting into pages](../guide/core/steps.md#splitting-into-pages)), unless
+`split` or `overlay` is given, e.g., `defaultOverlay` for callouts, which
+float over other content.
+
 Prefer these defaults over setting `with` or `behavior` directly, so that
 users can still override them with attributes.
 
@@ -93,7 +99,10 @@ Everything stays visible here, and only the highlight follows the steps.
 `<Steps count={n}>` does the same with a render function as its children.
 
 `useSteps` takes the same placement options as `Step`, e.g., `with`, `group`,
-and `in`. A handle returned by `useStep` can also be passed to the `with` of
+and `in`, and also `split`, `defaultSplit`, and `overlay`. Splitting a slide
+into pages only knows how steppers look from their `appearances`, so a
+component whose content changes in its steps otherwise should pass
+`defaultSplit: 'each'`, like `<Steps>`, to get a page of each step. A handle returned by `useStep` can also be passed to the `with` of
 other steps, which then share its stepper, e.g., to reveal items of two
 lists in parallel.
 

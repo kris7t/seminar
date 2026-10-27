@@ -5,7 +5,7 @@ import {
   Step,
   stepClasses,
 } from '@seminar/core';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -253,6 +253,43 @@ describe('Callout', () => {
     await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=figure.1');
     expect(phase('nested')).toBe(stepClasses.current);
+  });
+
+  it('covers other content when the slide is split into pages', () => {
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="Callout">
+          <Callout anchor="figure">First note</Callout>
+          <Callout anchor="figure">Second note</Callout>
+          <Callout anchor="figure" overlay={false}>
+            Beside
+          </Callout>
+          <Step id="figure">Figure</Step>
+          <Step>Text</Step>
+        </Slide>
+      </Deck>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Steps' });
+    expect(
+      within(nav)
+        .getAllByRole('button')
+        .map((button) =>
+          [
+            button.querySelector('.MuiListItemText-root')?.textContent,
+            ...[...button.querySelectorAll('svg title')].map(
+              ({ textContent }) => textContent,
+            ),
+          ].join(' | '),
+        ),
+    ).toEqual([
+      'Start of the slide',
+      // The figure without the notes, which may cover it.
+      'Figure | Exported as a page',
+      'First note | Covers other content',
+      'Second note | Covers other content',
+      'Beside | Exported as a page',
+      'Text | Exported as a page',
+    ]);
   });
 
   it('centers its text by default', () => {

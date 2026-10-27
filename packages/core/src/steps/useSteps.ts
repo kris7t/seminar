@@ -15,6 +15,7 @@ import {
 import { StepNode, type StepPhase, type StepStatus } from './StepStore.ts';
 import type { FadeProps, FadeValues } from '../transitions/fades.ts';
 import { StepStoreContext } from './StepStoreContext.ts';
+import { resolveStepSplit, type SplitProp } from './stepSplit.ts';
 
 /** State of a stepper. */
 export interface StepState {
@@ -132,6 +133,22 @@ export interface UseStepsOptions {
    * (see the `fade` of `Step`). Ignored if `with` is a handle.
    */
   fades?: FadeProps | undefined;
+  /**
+   * How the stepper asks for pages when the slide is split into pages, e.g.,
+   * for a PDF (see {@link SplitProp}). Ignored if `with` is a handle.
+   */
+  split?: SplitProp | undefined;
+  /**
+   * What `split` leaves out, e.g., the usual mode of a component, which
+   * takes precedence over the mode of the step the stepper is nested in.
+   */
+  defaultSplit?: SplitProp | undefined;
+  /**
+   * Whether the stepper may cover other content, which then also needs a page
+   * without it when the slide is split into pages, e.g., callouts. Ignored if
+   * `with` is a handle.
+   */
+  overlay?: boolean | undefined;
 }
 
 const UNLINKED: StepStatus = {
@@ -169,6 +186,9 @@ export function useSteps(
     title,
     appearances,
     fades: fadeProps,
+    split: splitProp,
+    defaultSplit,
+    overlay,
   }: UseStepsOptions = {},
 ): StepHandle {
   // Only the values matter, which are often given as a new object.
@@ -185,6 +205,14 @@ export function useSteps(
         ? undefined
         : { cut: cutKey, fade, fadeIn, fadeOut, fadeBefore, fadeAfter },
     [cutKey, fade, fadeIn, fadeOut, fadeBefore, fadeAfter],
+  );
+  const splitKey = Array.isArray(splitProp) ? splitProp.join(' ') : splitProp;
+  const defaultSplitKey = Array.isArray(defaultSplit)
+    ? defaultSplit.join(' ')
+    : defaultSplit;
+  const split = useMemo(
+    () => resolveStepSplit(splitKey, defaultSplitKey),
+    [splitKey, defaultSplitKey],
   );
   const store = use(StepStoreContext);
   const [ownNode] = useState(() => new StepNode());
@@ -208,6 +236,8 @@ export function useSteps(
             title,
             appearances,
             fades,
+            split,
+            overlay,
           }),
     [
       store,
@@ -221,6 +251,8 @@ export function useSteps(
       title,
       appearances,
       fades,
+      split,
+      overlay,
     ],
   );
   const getStatus = linked ? getUnlinkedStatus : () => store.getStatus(node);

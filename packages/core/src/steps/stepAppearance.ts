@@ -67,10 +67,17 @@ declare module '@mui/material/styles' {
      * of the built-in ones (see {@link BUILT_IN_APPEARANCE_RANKS}).
      */
     stepAppearances?: Partial<Record<StepAppearance, number>> | undefined;
+    /**
+     * The most hidden appearance that still shows content when slides are
+     * split into pages, e.g., for a PDF. Defaults to `dimmed`, so that dimmed
+     * content doesn't need pages of its own.
+     */
+    legibleStepAppearance?: StepAppearance | undefined;
   }
 
   interface ThemeOptions {
     stepAppearances?: Partial<Record<StepAppearance, number>> | undefined;
+    legibleStepAppearance?: StepAppearance | undefined;
   }
 }
 

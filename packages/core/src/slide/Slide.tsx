@@ -14,6 +14,8 @@ import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
 import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepBehaviorContext } from '../steps/StepBehaviorContext.ts';
+import { rankOf } from '../steps/stepAppearance.ts';
+import type { SlideSplitProp } from '../steps/stepSplit.ts';
 import { SlideElementScope } from './SlideElements.tsx';
 import { SlideViewContext } from '../view/SlideViewContext.ts';
 
@@ -67,6 +69,12 @@ export interface SlideProps extends FadeProps {
   to?: string | undefined;
   /** The step before which to stop showing steps (see `StepRange`). */
   before?: string | undefined;
+  /**
+   * How the slide is split into pages, e.g., for a PDF: the mode of its steps
+   * that don't set their own, or the steps to make pages of (see
+   * {@link SlideSplitProp}).
+   */
+  split?: SlideSplitProp | undefined;
   /**
    * Whether the slide is spare, e.g., a backup slide for questions. Going
    * through the {@link Deck} skips spare slides, but they can be chosen,
@@ -130,6 +138,7 @@ export function Slide({
   after,
   to,
   before,
+  split,
   fromLast,
   recapOf,
   lang,
@@ -153,6 +162,10 @@ export function Slide({
       store.setRange(undefined);
     };
   }, [store, from, after, to, before, fromLast]);
+  const legibleRank = rankOf(theme, theme.legibleStepAppearance ?? 'dimmed');
+  useLayoutEffect(() => {
+    store.setSplit(split, legibleRank);
+  }, [store, split, legibleRank]);
   const deckLang = use(DeckContext)?.lang;
   const inDocument = view.kind === 'document';
   // Every view of the slide tells its language, e.g., for reading it out,

@@ -43,6 +43,7 @@ import {
   finishSlides,
   resolveDivisionIds,
   resolveSpares,
+  checkSlideSplit,
   isStepBound,
   STEP_BOUNDS,
   type SlideDraft,
@@ -153,6 +154,11 @@ function createSlideElement(
         { place },
       );
     }
+  }
+  const split = attributes.get('split');
+  const splitProblem = split === undefined ? undefined : checkSlideSplit(split);
+  if (splitProblem !== undefined) {
+    file.message(splitProblem, { place });
   }
   const props = new Map(attributes);
   if (id !== undefined && !attributes.has('id')) {

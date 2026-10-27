@@ -23,6 +23,7 @@ import {
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepStore.ts';
 import { TogetherContext } from './TogetherContext.ts';
+import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
 import { useSteps, type StepState, type StepWith } from './useSteps.ts';
 
 export interface StepsProps extends Omit<
@@ -47,6 +48,14 @@ export interface StepsProps extends Omit<
    * HTML attribute, it isn't shown as a tooltip.
    */
   title?: string | undefined;
+  /**
+   * How the steps ask for pages when the slide is split into pages, e.g., for
+   * a PDF (see {@link SplitProp}). Defaults to `'each'`, since the content may
+   * change in each step, e.g., `'none'` for steps that only highlight.
+   */
+  split?: SplitProp | undefined;
+  /** See the `overlay` of `Step`. */
+  overlay?: OverlayProp | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   /** Content to render depending on the current step. */
@@ -121,6 +130,8 @@ export function Steps(inProps: StepsProps): JSX.Element {
     in: parent,
     after,
     title,
+    split,
+    overlay,
     className,
     children,
     ...other
@@ -133,6 +144,9 @@ export function Steps(inProps: StepsProps): JSX.Element {
     after,
     title,
     appearances: ALWAYS_SHOWN,
+    split,
+    defaultSplit: 'each',
+    overlay: parseOverlay(overlay),
   });
   const { ref, stepIndex, phase, inherited } = step;
   // The content is always shown, unless the step it is nested in isn't.

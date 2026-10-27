@@ -223,6 +223,56 @@ Their values are step numbers, like `1` or `2.1`, or names of groups. `from`
 and `to` include the step they refer to, `after` and `before` don't. The
 skipped steps can still be chosen from the step tree.
 
+## Splitting into pages
+
+A slide with steps becomes as few pages as possible when it's split into
+pages, e.g., for a PDF, so that everything shown at some step is on some
+page. A page shows the slide at a step, and a step becomes a page just before
+something is hidden, collapsed, or covered, and at the end of the slide:
+
+- Steps that stay shown, like `reveal`, make a single page of the last step.
+- `only`, `swap`, and `expand` make a page of each step before it goes away.
+- Dimmed content counts as shown, so `dim` and `focus` don't make pages of
+  their own.
+
+The step tree (Shift+T) marks the steps that become pages.
+
+`split` on a step changes how it asks for pages. A mode says whether its
+content needs a page:
+
+- `split=auto`, the default, shows its content on some page.
+- `split=none` needs no page for it, e.g., for a joke shown with `only`.
+  Pages made for other content may still show it.
+- `split=each` needs a page of each of its steps, like `<Steps>`.
+
+Steps nested in a step take its mode, unless they set their own. Points make
+pages at the step, in addition to the mode:
+
+- `split=before` makes a page just before the step is shown, e.g., of what
+  the step covers.
+- `split=initial`, or a bare `split`, makes a page when the step is shown,
+  before the steps nested in it.
+- `split=last` makes a page at the end of its turn, after the steps nested in
+  it.
+
+A step can have a mode and several points, e.g., `split="none last"`. Steps
+of a group make the pages that any of them asks for.
+
+Content that floats over other content, like
+[callouts](../plugins/elements/callouts.md), is an overlay. The content it
+may cover also gets a page before overlays first cover it, e.g., a figure
+before the callouts pointing at it. Content shown along with an overlay
+doesn't, since the overlay likely doesn't cover it. `:step{overlay}` makes a step an overlay,
+and `overlay=false` makes a callout an ordinary step. The step tree marks
+overlays, too.
+
+`split` on a slide sets the mode of its steps, e.g., `{split=none}` for a
+single page of the last step. It can also list the steps to make pages of,
+like the [ranges of steps](#ranges-of-steps), e.g., `{split="1, parse"}`,
+or `0` for the slide before its steps, which then make no other pages unless
+the slide also has a mode or the steps ask for them. Only the steps in the
+range of the slide become pages.
+
 ## Steps in JSX
 
 JSX on a slide can use the components of `@seminar/core`:
@@ -231,4 +281,5 @@ JSX on a slide can use the components of `@seminar/core`:
 - `<Together>` shows the `<Step>`s directly inside it in a single step.
 - `<Steps count={3}>` takes several steps, and passes the current one to a
   function as its children, e.g., to highlight parts of a figure one after
-  another.
+  another. Since its content may change in each step, it makes a page of each
+  step, unless it has `split="none"`, e.g., if it only highlights.
