@@ -96,7 +96,7 @@ async function printDeck(deck: PdfDeck, host: string): Promise<void> {
       pageSize: job.paper,
     });
     await mkdir(path.dirname(deck.output), { recursive: true });
-    await writeFile(deck.output, addDocumentInfo(pdf, printed));
+    await writeFile(deck.output, await addDocumentInfo(pdf, printed));
   } finally {
     window.destroy();
     roots.delete(host);

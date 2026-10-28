@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@electron/get": "^5.1.0",
+    "@pdfme/pdf-lib": "^6.2.8",
     "yauzl": "^3.4.0"
   },
   "devDependencies": {

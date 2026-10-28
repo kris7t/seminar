@@ -1,18 +1,20 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  PDFArray,
+  PDFDict,
+  PDFDocument,
+  PDFHexString,
+  PDFName,
+  PDFNumber,
+  PDFRawStream,
+  PDFString,
+  type PDFObject,
+} from '@pdfme/pdf-lib';
 import type { PrintedDocument } from '@seminar/core';
 import { describe, expect, it } from 'vitest';
 
 import { addDocumentInfo } from './documentInfo.ts';
-import { PdfFile } from './PdfFile.ts';
-import {
-  PdfName,
-  PdfRef,
-  PdfString,
-  textString,
-  type PdfDict,
-  type PdfValue,
-} from './syntax.ts';
 
 /**
  * Printed by Chromium with the sheets `seminar-print-sheet-1` to `-3` on
@@ -44,122 +46,126 @@ const printed: PrintedDocument = {
   },
 };
 
-function read(pdf: Buffer) {
-  const file = new PdfFile(pdf.toString('latin1'));
-  const catalog: PdfDict =
-    file.dict(file.trailer.get('Root')) ?? new Map<string, PdfValue>();
-  return { file, catalog };
+async function load(document: PrintedDocument): Promise<PDFDocument> {
+  return PDFDocument.load(await addDocumentInfo(SHEETS, document), {
+    updateMetadata: false,
+  });
 }
 
-/** Returns the titles of the outline items from `first`, with their dests. */
-function outline(file: PdfFile, first: PdfValue | undefined): unknown[] {
+/** Returns `object` as plain values, e.g., to compare it. */
+function plain(object: PDFObject | undefined): unknown {
+  if (object instanceof PDFNumber) {
+    return object.asNumber();
+  }
+  if (
+    object instanceof PDFName ||
+    object instanceof PDFString ||
+    object instanceof PDFHexString
+  ) {
+    return object.decodeText();
+  }
+  if (object instanceof PDFArray) {
+    return object.asArray().map(plain);
+  }
+  if (object instanceof PDFDict) {
+    return Object.fromEntries(
+      [...object.entries()].map(([key, value]) => [
+        key.decodeText(),
+        plain(value),
+      ]),
+    );
+  }
+  return object;
+}
+
+/** Returns the items of the outline from `first`. */
+function outline(doc: PDFDocument, first: PDFObject | undefined): unknown[] {
   const items: unknown[] = [];
-  let item = file.dict(first);
-  while (item !== undefined) {
+  let item = first === undefined ? undefined : doc.context.lookup(first);
+  while (item instanceof PDFDict) {
     items.push({
-      title: item.get('Title'),
-      dest: item.get('Dest'),
-      count: item.get('Count'),
-      children: outline(file, item.get('First')),
+      title: plain(item.get(PDFName.of('Title'))),
+      dest: plain(item.get(PDFName.of('Dest'))),
+      count: plain(item.get(PDFName.of('Count'))),
+      children: outline(doc, item.get(PDFName.of('First'))),
     });
-    item = file.dict(item.get('Next'));
+    const next = item.get(PDFName.of('Next'));
+    item = next === undefined ? undefined : doc.context.lookup(next);
   }
   return items;
 }
 
 describe('addDocumentInfo', () => {
-  it('adds an incremental update to the PDF', () => {
-    const updated = addDocumentInfo(SHEETS, printed);
-    expect(updated.subarray(0, SHEETS.length).equals(SHEETS)).toBe(true);
-    expect(updated.toString('latin1')).toMatch(/\nstartxref\n\d+\n%%EOF\n$/);
-    const { file, catalog } = read(updated);
-    expect(file.pages(catalog.get('Pages'))).toHaveLength(5);
+  it('labels the pages of each sheet', async () => {
+    const doc = await load(printed);
+    expect(doc.getPageCount()).toBe(5);
+    expect(plain(doc.catalog.get(PDFName.of('PageLabels')))).toEqual({
+      // The pages of the second sheet have the label of the first.
+      Nums: [0, { P: '1' }, 4, { P: '2' }],
+    });
   });
 
-  it('labels the pages of each sheet', () => {
-    const { catalog } = read(addDocumentInfo(SHEETS, printed));
-    expect(catalog.get('PageLabels')).toEqual(
-      new Map([
-        [
-          'Nums',
-          [
-            0,
-            new Map([['P', new PdfString('1')]]),
-            // The pages of the second sheet have the label of the first.
-            4,
-            new Map([['P', new PdfString('2')]]),
-          ],
-        ],
-      ]),
-    );
+  it('leaves the pages of sheets without labels numbered', async () => {
+    const doc = await load({
+      ...printed,
+      sheets: printed.sheets.map(({ id }) => ({ id })),
+    });
+    expect(doc.catalog.has(PDFName.of('PageLabels'))).toBe(false);
   });
 
-  it('leaves the pages of sheets without labels numbered', () => {
-    const { catalog } = read(
-      addDocumentInfo(SHEETS, {
-        ...printed,
-        sheets: printed.sheets.map(({ id }) => ({ id })),
-      }),
-    );
-    expect(catalog.has('PageLabels')).toBe(false);
-  });
-
-  it('adds the outline, going to the named destinations of the sheets', () => {
-    const { file, catalog } = read(addDocumentInfo(SHEETS, printed));
-    expect(catalog.get('PageMode')).toEqual(new PdfName('UseOutlines'));
-    const outlines = file.dict(catalog.get('Outlines'));
-    expect(outlines?.get('Count')).toBe(3);
-    expect(outline(file, outlines?.get('First'))).toEqual([
+  it('adds the outline, going to the named destinations of the sheets', async () => {
+    const doc = await load(printed);
+    expect(plain(doc.catalog.get(PDFName.of('PageMode')))).toBe('UseOutlines');
+    const outlines = doc.catalog.lookup(PDFName.of('Outlines'), PDFDict);
+    expect(plain(outlines.get(PDFName.of('Count')))).toBe(3);
+    expect(outline(doc, outlines.get(PDFName.of('First')))).toEqual([
       {
-        title: textString('Bevezetés'),
-        dest: new PdfName('seminar-print-sheet-1'),
+        title: 'Bevezetés',
+        dest: 'seminar-print-sheet-1',
         count: 1,
         children: [
           {
-            title: new PdfString('Details'),
-            dest: new PdfName('seminar-print-sheet-3'),
+            title: 'Details',
+            dest: 'seminar-print-sheet-3',
             count: undefined,
             children: [],
           },
         ],
       },
       {
-        title: new PdfString('Summary'),
-        dest: new PdfName('seminar-print-sheet-3'),
+        title: 'Summary',
+        dest: 'seminar-print-sheet-3',
         count: undefined,
         children: [],
       },
     ]);
   });
 
-  it('adds the metadata of the deck', () => {
-    const updated = addDocumentInfo(SHEETS, printed);
-    const { file, catalog } = read(updated);
-    const info = file.dict(file.trailer.get('Info'));
-    expect(info?.get('Title')).toEqual(new PdfString('Talk'));
-    expect(info?.get('Author')).toEqual(textString('Ada, Kristóf'));
-    expect(info?.get('Subject')).toEqual(new PdfString('A talk'));
-    expect(info?.get('Keywords')).toEqual(new PdfString('a, b'));
-    expect(info?.get('Creator')).toEqual(new PdfString('Seminar'));
-    // Kept from Chromium.
-    expect(info?.get('Producer')).toEqual(expect.any(PdfString));
-    const metadata = catalog.get('Metadata');
-    expect(metadata).toBeInstanceOf(PdfRef);
-    const text = updated.subarray(SHEETS.length).toString('utf8');
-    expect(text).toContain(
-      '<dc:creator><rdf:Seq><rdf:li>Ada</rdf:li><rdf:li>Kristóf</rdf:li></rdf:Seq></dc:creator>',
-    );
-    expect(text).toContain('<xmp:CreatorTool>Seminar</xmp:CreatorTool>');
-    expect(text).toMatch(
-      /<xmp:CreateDate>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})<\/xmp:CreateDate>/,
-    );
+  it('leaves out the outline if there is none', async () => {
+    const doc = await load({ ...printed, outline: [] });
+    expect(doc.catalog.has(PDFName.of('Outlines'))).toBe(false);
+    expect(doc.catalog.has(PDFName.of('PageMode'))).toBe(false);
   });
 
-  it('leaves out the outline if there is none', () => {
-    const { catalog } = read(
-      addDocumentInfo(SHEETS, { ...printed, outline: [] }),
+  it('adds the metadata of the deck', async () => {
+    const doc = await load(printed);
+    expect(doc.getTitle()).toBe('Talk');
+    expect(doc.getAuthor()).toBe('Ada, Kristóf');
+    expect(doc.getSubject()).toBe('A talk');
+    expect(doc.getKeywords()).toBe('a, b');
+    expect(doc.getCreator()).toBe('Seminar');
+    // Kept from Chromium.
+    expect(doc.getProducer()).toMatch(/^Skia\/PDF/);
+    const metadata = doc.catalog.lookup(PDFName.of('Metadata'));
+    expect(metadata).toBeInstanceOf(PDFRawStream);
+    const xmp = Buffer.from((metadata as PDFRawStream).contents).toString(
+      'utf8',
     );
-    expect(catalog.has('Outlines')).toBe(false);
-    expect(catalog.has('PageMode')).toBe(false);
+    expect(xmp).toContain(
+      '<dc:creator><rdf:Seq><rdf:li>Ada</rdf:li><rdf:li>Kristóf</rdf:li></rdf:Seq></dc:creator>',
+    );
+    expect(xmp).toContain('<pdf:Producer>Skia/PDF');
+    expect(xmp).toContain('<xmp:CreatorTool>Seminar</xmp:CreatorTool>');
+    expect(xmp).toMatch(/<xmp:CreateDate>[\d-]+T[\d:.]+Z<\/xmp:CreateDate>/);
   });
 });
