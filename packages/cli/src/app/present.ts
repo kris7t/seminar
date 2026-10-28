@@ -119,27 +119,29 @@ async function showAudience(
   window: BrowserWindow,
   output: Output,
 ): Promise<void> {
+  // Also if it leaves full screen while the compositor is still asked
+  // whether it's on the right output.
+  window.once('enter-full-screen', () => {
+    window.once('leave-full-screen', () => {
+      window.close();
+    });
+  });
   const found = await findWindow(compositor, window);
   if (window.isDestroyed()) {
     return;
   }
   if (
-    found === undefined ||
-    !(await found.fullscreen(output, COMPOSITOR_TIMEOUT))
+    (found === undefined ||
+      !(await found.fullscreen(output, COMPOSITOR_TIMEOUT))) &&
+    !window.isDestroyed()
   ) {
     console.log(
       `The compositor didn't show the slides on ${output.name || 'the chosen screen'}.`,
     );
-    if (window.isDestroyed()) {
-      return;
-    }
     // It can't be moved by hand without a frame anyway.
-    window.setFullScreen(true);
-  }
-  if (!window.isDestroyed()) {
-    window.on('leave-full-screen', () => {
-      window.close();
-    });
+    if (!window.isFullScreen()) {
+      window.setFullScreen(true);
+    }
   }
 }
 
