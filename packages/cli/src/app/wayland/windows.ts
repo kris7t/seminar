@@ -1,6 +1,13 @@
 import path from 'node:path';
 
 import {
+  outputAt,
+  type Area,
+  type Compositor,
+  type CompositorWindow,
+  type Output as CompositorOutput,
+} from '../compositor.ts';
+import {
   WaylandConnection,
   type EventHandler,
   type MessageReader,
@@ -42,16 +49,10 @@ const STATE_FULLSCREEN = 3;
 /** Since which version the protocol has `set_fullscreen`. */
 const TOPLEVEL_MANAGER_VERSION = 2;
 
-/** An output of the compositor, in logical coordinates. */
-export interface Output {
+/** An output of the compositor. */
+export interface Output extends CompositorOutput {
   /** Id of our object of the output. */
   readonly id: number;
-  /** Name of the output, like `DP-1`. */
-  name: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
 }
 
 /** A window of any client of the compositor. */
@@ -64,34 +65,6 @@ export interface Toplevel {
   readonly outputs: Set<number>;
   fullscreen: boolean;
   closed: boolean;
-}
-
-/** An area of the outputs, in logical coordinates. */
-export interface Area {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-}
-
-/** Returns the output of `outputs` that the middle of `area` is on, if any. */
-export function outputAt(
-  outputs: Iterable<Output>,
-  { left, top, width, height }: Area,
-): Output | undefined {
-  const x = left + width / 2;
-  const y = top + height / 2;
-  for (const output of outputs) {
-    if (
-      x >= output.x &&
-      x < output.x + output.width &&
-      y >= output.y &&
-      y < output.y + output.height
-    ) {
-      return output;
-    }
-  }
-  return undefined;
 }
 
 /**
@@ -130,7 +103,7 @@ function readGlobal(args: MessageReader): Global {
  * The windows and outputs of a Wayland compositor that supports the wlr
  * foreign toplevel management protocol.
  */
-export class WaylandWindows {
+export class WaylandWindows implements Compositor {
   readonly #connection: WaylandConnection;
   readonly #registry: number;
   readonly #xdgOutputManager: number;
@@ -376,6 +349,25 @@ export class WaylandWindows {
     // Compositors may tell which outputs a new window is on only later.
     await this.#until(() => (find()?.outputs.size ?? 0) > 0, timeout);
     return find();
+  }
+
+  async findWindow(
+    title: string,
+    timeout: number,
+  ): Promise<CompositorWindow | undefined> {
+    const toplevel = await this.toplevel(title, timeout);
+    return toplevel === undefined
+      ? undefined
+      : {
+          output: () => Promise.resolve(this.outputOf(toplevel)),
+          fullscreen: (output, timeout) => {
+            // Only our own outputs have the ids of their objects.
+            const ours = this.outputs.find((candidate) => candidate === output);
+            return ours === undefined
+              ? Promise.resolve(false)
+              : this.fullscreen(toplevel, ours, timeout);
+          },
+        };
   }
 
   /** Returns the output that `toplevel` entered last, if any. */

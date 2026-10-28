@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { outputAt, waylandSocket, WaylandWindows } from './windows.ts';
+import { waylandSocket, WaylandWindows } from './windows.ts';
 import { encodeMessage, MessageReader, MessageSplitter } from './wire.ts';
 
 interface FakeOutput {
@@ -272,21 +272,6 @@ describe('WaylandWindows', () => {
       toplevels: false,
     });
     expect(await WaylandWindows.connect(socket)).toBeUndefined();
-  });
-});
-
-describe('outputAt', () => {
-  it('finds the output with the middle of the area', () => {
-    const outputs = [
-      { id: 1, ...LAPTOP },
-      { id: 2, ...PROJECTOR },
-    ];
-    expect(
-      outputAt(outputs, { left: 1800, top: 0, width: 400, height: 100 })?.name,
-    ).toBe('HDMI-A-1');
-    expect(
-      outputAt(outputs, { left: 0, top: 2000, width: 100, height: 100 }),
-    ).toBeUndefined();
   });
 });
 

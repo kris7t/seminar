@@ -46,7 +46,10 @@ export function encodeMessage(
   return Buffer.concat([header, body]);
 }
 
-/** Reads the arguments of a message in order. */
+/**
+ * Reads the arguments of a message in order, and throws if the message is
+ * too short for them, or malformed.
+ */
 export class MessageReader {
   readonly #body: Buffer;
   #offset = 0;
@@ -55,36 +58,47 @@ export class MessageReader {
     this.#body = body;
   }
 
+  /** Returns the offset of the next `length` bytes, and skips them. */
+  #take(length: number): number {
+    const offset = this.#offset;
+    if (offset + length > this.#body.length) {
+      throw new Error('Truncated Wayland message');
+    }
+    this.#offset += length;
+    return offset;
+  }
+
   uint(): number {
-    const value = this.#body.readUInt32LE(this.#offset);
-    this.#offset += 4;
-    return value;
+    return this.#body.readUInt32LE(this.#take(4));
   }
 
   int(): number {
-    const value = this.#body.readInt32LE(this.#offset);
-    this.#offset += 4;
-    return value;
+    return this.#body.readInt32LE(this.#take(4));
   }
 
   string(): string | null {
     const length = this.uint();
-    const value =
-      length === 0
-        ? null
-        : this.#body.toString('utf8', this.#offset, this.#offset + length - 1);
-    this.#offset += padded(length);
-    return value;
+    if (length === 0) {
+      return null;
+    }
+    const offset = this.#take(padded(length));
+    if (this.#body[offset + length - 1] !== 0) {
+      throw new Error('Unterminated string in a Wayland message');
+    }
+    return this.#body.toString('utf8', offset, offset + length - 1);
   }
 
   /** Reads an array of 32-bit unsigned integers, like a set of states. */
   uints(): number[] {
     const length = this.uint();
+    if (length % 4 !== 0) {
+      throw new Error('Invalid array of integers in a Wayland message');
+    }
+    const offset = this.#take(length);
     const values: number[] = [];
     for (let index = 0; index < length; index += 4) {
-      values.push(this.#body.readUInt32LE(this.#offset + index));
+      values.push(this.#body.readUInt32LE(offset + index));
     }
-    this.#offset += padded(length);
     return values;
   }
 }

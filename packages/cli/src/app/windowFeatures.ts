@@ -1,4 +1,4 @@
-import type { Area } from './wayland/windows.ts';
+import type { Area } from './compositor.ts';
 
 /**
  * Returns the area that the features of `window.open`, like

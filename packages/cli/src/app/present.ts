@@ -11,6 +11,8 @@ import {
 } from 'electron';
 
 import type { HostOptions, PresentJob } from '../job.ts';
+import type { Compositor, CompositorWindow, Output } from './compositor.ts';
+import { KWinWindows } from './kwin/kwin.ts';
 import {
   PRELOAD,
   pageUrl,
@@ -18,12 +20,7 @@ import {
   roots,
   serveRoots,
 } from './serve.ts';
-import {
-  waylandSocket,
-  WaylandWindows,
-  type Output,
-  type Toplevel,
-} from './wayland/windows.ts';
+import { waylandSocket, WaylandWindows } from './wayland/windows.ts';
 import { featureArea } from './windowFeatures.ts';
 
 /** How long to wait for the compositor to show windows, in milliseconds. */
@@ -60,9 +57,10 @@ function openExternal(url: string): void {
 
 /**
  * Connects to the Wayland compositor, if Electron shows its windows there,
- * and the compositor lets us place them.
+ * and the compositor lets us place them, with the wlr foreign toplevel
+ * management protocol, or with the scripts of KWin.
  */
-async function connectWayland(): Promise<WaylandWindows | undefined> {
+async function connectCompositor(): Promise<Compositor | undefined> {
   const socket = waylandSocket(process.env);
   if (
     app.commandLine.getSwitchValue('ozone-platform') !== 'wayland' ||
@@ -71,13 +69,15 @@ async function connectWayland(): Promise<WaylandWindows | undefined> {
     return undefined;
   }
   try {
-    const windows = await WaylandWindows.connect(socket);
-    if (windows === undefined) {
+    const compositor =
+      (await WaylandWindows.connect(socket)) ??
+      (await KWinWindows.connect(process.env, process.pid));
+    if (compositor === undefined) {
       console.log(
         "The compositor can't show the slides on a chosen screen. Move the window of the slides to the screen of the audience before going full screen.",
       );
     }
-    return windows;
+    return compositor;
   } catch (error) {
     console.log(
       `Could not connect to the compositor: ${error instanceof Error ? error.message : String(error)}`,
@@ -90,10 +90,10 @@ async function connectWayland(): Promise<WaylandWindows | undefined> {
  * Finds the window of the compositor of `window`, which has a unique title
  * until then, instead of the title of its page.
  */
-async function findToplevel(
-  wayland: WaylandWindows,
+async function findWindow(
+  compositor: Compositor,
   window: BrowserWindow,
-): Promise<Toplevel | undefined> {
+): Promise<CompositorWindow | undefined> {
   const title = `seminar-${randomUUID()}`;
   const keepTitle = (event: Electron.Event) => {
     event.preventDefault();
@@ -101,7 +101,7 @@ async function findToplevel(
   window.on('page-title-updated', keepTitle);
   window.setTitle(title);
   try {
-    return await wayland.toplevel(title, COMPOSITOR_TIMEOUT);
+    return await compositor.findWindow(title, COMPOSITOR_TIMEOUT);
   } finally {
     if (!window.isDestroyed()) {
       window.off('page-title-updated', keepTitle);
@@ -115,17 +115,17 @@ async function findToplevel(
  * closes it once it leaves full screen, which ends the presenter view.
  */
 async function showAudience(
-  wayland: WaylandWindows,
+  compositor: Compositor,
   window: BrowserWindow,
   output: Output,
 ): Promise<void> {
-  const toplevel = await findToplevel(wayland, window);
+  const found = await findWindow(compositor, window);
   if (window.isDestroyed()) {
     return;
   }
   if (
-    toplevel === undefined ||
-    !(await wayland.fullscreen(toplevel, output, COMPOSITOR_TIMEOUT))
+    found === undefined ||
+    !(await found.fullscreen(output, COMPOSITOR_TIMEOUT))
   ) {
     console.log(
       `The compositor didn't show the slides on ${output.name || 'the chosen screen'}.`,
@@ -143,7 +143,7 @@ async function showAudience(
   }
 }
 
-function present(wayland: WaylandWindows | undefined): void {
+function present(compositor: Compositor | undefined): void {
   roots.set(host, job.root);
   serveRoots();
   session.defaultSession.setPermissionRequestHandler(
@@ -163,29 +163,33 @@ function present(wayland: WaylandWindows | undefined): void {
     webPreferences: { preload: PRELOAD, sandbox: true, contextIsolation: true },
   });
   const { webContents } = presenter;
-  const presenterToplevel = new Promise<Toplevel | undefined>((resolve) => {
-    let shown = false;
-    const show = () => {
-      if (shown) {
-        return;
-      }
-      shown = true;
-      // Before showing the window, which has a unique title until found.
-      resolve(
-        wayland === undefined ? undefined : findToplevel(wayland, presenter),
-      );
-      presenter.maximize();
-      presenter.show();
-    };
-    presenter.once('ready-to-show', show);
-    webContents.once('did-finish-load', () => {
-      // Hidden windows may never become ready to show with software
-      // rendering, e.g., on Wayland.
-      if (!app.getGPUFeatureStatus().gpu_compositing.startsWith('enabled')) {
-        show();
-      }
-    });
-  });
+  const presenterWindow = new Promise<CompositorWindow | undefined>(
+    (resolve) => {
+      let shown = false;
+      const show = () => {
+        if (shown) {
+          return;
+        }
+        shown = true;
+        // Before showing the window, which has a unique title until found.
+        resolve(
+          compositor === undefined
+            ? undefined
+            : findWindow(compositor, presenter),
+        );
+        presenter.maximize();
+        presenter.show();
+      };
+      presenter.once('ready-to-show', show);
+      webContents.once('did-finish-load', () => {
+        // Hidden windows may never become ready to show with software
+        // rendering, e.g., on Wayland.
+        if (!app.getGPUFeatureStatus().gpu_compositing.startsWith('enabled')) {
+          show();
+        }
+      });
+    },
+  );
   presenter.on('closed', () => {
     app.quit();
   });
@@ -205,16 +209,14 @@ function present(wayland: WaylandWindows | undefined): void {
     // Not for the audience window, which shows what the deck renders.
     event.returnValue = (
       event.sender === webContents
-        ? { present: true, placesWindows: wayland !== undefined }
+        ? { present: true, placesWindows: compositor !== undefined }
         : {}
     ) satisfies HostOptions;
   });
   ipcMain.handle(
     'seminar:current-screen',
     async (): Promise<ScreenArea | undefined> => {
-      const toplevel = await presenterToplevel;
-      const output =
-        toplevel === undefined ? undefined : wayland?.outputOf(toplevel);
+      const output = await (await presenterWindow)?.output();
       return output === undefined
         ? undefined
         : {
@@ -226,7 +228,7 @@ function present(wayland: WaylandWindows | undefined): void {
     },
   );
   ipcMain.on('seminar:shows-audience-fullscreen', (event, area: ScreenArea) => {
-    event.returnValue = wayland?.outputAt(area) !== undefined;
+    event.returnValue = compositor?.outputAt(area) !== undefined;
   });
 
   // The output to show the audience window that is being opened on, if any.
@@ -237,7 +239,8 @@ function present(wayland: WaylandWindows | undefined): void {
       return { action: 'deny' };
     }
     const area = featureArea(features);
-    audienceOutput = area === undefined ? undefined : wayland?.outputAt(area);
+    audienceOutput =
+      area === undefined ? undefined : compositor?.outputAt(area);
     return {
       action: 'allow',
       overrideBrowserWindowOptions: {
@@ -251,8 +254,8 @@ function present(wayland: WaylandWindows | undefined): void {
   webContents.on('did-create-window', (window) => {
     const output = audienceOutput;
     audienceOutput = undefined;
-    if (wayland !== undefined && output !== undefined) {
-      void showAudience(wayland, window, output);
+    if (compositor !== undefined && output !== undefined) {
+      void showAudience(compositor, window, output);
     }
   });
 
@@ -266,10 +269,10 @@ app.on('window-all-closed', () => {
 // Not awaited at the top level, which Electron waits for before it is ready.
 void app
   .whenReady()
-  .then(connectWayland)
-  .then((wayland) => {
-    present(wayland);
+  .then(connectCompositor)
+  .then((compositor) => {
+    present(compositor);
     app.once('quit', () => {
-      wayland?.close();
+      compositor?.close();
     });
   });

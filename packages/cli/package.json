@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@electron/get": "^5.1.0",
+    "@homebridge/dbus-native": "0.7.9",
     "@pdfme/pdf-lib": "^6.2.8",
     "prompts": "^2.4.2",
     "yauzl": "^3.4.0"

@@ -20,9 +20,9 @@ asking for permissions first.
 
 On Wayland, where browsers can't choose the screen of their windows, it
 shows the slides in full screen on the screen chosen if the compositor
-supports the wlr foreign toplevel management protocol, like Sway.
-Otherwise, move the window of the slides to the screen of the audience, and
-click it to go full screen.
+supports the wlr foreign toplevel management protocol, like Sway, or is the
+KWin of KDE Plasma. Otherwise, move the window of the slides to the screen
+of the audience, and click it to go full screen.
 
 ## Saving PDFs
 
