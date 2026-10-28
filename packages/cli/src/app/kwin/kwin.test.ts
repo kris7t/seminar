@@ -1,13 +1,16 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import vm from 'node:vm';
-import * as dbusNative from '@homebridge/dbus-native';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { socketPath } from './dbus.ts';
+import {
+  connectService,
+  hasDBusDaemon,
+  startBus,
+  type TestBus,
+} from '../../test/bus.ts';
 import { KWinWindows } from './kwin.ts';
 import { kwinScript, type Report } from './script.ts';
 
@@ -145,94 +148,60 @@ describe('kwinScript', () => {
   });
 });
 
-/** Whether `dbus-daemon` is on the `PATH`, to run a bus for the tests. */
-const hasDBusDaemon = (process.env['PATH'] ?? '')
-  .split(path.delimiter)
-  .some((directory) => existsSync(path.join(directory, 'dbus-daemon')));
-
-interface FakeBus {
-  invoke(message: object, callback: (...args: unknown[]) => void): void;
-  requestName(
-    name: string,
-    flags: number,
-    callback: (error: { name: string } | null) => void,
-  ): void;
-  exportInterface(
-    implementation: object,
-    path: string,
-    description: object,
-  ): void;
-  connection: { end(): void; once(event: string, listener: () => void): void };
-}
-
-const { createClient } = dbusNative as unknown as {
-  createClient: (options: { socket: string }) => FakeBus;
-};
-
 /** Serves a fake KWin with `windows` on the bus at `socket`. */
 async function fakeKWin(socket: string, windows: FakeWindow[]) {
-  const bus = createClient({ socket });
-  await new Promise<void>((resolve) => {
-    bus.connection.once('connect', resolve);
-  });
+  const service = await connectService(socket);
   const scripts = new Map<number, string>();
   const plugins = new Map<string, number>();
   let nextId = 0;
   const callDBus = (...args: unknown[]) => {
-    const [destination, objectPath, iface, member, ...body] = args;
-    bus.invoke(
-      {
-        destination,
-        path: objectPath,
-        interface: iface,
-        member,
-        signature: 's'.repeat(body.length),
-        body,
-      },
-      () => undefined,
+    const [destination, objectPath, iface, member, ...body] = args.map(String);
+    service.send(
+      destination ?? '',
+      objectPath ?? '',
+      iface ?? '',
+      member ?? '',
+      body,
     );
   };
-  bus.exportInterface(
-    {
-      loadScript: async (file: string, plugin: string) => {
+  service.export('/Scripting', 'org.kde.kwin.Scripting', {
+    loadScript: [
+      'ss',
+      'i',
+      async (file: string, plugin: string) => {
         const id = nextId;
         nextId += 1;
         scripts.set(id, await readFile(file, 'utf8'));
         plugins.set(plugin, id);
-        bus.exportInterface(
-          {
-            run: () => {
-              runScript(scripts.get(id) ?? '', windows, callDBus);
-            },
-          },
+        service.export(
           `/Scripting/Script${String(id)}`,
-          { name: 'org.kde.kwin.Script', methods: { run: ['', ''] } },
+          'org.kde.kwin.Script',
+          {
+            run: [
+              '',
+              '',
+              () => {
+                runScript(scripts.get(id) ?? '', windows, callDBus);
+              },
+            ],
+          },
         );
         return id;
       },
-      unloadScript: (plugin: string) => {
+    ],
+    unloadScript: [
+      's',
+      'b',
+      (plugin: string) => {
         const id = plugins.get(plugin);
         if (id !== undefined) {
           scripts.delete(id);
         }
         return plugins.delete(plugin);
       },
-    },
-    '/Scripting',
-    {
-      name: 'org.kde.kwin.Scripting',
-      methods: { loadScript: ['ss', 'i'], unloadScript: ['s', 'b'] },
-    },
-  );
-  await new Promise((resolve, reject) => {
-    bus.requestName('org.kde.KWin', 0, (error) => {
-      if (error) {
-        reject(new Error(error.name));
-      } else {
-        resolve(undefined);
-      }
-    });
+    ],
   });
+  await service.requestName('org.kde.KWin');
   return {
     loaded: () => plugins.size,
     isLoaded: (plugin: string) => plugins.has(plugin),
@@ -241,36 +210,20 @@ async function fakeKWin(socket: string, windows: FakeWindow[]) {
       plugins.set(plugin, -1);
     },
     close: () => {
-      bus.connection.end();
+      service.close();
     },
   };
 }
 
 describe.skipIf(!hasDBusDaemon)('KWinWindows', () => {
+  let bus: TestBus;
   let directory: string;
-  let daemon: ChildProcess;
-  let address: string;
   let kwin: Awaited<ReturnType<typeof fakeKWin>> | undefined;
   let windows: KWinWindows | undefined;
 
   beforeEach(async () => {
-    directory = await mkdtemp(path.join(os.tmpdir(), 'seminar-dbus-'));
-    daemon = spawn(
-      'dbus-daemon',
-      [
-        '--session',
-        '--nofork',
-        '--print-address=1',
-        `--address=unix:path=${path.join(directory, 'bus')}`,
-      ],
-      { stdio: ['ignore', 'pipe', 'inherit'] },
-    );
-    address = await new Promise((resolve, reject) => {
-      daemon.once('error', reject);
-      daemon.stdout?.once('data', (chunk: Buffer) => {
-        resolve(chunk.toString().trim());
-      });
-    });
+    bus = await startBus();
+    directory = bus.directory;
   });
 
   afterEach(async () => {
@@ -278,21 +231,19 @@ describe.skipIf(!hasDBusDaemon)('KWinWindows', () => {
     windows = undefined;
     kwin?.close();
     kwin = undefined;
-    daemon.kill();
-    await rm(directory, { recursive: true, force: true });
+    await bus.stop();
   });
 
   /** The environment of the app, with a runtime directory of the test. */
   function env(): NodeJS.ProcessEnv {
-    return { DBUS_SESSION_BUS_ADDRESS: address, XDG_RUNTIME_DIR: directory };
+    return {
+      DBUS_SESSION_BUS_ADDRESS: bus.address,
+      XDG_RUNTIME_DIR: directory,
+    };
   }
 
   function busSocket(): string {
-    const socket = socketPath(address);
-    if (socket === undefined) {
-      throw new Error(`Not a Unix socket: ${address}`);
-    }
-    return socket;
+    return bus.socket;
   }
 
   it('needs KWin on the session bus', async () => {
@@ -326,7 +277,7 @@ describe.skipIf(!hasDBusDaemon)('KWinWindows', () => {
     if (window === undefined || projector === undefined) {
       throw new Error('No window or output');
     }
-    expect(await window.fullscreen(projector, 1000)).toBe(true);
+    expect(await window.place(projector, 1000)).toBe(true);
     expect((await window.output())?.name).toBe('HDMI-A-1');
   });
 
@@ -371,21 +322,6 @@ describe.skipIf(!hasDBusDaemon)('KWinWindows', () => {
     if (window === undefined || projector === undefined) {
       throw new Error('No window or output');
     }
-    expect(await window.fullscreen(projector, 300)).toBe(false);
-  });
-});
-
-describe('socketPath', () => {
-  it('finds the Unix socket of a bus', () => {
-    expect(socketPath('unix:path=/run/user/1000/bus')).toBe(
-      '/run/user/1000/bus',
-    );
-    expect(
-      socketPath('unix:abstract=/tmp/dbus-abc,guid=123;unix:path=/tmp/x'),
-    ).toBe('\0/tmp/dbus-abc');
-    expect(socketPath('tcp:host=localhost,port=1;unix:path=/a%20b')).toBe(
-      '/a b',
-    );
-    expect(socketPath('unixexec:path=/bin/sh')).toBeUndefined();
+    expect(await window.place(projector, 300)).toBe(false);
   });
 });

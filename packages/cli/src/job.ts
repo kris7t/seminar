@@ -50,8 +50,8 @@ export interface HostOptions {
   print?: PrintOptions;
   present?: boolean;
   /**
-   * Whether the app knows the screens of windows, and shows the audience
-   * window in full screen itself, as on Wayland.
+   * Whether the app knows the screens of windows, and puts the audience
+   * window on its screen itself, as on Wayland.
    */
   placesWindows?: boolean;
 }

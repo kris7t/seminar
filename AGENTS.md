@@ -18,7 +18,8 @@ React presentations. See `README.md` for the features and the syntax of decks.
   PDFs with an Electron that it downloads, and whose apps give decks a
   `seminarHost`. On Wayland, it places the audience window with the wlr
   foreign toplevel management protocol, with a client in `src/app/wayland/`,
-  or with KWin scripts over D-Bus, in `src/app/kwin/`.
+  with KWin scripts over D-Bus, in `src/app/kwin/`, or with the Window Calls
+  extension of GNOME Shell, in `src/app/gnome/`.
 - `example`: the example deck, also used for trying out changes by hand.
 - `docs`: the Docusaurus site, with guides in `packages/docs/docs/`.
 

@@ -46,15 +46,22 @@ export interface CompositorWindow {
   /** Returns the output that the window is on, if known. */
   output(): Promise<Output | undefined>;
   /**
-   * Asks the compositor to show the window in full screen on `output`.
+   * Asks the compositor to show the window on `output`, in full screen if
+   * it {@link Compositor.fullscreens}, or else only there, so that it can go
+   * full screen on the output that it is on.
    *
    * @returns Whether it did so within `timeout` milliseconds.
    */
-  fullscreen(output: Output, timeout: number): Promise<boolean>;
+  place(output: Output, timeout: number): Promise<boolean>;
 }
 
 /** A compositor that lets the app place its windows. */
 export interface Compositor {
+  /**
+   * Whether placing a window on an output also shows it in full screen,
+   * since the compositor can only put windows on chosen outputs that way.
+   */
+  readonly fullscreens: boolean;
   /** Returns the output that the middle of `area` is on, if any. */
   outputAt(area: Area): Output | undefined;
   /**

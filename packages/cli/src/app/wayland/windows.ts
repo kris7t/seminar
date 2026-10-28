@@ -104,6 +104,7 @@ function readGlobal(args: MessageReader): Global {
  * foreign toplevel management protocol.
  */
 export class WaylandWindows implements Compositor {
+  readonly fullscreens = true;
   readonly #connection: WaylandConnection;
   readonly #registry: number;
   readonly #xdgOutputManager: number;
@@ -360,7 +361,7 @@ export class WaylandWindows implements Compositor {
       ? undefined
       : {
           output: () => Promise.resolve(this.outputOf(toplevel)),
-          fullscreen: (output, timeout) => {
+          place: (output, timeout) => {
             // Only our own outputs have the ids of their objects.
             const ours = this.outputs.find((candidate) => candidate === output);
             return ours === undefined

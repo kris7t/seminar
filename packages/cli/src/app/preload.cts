@@ -30,6 +30,8 @@ const host: SeminarHost = {
             'seminar:shows-audience-fullscreen',
             screen,
           ) as boolean,
+        placeAudience: (screen) =>
+          ipcRenderer.invoke('seminar:place-audience', screen) as Promise<void>,
       }
     : {}),
 };

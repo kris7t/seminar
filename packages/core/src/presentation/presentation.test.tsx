@@ -224,6 +224,51 @@ describe('starting the presentation', () => {
     ).toBeDefined();
   });
 
+  it('lets the host of the deck place the audience before full screen', async () => {
+    stub('isExtended', window.screen, true);
+    stub('getScreenDetails', window, () =>
+      Promise.resolve({
+        screens: [laptop, rightProjector],
+        currentScreen: laptop,
+      }),
+    );
+    let placed: () => void = () => undefined;
+    const placeAudience = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          placed = resolve;
+        }),
+    );
+    const host: SeminarHost = { placeAudience };
+    Object.assign(window, { seminarHost: host });
+    const { audience, remove } = fakeAudienceWindow();
+    const audienceFullscreen = vi.fn(() => Promise.resolve());
+    stub(
+      'requestFullscreen',
+      audience.document.documentElement,
+      audienceFullscreen,
+    );
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    await user.click(await screen.findByRole('button', { name: 'OK' }));
+    expect(placeAudience).toHaveBeenCalledWith({
+      left: 1920,
+      top: 0,
+      width: 1920,
+      height: 1080,
+    });
+    expect(audienceFullscreen).not.toHaveBeenCalled();
+    await act(async () => {
+      placed();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(audienceFullscreen).toHaveBeenCalledOnce();
+    });
+    remove();
+  });
+
   it('leaves the full screen of the audience to the host of the deck', async () => {
     stub('isExtended', window.screen, true);
     stub('getScreenDetails', window, () =>

@@ -41,6 +41,13 @@ export interface SeminarHost {
    */
   readonly showsAudienceFullscreen?:
     ((screen: ScreenArea) => boolean) | undefined;
+  /**
+   * Moves the audience window to the screen with the area, before the deck
+   * asks the browser for full screen there, if the browser can't choose the
+   * screen itself, e.g., on Wayland. Resolves once the window is there, or
+   * the application gave up.
+   */
+  readonly placeAudience?: ((screen: ScreenArea) => Promise<void>) | undefined;
 }
 
 /** Returns the {@link SeminarHost} of the window, if any. */

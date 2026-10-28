@@ -10,7 +10,7 @@ import {
   type CompositorWindow,
   type Output,
 } from '../compositor.ts';
-import { DBusConnection, socketPath } from './dbus.ts';
+import { DBusConnection, socketPath } from '../dbus.ts';
 import {
   kwinScript,
   type Report,
@@ -111,6 +111,7 @@ function unloadScript(
 
 /** The windows and outputs of KWin, as seen by its scripts. */
 export class KWinWindows implements Compositor {
+  readonly fullscreens = true;
   readonly #connection: DBusConnection;
   /** Where the scripts are written for KWin to load. */
   readonly #directory: string;
@@ -271,7 +272,7 @@ export class KWinWindows implements Compositor {
         const window = (await this.#run({ find: 'id', id }))?.window;
         return this.#outputs.find((output) => output.name === window?.output);
       },
-      fullscreen: async (output, timeout) => {
+      place: async (output, timeout) => {
         const deadline = Date.now() + timeout;
         let window = (
           await this.#run({ find: 'id', id, fullscreenOn: output.name })

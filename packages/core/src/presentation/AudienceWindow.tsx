@@ -151,20 +151,37 @@ export function AudienceWindow({
   }, [target]);
 
   useEffect(() => {
+    const host = getSeminarHost();
     if (
       screen === undefined ||
-      getSeminarHost()?.showsAudienceFullscreen?.(availableArea(screen)) ===
-        true
+      host?.showsAudienceFullscreen?.(availableArea(screen)) === true
     ) {
       return undefined;
     }
     const { document: doc } = target;
     let wasFullscreen = isFullscreen(doc);
+    const cleanup = new AbortController();
+    const active = () => !cleanup.signal.aborted;
     if (!wasFullscreen) {
-      // Browsers may only allow this in response to a click in the window.
-      enterFullscreen(screen, doc).catch(() => {
-        setNeedsClick(true);
-      });
+      void (async () => {
+        try {
+          await host?.placeAudience?.(availableArea(screen));
+        } catch {
+          // It can still go full screen where it is.
+        }
+        if (!active()) {
+          return;
+        }
+        try {
+          await enterFullscreen(screen, doc);
+        } catch {
+          // Browsers may only allow this in response to a click in the
+          // window.
+          if (active()) {
+            setNeedsClick(true);
+          }
+        }
+      })();
     }
     const onFullscreenChange = () => {
       const fullscreen = isFullscreen(doc);
@@ -178,6 +195,7 @@ export function AudienceWindow({
     };
     doc.addEventListener('fullscreenchange', onFullscreenChange);
     return () => {
+      cleanup.abort();
       doc.removeEventListener('fullscreenchange', onFullscreenChange);
     };
   }, [target, screen]);
