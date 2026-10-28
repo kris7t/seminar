@@ -37,6 +37,8 @@ Workspace packages resolve to their TypeScript sources through the
 - `npm run check` runs everything before a commit.
 - `scripts/android/`: reproduce bugs of Chrome on Android in an emulator, see
   its `README.md`.
+- `npm run test:compositors`: test `seminar present` in headless Sway and
+  KWin, after `npm run build`, see `scripts/compositors/README.md`.
 
 Run tests with sandbox escalation by default, including `npm run check`,
 which runs the tests. Vite dev-server tests need permission to listen on

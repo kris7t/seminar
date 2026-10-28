@@ -22,6 +22,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run && node --test scripts/*.test.mjs",
     "test:watch": "vitest",
+    "test:compositors": "node --test scripts/compositors/",
     "check": "npm run format:check && npm run build && npm run lint && npm run test",
     "dev": "npm run dev --workspace @seminar/example",
     "present": "npm run present --workspace @seminar/example",
