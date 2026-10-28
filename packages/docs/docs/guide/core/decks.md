@@ -37,12 +37,20 @@ optional.
 | ----------------- | ------------------------------------------------------------------------------- |
 | `theme`           | Module of the theme, e.g., `./src/theme.tsx` or a package                       |
 | `title`           | Title of the deck, e.g., of its HTML page; defaults to the first heading        |
+| `author`          | Author of the deck, or a list of authors                                        |
+| `event`           | Event where the deck is presented, e.g., a conference                           |
+| `date`            | Date of the presentation, as written, e.g., `2026-10-28`                        |
+| `description`     | Short description of the deck                                                   |
+| `keywords`        | List of keywords, or keywords separated by commas                               |
 | `lang`            | Language of the deck, e.g., `hu`; defaults to English                           |
 | `uiLanguages`     | Further languages of the user interface, see [Languages](#languages)            |
 | `depth`           | Deepest heading level that starts a slide, see [Headings](#headings-and-slides) |
 | `mouseNavigation` | `false` starts with text selection (S) instead of clicks changing steps         |
 | `mirrorPointer`   | `true` starts the presenter view showing the mouse pointer to the audience      |
 | `math`            | Options of math, see [Math](../plugins/mathjax/index.md#options)                |
+
+The title, `author`, `description`, and `keywords` become the meta tags of
+the HTML page of the deck, which search engines and previews of links show.
 
 ## Headings and slides
 

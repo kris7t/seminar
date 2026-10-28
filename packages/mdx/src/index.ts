@@ -15,6 +15,7 @@ export {
 } from './directives/remarkDirectiveComponents.ts';
 export { getContentUiLocale, type UiLocaleSource } from './deck/uiLocales.ts';
 export { deckMarkdown, type DeckMarkdownOptions } from './deck/markdown.ts';
+export { getDeckMetadata, type DeckMetadata } from './deck/metadata.ts';
 export {
   getDeckFrontmatter,
   readDeckFrontmatter,

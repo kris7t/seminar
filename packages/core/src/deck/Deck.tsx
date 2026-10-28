@@ -19,6 +19,7 @@ import {
 } from 'react';
 
 import { DeckContext, type DeckState } from './DeckContext.ts';
+import type { DeckMetadata } from './DeckMetadata.ts';
 import { DeckDocumentContext, DocumentDeck } from './DeckDocument.tsx';
 import {
   SeminarOptionsContext,
@@ -180,6 +181,11 @@ export interface DeckProps {
    * first one. Defaults to English.
    */
   uiLocales?: readonly UiLocale[] | undefined;
+  /**
+   * What the deck tells about itself, like its title and authors. Decks
+   * written in MDX take it from their frontmatter.
+   */
+  metadata?: DeckMetadata | undefined;
 }
 
 const SELECTABLE_SELECTOR = [

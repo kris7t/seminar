@@ -31,6 +31,7 @@ import {
   type UiLocaleSource,
 } from './uiLocales.ts';
 import { getDeckFrontmatter, type DeckDefaults } from './frontmatter.ts';
+import { getDeckMetadata } from './metadata.ts';
 import {
   expandSelfIncludes,
   includeSlides,
@@ -263,6 +264,15 @@ function createDeckAttributes(
   const attributes: MdxJsxFlowElement['attributes'] = [
     createExpressionAttribute('toc', JSON.stringify(toc)),
     createExpressionAttribute('lang', JSON.stringify(lang)),
+    createExpressionAttribute(
+      'metadata',
+      // In parentheses, so that the object isn't read as a block.
+      `(${JSON.stringify(
+        getDeckMetadata(frontmatter, (message) => {
+          file.message(message);
+        }),
+      )})`,
+    ),
     createExpressionAttribute(
       'uiLocales',
       `[${uiLocales

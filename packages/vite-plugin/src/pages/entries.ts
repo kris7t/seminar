@@ -2,7 +2,12 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { deckMarkdown, readDeckFrontmatter } from '@seminar/mdx';
+import {
+  deckMarkdown,
+  getDeckMetadata,
+  readDeckFrontmatter,
+  type DeckMetadata,
+} from '@seminar/mdx';
 import type { PluggableList } from 'unified';
 import {
   defaultClientConditions,
@@ -270,7 +275,7 @@ async function renderHtml(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${escapeHtml(pageTitle)}</title>
+    <title>${escapeHtml(pageTitle)}</title>${metaTags(pageTitle, getDeckMetadata(frontmatter))}
     <style>
       #${SKIP_ID}:not(:focus) {
         position: absolute;
@@ -445,12 +450,40 @@ function addInputs(
 }
 
 /**
+ * Returns the meta tags of the page of a deck with `metadata`, each on a line
+ * of its own, which tell search engines and previews of links about it.
+ */
+function metaTags(title: string, metadata: DeckMetadata): string {
+  const { authors = [], description, keywords } = metadata;
+  const tags = [
+    ...(description === undefined
+      ? []
+      : [['name', 'description', description]]),
+    ...authors.map((author) => ['name', 'author', author]),
+    ...(keywords === undefined
+      ? []
+      : [['name', 'keywords', keywords.join(', ')]]),
+    ['property', 'og:title', title],
+    ...(description === undefined
+      ? []
+      : [['property', 'og:description', description]]),
+  ];
+  return tags
+    .map(
+      ([attribute = '', name = '', content = '']) =>
+        `\n    <meta ${attribute}="${escapeHtml(name)}" content="${escapeHtml(content)}" />`,
+    )
+    .join('');
+}
+
+/**
  * Turns `.deck.mdx` files into entry points of Vite: each `name.deck.mdx` gets
  * a generated `name.html` page that renders the deck, unless there is a real
  * `name.html` file. `index.deck.mdx` is served at the root of its directory.
  *
  * The title and language of the page are taken from the `title` and `lang`
- * of the frontmatter, where the title defaults to the first heading. The page
+ * of the frontmatter, where the title defaults to the first heading, and its
+ * meta tags from the `description`, `author`, and `keywords`. The page
  * starts with the `content` of the deck (see {@link DeckContent}), both its
  * Markdown and the deck rendered as a document by default.
  *

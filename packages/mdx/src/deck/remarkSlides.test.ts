@@ -201,6 +201,7 @@ author: Someone
     expect(renderDeck(module).props).toMatchObject({
       defaultMouseNavigation: false,
       defaultMirrorPointer: true,
+      metadata: { title: 'Slide', authors: ['Someone'] },
     });
     expect(
       renderDeck(module, { defaultMouseNavigation: true, theme: 'x' }).props,

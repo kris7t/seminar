@@ -256,6 +256,23 @@ describe('seminarEntries', () => {
   });
 
   describe('content', () => {
+    it('fills in the meta tags from the frontmatter', async () => {
+      const [html = ''] = await serve(
+        {
+          root: fileURLToPath(new URL('../test/meta', import.meta.url)),
+        },
+        ['/meta.html'],
+      );
+      const head = html.slice(0, html.indexOf('</head>'));
+      expect(head).toContain(`<title>Slides &amp; &quot;quotes&quot;</title>
+    <meta name="description" content="What the analytical engine can do" />
+    <meta name="author" content="Ada Lovelace" />
+    <meta name="author" content="Charles Babbage" />
+    <meta name="keywords" content="engines, computing" />
+    <meta property="og:title" content="Slides &amp; &quot;quotes&quot;" />
+    <meta property="og:description" content="What the analytical engine can do" />`);
+    });
+
     it('falls back to the Markdown of the deck with a warning', async () => {
       const warn = vi.fn<(message: string) => void>();
       const logger = createLogger('silent');
