@@ -7,23 +7,26 @@ import {
   type CompositorWindow,
   type Output as CompositorOutput,
 } from '../compositor.ts';
+import { cosmic } from './cosmic.ts';
+import {
+  findGlobal,
+  type BoundProtocol,
+  type Global,
+  type Toplevel,
+  type ToplevelProtocol,
+} from './protocols.ts';
 import {
   WaylandConnection,
   type EventHandler,
   type MessageReader,
 } from './wire.ts';
+import { wlr } from './wlr.ts';
 
 /*
- * The windows of the compositor, as listed by its wlr foreign toplevel
- * management protocol, or the COSMIC toplevel info and management protocols
- * on top of the ext foreign toplevel list protocol, which let other clients,
- * like ours, put them in full screen on chosen outputs, and the outputs, with
- * their positions from the xdg output protocol.
- * See https://wayland.app/protocols/wlr-foreign-toplevel-management-unstable-v1,
- * https://wayland.app/protocols/cosmic-toplevel-info-unstable-v1,
- * https://wayland.app/protocols/cosmic-toplevel-management-unstable-v1,
- * https://wayland.app/protocols/ext-foreign-toplevel-list-v1,
- * and https://wayland.app/protocols/xdg-output-unstable-v1.
+ * The windows of the compositor, as listed by a protocol that lets other
+ * clients, like ours, put them in full screen on chosen outputs, and the
+ * outputs, with their positions from the xdg output protocol.
+ * See https://wayland.app/protocols/xdg-output-unstable-v1.
  */
 
 const REGISTRY_BIND = 0;
@@ -32,91 +35,19 @@ const REGISTRY_GLOBAL_REMOVE = 1;
 
 const OUTPUT_NAME = 4;
 
+const XDG_OUTPUT_MANAGER = 'zxdg_output_manager_v1';
 const XDG_OUTPUT_MANAGER_GET_XDG_OUTPUT = 1;
 const XDG_OUTPUT_LOGICAL_POSITION = 0;
 const XDG_OUTPUT_LOGICAL_SIZE = 1;
 const XDG_OUTPUT_NAME = 3;
 
-const TOPLEVEL_MANAGER_TOPLEVEL = 0;
-
-const TOPLEVEL_TITLE = 0;
-const TOPLEVEL_OUTPUT_ENTER = 2;
-const TOPLEVEL_OUTPUT_LEAVE = 3;
-const TOPLEVEL_STATE = 4;
-const TOPLEVEL_DONE = 5;
-const TOPLEVEL_CLOSED = 6;
-const TOPLEVEL_DESTROY = 7;
-const TOPLEVEL_SET_FULLSCREEN = 8;
-
-const STATE_FULLSCREEN = 3;
-
-/** Since which version the protocol has `set_fullscreen`. */
-const TOPLEVEL_MANAGER_VERSION = 2;
-
-const FOREIGN_LIST_TOPLEVEL = 0;
-
-const FOREIGN_TOPLEVEL_CLOSED = 0;
-const FOREIGN_TOPLEVEL_DONE = 1;
-const FOREIGN_TOPLEVEL_TITLE = 2;
-const FOREIGN_TOPLEVEL_DESTROY = 0;
-
-const COSMIC_INFO_GET_COSMIC_TOPLEVEL = 1;
-const COSMIC_INFO_DONE = 2;
-
-/** Since which version COSMIC extends the ext foreign toplevels. */
-const COSMIC_INFO_VERSION = 2;
-
-const COSMIC_TOPLEVEL_OUTPUT_ENTER = 4;
-const COSMIC_TOPLEVEL_OUTPUT_LEAVE = 5;
-const COSMIC_TOPLEVEL_STATE = 8;
-const COSMIC_TOPLEVEL_DESTROY = 0;
-
-const COSMIC_MANAGER_CAPABILITIES = 0;
-const COSMIC_MANAGER_SET_FULLSCREEN = 7;
-const COSMIC_CAPABILITY_FULLSCREEN = 5;
-
-/** Which protocols the compositor lists and places windows with. */
-type Protocols = 'wlr' | 'cosmic';
-
-/** Returns the protocols that `globals` let us place windows with, if any. */
-function protocolsOf(globals: readonly Global[]): Protocols | undefined {
-  const find = (name: string) =>
-    globals.find((global) => global.interface === name);
-  if (find('zxdg_output_manager_v1') === undefined) {
-    return undefined;
-  }
-  if (
-    (find('zwlr_foreign_toplevel_manager_v1')?.version ?? 0) >=
-    TOPLEVEL_MANAGER_VERSION
-  ) {
-    return 'wlr';
-  }
-  if (
-    find('ext_foreign_toplevel_list_v1') !== undefined &&
-    (find('zcosmic_toplevel_info_v1')?.version ?? 0) >= COSMIC_INFO_VERSION &&
-    find('zcosmic_toplevel_manager_v1') !== undefined
-  ) {
-    return 'cosmic';
-  }
-  return undefined;
-}
+/** The protocols for windows that we know, the preferred first. */
+const PROTOCOLS: readonly ToplevelProtocol[] = [wlr, cosmic];
 
 /** An output of the compositor. */
 export interface Output extends CompositorOutput {
   /** Id of our object of the output. */
   readonly id: number;
-}
-
-/** A window of any client of the compositor. */
-export interface Toplevel {
-  readonly id: number;
-  title: string;
-  /** Every title that the window had. */
-  readonly titles: Set<string>;
-  /** Ids of the outputs that the window is on, the last entered last. */
-  readonly outputs: Set<number>;
-  fullscreen: boolean;
-  closed: boolean;
 }
 
 /**
@@ -137,12 +68,6 @@ export function waylandSocket(env: NodeJS.ProcessEnv): string | undefined {
     : path.join(runtime, display);
 }
 
-interface Global {
-  name: number;
-  interface: string;
-  version: number;
-}
-
 function readGlobal(args: MessageReader): Global {
   return {
     name: args.uint(),
@@ -152,8 +77,8 @@ function readGlobal(args: MessageReader): Global {
 }
 
 /**
- * The windows and outputs of a Wayland compositor that supports the wlr
- * foreign toplevel management protocol.
+ * The windows and outputs of a Wayland compositor that has one of the
+ * {@link PROTOCOLS}.
  */
 export class WaylandWindows implements Compositor {
   readonly fullscreens = true;
@@ -168,11 +93,7 @@ export class WaylandWindows implements Compositor {
     Toplevel,
     (output: number) => void
   >();
-  /** The COSMIC objects that extend the ext foreign toplevels, if used. */
-  #cosmicInfo: number | undefined;
-  #cosmicManager: number | undefined;
-  /** What the COSMIC toplevel manager can do, once it has said. */
-  #cosmicCapabilities: number[] | undefined;
+  readonly #protocol: BoundProtocol;
   /** Called whenever the compositor has sent a complete update. */
   readonly #listeners = new Set<() => void>();
 
@@ -180,18 +101,11 @@ export class WaylandWindows implements Compositor {
     connection: WaylandConnection,
     registry: number,
     globals: readonly Global[],
-    protocols: Protocols,
+    protocol: ToplevelProtocol,
   ) {
     this.#connection = connection;
     this.#registry = registry;
-    const find = (name: string) => {
-      const global = globals.find((candidate) => candidate.interface === name);
-      if (global === undefined) {
-        throw new Error(`The compositor has no ${name}`);
-      }
-      return global;
-    };
-    const xdgOutputManager = find('zxdg_output_manager_v1');
+    const xdgOutputManager = findGlobal(globals, XDG_OUTPUT_MANAGER);
     this.#xdgOutputManager = this.#bind(
       xdgOutputManager,
       Math.min(xdgOutputManager.version, 3),
@@ -202,45 +116,22 @@ export class WaylandWindows implements Compositor {
         this.#addOutput(global);
       }
     }
-    if (protocols === 'wlr') {
-      const toplevelManager = find('zwlr_foreign_toplevel_manager_v1');
-      this.#bind(
-        toplevelManager,
-        Math.min(toplevelManager.version, 3),
-        (opcode, args) => {
-          if (opcode === TOPLEVEL_MANAGER_TOPLEVEL) {
-            this.#addToplevel(args.uint());
-          }
-        },
-      );
-    } else {
-      const info = find('zcosmic_toplevel_info_v1');
-      this.#cosmicInfo = this.#bind(
-        info,
-        Math.min(info.version, 3),
-        (opcode) => {
-          if (opcode === COSMIC_INFO_DONE) {
-            this.#notify();
-          }
-        },
-      );
-      const manager = find('zcosmic_toplevel_manager_v1');
-      this.#cosmicManager = this.#bind(
-        manager,
-        Math.min(manager.version, 4),
-        (opcode, args) => {
-          if (opcode === COSMIC_MANAGER_CAPABILITIES) {
-            this.#cosmicCapabilities = args.uints();
-          }
-        },
-      );
-      // After the COSMIC objects, to extend the toplevels that it lists.
-      this.#bind(find('ext_foreign_toplevel_list_v1'), 1, (opcode, args) => {
-        if (opcode === FOREIGN_LIST_TOPLEVEL) {
-          this.#addForeignToplevel(args.uint());
-        }
-      });
-    }
+    this.#protocol = protocol.bind(globals, {
+      connection,
+      bind: (global, version, handler) => this.#bind(global, version, handler),
+      add: (toplevel, requestFullscreen) => {
+        this.#toplevels.set(toplevel.id, toplevel);
+        this.#requestFullscreen.set(toplevel, requestFullscreen);
+      },
+      remove: (toplevel) => {
+        toplevel.closed = true;
+        this.#toplevels.delete(toplevel.id);
+        this.#notify();
+      },
+      update: () => {
+        this.#notify();
+      },
+    });
     // Outputs may be connected and disconnected later.
     connection.listen(registry, (opcode, args) => {
       if (opcode === REGISTRY_GLOBAL) {
@@ -271,8 +162,12 @@ export class WaylandWindows implements Compositor {
         }
       });
       await connection.roundtrip();
-      const protocols = protocolsOf(globals);
-      if (protocols === undefined) {
+      const protocol = globals.some(
+        (global) => global.interface === XDG_OUTPUT_MANAGER,
+      )
+        ? PROTOCOLS.find((candidate) => candidate.supports(globals))
+        : undefined;
+      if (protocol === undefined) {
         connection.close();
         return undefined;
       }
@@ -280,15 +175,12 @@ export class WaylandWindows implements Compositor {
         connection,
         registry,
         globals,
-        protocols,
+        protocol,
       );
       // The positions of the outputs, and the windows.
       await connection.roundtrip();
       await connection.roundtrip();
-      if (
-        windows.#cosmicCapabilities !== undefined &&
-        !windows.#cosmicCapabilities.includes(COSMIC_CAPABILITY_FULLSCREEN)
-      ) {
+      if (!windows.#protocol.fullscreens) {
         connection.close();
         return undefined;
       }
@@ -349,117 +241,6 @@ export class WaylandWindows implements Compositor {
         break;
     }
     this.#notify();
-  }
-
-  #addToplevel(id: number): void {
-    const toplevel: Toplevel = {
-      id,
-      title: '',
-      titles: new Set(),
-      outputs: new Set(),
-      fullscreen: false,
-      closed: false,
-    };
-    this.#toplevels.set(id, toplevel);
-    this.#requestFullscreen.set(toplevel, (output) => {
-      this.#connection.send(id, TOPLEVEL_SET_FULLSCREEN, [output]);
-    });
-    this.#connection.listen(id, (opcode, args) => {
-      switch (opcode) {
-        case TOPLEVEL_TITLE:
-          toplevel.title = args.string() ?? '';
-          toplevel.titles.add(toplevel.title);
-          break;
-        case TOPLEVEL_OUTPUT_ENTER: {
-          const output = args.uint();
-          toplevel.outputs.delete(output);
-          toplevel.outputs.add(output);
-          break;
-        }
-        case TOPLEVEL_OUTPUT_LEAVE:
-          toplevel.outputs.delete(args.uint());
-          break;
-        case TOPLEVEL_STATE:
-          toplevel.fullscreen = args.uints().includes(STATE_FULLSCREEN);
-          break;
-        case TOPLEVEL_DONE:
-          this.#notify();
-          break;
-        case TOPLEVEL_CLOSED:
-          toplevel.closed = true;
-          this.#toplevels.delete(id);
-          this.#connection.send(id, TOPLEVEL_DESTROY);
-          this.#connection.forget(id);
-          this.#notify();
-          break;
-      }
-    });
-  }
-
-  /**
-   * Adds a window listed by the ext foreign toplevel list, with its COSMIC
-   * extension, which tells its outputs and state.
-   */
-  #addForeignToplevel(id: number): void {
-    const toplevel: Toplevel = {
-      id,
-      title: '',
-      titles: new Set(),
-      outputs: new Set(),
-      fullscreen: false,
-      closed: false,
-    };
-    this.#toplevels.set(id, toplevel);
-    const cosmic = this.#connection.newId((opcode, args) => {
-      switch (opcode) {
-        case COSMIC_TOPLEVEL_OUTPUT_ENTER: {
-          const output = args.uint();
-          toplevel.outputs.delete(output);
-          toplevel.outputs.add(output);
-          break;
-        }
-        case COSMIC_TOPLEVEL_OUTPUT_LEAVE:
-          toplevel.outputs.delete(args.uint());
-          break;
-        case COSMIC_TOPLEVEL_STATE:
-          toplevel.fullscreen = args.uints().includes(STATE_FULLSCREEN);
-          break;
-      }
-    });
-    const info = this.#cosmicInfo;
-    const manager = this.#cosmicManager;
-    if (info !== undefined && manager !== undefined) {
-      this.#connection.send(info, COSMIC_INFO_GET_COSMIC_TOPLEVEL, [
-        cosmic,
-        id,
-      ]);
-      this.#requestFullscreen.set(toplevel, (output) => {
-        this.#connection.send(manager, COSMIC_MANAGER_SET_FULLSCREEN, [
-          cosmic,
-          output,
-        ]);
-      });
-    }
-    this.#connection.listen(id, (opcode, args) => {
-      switch (opcode) {
-        case FOREIGN_TOPLEVEL_TITLE:
-          toplevel.title = args.string() ?? '';
-          toplevel.titles.add(toplevel.title);
-          break;
-        case FOREIGN_TOPLEVEL_DONE:
-          this.#notify();
-          break;
-        case FOREIGN_TOPLEVEL_CLOSED:
-          toplevel.closed = true;
-          this.#toplevels.delete(id);
-          this.#connection.send(cosmic, COSMIC_TOPLEVEL_DESTROY);
-          this.#connection.send(id, FOREIGN_TOPLEVEL_DESTROY);
-          this.#connection.forget(cosmic);
-          this.#connection.forget(id);
-          this.#notify();
-          break;
-      }
-    });
   }
 
   #notify(): void {
