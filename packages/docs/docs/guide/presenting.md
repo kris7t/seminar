@@ -127,49 +127,20 @@ by default, so that everything they show is on some page. Choose **A page
 for every step** to print each step instead. Turn on **Include spare slides**
 to print spare slides, too, where they are in the deck.
 
-### PDFs from the command line
+### Saving PDFs
 
-Projects created with `npm create seminar` save the PDFs chosen during setup
-with `npm run pdf`. In other projects, add `@seminar/cli`:
+In a project created with `npm create seminar`, run `npm run pdf` to build
+the presentation and save the PDFs you chose during setup, like
+`dist/index.pdf` for the slides and `dist/index-notes.pdf` for a handout
+with notes. Slides are split into pages like when printing, PDF viewers
+show the numbers of the slides as page numbers, and the outline of the PDF
+is the table of contents of the deck.
 
-```sh
-npm install --save-dev @seminar/cli
-```
+The first time, `npm run pdf` downloads the browser that saves the PDFs,
+about 100 MB.
 
-Then save the PDFs after building, e.g., in the `build` script of your
-`package.json`:
-
-```json
-"build": "vite build && seminar pdf"
-```
-
-`seminar pdf` saves each deck in `dist/` as a PDF next to it, like
-`dist/index.pdf`. Its options choose the same as the Print dialog:
-
-| Option                           | What it does                                 |
-| -------------------------------- | -------------------------------------------- |
-| `--layout <slides\|notes\|grid>` | Slides, slides with notes, or several slides |
-| `--per-sheet <2\|4\|6>`          | Slides on each sheet                         |
-| `--every-step`                   | A page for every step                        |
-| `--spares`                       | Include spare slides                         |
-| `--no-headers`                   | Leave out headers and footers of handouts    |
-| `--paper <size>`                 | Paper of handouts, like `A4` or `Letter`     |
-| `--out-dir <dir>`                | Where to save the PDFs                       |
-
-To save several layouts at once, list them separated by commas, like
-`--layout slides,notes,grid --per-sheet 4,6`. Handouts have their layout at
-the end of their names, like `dist/index-notes.pdf` and
-`dist/index-4up.pdf`, while the slides keep the name of the deck.
-
-The PDFs have the [title, authors, description, and keywords](core/decks.md#frontmatter)
-of the deck in their properties, and the table of contents of the deck, or
-the titles of its slides, as their outline. With one slide on each sheet,
-the page numbers that PDF viewers show are those of the slides.
-
-The first time, Seminar downloads the browser that it saves PDFs with, about
-100 MB, into the cache directory of your user account. To download it ahead
-of time, e.g., in a separate step of continuous integration that caches it,
-run `seminar install-electron`.
+To save other layouts, or to save PDFs in other projects, see the
+[`@seminar/cli` package](https://github.com/kris7t/seminar/tree/main/packages/cli#readme).
 
 ## Interface language
 

@@ -116,8 +116,7 @@ npm run pdf
 ```
 
 This builds the presentation and saves the PDFs you chose during setup,
-like `dist/index.pdf`. See [PDFs from the command
-line](presenting.md#pdfs-from-the-command-line) for the layouts and options.
+like `dist/index.pdf`. See [Saving PDFs](presenting.md#saving-pdfs).
 
 See [Presentation controls](presenting.md) for navigation, presenter notes,
 and the other controls available in the browser.
