@@ -1,4 +1,4 @@
-import type { PrintOptions } from '../print/PrintView.tsx';
+import type { PrintedDocument, PrintOptions } from '../print/PrintView.tsx';
 
 /**
  * What an application that shows a deck, e.g., the Electron app of the
@@ -10,10 +10,10 @@ export interface SeminarHost {
   /** Options to print the deck with as soon as it is shown, if any. */
   readonly print?: PrintOptions | undefined;
   /**
-   * Called once the pages are ready to print, instead of opening the print
-   * dialog of the browser.
+   * Called once the pages are ready to print, with what they are, instead of
+   * opening the print dialog of the browser.
    */
-  readonly printReady?: (() => void) | undefined;
+  readonly printReady?: ((printed: PrintedDocument) => void) | undefined;
 }
 
 /** Returns the {@link SeminarHost} of the window, if any. */

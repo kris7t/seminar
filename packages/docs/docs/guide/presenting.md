@@ -156,6 +156,11 @@ Then save the PDFs after building, e.g., in the `build` script of your
 | `--paper <size>`                 | Paper of handouts, like `A4` or `Letter`     |
 | `--out-dir <dir>`                | Where to save the PDFs                       |
 
+The PDFs have the [title, authors, description, and keywords](core/decks.md#frontmatter)
+of the deck in their properties, and the table of contents of the deck, or
+the titles of its slides, as their outline. With one slide on each sheet,
+the page numbers that PDF viewers show are those of the slides.
+
 The first time, Seminar downloads the browser that it saves PDFs with, about
 100 MB, into the cache directory of your user account. To download it ahead
 of time, e.g., in a separate step of continuous integration that caches it,

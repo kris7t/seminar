@@ -11,7 +11,12 @@ import { slideNumberClasses } from '../slide/SlideNumber.tsx';
 import { Step, stepClasses } from '../steps/Step.tsx';
 import { useTransitionHold } from '../transitions/settling.ts';
 import { useSlideView } from '../view/SlideViewContext.ts';
-import { PAGE_ATTRIBUTE, SHEET_ATTRIBUTE } from './PrintView.tsx';
+import {
+  PAGE_ATTRIBUTE,
+  SHEET_ATTRIBUTE,
+  type PrintedDocument,
+  type PrintOptions,
+} from './PrintView.tsx';
 
 /**
  * Returns a page as `slide: text`, with the text of the steps shown, but
@@ -289,39 +294,140 @@ describe('printing', () => {
     );
   });
 
-  it('prints for the application that shows the deck', async () => {
+  /**
+   * Prints `deck` for an application that shows it with `options`, and
+   * returns the sheets printed (see {@link sheets}), and what they are.
+   */
+  async function printForHost(
+    deck: JSX.Element,
+    options: Partial<PrintOptions> = {},
+  ): Promise<{ printed: string[]; document: PrintedDocument }> {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       // Never prints itself.
     });
-    let printed: string[] | undefined;
+    let result: { printed: string[]; document: PrintedDocument } | undefined;
     const host: SeminarHost = {
       print: {
         pages: 'split',
         spares: false,
-        layout: 'notes',
+        layout: 'slides',
         perSheet: 4,
         headers: true,
+        ...options,
       },
-      printReady: () => {
-        printed = sheets();
+      printReady: (document) => {
+        // The sheets are where the links to them point.
+        for (const { id } of document.sheets) {
+          expect(
+            window.document.getElementById(id)?.hasAttribute(SHEET_ATTRIBUTE),
+          ).toBe(true);
+          expect(
+            window.document.querySelector(`a[href="#${id}"]`),
+          ).not.toBeNull();
+        }
+        result = { printed: sheets(), document };
       },
     };
     Object.assign(window, { seminarHost: host });
     try {
-      renderDeck();
+      render(deck);
       await waitFor(() => {
-        expect(printed).toBeDefined();
+        expect(result).toBeDefined();
       });
     } finally {
       delete (window as { seminarHost?: SeminarHost }).seminarHost;
     }
+    expect(print).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    return (
+      result ?? {
+        printed: [],
+        document: { sheets: [], outline: [], metadata: { title: '' } },
+      }
+    );
+  }
+
+  it('prints for the application that shows the deck', async () => {
+    document.title = 'Talk';
+    const { printed, document: printedDocument } = await printForHost(
+      <Deck>
+        <Slide title="First">
+          <Shown>A</Shown>
+          <Shown>B</Shown>
+          <Notes>Say hello.</Notes>
+        </Slide>
+        <Slide>C</Slide>
+        <Slide title="Spare" spare />
+        <Slide title={<em>Last</em>} />
+      </Deck>,
+      { layout: 'notes' },
+    );
     expect(printed).toEqual([
       '1: FirstA',
       '1: FirstB + Say hello.',
-      '2: SecondCD',
+      '2: C',
+      '4: Last',
     ]);
-    expect(print).not.toHaveBeenCalled();
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(printedDocument).toEqual({
+      sheets: [
+        { id: 'seminar-print-sheet-1', label: '1' },
+        { id: 'seminar-print-sheet-2', label: '1' },
+        { id: 'seminar-print-sheet-3', label: '2' },
+        { id: 'seminar-print-sheet-4', label: '4' },
+      ],
+      // The slides with titles, without a table of contents.
+      outline: [
+        { title: 'First', sheet: 0, children: [] },
+        { title: 'Last', sheet: 3, children: [] },
+      ],
+      metadata: { title: 'Talk' },
+    });
+  });
+
+  it('prints the table of contents as the outline', async () => {
+    const { printed, document: printedDocument } = await printForHost(
+      <Deck
+        metadata={{ title: 'Deck', authors: ['Ada'] }}
+        toc={[
+          { slide: 0 },
+          {
+            title: 'Part',
+            children: [
+              { slide: 2, children: [{ slide: 'details' }] },
+              { slide: 1 },
+            ],
+          },
+        ]}
+      >
+        <Slide title="First" />
+        <Slide title="Second" />
+        <Slide title="Spare" spare />
+        <Slide title="Details" id="details" />
+        <Slide title="Fifth" />
+      </Deck>,
+      { layout: 'grid', perSheet: 2 },
+    );
+    expect(printed).toEqual(['1: First | 2: Second', '4: Details | 5: Fifth']);
+    expect(printedDocument).toEqual({
+      // Sheets with several slides have no labels.
+      sheets: [
+        { id: 'seminar-print-sheet-1' },
+        { id: 'seminar-print-sheet-2' },
+      ],
+      outline: [
+        { title: 'First', sheet: 0, children: [] },
+        {
+          title: 'Part',
+          sheet: 1,
+          // In place of the spare slide that isn't printed.
+          children: [
+            { title: 'Details', sheet: 1, children: [] },
+            { title: 'Second', sheet: 0, children: [] },
+          ],
+        },
+      ],
+      metadata: { title: 'Deck', authors: ['Ada'] },
+    });
   });
 
   it('is in the menu', async () => {

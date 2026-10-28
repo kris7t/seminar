@@ -83,7 +83,11 @@ import {
 import { DeckMenu } from '../menu/DeckMenu.tsx';
 import { getSeminarHost } from '../host/SeminarHost.ts';
 import { PrintDialog } from '../print/PrintDialog.tsx';
-import { PrintView, type PrintOptions } from '../print/PrintView.tsx';
+import {
+  PrintView,
+  type PrintedDocument,
+  type PrintOptions,
+} from '../print/PrintView.tsx';
 import { MenuButton } from '../menu/MenuButton.tsx';
 import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
 import { uiTheme } from '../menu/uiTheme.ts';
@@ -684,14 +688,17 @@ function InteractiveDeck({
     setPrinting(undefined);
     setPrintReady(false);
   }, []);
-  const onPrintReady = useCallback(() => {
-    if (host?.printReady !== undefined) {
-      host.printReady();
-      return;
-    }
-    setPrintOpen(false);
-    setPrintReady(true);
-  }, [host]);
+  const onPrintReady = useCallback(
+    (printed: PrintedDocument) => {
+      if (host?.printReady !== undefined) {
+        host.printReady(printed);
+        return;
+      }
+      setPrintOpen(false);
+      setPrintReady(true);
+    },
+    [host],
+  );
   // The print dialog of the browser blocks the page, which it keeps showing
   // behind it, including animations, so print once our dialog is closed.
   useEffect(() => {

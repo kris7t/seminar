@@ -1,9 +1,11 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import type { PrintedDocument } from '@seminar/core';
 import { app, BrowserWindow, net, protocol } from 'electron';
 
 import { PRINT_FAILED, type PdfDeck, type PdfJob } from '../job.ts';
+import { addDocumentInfo } from '../pdf/documentInfo.ts';
 
 /** Scheme that serves the pages of decks, and the files that they load. */
 const SCHEME = 'seminar';
@@ -66,7 +68,7 @@ async function printDeck(deck: PdfDeck, host: string): Promise<void> {
         console.log(`${deck.page}: ${message}`);
       }
     });
-    const ready = new Promise<void>((resolve, reject) => {
+    const ready = new Promise<PrintedDocument>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(
           new Error(
@@ -74,24 +76,27 @@ async function printDeck(deck: PdfDeck, host: string): Promise<void> {
           ),
         );
       }, READY_TIMEOUT);
-      webContents.ipc.once('seminar:print-ready', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
+      webContents.ipc.once(
+        'seminar:print-ready',
+        (_, printed: PrintedDocument) => {
+          clearTimeout(timeout);
+          resolve(printed);
+        },
+      );
       webContents.once('render-process-gone', (_, { reason }) => {
         clearTimeout(timeout);
         reject(new Error(`The page stopped: ${reason}`));
       });
     });
     const url = `${SCHEME}://${host}/${deck.page.split('/').map(encodeURIComponent).join('/')}`;
-    await Promise.all([window.loadURL(url), ready]);
+    const [, printed] = await Promise.all([window.loadURL(url), ready]);
     const pdf = await webContents.printToPDF({
       preferCSSPageSize: true,
       printBackground: true,
       pageSize: job.paper,
     });
     await mkdir(path.dirname(deck.output), { recursive: true });
-    await writeFile(deck.output, pdf);
+    await writeFile(deck.output, addDocumentInfo(pdf, printed));
   } finally {
     window.destroy();
     roots.delete(host);

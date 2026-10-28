@@ -155,6 +155,9 @@ export type { DeckMetadata } from './deck/DeckMetadata.ts';
 export type { SeminarHost } from './host/SeminarHost.ts';
 export type {
   PagesPerSheet,
+  PrintedDocument,
+  PrintedOutlineEntry,
+  PrintedSheet,
   PrintLayout,
   PrintOptions,
 } from './print/PrintView.tsx';

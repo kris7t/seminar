@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import type { DeckMetadata } from '../deck/DeckMetadata.ts';
+import { resolveToc, type ResolvedTocEntry } from '../deck/tableOfContents.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { getSlideNotes } from '../notes/Notes.tsx';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';
@@ -65,8 +66,42 @@ export interface PrintOptions {
   headers: boolean;
 }
 
+/** A sheet of paper that was printed. */
+export interface PrintedSheet {
+  /**
+   * Id of the element that the sheet starts with, which links point to, so
+   * that it is a named destination in PDFs printed by Chromium.
+   */
+  id: string;
+  /** Label of the sheet, e.g., the number of its slide, if it has one. */
+  label?: string | undefined;
+}
+
+/** An entry of the outline of the printed sheets, e.g., a section. */
+export interface PrintedOutlineEntry {
+  title: string;
+  /** Index of the sheet that the entry goes to. */
+  sheet: number;
+  children: PrintedOutlineEntry[];
+}
+
+/** What was printed, e.g., to make the outline and page labels of a PDF. */
+export interface PrintedDocument {
+  sheets: PrintedSheet[];
+  /**
+   * The outline: the table of contents of the deck, or else the slides with
+   * titles.
+   */
+  outline: PrintedOutlineEntry[];
+  /** What the deck tells about itself, with its title. */
+  metadata: DeckMetadata & { title: string };
+}
+
 /** Id of the element with the pages, the only one shown when printing. */
 export const PRINT_ID = 'seminar-print';
+
+/** Data attribute of the titles of outline entries with their sheets. */
+const OUTLINE_ATTRIBUTE = 'data-seminar-outline';
 
 /** Data attribute of pages with the number of their slide. */
 export const PAGE_ATTRIBUTE = 'data-seminar-page';
@@ -349,10 +384,22 @@ const NOTES_STYLES = {
   '& ul, & ol': { pl: 3 },
 } as const;
 
+/** Returns the id of the sheet at `index`. */
+function sheetId(index: number): string {
+  return `${PRINT_ID}-sheet-${String(index + 1)}`;
+}
+
 /** A sheet of paper, which starts a new sheet when printing. */
-function Sheet({ children }: { children: ReactNode }): JSX.Element {
+function Sheet({
+  index,
+  children,
+}: {
+  index: number;
+  children: ReactNode;
+}): JSX.Element {
   return (
     <Box
+      id={sheetId(index)}
       {...{ [SHEET_ATTRIBUTE]: '' }}
       sx={{
         breakBefore: 'page',
@@ -364,6 +411,62 @@ function Sheet({ children }: { children: ReactNode }): JSX.Element {
   );
 }
 
+/** An entry of the outline with the title still to be rendered. */
+interface OutlineNode {
+  title: ReactNode;
+  sheet: number;
+  children: OutlineNode[];
+}
+
+/**
+ * Returns the entries of `toc` whose slides are printed, going to their
+ * first sheets in `firstSheets`, by slide, with the nested entries of the
+ * other entries in their place.
+ */
+function printedToc(
+  toc: readonly ResolvedTocEntry[],
+  firstSheets: ReadonlyMap<number, number>,
+): OutlineNode[] {
+  return toc.flatMap(({ title, slideIndex, hasSlide, children }) => {
+    const nested = printedToc(children, firstSheets);
+    const sheet = hasSlide ? firstSheets.get(slideIndex) : nested[0]?.sheet;
+    return sheet === undefined ? nested : [{ title, sheet, children: nested }];
+  });
+}
+
+/** Renders the titles of the outline, to read them as text. */
+function OutlineTitles({ nodes }: { nodes: readonly OutlineNode[] }) {
+  return (
+    <ul>
+      {nodes.map(({ title, sheet, children }, i) => (
+        // Entries are positional.
+        // eslint-disable-next-line @eslint-react/no-array-index-key
+        <li key={i}>
+          <span {...{ [OUTLINE_ATTRIBUTE]: String(sheet) }}>{title}</span>
+          {children.length > 0 && <OutlineTitles nodes={children} />}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Reads the outline from its titles in `list` (see {@link OutlineTitles}). */
+function readOutline(list: Element | null): PrintedOutlineEntry[] {
+  return [...(list?.children ?? [])].flatMap((item) => {
+    const title = item.querySelector(`:scope > [${OUTLINE_ATTRIBUTE}]`);
+    if (title === null) {
+      return [];
+    }
+    return [
+      {
+        title: title.textContent.replaceAll(/\s+/g, ' ').trim(),
+        sheet: Number(title.getAttribute(OUTLINE_ATTRIBUTE)),
+        children: readOutline(item.querySelector(':scope > ul')),
+      },
+    ];
+  });
+}
+
 export interface PrintViewProps {
   slides: readonly ReactNode[];
   /** Whether each slide is spare. */
@@ -371,8 +474,8 @@ export interface PrintViewProps {
   options: PrintOptions;
   /** What the deck tells about itself, e.g., for the headers of the sheets. */
   metadata?: DeckMetadata | undefined;
-  /** Called once the pages are ready to be printed. */
-  onReady: () => void;
+  /** Called once the pages are ready to be printed, with what they are. */
+  onReady: (printed: PrintedDocument) => void;
 }
 
 /**
@@ -388,7 +491,7 @@ export function PrintView({
   onReady,
 }: PrintViewProps): JSX.Element {
   const theme = useTheme();
-  const { slideLangs } = useDeck();
+  const { slideLangs, toc } = useDeck();
   const [transitions] = useState(() => new PrintTransitions());
   // The stores of the slides, which show their last steps.
   const [stores] = useState(
@@ -409,8 +512,45 @@ export function PrintView({
     plan.getPages,
     plan.getPages,
   );
+  const { layout } = options;
+  const columns = layout === 'grid' ? GRIDS[options.perSheet].columns : 1;
+  // Pages on each sheet.
+  const perSheet = layout === 'grid' ? options.perSheet : 1;
+  const sheetCount = Math.ceil(pages.length / perSheet);
+  const outline = useMemo(() => {
+    const firstSheets = new Map<number, number>();
+    for (const [i, { index }] of pages.entries()) {
+      if (!firstSheets.has(index)) {
+        firstSheets.set(index, Math.floor(i / perSheet));
+      }
+    }
+    return printedToc(
+      toc.length > 0
+        ? toc
+        : resolveToc(
+            slides.map((_, slide) => ({ slide })),
+            slides,
+            [],
+          ).filter(({ standIn }) => standIn !== true),
+      firstSheets,
+    );
+  }, [pages, perSheet, toc, slides]);
   const ref = useRef<HTMLDivElement>(null);
-  const ready = useEffectEvent(onReady);
+  const outlineRef = useRef<HTMLDivElement>(null);
+  const ready = useEffectEvent(() => {
+    onReady({
+      sheets: Array.from({ length: sheetCount }, (_, sheet) => {
+        // The number of the slide, unless several slides share the sheet.
+        const page = layout === 'grid' ? undefined : pages[sheet];
+        return {
+          id: sheetId(sheet),
+          ...(page === undefined ? {} : { label: String(page.index + 1) }),
+        };
+      }),
+      outline: readOutline(outlineRef.current?.firstElementChild ?? null),
+      metadata: { ...metadata, title: metadata?.title ?? document.title },
+    });
+  });
   useEffect(() => {
     const root = ref.current;
     if (root === null) {
@@ -427,8 +567,6 @@ export function PrintView({
       controller.abort();
     };
   }, [transitions]);
-  const { layout } = options;
-  const columns = layout === 'grid' ? GRIDS[options.perSheet].columns : 1;
   const renderPage = ({ index, path }: PlannedPage): ReactNode => {
     const page = (
       <PageAt index={index} slide={slides[index]} theme={theme} path={path} />
@@ -445,13 +583,11 @@ export function PrintView({
   };
   let sheets: ReactNode;
   if (layout === 'grid') {
-    const { perSheet } = options;
     sheets = Array.from(
       { length: Math.ceil(pages.length / perSheet) },
       (_, sheet) => (
         // Sheets are positional.
-        // eslint-disable-next-line @eslint-react/no-array-index-key
-        <Sheet key={sheet}>
+        <Sheet key={sheet} index={sheet}>
           <Box
             sx={{
               display: 'grid',
@@ -475,7 +611,7 @@ export function PrintView({
           ? getSlideNotes(slides[page.index])
           : undefined;
       return (
-        <Sheet key={page.key}>
+        <Sheet key={page.key} index={i}>
           {renderPage(page)}
           {notes !== undefined && (
             <Box
@@ -522,6 +658,15 @@ export function PrintView({
           }}
         >
           {sheets}
+          {/* Links make the sheets named destinations in PDFs, and the
+              titles of the outline are read as text. */}
+          <Box ref={outlineRef} component="nav" sx={{ display: 'none' }}>
+            <OutlineTitles nodes={outline} />
+            {Array.from({ length: sheetCount }, (_, sheet) => (
+              // Sheets are positional.
+              <a key={sheet} href={`#${sheetId(sheet)}`} />
+            ))}
+          </Box>
         </Box>
       </ThemeProvider>
     </SlideTransitionsContext>,

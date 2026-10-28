@@ -7,8 +7,8 @@ const { contextBridge, ipcRenderer } = require('electron') as typeof Electron;
 
 const host: SeminarHost = {
   print: ipcRenderer.sendSync('seminar:print-options') as PrintOptions,
-  printReady: () => {
-    ipcRenderer.send('seminar:print-ready');
+  printReady: (printed) => {
+    ipcRenderer.send('seminar:print-ready', printed);
   },
 };
 
