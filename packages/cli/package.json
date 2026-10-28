@@ -1,0 +1,43 @@
+{
+  "name": "@seminar/cli",
+  "version": "0.1.1",
+  "description": "Command line for Seminar presentations, e.g., to print decks as PDF",
+  "homepage": "https://seminar.run",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "seminar": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@electron/get": "^5.1.0",
+    "yauzl": "^3.4.0"
+  },
+  "devDependencies": {
+    "@seminar/core": "0.1.1",
+    "@types/yauzl": "^3.4.0",
+    "electron": "45.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kris7t/seminar.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/kris7t/seminar/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/release.mjs prepare"
+  }
+}

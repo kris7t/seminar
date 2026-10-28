@@ -4,6 +4,7 @@ import { useEffect, useState, type JSX } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
+import type { SeminarHost } from '../host/SeminarHost.ts';
 import { Notes } from '../notes/Notes.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { slideNumberClasses } from '../slide/SlideNumber.tsx';
@@ -286,6 +287,41 @@ describe('printing', () => {
     expect(styles).toMatch(
       /@bottom-center\s*\{\s*content:\s*counter\(page\) " \/ " counter\(pages\)/,
     );
+  });
+
+  it('prints for the application that shows the deck', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {
+      // Never prints itself.
+    });
+    let printed: string[] | undefined;
+    const host: SeminarHost = {
+      print: {
+        pages: 'split',
+        spares: false,
+        layout: 'notes',
+        perSheet: 4,
+        headers: true,
+      },
+      printReady: () => {
+        printed = sheets();
+      },
+    };
+    Object.assign(window, { seminarHost: host });
+    try {
+      renderDeck();
+      await waitFor(() => {
+        expect(printed).toBeDefined();
+      });
+    } finally {
+      delete (window as { seminarHost?: SeminarHost }).seminarHost;
+    }
+    expect(printed).toEqual([
+      '1: FirstA',
+      '1: FirstB + Say hello.',
+      '2: SecondCD',
+    ]);
+    expect(print).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('is in the menu', async () => {

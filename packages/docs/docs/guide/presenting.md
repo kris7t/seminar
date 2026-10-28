@@ -127,6 +127,40 @@ by default, so that everything they show is on some page. Choose **A page
 for every step** to print each step instead. Turn on **Include spare slides**
 to print spare slides, too, where they are in the deck.
 
+### PDFs from the command line
+
+To save PDFs whenever you build your decks, add `@seminar/cli` to your
+project:
+
+```sh
+npm install --save-dev @seminar/cli
+```
+
+Then save the PDFs after building, e.g., in the `build` script of your
+`package.json`:
+
+```json
+"build": "vite build && seminar pdf"
+```
+
+`seminar pdf` saves each deck in `dist/` as a PDF next to it, like
+`dist/index.pdf`. Its options choose the same as the Print dialog:
+
+| Option                           | What it does                                 |
+| -------------------------------- | -------------------------------------------- |
+| `--layout <slides\|notes\|grid>` | Slides, slides with notes, or several slides |
+| `--per-sheet <2\|4\|6>`          | Slides on each sheet                         |
+| `--every-step`                   | A page for every step                        |
+| `--spares`                       | Include spare slides                         |
+| `--no-headers`                   | Leave out headers and footers of handouts    |
+| `--paper <size>`                 | Paper of handouts, like `A4` or `Letter`     |
+| `--out-dir <dir>`                | Where to save the PDFs                       |
+
+The first time, Seminar downloads the browser that it saves PDFs with, about
+100 MB, into the cache directory of your user account. To download it ahead
+of time, e.g., in a separate step of continuous integration that caches it,
+run `seminar install-electron`.
+
 ## Interface language
 
 If the deck offers several interface languages, choose **Language** in the

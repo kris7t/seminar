@@ -26,7 +26,7 @@ export const libraries = [
   'rollup-plugin',
   'vite-plugin',
 ];
-export const releaseWorkspaces = [...libraries, 'create'];
+export const releaseWorkspaces = [...libraries, 'create', 'cli'];
 const registry = 'https://registry.npmjs.org/';
 const dependencyFields = [
   'dependencies',
