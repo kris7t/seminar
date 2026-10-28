@@ -4,8 +4,10 @@ import { parseArgs } from 'node:util';
 import prompts from 'prompts';
 import {
   createProject,
+  PDFS,
   PLUGINS,
   VERSION,
+  type Pdf,
   type Plugin,
   type Theme,
 } from './project.ts';
@@ -18,15 +20,17 @@ Create a Seminar presentation with Vite.
   --theme <default|custom>  Use the default theme or create src/theme.ts with Roboto
   --self-contained         Inline scripts and assets into HTML (default)
   --no-self-contained      Keep scripts and assets in separate files
+  --pdf <list>              PDFs that npm run pdf saves: comma-separated
+                            slides,notes,2up,4up,6up, or none
   --install                Install dependencies after creating the project (default)
   --no-install             Leave dependency installation for later
   -y, --yes                Use defaults for any choices not supplied
   -h, --help               Show this help
   -v, --version            Show the initializer version
 
-Without flags, choose plugins, a theme, the build format, and installation interactively.
-With --yes, use my-talk, all plugins, the default theme, self-contained builds,
-and install dependencies.
+Without flags, choose plugins, a theme, the build format, PDFs, and installation
+interactively. With --yes, use my-talk, all plugins, the default theme,
+self-contained builds, PDFs of the slides, and install dependencies.
 
 Example:
   npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom --self-contained --install
@@ -50,6 +54,20 @@ function pluginList(value: string): Plugin[] {
   }
   return PLUGINS.filter((plugin) => values.includes(plugin.value)).map(
     (plugin) => plugin.value,
+  );
+}
+
+function pdfList(value: string): Pdf[] {
+  if (value === 'none' || value === '') return [];
+  const values = value.split(',').map((item) => item.trim());
+  for (const item of values) {
+    if (!PDFS.some((pdf) => pdf.value === item))
+      throw new Error(
+        `Unknown PDF ${JSON.stringify(item)}. Choose slides, notes, 2up, 4up, 6up, or none.`,
+      );
+  }
+  return PDFS.filter((pdf) => values.includes(pdf.value)).map(
+    (pdf) => pdf.value,
   );
 }
 
@@ -120,6 +138,7 @@ export async function run(
       plugins: { type: 'string' },
       theme: { type: 'string' },
       'self-contained': { type: 'boolean' },
+      pdf: { type: 'string' },
       install: { type: 'boolean' },
       yes: { type: 'boolean', short: 'y' },
       help: { type: 'boolean', short: 'h' },
@@ -141,9 +160,11 @@ export async function run(
   let theme =
     values.theme === undefined ? undefined : themeChoice(values.theme);
   let selfContained = values['self-contained'];
+  let pdfs = values.pdf === undefined ? undefined : pdfList(values.pdf);
   let install = values.install;
   if (!interactive) {
     selfContained ??= true;
+    pdfs ??= ['slides'];
     install ??= true;
   }
   if (values.yes) {
@@ -151,6 +172,7 @@ export async function run(
     plugins ??= PLUGINS.map((plugin) => plugin.value);
     theme ??= 'default';
     selfContained ??= true;
+    pdfs ??= ['slides'];
     install ??= true;
   }
   const questions: prompts.PromptObject[] = [];
@@ -197,6 +219,18 @@ export async function run(
       active: 'yes',
       inactive: 'no',
     });
+  if (pdfs === undefined)
+    questions.push({
+      type: 'multiselect',
+      name: 'pdfs',
+      message: 'PDFs to save with npm run pdf',
+      choices: PDFS.map((pdf) => ({
+        title: pdf.title,
+        value: pdf.value,
+        selected: pdf.value === 'slides',
+      })),
+      hint: 'Space to toggle, Enter to confirm',
+    });
   if (install === undefined)
     questions.push({
       type: 'toggle',
@@ -227,6 +261,12 @@ export async function run(
       typeof answers['selfContained'] === 'boolean'
     )
       selfContained = answers['selfContained'];
+    if (
+      pdfs === undefined &&
+      Array.isArray(answers['pdfs']) &&
+      answers['pdfs'].every((value: unknown) => typeof value === 'string')
+    )
+      pdfs = pdfList(answers['pdfs'].join(','));
     if (install === undefined && typeof answers['install'] === 'boolean')
       install = answers['install'];
   }
@@ -236,11 +276,12 @@ export async function run(
     plugins === undefined ||
     theme === undefined ||
     selfContained === undefined ||
+    pdfs === undefined ||
     install === undefined
   )
     throw new Canceled();
   const target = path.resolve(cwd, directory);
-  createProject({ directory: target, plugins, theme, selfContained });
+  createProject({ directory: target, plugins, theme, selfContained, pdfs });
   output(`Created ${target}`);
   const changeDirectory =
     target === path.resolve(cwd) ? '' : `  cd ${quote(directory)}\n`;
@@ -256,6 +297,10 @@ export async function run(
     }
   }
   output(
-    `\nNext steps:\n${changeDirectory}${install ? '' : '  npm install\n'}  npm run dev`,
+    `\nNext steps:\n${changeDirectory}${install ? '' : '  npm install\n'}  npm run dev${
+      pdfs.length === 0
+        ? ''
+        : '\n\nRun `npm run pdf` to save the presentation as PDF.'
+    }`,
   );
 }

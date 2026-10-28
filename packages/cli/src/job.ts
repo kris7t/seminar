@@ -12,22 +12,27 @@ export const PAPER_SIZES = [
 
 export type PaperSize = (typeof PAPER_SIZES)[number];
 
-/** A deck to print as a PDF. */
-export interface PdfDeck {
-  /** Directory that the page of the deck is served from. */
-  root: string;
-  /** Path of the page of the deck in `root`, with `/` separators. */
-  page: string;
-  /** Path of the PDF to write. */
+/** A PDF of a deck to save. */
+export interface PdfOutput {
+  print: PrintOptions;
+  /** Path of the PDF. */
   output: string;
   /** Name of the PDF in messages. */
   label: string;
 }
 
+/** A deck to print as PDFs. */
+export interface PdfDeck {
+  /** Directory that the page of the deck is served from. */
+  root: string;
+  /** Path of the page of the deck in `root`, with `/` separators. */
+  page: string;
+  pdfs: PdfOutput[];
+}
+
 /** What the Electron app prints, passed to it as JSON. */
 export interface PdfJob {
   decks: PdfDeck[];
-  print: PrintOptions;
   /** Paper of handouts, which slides are as large as instead. */
   paper: PaperSize;
 }

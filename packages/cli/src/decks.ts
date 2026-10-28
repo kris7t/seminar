@@ -1,13 +1,21 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { PdfDeck } from './job.ts';
-
 /** What the pages of decks built by Seminar render the deck into. */
 const ROOT_MARKER = 'id="seminar-root"';
 
 async function isDeck(file: string): Promise<boolean> {
   return (await readFile(file, 'utf8')).includes(ROOT_MARKER);
+}
+
+/** The page of a deck to print. */
+export interface DeckPage {
+  /** Directory that the page is served from. */
+  root: string;
+  /** Path of the page in `root`, with `/` separators. */
+  page: string;
+  /** Path of its PDFs, without the suffix of their layouts and `.pdf`. */
+  output: string;
 }
 
 /**
@@ -18,23 +26,17 @@ async function isDeck(file: string): Promise<boolean> {
 export async function findDecks(
   inputs: readonly string[],
   { cwd, outDir }: { cwd: string; outDir?: string | undefined },
-): Promise<PdfDeck[]> {
-  const decks: PdfDeck[] = [];
+): Promise<DeckPage[]> {
+  const decks: DeckPage[] = [];
   const add = (root: string, page: string) => {
-    const pdf = page.replace(/\.html?$/i, '.pdf');
-    const output =
-      outDir === undefined
-        ? path.join(root, pdf)
-        : path.resolve(cwd, outDir, pdf);
-    const relative = path.relative(cwd, output);
+    const name = page.replace(/\.html?$/i, '');
     decks.push({
       root,
       page: page.split(path.sep).join('/'),
-      output,
-      label:
-        relative.startsWith('..') || path.isAbsolute(relative)
-          ? output
-          : relative,
+      output:
+        outDir === undefined
+          ? path.join(root, name)
+          : path.resolve(cwd, outDir, name),
     });
   };
   for (const input of inputs) {

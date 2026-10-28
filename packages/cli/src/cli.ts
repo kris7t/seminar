@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import type { PagesPerSheet, PrintLayout } from '@seminar/core';
+import type { PagesPerSheet, PrintLayout, PrintOptions } from '@seminar/core';
 
 import { findDecks } from './decks.ts';
 import {
@@ -15,6 +16,7 @@ import {
   PRINT_FAILED,
   type PaperSize,
   type PdfJob,
+  type PdfOutput,
 } from './job.ts';
 
 const VERSION = (
@@ -31,8 +33,10 @@ Commands:
 
 Options of pdf:
   --layout <slides|notes|grid>  Slides, slides with notes, or several slides
-                                per sheet (default: slides)
-  --per-sheet <2|4|6>           Slides on each sheet (default: 4)
+                                per sheet, or several of them, separated
+                                by commas (default: slides)
+  --per-sheet <2|4|6>           Slides on each sheet, or several numbers,
+                                separated by commas (default: 4)
   --every-step                  A page for every step of the slides
   --spares                      Include spare slides
   --no-headers                  Leave out headers and footers of handouts
@@ -40,6 +44,9 @@ Options of pdf:
                                 (default: A4)
   --out-dir <dir>               Where to save the PDFs (default: next to
                                 the decks)
+
+PDFs of slides have the names of their decks, e.g., index.pdf, and those of
+handouts end with their layout, e.g., index-notes.pdf or index-4up.pdf.
 
   -h, --help                    Show this help
   -v, --version                 Show the version
@@ -49,20 +56,31 @@ const LAYOUTS: readonly PrintLayout[] = ['slides', 'notes', 'grid'];
 
 const PER_SHEET: readonly PagesPerSheet[] = [2, 4, 6];
 
-function layoutChoice(value: string): PrintLayout {
-  const layout = LAYOUTS.find((layout) => layout === value);
-  if (layout === undefined) {
-    throw new Error('Choose --layout slides, notes, or grid.');
-  }
-  return layout;
+/** Returns the choices in `value`, separated by commas, without repeats. */
+function choices<T>(value: string, options: readonly T[], error: string): T[] {
+  return [
+    ...new Set(
+      value.split(',').map((item) => {
+        const choice = options.find((option) => String(option) === item.trim());
+        if (choice === undefined) {
+          throw new Error(error);
+        }
+        return choice;
+      }),
+    ),
+  ];
 }
 
-function perSheetChoice(value: string): PagesPerSheet {
-  const perSheet = PER_SHEET.find((count) => String(count) === value);
-  if (perSheet === undefined) {
-    throw new Error('Choose --per-sheet 2, 4, or 6.');
+/** Returns what the name of a PDF of a deck ends with, after its name. */
+function suffix({ layout, perSheet }: PrintOptions): string {
+  switch (layout) {
+    case 'slides':
+      return '';
+    case 'notes':
+      return '-notes';
+    case 'grid':
+      return `-${String(perSheet)}up`;
   }
-  return perSheet;
 }
 
 function paperChoice(value: string): PaperSize {
@@ -154,28 +172,55 @@ export async function run(
   }
   switch (command) {
     case 'pdf': {
-      const perSheet =
+      const perSheets =
         values['per-sheet'] === undefined
-          ? 4
-          : perSheetChoice(values['per-sheet']);
-      const layout =
+          ? [4 as const]
+          : choices(
+              values['per-sheet'],
+              PER_SHEET,
+              'Choose --per-sheet 2, 4, or 6, or several of them.',
+            );
+      const layouts: PrintLayout[] =
         values.layout === undefined
-          ? values['per-sheet'] === undefined
-            ? 'slides'
-            : 'grid'
-          : layoutChoice(values.layout);
-      const job: PdfJob = {
-        decks: await findDecks(paths.length === 0 ? ['dist'] : paths, {
-          cwd,
-          outDir: values['out-dir'],
-        }),
-        print: {
+          ? [values['per-sheet'] === undefined ? 'slides' : 'grid']
+          : choices(
+              values.layout,
+              LAYOUTS,
+              'Choose --layout slides, notes, or grid, or several of them.',
+            );
+      if (values['per-sheet'] !== undefined && !layouts.includes('grid')) {
+        throw new Error('Choose --per-sheet only with --layout grid.');
+      }
+      const prints = layouts.flatMap((layout): PrintOptions[] =>
+        (layout === 'grid' ? perSheets : [4 as const]).map((perSheet) => ({
           pages: values['every-step'] === true ? 'steps' : 'split',
           spares: values.spares ?? false,
           layout,
           perSheet,
           headers: values.headers ?? true,
-        },
+        })),
+      );
+      const decks = await findDecks(paths.length === 0 ? ['dist'] : paths, {
+        cwd,
+        outDir: values['out-dir'],
+      });
+      const job: PdfJob = {
+        decks: decks.map(({ root, page, output }) => ({
+          root,
+          page,
+          pdfs: prints.map((print): PdfOutput => {
+            const file = `${output}${suffix(print)}.pdf`;
+            const relative = path.relative(cwd, file);
+            return {
+              print,
+              output: file,
+              label:
+                relative.startsWith('..') || path.isAbsolute(relative)
+                  ? file
+                  : relative,
+            };
+          }),
+        })),
         paper: values.paper === undefined ? 'A4' : paperChoice(values.paper),
       };
       await print(job, output);

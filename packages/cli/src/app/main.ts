@@ -4,7 +4,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { PrintedDocument } from '@seminar/core';
 import { app, BrowserWindow, net, protocol } from 'electron';
 
-import { PRINT_FAILED, type PdfDeck, type PdfJob } from '../job.ts';
+import {
+  PRINT_FAILED,
+  type PdfDeck,
+  type PdfJob,
+  type PdfOutput,
+} from '../job.ts';
 import { addDocumentInfo } from '../pdf/documentInfo.ts';
 
 /** Scheme that serves the pages of decks, and the files that they load. */
@@ -50,7 +55,11 @@ function serve(request: Request): Promise<Response> | Response {
     .catch(() => new Response(null, { status: 404 }));
 }
 
-async function printDeck(deck: PdfDeck, host: string): Promise<void> {
+async function printDeck(
+  deck: PdfDeck,
+  { print, output }: PdfOutput,
+  host: string,
+): Promise<void> {
   roots.set(host, deck.root);
   const window = new BrowserWindow({
     show: false,
@@ -61,7 +70,7 @@ async function printDeck(deck: PdfDeck, host: string): Promise<void> {
   const { webContents } = window;
   try {
     webContents.ipc.on('seminar:print-options', (event) => {
-      event.returnValue = job.print;
+      event.returnValue = print;
     });
     webContents.on('console-message', ({ level, message }) => {
       if (level === 'error' || level === 'warning') {
@@ -95,8 +104,8 @@ async function printDeck(deck: PdfDeck, host: string): Promise<void> {
       printBackground: true,
       pageSize: job.paper,
     });
-    await mkdir(path.dirname(deck.output), { recursive: true });
-    await writeFile(deck.output, await addDocumentInfo(pdf, printed));
+    await mkdir(path.dirname(output), { recursive: true });
+    await writeFile(output, await addDocumentInfo(pdf, printed));
   } finally {
     window.destroy();
     roots.delete(host);
@@ -112,14 +121,16 @@ async function printDecks(): Promise<void> {
   protocol.handle(SCHEME, serve);
   let failed = false;
   for (const [index, deck] of job.decks.entries()) {
-    try {
-      await printDeck(deck, `deck${String(index)}`);
-      console.log(`Wrote ${deck.label}`);
-    } catch (error) {
-      failed = true;
-      console.log(
-        `Could not print ${deck.page}: ${error instanceof Error ? error.message : String(error)}`,
-      );
+    for (const pdf of deck.pdfs) {
+      try {
+        await printDeck(deck, pdf, `deck${String(index)}`);
+        console.log(`Wrote ${pdf.label}`);
+      } catch (error) {
+        failed = true;
+        console.log(
+          `Could not print ${pdf.label}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
   }
   app.exit(failed ? PRINT_FAILED : 0);

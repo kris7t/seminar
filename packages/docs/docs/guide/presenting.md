@@ -129,8 +129,8 @@ to print spare slides, too, where they are in the deck.
 
 ### PDFs from the command line
 
-To save PDFs whenever you build your decks, add `@seminar/cli` to your
-project:
+Projects created with `npm create seminar` save the PDFs chosen during setup
+with `npm run pdf`. In other projects, add `@seminar/cli`:
 
 ```sh
 npm install --save-dev @seminar/cli
@@ -155,6 +155,11 @@ Then save the PDFs after building, e.g., in the `build` script of your
 | `--no-headers`                   | Leave out headers and footers of handouts    |
 | `--paper <size>`                 | Paper of handouts, like `A4` or `Letter`     |
 | `--out-dir <dir>`                | Where to save the PDFs                       |
+
+To save several layouts at once, list them separated by commas, like
+`--layout slides,notes,grid --per-sheet 4,6`. Handouts have their layout at
+the end of their names, like `dist/index-notes.pdf` and
+`dist/index-4up.pdf`, while the slides keep the name of the deck.
 
 The PDFs have the [title, authors, description, and keywords](core/decks.md#frontmatter)
 of the deck in their properties, and the table of contents of the deck, or

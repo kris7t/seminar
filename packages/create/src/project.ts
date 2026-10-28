@@ -10,6 +10,8 @@ import path from 'node:path';
 
 /** Optional plugins offered by the initializer. */
 export type Plugin = 'elements' | 'mathjax' | 'pele' | 'shiki';
+/** PDFs that `npm run pdf` saves, by their layout. */
+export type Pdf = 'slides' | 'notes' | '2up' | '4up' | '6up';
 /** Whether to use the packaged theme or generate an editable theme. */
 export type Theme = 'default' | 'custom';
 /** The choices needed to create a presentation project. */
@@ -19,6 +21,46 @@ export interface ProjectOptions {
   theme: Theme;
   /** Inline scripts and assets into each HTML page. Defaults to true. */
   selfContained?: boolean;
+  /**
+   * PDFs that `npm run pdf` saves, or none for no such script. Defaults to
+   * the slides.
+   */
+  pdfs?: readonly Pdf[];
+}
+
+/** PDFs and their titles, in the order shown in the prompt. */
+export const PDFS: readonly { value: Pdf; title: string }[] = [
+  { value: 'slides', title: 'Slides — a page for each slide' },
+  { value: 'notes', title: 'Handout — each slide with its notes' },
+  { value: '2up', title: 'Handout — 2 slides on each sheet' },
+  { value: '4up', title: 'Handout — 4 slides on each sheet' },
+  { value: '6up', title: 'Handout — 6 slides on each sheet' },
+];
+
+/** Returns the command that saves `pdfs`. */
+function pdfCommand(pdfs: readonly Pdf[]): string {
+  const perSheet = pdfs.flatMap((pdf) => {
+    const count = /^(\d)up$/.exec(pdf)?.[1];
+    return count === undefined ? [] : [count];
+  });
+  const layouts = [
+    ...pdfs.filter((pdf) => pdf === 'slides' || pdf === 'notes'),
+    ...(perSheet.length > 0 ? ['grid'] : []),
+  ];
+  return [
+    'seminar pdf',
+    ...(layouts.join(',') === 'slides'
+      ? []
+      : [`--layout ${layouts.join(',')}`]),
+    ...(perSheet.length > 0 ? [`--per-sheet ${perSheet.join(',')}`] : []),
+  ].join(' ');
+}
+
+/** Returns the names of the PDFs of the deck `name` that `pdfs` saves. */
+export function pdfFiles(name: string, pdfs: readonly Pdf[]): string[] {
+  return PDFS.filter(({ value }) => pdfs.includes(value)).map(({ value }) =>
+    value === 'slides' ? `${name}.pdf` : `${name}-${value}.pdf`,
+  );
 }
 
 /** Plugin names and packages, in the order shown in the prompt. */
@@ -167,6 +209,10 @@ export function createProject(options: ProjectOptions): void {
   const selected = PLUGINS.filter(({ value }) =>
     options.plugins.includes(value),
   );
+  // In the order of the prompt.
+  const pdfs = PDFS.map(({ value }) => value).filter((value) =>
+    (options.pdfs ?? ['slides']).includes(value),
+  );
   const manifest = {
     name: packageName(directory),
     version: '0.0.0',
@@ -177,6 +223,9 @@ export function createProject(options: ProjectOptions): void {
       dev: 'vite',
       build: 'tsc --noEmit && vite build',
       preview: 'vite preview',
+      ...(pdfs.length === 0
+        ? {}
+        : { pdf: `npm run build && ${pdfCommand(pdfs)}` }),
       typecheck: 'tsc --noEmit',
     },
     dependencies: dependencies([
@@ -192,6 +241,7 @@ export function createProject(options: ProjectOptions): void {
         : '@seminar/theme-default',
     ]),
     devDependencies: dependencies([
+      ...(pdfs.length === 0 ? [] : ['@seminar/cli']),
       '@seminar/mdx',
       '@seminar/vite-plugin',
       '@vitejs/plugin-react',
@@ -273,7 +323,19 @@ Run \`npm run build\` to create \`dist/index.html\`${
         : ', a self-contained presentation\nthat you can open in a browser or share.'
     } Run \`npm run preview\` to preview the build.
 Toggle \`selfContained\` in \`vite.config.ts\` to change the build format.
-
+${
+  pdfs.length === 0
+    ? ''
+    : `
+Run \`npm run pdf\` to build the presentation and save it as ${pdfFiles(
+        'dist/index',
+        pdfs,
+      )
+        .map((file) => `\`${file}\``)
+        .join(', ')}.
+The first time, this downloads the browser that saves the PDFs.
+`
+}
 [Seminar documentation](https://seminar.run)
 `,
     ...(options.theme === 'custom' ? { 'src/theme.ts': customTheme } : {}),

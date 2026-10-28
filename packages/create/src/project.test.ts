@@ -43,6 +43,7 @@ const read = (directory: string, file: string) =>
   readFileSync(path.join(directory, file), 'utf8');
 interface Manifest {
   name: string;
+  scripts: Record<string, string>;
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
 }
@@ -121,6 +122,43 @@ it.each(['default', 'custom'] as const)(
   },
 );
 
+describe('PDFs', () => {
+  it('saves PDFs of the slides by default', () => {
+    const directory = path.join(workspace(), 'talk');
+    createProject({ directory, plugins: [], theme: 'default' });
+    const manifest = JSON.parse(read(directory, 'package.json')) as Manifest;
+    expect(manifest.scripts['pdf']).toBe('npm run build && seminar pdf');
+    expect(manifest.devDependencies['@seminar/cli']).toBe(VERSION);
+    expect(read(directory, 'README.md')).toContain(
+      'Run `npm run pdf` to build the presentation and save it as `dist/index.pdf`.',
+    );
+  });
+
+  it.each([
+    [['notes'], 'seminar pdf --layout notes', '`dist/index-notes.pdf`'],
+    [
+      ['6up', 'slides', '2up', 'notes'],
+      'seminar pdf --layout slides,notes,grid --per-sheet 2,6',
+      '`dist/index.pdf`, `dist/index-notes.pdf`, `dist/index-2up.pdf`, `dist/index-6up.pdf`',
+    ],
+  ] as const)('saves the PDFs chosen: %j', (pdfs, command, files) => {
+    const directory = path.join(workspace(), 'talk');
+    createProject({ directory, plugins: [], theme: 'default', pdfs });
+    const manifest = JSON.parse(read(directory, 'package.json')) as Manifest;
+    expect(manifest.scripts['pdf']).toBe(`npm run build && ${command}`);
+    expect(read(directory, 'README.md')).toContain(`save it as ${files}.`);
+  });
+
+  it('leaves out the pdf script if no PDFs are chosen', () => {
+    const directory = path.join(workspace(), 'talk');
+    createProject({ directory, plugins: [], theme: 'default', pdfs: [] });
+    const manifest = JSON.parse(read(directory, 'package.json')) as Manifest;
+    expect(manifest.scripts).not.toHaveProperty('pdf');
+    expect(manifest.devDependencies).not.toHaveProperty('@seminar/cli');
+    expect(read(directory, 'README.md')).not.toContain('npm run pdf');
+  });
+});
+
 describe('existing destinations', () => {
   it('keeps existing files and refuses to create a project over them', () => {
     const directory = workspace();
@@ -169,6 +207,8 @@ describe('CLI', () => {
         '--theme',
         'custom',
         '--self-contained',
+        '--pdf',
+        'none',
         '--no-install',
       ],
       { cwd, interactive: true, ask, output },
@@ -187,6 +227,7 @@ describe('CLI', () => {
         'plugins',
         'theme',
         'selfContained',
+        'pdfs',
         'install',
       ]);
       expect(questions.at(-1)?.initial).toBe(true);
@@ -194,6 +235,7 @@ describe('CLI', () => {
         plugins: [],
         theme: 'custom',
         selfContained: false,
+        pdfs: ['notes'],
         install: false,
       });
     });
@@ -207,6 +249,43 @@ describe('CLI', () => {
     expect(read(path.join(cwd, 'talk'), 'vite.config.ts')).toContain(
       'selfContained: false',
     );
+    expect(manifest.scripts['pdf']).toBe(
+      'npm run build && seminar pdf --layout notes',
+    );
+  });
+  it('accepts the PDFs to save, or none', async () => {
+    const cwd = workspace();
+    const output = vi.fn();
+    await run(['talk', '--yes', '--pdf', 'slides,4up'], {
+      cwd,
+      interactive: false,
+      output,
+    });
+    expect(
+      (JSON.parse(read(path.join(cwd, 'talk'), 'package.json')) as Manifest)
+        .scripts['pdf'],
+    ).toBe('npm run build && seminar pdf --layout slides,grid --per-sheet 4');
+    expect(output.mock.calls.flat().join('\n')).toContain(
+      'Run `npm run pdf` to save the presentation as PDF.',
+    );
+    output.mockClear();
+    await run(['none', '--yes', '--pdf', 'none'], {
+      cwd,
+      interactive: false,
+      output,
+    });
+    expect(
+      (JSON.parse(read(path.join(cwd, 'none'), 'package.json')) as Manifest)
+        .scripts,
+    ).not.toHaveProperty('pdf');
+    expect(output.mock.calls.flat().join('\n')).not.toContain('npm run pdf');
+    await expect(
+      run(['other', '--yes', '--pdf', 'poster'], {
+        cwd,
+        interactive: false,
+        output,
+      }),
+    ).rejects.toThrow('Unknown PDF "poster"');
   });
   it('uses defaults with --yes and lets explicit flags override them', async () => {
     const cwd = workspace();
@@ -305,7 +384,16 @@ describe('dependency installation', () => {
     });
     const output = vi.fn();
     await run(
-      ['talk', '--plugins', 'none', '--theme', 'default', '--self-contained'],
+      [
+        'talk',
+        '--plugins',
+        'none',
+        '--theme',
+        'default',
+        '--self-contained',
+        '--pdf',
+        'slides',
+      ],
       { cwd, interactive: true, ask, installDependencies, output },
     );
     expect(installDependencies).toHaveBeenCalledExactlyOnceWith(
@@ -345,7 +433,16 @@ describe('dependency installation', () => {
     const installDependencies = vi.fn(() => Promise.resolve());
     const output = vi.fn();
     await run(
-      ['talk', '--plugins', 'none', '--theme', 'default', '--self-contained'],
+      [
+        'talk',
+        '--plugins',
+        'none',
+        '--theme',
+        'default',
+        '--self-contained',
+        '--pdf',
+        'slides',
+      ],
       {
         cwd,
         interactive: true,

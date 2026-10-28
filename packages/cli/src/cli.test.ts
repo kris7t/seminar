@@ -38,6 +38,14 @@ async function pdf(...argv: string[]): Promise<PdfJob | undefined> {
   return printed;
 }
 
+const SLIDES = {
+  pages: 'split',
+  spares: false,
+  layout: 'slides',
+  perSheet: 4,
+  headers: true,
+} as const;
+
 describe('seminar pdf', () => {
   it('prints the decks in dist next to their pages', async () => {
     await page('dist/index.html');
@@ -51,23 +59,26 @@ describe('seminar pdf', () => {
         {
           root: dist,
           page: 'index.html',
-          output: path.join(dist, 'index.pdf'),
-          label: path.join('dist', 'index.pdf'),
+          pdfs: [
+            {
+              print: SLIDES,
+              output: path.join(dist, 'index.pdf'),
+              label: path.join('dist', 'index.pdf'),
+            },
+          ],
         },
         {
           root: dist,
           page: 'talks/second.html',
-          output: path.join(dist, 'talks/second.pdf'),
-          label: path.join('dist', 'talks/second.pdf'),
+          pdfs: [
+            {
+              print: SLIDES,
+              output: path.join(dist, 'talks/second.pdf'),
+              label: path.join('dist', 'talks/second.pdf'),
+            },
+          ],
         },
       ],
-      print: {
-        pages: 'split',
-        spares: false,
-        layout: 'slides',
-        perSheet: 4,
-        headers: true,
-      },
       paper: 'A4',
     });
   });
@@ -92,22 +103,46 @@ describe('seminar pdf', () => {
         {
           root: path.join(directory, 'build'),
           page: 'talk.html',
-          output: path.join(directory, 'pdf', 'talk.pdf'),
-          label: path.join('pdf', 'talk.pdf'),
+          pdfs: [
+            {
+              print: {
+                pages: 'steps',
+                spares: true,
+                layout: 'grid',
+                perSheet: 6,
+                headers: false,
+              },
+              output: path.join(directory, 'pdf', 'talk-6up.pdf'),
+              label: path.join('pdf', 'talk-6up.pdf'),
+            },
+          ],
         },
       ],
-      print: {
-        pages: 'steps',
-        spares: true,
-        layout: 'grid',
-        perSheet: 6,
-        headers: false,
-      },
       paper: 'Letter',
     });
-    expect((await pdf('pdf', 'build', '--layout', 'notes'))?.print).toEqual(
-      expect.objectContaining({ layout: 'notes' }),
+  });
+
+  it('prints several layouts at once, with their names', async () => {
+    await page('dist/index.html');
+    const job = await pdf(
+      'pdf',
+      '--layout',
+      'slides,notes,grid,notes',
+      '--per-sheet',
+      '2,6',
     );
+    expect(
+      job?.decks[0]?.pdfs.map(({ print: { layout, perSheet }, label }) => [
+        layout,
+        perSheet,
+        label,
+      ]),
+    ).toEqual([
+      ['slides', 4, path.join('dist', 'index.pdf')],
+      ['notes', 4, path.join('dist', 'index-notes.pdf')],
+      ['grid', 2, path.join('dist', 'index-2up.pdf')],
+      ['grid', 6, path.join('dist', 'index-6up.pdf')],
+    ]);
   });
 
   it('explains what is wrong with the paths and options', async () => {
@@ -120,12 +155,15 @@ describe('seminar pdf', () => {
       "dist/other.html isn't the page of a deck built by Seminar.",
     );
     await page('dist/index.html');
-    await expect(pdf('pdf', '--layout', 'poster')).rejects.toThrow(
-      'Choose --layout slides, notes, or grid.',
+    await expect(pdf('pdf', '--layout', 'slides,poster')).rejects.toThrow(
+      'Choose --layout slides, notes, or grid, or several of them.',
     );
     await expect(pdf('pdf', '--per-sheet', '3')).rejects.toThrow(
-      'Choose --per-sheet 2, 4, or 6.',
+      'Choose --per-sheet 2, 4, or 6, or several of them.',
     );
+    await expect(
+      pdf('pdf', '--layout', 'notes', '--per-sheet', '2'),
+    ).rejects.toThrow('Choose --per-sheet only with --layout grid.');
     await expect(pdf('pdf', '--paper', 'B5')).rejects.toThrow(
       'Choose --paper A3, A4, A5, Letter, Legal, Tabloid.',
     );

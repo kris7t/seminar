@@ -109,6 +109,16 @@ If you chose separate scripts and assets during setup, deploy the whole
 `dist/` directory instead. Run `npm run preview` to preview the built
 presentation locally.
 
+To save your presentation as PDF, run:
+
+```sh
+npm run pdf
+```
+
+This builds the presentation and saves the PDFs you chose during setup,
+like `dist/index.pdf`. See [PDFs from the command
+line](presenting.md#pdfs-from-the-command-line) for the layouts and options.
+
 See [Presentation controls](presenting.md) for navigation, presenter notes,
 and the other controls available in the browser.
 
@@ -145,6 +155,7 @@ npm create seminar@latest my-talk -- --plugins elements,mathjax --theme custom -
 | `--theme custom`      | Create an editable `src/theme.ts` with Roboto fonts                   |
 | `--self-contained`    | Inline scripts and assets into each HTML file (default)               |
 | `--no-self-contained` | Keep scripts and assets in separate files for web hosting             |
+| `--pdf`               | Comma-separated `slides`, `notes`, `2up`, `4up`, and `6up`, or `none` |
 | `--install`           | Install dependencies after creating the project (default)             |
 | `--no-install`        | Leave dependency installation for later                               |
 | `--yes`               | Use defaults for any choices not supplied                             |
