@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { getSeminarHost } from '../host/SeminarHost.ts';
 import {
@@ -33,6 +33,12 @@ export interface Presentation {
   cancel: () => void;
 }
 
+/**
+ * How often to ask the host of the deck which screen this window is on while
+ * the presenter chooses, in milliseconds.
+ */
+const HOST_POLL_INTERVAL = 500;
+
 function warnFailure(error: unknown) {
   console.warn('Could not show the presentation in full screen:', error);
 }
@@ -65,6 +71,36 @@ async function screenChoice(details: ScreenDetails): Promise<ScreenChoice> {
  */
 export function usePresentation(presenterView: PresenterView): Presentation {
   const [screens, setScreens] = useState<ScreenChoice>();
+  // The screens while choosing, whose current screen Chromium keeps up to
+  // date as this window moves.
+  const [details, setDetails] = useState<ScreenDetails>();
+
+  // The window may move to another screen while the presenter chooses.
+  useEffect(() => {
+    if (details === undefined) {
+      return undefined;
+    }
+    const update = () => {
+      screenChoice(details).then((choice) => {
+        setScreens((previous) =>
+          previous === undefined ||
+          previous.currentScreen === choice.currentScreen
+            ? previous
+            : choice,
+        );
+      }, warnFailure);
+    };
+    details.addEventListener('currentscreenchange', update);
+    // Which only the host knows on some platforms, like Wayland.
+    const interval =
+      getSeminarHost()?.currentScreen === undefined
+        ? undefined
+        : setInterval(update, HOST_POLL_INTERVAL);
+    return () => {
+      details.removeEventListener('currentscreenchange', update);
+      clearInterval(interval);
+    };
+  }, [details]);
 
   const { audience, open, close } = presenterView;
   const toggle = useCallback(() => {
@@ -93,6 +129,7 @@ export function usePresentation(presenterView: PresenterView): Presentation {
         }
         // Choosing in the dialog counts as a response of the user again.
         setScreens(await screenChoice(details));
+        setDetails(details);
       })
       .catch(warnFailure);
   }, [audience, close]);
@@ -100,17 +137,34 @@ export function usePresentation(presenterView: PresenterView): Presentation {
   const choose = useCallback(
     (screen: ScreenDetailed) => {
       setScreens(undefined);
-      if (screens !== undefined && screen !== screens.currentScreen) {
-        open(screen);
+      setDetails(undefined);
+      const start = (current: ScreenDetailed | undefined) => {
+        if (current !== undefined && screen !== current) {
+          open(screen);
+        } else {
+          enterFullscreen().catch(warnFailure);
+        }
+      };
+      // Where the window is now, which it may have left since the dialog
+      // opened.
+      if (
+        details === undefined ||
+        getSeminarHost()?.currentScreen === undefined
+      ) {
+        // Right away, in response to the user, as browsers require.
+        start(details?.currentScreen ?? screens?.currentScreen);
       } else {
-        enterFullscreen().catch(warnFailure);
+        screenChoice(details).then(({ currentScreen }) => {
+          start(currentScreen);
+        }, warnFailure);
       }
     },
-    [screens, open],
+    [details, screens, open],
   );
 
   const cancel = useCallback(() => {
     setScreens(undefined);
+    setDetails(undefined);
   }, []);
 
   return { toggle, screens, choose, cancel };

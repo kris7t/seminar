@@ -285,6 +285,51 @@ for (const target of [sway, kwin, gnome]) {
         },
       );
 
+      it(
+        'opens the presenter view if the window moved while choosing',
+        { timeout: TIMEOUT },
+        async () => {
+          const { compositor } = context;
+          const deck = await present(context);
+          const outputs = await compositor.outputs();
+          await screenChoices(deck.presenter, outputs);
+          const [presenterWindow] = await compositor.windows();
+          const original = presenterWindow.output;
+          const other = outputs.find(({ name }) => name !== original);
+          await compositor.moveWindow(presenterWindow, other.name);
+          const choices = await until(async () => {
+            const current = await screenChoices(deck.presenter, outputs);
+            return (
+              current.find(({ current }) => current)?.output?.name ===
+                other.name && current
+            );
+          }, 'the dialog to notice the move');
+
+          // The screen that the window was on when the dialog opened.
+          const index = choices.findIndex(
+            ({ output }) => output?.name === original,
+          );
+          await deck.presenter.evaluate(
+            `document.querySelectorAll('[role=dialog] input[type=radio]')[${String(index)}].click()`,
+          );
+          await deck.presenter.press('Enter', 'Enter', 13, '\r');
+          const audienceWindow = await until(
+            () => fullscreenWindow(compositor),
+            'the slides in full screen',
+          );
+          assert.equal(audienceWindow.output, original);
+          await until(
+            async () =>
+              /Presenter view/.test(
+                await deck.presenter.evaluate('document.title'),
+              ),
+            'the presenter view',
+          );
+          const { code, output } = await deck.close();
+          assert.equal(code, 0, output);
+        },
+      );
+
       if (target === kwin) {
         it(
           'unloads scripts that crashed processes left loaded',

@@ -43,6 +43,14 @@ const projector = fakeScreen('', false);
 /** A projector to the right of the laptop. */
 const rightProjector = fakeScreen('', false, 1920);
 
+/**
+ * Returns the screens of the device, as `getScreenDetails` does, with the
+ * screen of this window, which can change later.
+ */
+function screenDetails<T>(screens: T[], currentScreen: T) {
+  return Object.assign(new EventTarget(), { screens, currentScreen });
+}
+
 function stub(name: string, target: object, value: unknown) {
   Object.defineProperty(target, name, { configurable: true, value });
 }
@@ -118,7 +126,7 @@ describe('starting the presentation', () => {
   it('shows the slides on another screen in an audience window', async () => {
     stub('isExtended', window.screen, true);
     const getScreenDetails = vi.fn(() =>
-      Promise.resolve({ screens: [laptop, projector], currentScreen: laptop }),
+      Promise.resolve(screenDetails([laptop, projector], laptop)),
     );
     stub('getScreenDetails', window, getScreenDetails);
     const { audience, open, remove } = fakeAudienceWindow();
@@ -151,7 +159,7 @@ describe('starting the presentation', () => {
   it('shows the slides in this window on its own screen', async () => {
     stub('isExtended', window.screen, true);
     stub('getScreenDetails', window, () =>
-      Promise.resolve({ screens: [laptop, projector], currentScreen: laptop }),
+      Promise.resolve(screenDetails([laptop, projector], laptop)),
     );
     const open = vi.spyOn(window, 'open');
     const user = userEvent.setup();
@@ -203,10 +211,7 @@ describe('starting the presentation', () => {
   it('asks the host of the deck which screen this window is on', async () => {
     stub('isExtended', window.screen, true);
     stub('getScreenDetails', window, () =>
-      Promise.resolve({
-        screens: [laptop, rightProjector],
-        currentScreen: laptop,
-      }),
+      Promise.resolve(screenDetails([laptop, rightProjector], laptop)),
     );
     const host: SeminarHost = {
       currentScreen: () =>
@@ -227,10 +232,7 @@ describe('starting the presentation', () => {
   it('lets the host of the deck place the audience before full screen', async () => {
     stub('isExtended', window.screen, true);
     stub('getScreenDetails', window, () =>
-      Promise.resolve({
-        screens: [laptop, rightProjector],
-        currentScreen: laptop,
-      }),
+      Promise.resolve(screenDetails([laptop, rightProjector], laptop)),
     );
     let placed: () => void = () => undefined;
     const placeAudience = vi.fn(
@@ -269,13 +271,82 @@ describe('starting the presentation', () => {
     remove();
   });
 
+  it('notices the window moving to another screen while choosing', async () => {
+    stub('isExtended', window.screen, true);
+    const details = screenDetails([laptop, rightProjector], laptop);
+    stub('getScreenDetails', window, () => Promise.resolve(details));
+    const { open, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    expect(
+      await screen.findByRole('radio', {
+        name: /Built-in.*this window is here/,
+      }),
+    ).toBeDefined();
+    act(() => {
+      details.currentScreen = rightProjector;
+      details.dispatchEvent(new Event('currentscreenchange'));
+    });
+    expect(
+      await screen.findByRole('radio', {
+        name: /Screen 2.*this window is here/,
+      }),
+    ).toBeDefined();
+    // The screen where the window was is another screen now.
+    await user.click(screen.getByRole('radio', { name: /Built-in/ }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    expect(open).toHaveBeenCalledWith(
+      '',
+      'seminar-audience',
+      expect.stringContaining('left=0'),
+    );
+    expect(requestFullscreen).not.toHaveBeenCalled();
+    remove();
+  });
+
+  it('asks the host of the deck again where this window is', async () => {
+    stub('isExtended', window.screen, true);
+    stub('getScreenDetails', window, () =>
+      Promise.resolve(screenDetails([laptop, rightProjector], laptop)),
+    );
+    let area = { left: 0, top: 0, width: 1920, height: 1080 };
+    const host: SeminarHost = { currentScreen: () => Promise.resolve(area) };
+    Object.assign(window, { seminarHost: host });
+    const { open, remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    expect(
+      await screen.findByRole('radio', {
+        name: /Built-in.*this window is here/,
+      }),
+    ).toBeDefined();
+    area = { left: 1920, top: 0, width: 1920, height: 1080 };
+    expect(
+      await screen.findByRole(
+        'radio',
+        { name: /Screen 2.*this window is here/ },
+        { timeout: 2000 },
+      ),
+    ).toBeDefined();
+    await user.click(screen.getByRole('radio', { name: /Built-in/ }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    await waitFor(() => {
+      expect(open).toHaveBeenCalledWith(
+        '',
+        'seminar-audience',
+        expect.stringContaining('left=0'),
+      );
+    });
+    expect(requestFullscreen).not.toHaveBeenCalled();
+    remove();
+  });
+
   it('leaves the full screen of the audience to the host of the deck', async () => {
     stub('isExtended', window.screen, true);
     stub('getScreenDetails', window, () =>
-      Promise.resolve({
-        screens: [laptop, rightProjector],
-        currentScreen: laptop,
-      }),
+      Promise.resolve(screenDetails([laptop, rightProjector], laptop)),
     );
     const showsAudienceFullscreen = vi.fn(() => true);
     const host: SeminarHost = { showsAudienceFullscreen };
