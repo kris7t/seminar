@@ -27,6 +27,8 @@ Workspace packages resolve to their TypeScript sources through the
 ## Commands
 
 - `npm run dev`: serve the example deck.
+- `npm run present`: build the command line and the example deck, and
+  present it with `seminar present`.
 - `npm run docs:dev`: serve the documentation site.
 - `npm run docs:build`, `npm run docs:preview`: build and preview the docs.
 - `npm test`, or `npx vitest run <path>` for some of the tests.

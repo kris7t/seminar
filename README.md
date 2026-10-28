@@ -32,6 +32,7 @@ To work on Seminar itself:
 ```sh
 npm install
 npm run dev      # serve the example deck with hot reloading
+npm run present  # build the example deck and present it with seminar present
 npm run build    # build the example deck and documentation site
 npm run check    # format check, build, lint, and test
 npm run docs:dev # serve the documentation site with hot reloading
