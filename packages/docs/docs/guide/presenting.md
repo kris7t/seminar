@@ -83,8 +83,8 @@ audience window to the screen you want to use.
 To present without the permission prompts of the browser, run
 `npx seminar present` after building the presentation. It also shows the
 slides on the screen you choose on Wayland, where browsers can't, if the
-compositor supports it, like Sway, KDE Plasma, or GNOME with the Window
-Calls extension. See the
+compositor supports it, like Sway, COSMIC, KDE Plasma, or GNOME with the
+Window Calls extension. See the
 [`@seminar/cli` package](https://github.com/kris7t/seminar/tree/main/packages/cli#readme).
 
 Press P again to stop presenting. Shift+P toggles the presenter view.

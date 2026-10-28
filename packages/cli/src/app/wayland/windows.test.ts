@@ -15,27 +15,50 @@ interface FakeOutput {
   height: number;
 }
 
+/** Which protocols the fake compositor lists and places windows with. */
+type Protocols = 'wlr' | 'cosmic';
+
 interface CompositorOptions {
   outputs: FakeOutput[];
-  /** Whether it has the foreign toplevel management protocol. */
-  toplevels?: boolean;
+  /** The protocols for windows that it has, if any. */
+  protocols?: Protocols | false;
   /** Whether it puts windows in full screen on the outputs asked for. */
   honorsFullscreen?: boolean;
   /** Whether it tells which output the window is on only later. */
   entersLater?: boolean;
+  /** What the COSMIC toplevel manager says it can do. */
+  capabilities?: number[];
 }
 
 /** The first id of objects created by the compositor. */
 const SERVER_ID = 0xff000000;
 
-function stateArray(states: readonly number[]): Buffer {
-  const array = Buffer.alloc(4 + states.length * 4);
-  array.writeUInt32LE(states.length * 4);
-  for (const [index, state] of states.entries()) {
-    array.writeUInt32LE(state, 4 + index * 4);
+/** Returns a message with an array of 32-bit unsigned integers. */
+function arrayMessage(
+  id: number,
+  opcode: number,
+  values: readonly number[],
+): Buffer {
+  const array = Buffer.alloc(4 + values.length * 4);
+  array.writeUInt32LE(values.length * 4);
+  for (const [index, value] of values.entries()) {
+    array.writeUInt32LE(value, 4 + index * 4);
   }
-  return array;
+  const header = Buffer.alloc(8);
+  header.writeUInt32LE(id);
+  header.writeUInt32LE(((header.length + array.length) << 16) | opcode, 4);
+  return Buffer.concat([header, array]);
 }
+
+/** The globals of the protocols for windows, with their versions. */
+const PROTOCOL_GLOBALS: Record<Protocols, [string, number][]> = {
+  wlr: [['zwlr_foreign_toplevel_manager_v1', 3]],
+  cosmic: [
+    ['ext_foreign_toplevel_list_v1', 1],
+    ['zcosmic_toplevel_info_v1', 3],
+    ['zcosmic_toplevel_manager_v1', 4],
+  ],
+};
 
 /**
  * Serves a fake compositor with `outputs` and one window, titled `Deck`
@@ -45,9 +68,10 @@ async function fakeCompositor(
   socket: string,
   {
     outputs,
-    toplevels = true,
+    protocols = 'wlr',
     honorsFullscreen = true,
     entersLater = false,
+    capabilities = [1, 2, 3, 4, 5],
   }: CompositorOptions,
 ): Promise<net.Server> {
   const globals = [
@@ -57,15 +81,13 @@ async function fakeCompositor(
       version: 4,
     })),
     { name: 100, interface: 'zxdg_output_manager_v1', version: 3 },
-    ...(toplevels
-      ? [
-          {
-            name: 101,
-            interface: 'zwlr_foreign_toplevel_manager_v1',
-            version: 3,
-          },
-        ]
-      : []),
+    ...(protocols === false ? [] : PROTOCOL_GLOBALS[protocols]).map(
+      ([name, version], index) => ({
+        name: 101 + index,
+        interface: name,
+        version,
+      }),
+    ),
   ];
   const server = net.createServer((client) => {
     const send = (
@@ -81,13 +103,47 @@ async function fakeCompositor(
     const outputIds = new Map<number, FakeOutput>();
     const toplevel = SERVER_ID;
     let toplevelOutput: number | undefined;
-    const sendStates = (states: readonly number[]) => {
-      const array = stateArray(states);
-      const header = Buffer.alloc(8);
-      header.writeUInt32LE(toplevel);
-      header.writeUInt32LE(((header.length + array.length) << 16) | 4, 4);
-      client.write(Buffer.concat([header, array]));
+    // With COSMIC, the objects of the client that tell about the window.
+    let cosmicInfo = 0;
+    let cosmicToplevel = 0;
+
+    /** Tells about the output of the window, and its state. */
+    const sendWindow = (
+      states: number[],
+      enter: number | undefined,
+      leave?: number,
+    ) => {
+      if (protocols === 'wlr') {
+        if (leave !== undefined) send(toplevel, 3, [leave]);
+        if (enter !== undefined) send(toplevel, 2, [enter]);
+        client.write(arrayMessage(toplevel, 4, states));
+        send(toplevel, 5);
+      } else {
+        if (leave !== undefined) send(cosmicToplevel, 5, [leave]);
+        if (enter !== undefined) send(cosmicToplevel, 4, [enter]);
+        client.write(arrayMessage(cosmicToplevel, 8, states));
+        send(cosmicInfo, 2);
+      }
     };
+    /** Tells about the window once it's listed. */
+    const announce = () => {
+      const first = [...outputIds.keys()][0] ?? 0;
+      toplevelOutput = first;
+      if (entersLater) {
+        sendWindow([], undefined);
+        setTimeout(() => {
+          sendWindow([], first);
+        }, 50);
+      } else {
+        sendWindow([], first);
+      }
+    };
+    const fullscreen = (output: number) => {
+      if (!honorsFullscreen) return;
+      sendWindow([3], output, toplevelOutput);
+      toplevelOutput = output;
+    };
+
     const splitter = new MessageSplitter();
     client.on('data', (chunk: Buffer) => {
       for (const { id, opcode, body } of splitter.push(chunk)) {
@@ -112,22 +168,19 @@ async function fakeCompositor(
             outputIds.set(newId, output);
             send(newId, 4, [output.name]);
           } else if (kind === 'zwlr_foreign_toplevel_manager_v1') {
-            const first = [...outputIds.keys()][0] ?? 0;
-            toplevelOutput = first;
             send(newId, 0, [toplevel]);
             send(toplevel, 0, ['seminar-1']);
             send(toplevel, 0, ['Deck']);
-            sendStates([]);
-            const enter = () => {
-              send(toplevel, 2, [first]);
-              send(toplevel, 5);
-            };
-            if (entersLater) {
-              send(toplevel, 5);
-              setTimeout(enter, 50);
-            } else {
-              enter();
-            }
+            announce();
+          } else if (kind === 'zcosmic_toplevel_info_v1') {
+            cosmicInfo = newId;
+          } else if (kind === 'zcosmic_toplevel_manager_v1') {
+            client.write(arrayMessage(newId, 0, capabilities));
+          } else if (kind === 'ext_foreign_toplevel_list_v1') {
+            send(newId, 0, [toplevel]);
+            send(toplevel, 2, ['seminar-1']);
+            send(toplevel, 2, ['Deck']);
+            send(toplevel, 1);
           }
         } else if (object === 'zxdg_output_manager_v1' && opcode === 1) {
           const xdgOutput = args.uint();
@@ -136,15 +189,17 @@ async function fakeCompositor(
             send(xdgOutput, 0, [output.x, output.y]);
             send(xdgOutput, 1, [output.width, output.height]);
           }
-        } else if (object === 'toplevel' && opcode === 8 && honorsFullscreen) {
-          const output = args.uint();
-          if (toplevelOutput !== undefined) {
-            send(toplevel, 3, [toplevelOutput]);
+        } else if (object === 'zcosmic_toplevel_info_v1' && opcode === 1) {
+          cosmicToplevel = args.uint();
+          if (args.uint() === toplevel) {
+            announce();
           }
-          toplevelOutput = output;
-          send(toplevel, 2, [output]);
-          sendStates([3]);
-          send(toplevel, 5);
+        } else if (object === 'toplevel' && opcode === 8) {
+          fullscreen(args.uint());
+        } else if (object === 'zcosmic_toplevel_manager_v1' && opcode === 7) {
+          if (args.uint() === cosmicToplevel) {
+            fullscreen(args.uint());
+          }
         }
       }
     });
@@ -194,82 +249,107 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
+for (const protocols of ['wlr', 'cosmic'] as const) {
+  describe(`WaylandWindows with the ${protocols} protocols`, () => {
+    it('lists the outputs with their positions', async () => {
+      server = await fakeCompositor(socket, {
+        outputs: [LAPTOP, PROJECTOR],
+        protocols,
+      });
+      windows = await WaylandWindows.connect(socket);
+      expect(
+        windows?.outputs.map(({ name, x, y, width, height }) => ({
+          name,
+          x,
+          y,
+          width,
+          height,
+        })),
+      ).toEqual([LAPTOP, PROJECTOR]);
+      expect(
+        windows?.outputAt({ left: 1920, top: 0, width: 1280, height: 720 })
+          ?.name,
+      ).toBe('HDMI-A-1');
+    });
+
+    it('finds windows by an earlier title, and the output they are on', async () => {
+      server = await fakeCompositor(socket, {
+        outputs: [LAPTOP, PROJECTOR],
+        protocols,
+      });
+      windows = await WaylandWindows.connect(socket);
+      const toplevel = await windows?.toplevel('seminar-1', 100);
+      expect(toplevel?.title).toBe('Deck');
+      expect(toplevel && windows?.outputOf(toplevel)?.name).toBe('eDP-1');
+      expect(await windows?.toplevel('seminar-2', 100)).toBeUndefined();
+    });
+
+    it('waits for windows to be on an output', async () => {
+      server = await fakeCompositor(socket, {
+        outputs: [LAPTOP, PROJECTOR],
+        protocols,
+        entersLater: true,
+      });
+      windows = await WaylandWindows.connect(socket);
+      const toplevel = await windows?.toplevel('seminar-1', 1000);
+      expect(toplevel && windows?.outputOf(toplevel)?.name).toBe('eDP-1');
+    });
+
+    it('shows windows in full screen on an output', async () => {
+      server = await fakeCompositor(socket, {
+        outputs: [LAPTOP, PROJECTOR],
+        protocols,
+      });
+      windows = await WaylandWindows.connect(socket);
+      const toplevel = await windows?.toplevel('seminar-1', 100);
+      const projector = windows?.outputs[1];
+      if (
+        windows === undefined ||
+        toplevel === undefined ||
+        projector === undefined
+      ) {
+        throw new Error('No window or output');
+      }
+      expect(await windows.fullscreen(toplevel, projector, 1000)).toBe(true);
+      expect(toplevel.fullscreen).toBe(true);
+      expect(windows.outputOf(toplevel)?.name).toBe('HDMI-A-1');
+    });
+
+    it("tells if the compositor doesn't show the window there", async () => {
+      server = await fakeCompositor(socket, {
+        outputs: [LAPTOP, PROJECTOR],
+        protocols,
+        honorsFullscreen: false,
+      });
+      windows = await WaylandWindows.connect(socket);
+      const toplevel = await windows?.toplevel('seminar-1', 100);
+      const projector = windows?.outputs[1];
+      if (
+        windows === undefined ||
+        toplevel === undefined ||
+        projector === undefined
+      ) {
+        throw new Error('No window or output');
+      }
+      expect(await windows.fullscreen(toplevel, projector, 100)).toBe(false);
+    });
+  });
+}
+
 describe('WaylandWindows', () => {
-  it('lists the outputs with their positions', async () => {
-    server = await fakeCompositor(socket, { outputs: [LAPTOP, PROJECTOR] });
-    windows = await WaylandWindows.connect(socket);
-    expect(
-      windows?.outputs.map(({ name, x, y, width, height }) => ({
-        name,
-        x,
-        y,
-        width,
-        height,
-      })),
-    ).toEqual([LAPTOP, PROJECTOR]);
-    expect(
-      windows?.outputAt({ left: 1920, top: 0, width: 1280, height: 720 })?.name,
-    ).toBe('HDMI-A-1');
-  });
-
-  it('finds windows by an earlier title, and the output they are on', async () => {
-    server = await fakeCompositor(socket, { outputs: [LAPTOP, PROJECTOR] });
-    windows = await WaylandWindows.connect(socket);
-    const toplevel = await windows?.toplevel('seminar-1', 100);
-    expect(toplevel?.title).toBe('Deck');
-    expect(toplevel && windows?.outputOf(toplevel)?.name).toBe('eDP-1');
-    expect(await windows?.toplevel('seminar-2', 100)).toBeUndefined();
-  });
-
-  it('waits for windows to be on an output', async () => {
-    server = await fakeCompositor(socket, {
-      outputs: [LAPTOP, PROJECTOR],
-      entersLater: true,
-    });
-    windows = await WaylandWindows.connect(socket);
-    const toplevel = await windows?.toplevel('seminar-1', 1000);
-    expect(toplevel && windows?.outputOf(toplevel)?.name).toBe('eDP-1');
-  });
-
-  it('shows windows in full screen on an output', async () => {
-    server = await fakeCompositor(socket, { outputs: [LAPTOP, PROJECTOR] });
-    windows = await WaylandWindows.connect(socket);
-    const toplevel = await windows?.toplevel('seminar-1', 100);
-    const projector = windows?.outputs[1];
-    if (
-      windows === undefined ||
-      toplevel === undefined ||
-      projector === undefined
-    ) {
-      throw new Error('No window or output');
-    }
-    expect(await windows.fullscreen(toplevel, projector, 1000)).toBe(true);
-    expect(toplevel.fullscreen).toBe(true);
-    expect(windows.outputOf(toplevel)?.name).toBe('HDMI-A-1');
-  });
-
-  it("tells if the compositor doesn't show the window there", async () => {
-    server = await fakeCompositor(socket, {
-      outputs: [LAPTOP, PROJECTOR],
-      honorsFullscreen: false,
-    });
-    windows = await WaylandWindows.connect(socket);
-    const toplevel = await windows?.toplevel('seminar-1', 100);
-    const projector = windows?.outputs[1];
-    if (
-      windows === undefined ||
-      toplevel === undefined ||
-      projector === undefined
-    ) {
-      throw new Error('No window or output');
-    }
-    expect(await windows.fullscreen(toplevel, projector, 100)).toBe(false);
-  });
-
-  it('needs the foreign toplevel management protocol', async () => {
+  it('needs protocols to place windows', async () => {
     server = await fakeCompositor(socket, {
       outputs: [LAPTOP],
-      toplevels: false,
+      protocols: false,
+    });
+    expect(await WaylandWindows.connect(socket)).toBeUndefined();
+  });
+
+  it('needs COSMIC to show windows in full screen', async () => {
+    server = await fakeCompositor(socket, {
+      outputs: [LAPTOP],
+      protocols: 'cosmic',
+      capabilities: [1, 2],
     });
     expect(await WaylandWindows.connect(socket)).toBeUndefined();
   });

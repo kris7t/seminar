@@ -20,8 +20,8 @@ asking for permissions first.
 
 On Wayland, where browsers can't choose the screen of their windows, it
 shows the slides in full screen on the screen chosen if the compositor
-supports the wlr foreign toplevel management protocol, like Sway, or is the
-KWin of KDE Plasma. On GNOME, it needs the
+supports the wlr foreign toplevel management protocol, like Sway, or is
+COSMIC, or the KWin of KDE Plasma. On GNOME, it needs the
 [Window Calls](https://extensions.gnome.org/extension/4724/window-calls/)
 extension for that, which lets other apps move windows, too. Otherwise,
 move the window of the slides to the screen of the audience, and click it to
