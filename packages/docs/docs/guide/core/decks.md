@@ -51,6 +51,8 @@ optional.
 
 The title, `author`, `description`, and `keywords` become the meta tags of
 the HTML page of the deck, which search engines and previews of links show.
+Printed handouts can show the title, authors, event, and date in their
+headers, see [Printing](../presenting.md#printing).
 
 ## Headings and slides
 

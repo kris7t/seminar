@@ -67,9 +67,10 @@ function PrintForm({
   const [includeSpares, setIncludeSpares] = useState(false);
   const [layout, setLayout] = useState<PrintLayout>('slides');
   const [perSheet, setPerSheet] = useState<PagesPerSheet>(4);
+  const [headers, setHeaders] = useState(true);
   const onSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onPrint({ pages, spares: includeSpares, layout, perSheet });
+    onPrint({ pages, spares: includeSpares, layout, perSheet, headers });
   };
   return (
     <form onSubmit={onSubmit} noValidate>
@@ -124,6 +125,21 @@ function PrintForm({
                 </Select>
               </Stack>
             </RadioGroup>
+            <FormControlLabel
+              // Slides take the whole sheet, without margins for headers.
+              disabled={preparing || layout === 'slides'}
+              control={
+                <Checkbox
+                  // Slides are printed without headers, whatever was chosen
+                  // for handouts.
+                  checked={headers && layout !== 'slides'}
+                  onChange={(event) => {
+                    setHeaders(event.target.checked);
+                  }}
+                />
+              }
+              label={t('headersAndFooters')}
+            />
           </FormControl>
           <FormControl disabled={preparing}>
             <FormLabel id="seminar-print-pages">{t('pages')}</FormLabel>

@@ -182,8 +182,9 @@ export interface DeckProps {
    */
   uiLocales?: readonly UiLocale[] | undefined;
   /**
-   * What the deck tells about itself, like its title and authors. Decks
-   * written in MDX take it from their frontmatter.
+   * What the deck tells about itself, like its title and authors, e.g., for
+   * the headers of its printed pages. Decks written in MDX take it from their
+   * frontmatter.
    */
   metadata?: DeckMetadata | undefined;
 }
@@ -281,6 +282,7 @@ function InteractiveDeck({
   defaultShowSteps = false,
   lang,
   uiLocales,
+  metadata,
 }: DeckProps): JSX.Element {
   const uiLanguage = useUiLanguageState(lang, uiLocales);
   const { t } = uiLanguage;
@@ -1088,6 +1090,7 @@ function InteractiveDeck({
                         slides={slides}
                         spares={spares}
                         options={printing}
+                        metadata={metadata}
                         onReady={onPrintReady}
                       />
                     )}

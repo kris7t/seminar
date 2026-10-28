@@ -91,5 +91,6 @@
   "layoutSlides": "Diák",
   "layoutNotes": "Dia jegyzetekkel",
   "layoutGrid": "Több dia laponként",
-  "slidesPerSheet": "Diák laponként"
+  "slidesPerSheet": "Diák laponként",
+  "headersAndFooters": "Élőfej és élőláb"
 }

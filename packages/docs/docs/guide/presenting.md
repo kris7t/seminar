@@ -117,6 +117,11 @@ For the handouts, choose the paper, like A4 or Letter, in the print dialog of
 the browser: the slides fit its width. Browsers that can't fit them, like
 some versions of Firefox, print them at the width of A4 or Letter instead.
 
+Handouts have the title of the deck, its
+[authors, event, and date](core/decks.md#frontmatter) at the top of each
+sheet, and the number of the sheet at the bottom, instead of the header and
+footer of the browser. Turn off **Headers and footers** to leave them out.
+
 Slides with steps are [split into pages](core/steps.md#splitting-into-pages)
 by default, so that everything they show is on some page. Choose **A page
 for every step** to print each step instead. Turn on **Include spare slides**

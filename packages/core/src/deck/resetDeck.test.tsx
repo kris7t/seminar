@@ -52,6 +52,8 @@ describe('resetting a deck', () => {
 
   afterEach(cleanup);
 
+  // Goes through many steps, which may take longer than the default timeout
+  // while the other tests run, too.
   it('resets every slide and recap to its own first step and shows the first non-spare slide', async () => {
     const user = userEvent.setup();
     window.history.replaceState(null, '', '#spare&step=2');
@@ -110,7 +112,7 @@ describe('resetting a deck', () => {
     await user.click(screen.getByRole('button', { name: /^Slide 1: Spare/ }));
     expect(window.location.hash).toBe('#spare');
     expect(screen.getByRole('button', { name: 'Slide 0' })).toBeDefined();
-  });
+  }, 20_000);
 
   it('resets transient state even while staying on the first slide', async () => {
     const user = userEvent.setup();

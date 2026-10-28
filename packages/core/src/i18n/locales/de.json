@@ -91,5 +91,6 @@
   "layoutSlides": "Folien",
   "layoutNotes": "Folie mit Notizen",
   "layoutGrid": "Mehrere Folien pro Blatt",
-  "slidesPerSheet": "Folien pro Blatt"
+  "slidesPerSheet": "Folien pro Blatt",
+  "headersAndFooters": "Kopf- und Fußzeilen"
 }

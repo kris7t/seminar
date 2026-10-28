@@ -220,6 +220,74 @@ describe('printing', () => {
     ]);
   });
 
+  it('leaves out the header and footer of the browser', async () => {
+    const user = userEvent.setup();
+    let styles = '';
+    vi.spyOn(window, 'print').mockImplementation(() => {
+      styles = [...document.querySelectorAll('style')]
+        .map((style) => style.textContent)
+        .join('');
+    });
+    renderDeck();
+    await user.keyboard('{Control>}p{/Control}');
+    await user.click(
+      await screen.findByRole('radio', { name: 'Slide with notes' }),
+    );
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Headers and footers' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Print' }));
+    await waitFor(() => {
+      expect(styles).not.toBe('');
+    });
+    expect(styles).toMatch(/@top-left\s*\{\s*content:\s*""/);
+    expect(styles).toMatch(/@bottom-left\s*\{\s*content:\s*""/);
+  });
+
+  it('prints headers with the metadata of the deck', async () => {
+    const user = userEvent.setup();
+    let styles = '';
+    vi.spyOn(window, 'print').mockImplementation(() => {
+      styles = [...document.querySelectorAll('style')]
+        .map((style) => style.textContent)
+        .join('');
+    });
+    render(
+      <Deck
+        metadata={{
+          title: 'Engines "and" more',
+          authors: ['Ada Lovelace', 'Charles Babbage'],
+          event: 'Royal Society',
+        }}
+      >
+        <Slide title="First" />
+      </Deck>,
+    );
+    await user.keyboard('{Control>}p{/Control}');
+    const headers = await screen.findByRole('checkbox', {
+      name: 'Headers and footers',
+    });
+    // Slides take the whole sheet, without headers.
+    expect(headers).toHaveProperty('disabled', true);
+    expect(headers).toHaveProperty('checked', false);
+    await user.click(screen.getByRole('radio', { name: 'Slide with notes' }));
+    expect(headers).toHaveProperty('disabled', false);
+    expect(headers).toHaveProperty('checked', true);
+    await user.click(screen.getByRole('button', { name: 'Print' }));
+    await waitFor(() => {
+      expect(styles).not.toBe('');
+    });
+    expect(styles).toMatch(
+      /@top-left\s*\{\s*content:\s*"Engines \\"and\\" more"/,
+    );
+    expect(styles).toMatch(
+      /@top-right\s*\{\s*content:\s*"Ada Lovelace, Charles Babbage · Royal Society"/,
+    );
+    expect(styles).toMatch(
+      /@bottom-center\s*\{\s*content:\s*counter\(page\) " \/ " counter\(pages\)/,
+    );
+  });
+
   it('is in the menu', async () => {
     const user = userEvent.setup();
     renderDeck();

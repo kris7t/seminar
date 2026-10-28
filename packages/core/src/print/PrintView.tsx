@@ -15,6 +15,7 @@ import {
 import { createPortal } from 'react-dom';
 
 import { useDeck } from '../deck/DeckContext.ts';
+import type { DeckMetadata } from '../deck/DeckMetadata.ts';
 import { uiTheme } from '../menu/uiTheme.ts';
 import { getSlideNotes } from '../notes/Notes.tsx';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';
@@ -56,6 +57,12 @@ export interface PrintOptions {
   layout: PrintLayout;
   /** Number of pages on a sheet in the `'grid'` layout. */
   perSheet: PagesPerSheet;
+  /**
+   * Whether sheets of the paper chosen when printing have a header with the
+   * title of the deck, its authors, event, and date, and a footer with the
+   * number of the sheet.
+   */
+  headers: boolean;
 }
 
 /** Id of the element with the pages, the only one shown when printing. */
@@ -92,15 +99,50 @@ const SHEET_GAP = '8mm';
  */
 const SHEET_WIDTH = 680;
 
-function printStyles({ layout, perSheet }: PrintOptions): string {
+/** Returns `text` as a string of CSS. */
+function cssString(text: string): string {
+  return `"${text.replaceAll(/["\\]/g, '\\$&').replaceAll(/\r?\n/g, '\\A ')}"`;
+}
+
+/**
+ * Returns the margin boxes of the header and footer of the sheets, which the
+ * browser shows instead of its own header and footer.
+ */
+function marginBoxes(metadata: DeckMetadata | undefined): string {
+  const title = metadata?.title ?? document.title;
+  const details = [
+    metadata?.authors?.join(', '),
+    metadata?.event,
+    metadata?.date,
+  ]
+    .filter((detail) => detail !== undefined && detail !== '')
+    .join(' · ');
+  const font = `font: 9pt ${uiTheme.typography.fontFamily ?? 'sans-serif'}; color: ${uiTheme.palette.text.secondary};`;
+  return `
+  @top-left { content: ${cssString(title)}; ${font} }
+  @top-right { content: ${cssString(details)}; ${font} }
+  @bottom-center { content: counter(page) " / " counter(pages); ${font} }`;
+}
+
+function printStyles(
+  { layout, perSheet, headers }: PrintOptions,
+  metadata: DeckMetadata | undefined,
+): string {
   const page =
     layout === 'slides'
       ? `size: ${String(SLIDE_WIDTH)}px ${String(SLIDE_HEIGHT)}px; margin: 0;`
       : // The paper is chosen when printing, but not its orientation.
         `size: ${layout === 'grid' ? GRIDS[perSheet].orientation : 'portrait'}; margin: ${SHEET_MARGIN};`;
+  const boxes =
+    layout !== 'slides' && headers
+      ? marginBoxes(metadata)
+      : // Empty margin boxes leave out the header and footer of the browser.
+        `
+  @top-left { content: ""; }
+  @bottom-left { content: ""; }`;
   return `
 @page {
-  ${page}
+  ${page}${boxes}
 }
 
 @media print {
@@ -327,6 +369,8 @@ export interface PrintViewProps {
   /** Whether each slide is spare. */
   spares: readonly boolean[];
   options: PrintOptions;
+  /** What the deck tells about itself, e.g., for the headers of the sheets. */
+  metadata?: DeckMetadata | undefined;
   /** Called once the pages are ready to be printed. */
   onReady: () => void;
 }
@@ -340,6 +384,7 @@ export function PrintView({
   slides,
   spares,
   options,
+  metadata,
   onReady,
 }: PrintViewProps): JSX.Element {
   const theme = useTheme();
@@ -446,7 +491,7 @@ export function PrintView({
   }
   return createPortal(
     <SlideTransitionsContext value={transitions}>
-      <GlobalStyles styles={printStyles(options)} />
+      <GlobalStyles styles={printStyles(options, metadata)} />
       {/* The slides at their last steps, which plan the pages. */}
       <Box inert aria-hidden sx={{ position: 'fixed', left: -100000, top: 0 }}>
         {[...stores].map(([index, store]) => (

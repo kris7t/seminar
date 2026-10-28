@@ -1,6 +1,6 @@
 /**
- * What a deck tells about itself, like its title and authors. Decks written
- * in MDX take it from their frontmatter.
+ * What a deck tells about itself, e.g., for the headers of its printed pages.
+ * Decks written in MDX take it from their frontmatter.
  */
 export interface DeckMetadata {
   /** Title of the deck. */

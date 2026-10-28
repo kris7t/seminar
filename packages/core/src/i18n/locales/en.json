@@ -91,5 +91,6 @@
   "layoutSlides": "Slides",
   "layoutNotes": "Slide with notes",
   "layoutGrid": "Several slides per sheet",
-  "slidesPerSheet": "Slides per sheet"
+  "slidesPerSheet": "Slides per sheet",
+  "headersAndFooters": "Headers and footers"
 }
