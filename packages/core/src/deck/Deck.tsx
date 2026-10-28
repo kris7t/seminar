@@ -11,6 +11,7 @@ import {
   use,
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -720,6 +721,13 @@ function InteractiveDeck({
     };
   }, [printReady, closePrint]);
   const presentation = usePresentation(presenterView);
+  // An application that shows the deck may start the presentation right away.
+  const startPresentation = useEffectEvent(presentation.toggle);
+  useEffect(() => {
+    if (host?.present === true) {
+      startPresentation();
+    }
+  }, [host]);
   const closePresenterView = presenterView.close;
   const onEscape = useCallback(() => {
     if (!presenting) {

@@ -1,7 +1,7 @@
 {
   "name": "@seminar/cli",
   "version": "0.1.1",
-  "description": "Command line for Seminar presentations, e.g., to print decks as PDF",
+  "description": "Command line for Seminar presentations, e.g., to present decks or print them as PDF",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
   "type": "module",
@@ -19,10 +19,12 @@
   "dependencies": {
     "@electron/get": "^5.1.0",
     "@pdfme/pdf-lib": "^6.2.8",
+    "prompts": "^2.4.2",
     "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@seminar/core": "0.1.1",
+    "@types/prompts": "^2.4.9",
     "@types/yauzl": "^3.4.0",
     "electron": "45.1.0"
   },

@@ -1,59 +1,30 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { PrintedDocument } from '@seminar/core';
-import { app, BrowserWindow, net, protocol } from 'electron';
+import { app, BrowserWindow } from 'electron';
 
 import {
   PRINT_FAILED,
+  type HostOptions,
   type PdfDeck,
   type PdfJob,
   type PdfOutput,
 } from '../job.ts';
 import { addDocumentInfo } from '../pdf/documentInfo.ts';
-
-/** Scheme that serves the pages of decks, and the files that they load. */
-const SCHEME = 'seminar';
+import {
+  PRELOAD,
+  pageUrl,
+  registerScheme,
+  roots,
+  serveRoots,
+} from './serve.ts';
 
 /** How long to wait for a deck to be ready to print, in milliseconds. */
 const READY_TIMEOUT = 120_000;
 
-const PRELOAD = fileURLToPath(new URL('./preload.cjs', import.meta.url));
-
 const job = JSON.parse(process.argv.at(-1) ?? '') as PdfJob;
 
-// Unlike `file:`, served files can be modules, and fetched.
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: SCHEME,
-    privileges: {
-      standard: true,
-      secure: true,
-      supportFetchAPI: true,
-      corsEnabled: true,
-      stream: true,
-    },
-  },
-]);
-
-/** Directories served, by the host of their URLs. */
-const roots = new Map<string, string>();
-
-function serve(request: Request): Promise<Response> | Response {
-  const url = new URL(request.url);
-  const root = roots.get(url.host);
-  if (root === undefined) {
-    return new Response(null, { status: 404 });
-  }
-  const file = path.join(root, decodeURIComponent(url.pathname));
-  const relative = path.relative(root, file);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    return new Response(null, { status: 404 });
-  }
-  return net
-    .fetch(pathToFileURL(file).href)
-    .catch(() => new Response(null, { status: 404 }));
-}
+registerScheme();
 
 async function printDeck(
   deck: PdfDeck,
@@ -69,8 +40,8 @@ async function printDeck(
   });
   const { webContents } = window;
   try {
-    webContents.ipc.on('seminar:print-options', (event) => {
-      event.returnValue = print;
+    webContents.ipc.on('seminar:host', (event) => {
+      event.returnValue = { print } satisfies HostOptions;
     });
     webContents.on('console-message', ({ level, message }) => {
       if (level === 'error' || level === 'warning') {
@@ -97,8 +68,10 @@ async function printDeck(
         reject(new Error(`The page stopped: ${reason}`));
       });
     });
-    const url = `${SCHEME}://${host}/${deck.page.split('/').map(encodeURIComponent).join('/')}`;
-    const [, printed] = await Promise.all([window.loadURL(url), ready]);
+    const [, printed] = await Promise.all([
+      window.loadURL(pageUrl(host, deck.page)),
+      ready,
+    ]);
     const pdf = await webContents.printToPDF({
       preferCSSPageSize: true,
       printBackground: true,
@@ -118,7 +91,7 @@ app.dock?.hide();
 app.on('window-all-closed', () => undefined);
 
 async function printDecks(): Promise<void> {
-  protocol.handle(SCHEME, serve);
+  serveRoots();
   let failed = false;
   for (const [index, deck] of job.decks.entries()) {
     for (const pdf of deck.pdfs) {

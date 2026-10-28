@@ -167,16 +167,33 @@ describe('installElectron', () => {
 
 describe('electronArgs', () => {
   it('runs without a display server on Linux', () => {
-    expect(electronArgs('main.js', ['job'], 'linux')).toEqual([
+    expect(electronArgs('main.js', ['job'], { platform: 'linux' })).toEqual([
       '--ozone-platform=headless',
       '--disable-gpu',
       'main.js',
       'job',
     ]);
-    expect(electronArgs('main.js', ['job'], 'darwin')).toEqual([
+    expect(electronArgs('main.js', ['job'], { platform: 'darwin' })).toEqual([
       'main.js',
       'job',
     ]);
+  });
+
+  it('shows windows on Wayland if there is a compositor', () => {
+    expect(
+      electronArgs('main.js', ['job'], {
+        windows: true,
+        platform: 'linux',
+        env: { WAYLAND_DISPLAY: 'wayland-1' },
+      }),
+    ).toEqual(['--ozone-platform=wayland', 'main.js', 'job']);
+    expect(
+      electronArgs('main.js', ['job'], {
+        windows: true,
+        platform: 'linux',
+        env: { DISPLAY: ':0' },
+      }),
+    ).toEqual(['main.js', 'job']);
   });
 
   it('runs Electron as itself, not as Node.js', () => {

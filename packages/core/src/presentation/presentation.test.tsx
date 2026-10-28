@@ -11,6 +11,7 @@ import { Button } from '@mui/material';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
+import type { SeminarHost } from '../host/SeminarHost.ts';
 import { Notes } from '../notes/Notes.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
@@ -20,21 +21,27 @@ import { formatElapsed } from './PresenterToolbar.tsx';
 import { useSlideView } from '../view/SlideViewContext.ts';
 import { useSlideState } from '../state/useSlideState.ts';
 
-function fakeScreen(label: string, isInternal: boolean) {
+function fakeScreen(label: string, isInternal: boolean, left = 0) {
   return {
     label,
     isInternal,
     isPrimary: isInternal,
     width: 1920,
     height: 1080,
-    left: 0,
+    left,
     top: 0,
+    availLeft: left,
+    availTop: 0,
+    availWidth: 1920,
+    availHeight: 1080,
     devicePixelRatio: 1,
   };
 }
 
 const laptop = fakeScreen('Built-in Retina Display', true);
 const projector = fakeScreen('', false);
+/** A projector to the right of the laptop. */
+const rightProjector = fakeScreen('', false, 1920);
 
 function stub(name: string, target: object, value: unknown) {
   Object.defineProperty(target, name, { configurable: true, value });
@@ -87,6 +94,7 @@ describe('starting the presentation', () => {
       ['getScreenDetails', window],
       ['fullscreenElement', document],
       ['exitFullscreen', document],
+      ['seminarHost', window],
     ] as const) {
       Reflect.deleteProperty(target, name);
     }
@@ -183,6 +191,70 @@ describe('starting the presentation', () => {
     await user.keyboard('p');
     expect(exitFullscreen).toHaveBeenCalledOnce();
     expect(requestFullscreen).not.toHaveBeenCalled();
+  });
+
+  it('starts right away if the host of the deck says so', () => {
+    const host: SeminarHost = { present: true };
+    Object.assign(window, { seminarHost: host });
+    renderDeck();
+    expect(requestFullscreen).toHaveBeenCalledWith({ navigationUI: 'hide' });
+  });
+
+  it('asks the host of the deck which screen this window is on', async () => {
+    stub('isExtended', window.screen, true);
+    stub('getScreenDetails', window, () =>
+      Promise.resolve({
+        screens: [laptop, rightProjector],
+        currentScreen: laptop,
+      }),
+    );
+    const host: SeminarHost = {
+      currentScreen: () =>
+        Promise.resolve({ left: 1920, top: 0, width: 1920, height: 1080 }),
+    };
+    Object.assign(window, { seminarHost: host });
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    expect(
+      await screen.findByRole('radio', { name: /Built-in Retina Display/ }),
+    ).toHaveProperty('checked', true);
+    expect(
+      screen.getByRole('radio', { name: /Screen 2.*this window is here/ }),
+    ).toBeDefined();
+  });
+
+  it('leaves the full screen of the audience to the host of the deck', async () => {
+    stub('isExtended', window.screen, true);
+    stub('getScreenDetails', window, () =>
+      Promise.resolve({
+        screens: [laptop, rightProjector],
+        currentScreen: laptop,
+      }),
+    );
+    const showsAudienceFullscreen = vi.fn(() => true);
+    const host: SeminarHost = { showsAudienceFullscreen };
+    Object.assign(window, { seminarHost: host });
+    const { audience, remove } = fakeAudienceWindow();
+    const audienceFullscreen = vi.fn(() => Promise.resolve());
+    stub(
+      'requestFullscreen',
+      audience.document.documentElement,
+      audienceFullscreen,
+    );
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    await user.click(await screen.findByRole('button', { name: 'OK' }));
+    expect(audience.document.body.textContent).toContain('First');
+    expect(showsAudienceFullscreen).toHaveBeenCalledWith({
+      left: 1920,
+      top: 0,
+      width: 1920,
+      height: 1080,
+    });
+    expect(audienceFullscreen).not.toHaveBeenCalled();
+    remove();
   });
 });
 

@@ -1,9 +1,12 @@
 import { useCallback, useState } from 'react';
 
+import { getSeminarHost } from '../host/SeminarHost.ts';
 import {
   enterFullscreen,
   getScreenDetails,
   isExtendedDesktop,
+  screenAt,
+  type ScreenChoice,
   type ScreenDetailed,
   type ScreenDetails,
 } from './screens.ts';
@@ -19,7 +22,7 @@ export interface Presentation {
    * The screens to choose from to show the presentation on, or `undefined` if
    * no choice has to be made.
    */
-  screens: ScreenDetails | undefined;
+  screens: ScreenChoice | undefined;
   /**
    * Shows the presentation in full screen on a screen chosen from `screens`:
    * in this window if it's on that screen, or in the audience window of the
@@ -35,6 +38,21 @@ function warnFailure(error: unknown) {
 }
 
 /**
+ * Returns the screens to choose from, with the screen of this window from
+ * the host of the deck, if it knows better than the browser.
+ */
+async function screenChoice(details: ScreenDetails): Promise<ScreenChoice> {
+  const { screens, currentScreen } = details;
+  const area = await getSeminarHost()?.currentScreen?.();
+  return {
+    screens,
+    currentScreen:
+      (area === undefined ? undefined : screenAt(screens, area)) ??
+      currentScreen,
+  };
+}
+
+/**
  * Starts the presentation by showing the page in full screen.
  *
  * If the device has more than one screen, and the browser can tell which
@@ -46,7 +64,7 @@ function warnFailure(error: unknown) {
  * Otherwise, the page is shown in full screen on the current screen.
  */
 export function usePresentation(presenterView: PresenterView): Presentation {
-  const [screens, setScreens] = useState<ScreenDetails>();
+  const [screens, setScreens] = useState<ScreenChoice>();
 
   const { audience, open, close } = presenterView;
   const toggle = useCallback(() => {
@@ -65,16 +83,18 @@ export function usePresentation(presenterView: PresenterView): Presentation {
       enterFullscreen().catch(warnFailure);
       return;
     }
-    getScreenDetails().then((details) => {
-      if (details === undefined || details.screens.length < 2) {
-        // The permission prompt may have taken too long to still count as
-        // a response to the user, in which case this fails.
-        enterFullscreen().catch(warnFailure);
-        return;
-      }
-      // Choosing in the dialog counts as a response of the user again.
-      setScreens(details);
-    }, warnFailure);
+    getScreenDetails()
+      .then(async (details) => {
+        if (details === undefined || details.screens.length < 2) {
+          // The permission prompt may have taken too long to still count as
+          // a response to the user, in which case this fails.
+          enterFullscreen().catch(warnFailure);
+          return;
+        }
+        // Choosing in the dialog counts as a response of the user again.
+        setScreens(await screenChoice(details));
+      })
+      .catch(warnFailure);
   }, [audience, close]);
 
   const choose = useCallback(

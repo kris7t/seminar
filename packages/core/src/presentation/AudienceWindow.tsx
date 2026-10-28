@@ -41,7 +41,8 @@ import {
 } from './mirror/pointer.tsx';
 import { InteractionMirror } from './mirror/InteractionMirror.tsx';
 import type { InteractionStore } from './mirror/interactionState.ts';
-import { enterFullscreen } from './screens.ts';
+import { getSeminarHost } from '../host/SeminarHost.ts';
+import { availableArea, enterFullscreen } from './screens.ts';
 
 function isFullscreen(doc: Document): boolean {
   // Missing in environments without the Fullscreen API.
@@ -80,6 +81,9 @@ export interface AudienceWindowProps {
  * presenter view, so that a presentation remote works with either window
  * focused, except that Escape ends the presenter view. So does leaving full
  * screen, if the window was opened in full screen.
+ *
+ * The application that shows the deck, see `SeminarHost`, may show the
+ * window in full screen instead, and close it once it leaves full screen.
  */
 export function AudienceWindow({
   audience: { window: target, screen, container, cache },
@@ -147,7 +151,11 @@ export function AudienceWindow({
   }, [target]);
 
   useEffect(() => {
-    if (screen === undefined) {
+    if (
+      screen === undefined ||
+      getSeminarHost()?.showsAudienceFullscreen?.(availableArea(screen)) ===
+        true
+    ) {
       return undefined;
     }
     const { document: doc } = target;

@@ -10,6 +10,20 @@ with `npm run pdf`. To add it to other projects:
 npm install --save-dev @seminar/cli
 ```
 
+## Presenting
+
+`seminar present` presents a deck built into `dist/`, or the deck at the path
+it's given, like `seminar present dist/talk.html`. If there are several,
+it asks which one. It starts the presentation right away, and asks which
+screen to show the slides on, like pressing P in a browser, but without
+asking for permissions first.
+
+On Wayland, where browsers can't choose the screen of their windows, it
+shows the slides in full screen on the screen chosen if the compositor
+supports the wlr foreign toplevel management protocol, like Sway.
+Otherwise, move the window of the slides to the screen of the audience, and
+click it to go full screen.
+
 ## Saving PDFs
 
 `seminar pdf` saves each deck built into `dist/` as a PDF next to it, like
@@ -44,10 +58,11 @@ numbers are the numbers of the slides.
 
 ## Electron
 
-Seminar saves PDFs with [Electron](https://www.electronjs.org/), which it
-downloads into the cache directory of your user account the first time.
-Run `seminar install-electron` to download it ahead of time, e.g., in a
-separate step of continuous integration.
+Seminar presents decks and saves PDFs with
+[Electron](https://www.electronjs.org/), which it downloads into the cache
+directory of your user account the first time. Run
+`seminar install-electron` to download it ahead of time, e.g., before a
+talk, or in a separate step of continuous integration.
 
 | Environment variable | What it sets                                 |
 | -------------------- | -------------------------------------------- |

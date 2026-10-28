@@ -160,23 +160,37 @@ export async function installElectron(
   return executable;
 }
 
+/** How to run Electron. */
+export interface ElectronRunOptions {
+  /** Whether to show windows, or else run without a display. */
+  windows?: boolean;
+  platform?: NodeJS.Platform;
+  env?: NodeJS.ProcessEnv;
+}
+
 /**
- * Returns the arguments of Electron that run `script` without showing
- * windows, followed by `args`.
+ * Returns the arguments of Electron that run `script`, followed by `args`.
  */
 export function electronArgs(
   script: string,
   args: readonly string[],
-  platform: NodeJS.Platform = process.platform,
+  {
+    windows = false,
+    platform = process.platform,
+    env = process.env,
+  }: ElectronRunOptions = {},
 ): string[] {
-  return [
-    // Without a display server on Linux, e.g., in continuous integration.
-    ...(platform === 'linux'
-      ? ['--ozone-platform=headless', '--disable-gpu']
-      : []),
-    script,
-    ...args,
-  ];
+  let display: string[] = [];
+  if (platform === 'linux') {
+    if (!windows) {
+      // Without a display server, e.g., in continuous integration.
+      display = ['--ozone-platform=headless', '--disable-gpu'];
+    } else if ((env['WAYLAND_DISPLAY'] ?? '') !== '') {
+      // So that the app knows that it can place windows with Wayland.
+      display = ['--ozone-platform=wayland'];
+    }
+  }
+  return [...display, script, ...args];
 }
 
 /** Returns the environment of Electron. */
@@ -197,17 +211,18 @@ export interface ElectronExit {
 }
 
 /**
- * Runs `script` in Electron without showing windows, and calls `output` with
- * each line it writes to its standard output.
+ * Runs `script` in Electron, and calls `output` with each line it writes to
+ * its standard output.
  */
 export function runElectron(
   executable: string,
   script: string,
   args: readonly string[],
   output: (line: string) => void,
+  options: Pick<ElectronRunOptions, 'windows'> = {},
 ): Promise<ElectronExit> {
   return new Promise((resolve, reject) => {
-    const child = spawn(executable, electronArgs(script, args), {
+    const child = spawn(executable, electronArgs(script, args, options), {
       env: electronEnv(process.env),
       stdio: ['ignore', 'pipe', 'pipe'],
     });

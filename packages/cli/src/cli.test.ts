@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { run } from './cli.ts';
-import type { PdfJob } from './job.ts';
+import type { PdfJob, PresentJob } from './job.ts';
 
 const DECK = '<!doctype html><body><div id="seminar-root"></div></body>';
 
@@ -167,6 +167,74 @@ describe('seminar pdf', () => {
     await expect(pdf('pdf', '--paper', 'B5')).rejects.toThrow(
       'Choose --paper A3, A4, A5, Letter, Legal, Tabloid.',
     );
-    await expect(pdf('present')).rejects.toThrow('Unknown command "present"');
+    await expect(pdf('publish')).rejects.toThrow('Unknown command "publish"');
+  });
+});
+
+/**
+ * Runs the command, choosing `choice` if it asks which deck to present, and
+ * returns the job that it presents and what it asked, if anything.
+ */
+async function present(
+  argv: string[],
+  choice?: number,
+): Promise<{ job?: PresentJob; asked?: readonly string[] }> {
+  const result: { job?: PresentJob; asked?: readonly string[] } = {};
+  await run(argv, {
+    cwd: directory,
+    output: () => undefined,
+    present: (job) => {
+      result.job = job;
+      return Promise.resolve();
+    },
+    chooseDeck: (labels) => {
+      result.asked = labels;
+      return Promise.resolve(choice);
+    },
+  });
+  return result;
+}
+
+describe('seminar present', () => {
+  it('presents the deck in dist', async () => {
+    await page('dist/index.html');
+    await page('dist/other.html', '<!doctype html><p>Not a deck</p>');
+    expect(await present(['present'])).toEqual({
+      job: { root: path.join(directory, 'dist'), page: 'index.html' },
+    });
+  });
+
+  it('presents a deck given by its page', async () => {
+    await page('build/talk.html');
+    await page('build/other.html');
+    expect(await present(['present', 'build/talk.html'])).toEqual({
+      job: { root: path.join(directory, 'build'), page: 'talk.html' },
+    });
+  });
+
+  it('asks which deck to present if there are several', async () => {
+    await page('dist/index.html');
+    await page('dist/talks/second.html');
+    expect(await present(['present'], 1)).toEqual({
+      job: { root: path.join(directory, 'dist'), page: 'talks/second.html' },
+      asked: [
+        path.join('dist', 'index.html'),
+        path.join('dist', 'talks/second.html'),
+      ],
+    });
+  });
+
+  it("lists the decks if it can't ask which one to present", async () => {
+    await page('dist/index.html');
+    await page('dist/talks/second.html');
+    await expect(present(['present'])).rejects.toThrow(
+      `dist has several decks. Choose one of them, e.g.:
+
+  seminar present ${path.join('dist', 'index.html')}
+  seminar present ${path.join('dist', 'talks/second.html')}`,
+    );
+    await expect(
+      present(['present', 'dist/index.html', 'dist/talks/second.html']),
+    ).rejects.toThrow('Choose one deck to present.');
   });
 });

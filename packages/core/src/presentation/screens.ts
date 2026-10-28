@@ -4,6 +4,8 @@
  * See https://w3c.github.io/window-management/.
  */
 
+import type { ScreenArea } from '../host/SeminarHost.ts';
+
 /** A screen connected to the device. */
 export interface ScreenDetailed extends Screen {
   readonly left: number;
@@ -18,11 +20,14 @@ export interface ScreenDetailed extends Screen {
   readonly label: string;
 }
 
-/** The screens connected to the device. */
-export interface ScreenDetails extends EventTarget {
+/** Screens to choose from, and the screen that this window is on. */
+export interface ScreenChoice {
   readonly screens: readonly ScreenDetailed[];
   readonly currentScreen: ScreenDetailed;
 }
+
+/** The screens connected to the device. */
+export interface ScreenDetails extends EventTarget, ScreenChoice {}
 
 interface ExtendedScreen extends Screen {
   readonly isExtended?: boolean;
@@ -35,6 +40,33 @@ interface WindowWithScreenDetails {
 /** Options of `requestFullscreen` with the screen to show the element on. */
 export interface FullscreenOnScreenOptions extends FullscreenOptions {
   screen?: ScreenDetailed;
+}
+
+/** Returns the area of `screen` available to windows. */
+export function availableArea(screen: ScreenDetailed): ScreenArea {
+  const { availLeft, availTop, availWidth, availHeight } = screen;
+  return {
+    left: availLeft,
+    top: availTop,
+    width: availWidth,
+    height: availHeight,
+  };
+}
+
+/** Returns the screen of `screens` that the middle of `area` is on, if any. */
+export function screenAt(
+  screens: readonly ScreenDetailed[],
+  { left, top, width, height }: ScreenArea,
+): ScreenDetailed | undefined {
+  const x = left + width / 2;
+  const y = top + height / 2;
+  return screens.find(
+    (screen) =>
+      x >= screen.left &&
+      x < screen.left + screen.width &&
+      y >= screen.top &&
+      y < screen.top + screen.height,
+  );
 }
 
 /**

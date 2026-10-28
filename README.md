@@ -140,7 +140,9 @@ window shows the current slide, previews of the next step and slide, the
 notes, and a toolbar with a timer and the clock. Clicking the previews also
 goes to the next step, while clicks on the notes select their text. With
 several screens in a Chromium-based browser, Start presentation asks which
-screen to show the slides on.
+screen to show the slides on. `seminar present` shows a built deck that way
+without asking for permissions, and also on Wayland, where browsers can't
+choose the screen.
 
 Both windows render the same slide with shared state, so interactive slides
 work in front of the audience. The mouse pointer can be shown to the
@@ -161,7 +163,7 @@ numbers.
 | Package                                              | Description                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------- |
 | [`create-seminar`](packages/create)                  | Creates a presentation project with Vite, plugins, and a theme |
-| [`@seminar/cli`](packages/cli)                       | Command line that saves built decks as PDFs                    |
+| [`@seminar/cli`](packages/cli)                       | Command line that presents built decks and saves them as PDFs  |
 | [`@seminar/core`](packages/core)                     | Deck, slides, steps, themes, and the presenter view            |
 | [`@seminar/elements`](packages/elements)             | Reusable presentation elements and MDX directives              |
 | [`@seminar/mdx`](packages/mdx)                       | Compiles decks written in MDX                                  |

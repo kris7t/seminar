@@ -37,6 +37,25 @@ export interface PdfJob {
   paper: PaperSize;
 }
 
+/** A deck to present. */
+export interface PresentJob {
+  /** Directory that the page of the deck is served from. */
+  root: string;
+  /** Path of the page of the deck in `root`, with `/` separators. */
+  page: string;
+}
+
+/** What the preload script makes the `seminarHost` of a deck from. */
+export interface HostOptions {
+  print?: PrintOptions;
+  present?: boolean;
+  /**
+   * Whether the app knows the screens of windows, and shows the audience
+   * window in full screen itself, as on Wayland.
+   */
+  placesWindows?: boolean;
+}
+
 /**
  * Exit code of the Electron app when it couldn't print some of the decks,
  * which it has reported already.

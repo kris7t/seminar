@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import type { PagesPerSheet, PrintLayout, PrintOptions } from '@seminar/core';
+import prompts from 'prompts';
 
 import { findDecks } from './decks.ts';
 import {
@@ -10,6 +11,7 @@ import {
   findElectron,
   installElectron,
   runElectron,
+  type ElectronExit,
 } from './electron.ts';
 import {
   PAPER_SIZES,
@@ -17,6 +19,7 @@ import {
   type PaperSize,
   type PdfJob,
   type PdfOutput,
+  type PresentJob,
 } from './job.ts';
 
 const VERSION = (
@@ -28,8 +31,12 @@ const VERSION = (
 const HELP = `Usage: seminar <command> [options]
 
 Commands:
+  present [path]      Present a built deck (default: dist)
   pdf [paths...]      Save built decks as PDF files (default: dist)
-  install-electron    Download what Seminar needs to save PDFs, e.g., in CI
+  install-electron    Download the Electron that Seminar runs, e.g., in CI
+
+present asks which deck to present if there are several, and starts the
+presentation right away, letting you choose the screen of the audience.
 
 Options of pdf:
   --layout <slides|notes|grid>  Slides, slides with notes, or several slides
@@ -101,6 +108,46 @@ export interface RunOptions {
   electron?: () => Promise<string>;
   /** Prints the PDFs of `job`, calling `output` with each message. */
   print?: (job: PdfJob, output: (message: string) => void) => Promise<void>;
+  /** Presents the deck of `job`, calling `output` with each message. */
+  present?: (
+    job: PresentJob,
+    output: (message: string) => void,
+  ) => Promise<void>;
+  /**
+   * Asks which of the decks with `labels` to present, and returns its index,
+   * or `undefined` if it can't ask, e.g., outside of a terminal.
+   */
+  chooseDeck?: (labels: readonly string[]) => Promise<number | undefined>;
+}
+
+/** Returns the name of `file` in messages: relative to `cwd`, if in it. */
+function label(cwd: string, file: string): string {
+  const relative = path.relative(cwd, file);
+  return relative.startsWith('..') || path.isAbsolute(relative)
+    ? file
+    : relative;
+}
+
+async function chooseInTerminal(
+  labels: readonly string[],
+): Promise<number | undefined> {
+  if (!(process.stdin.isTTY && process.stdout.isTTY)) {
+    return undefined;
+  }
+  const { deck } = (await prompts(
+    {
+      type: 'select',
+      name: 'deck',
+      message: 'Which deck to present?',
+      choices: labels.map((title, value) => ({ title, value })),
+    },
+    {
+      onCancel: () => {
+        throw new Error('No deck chosen.');
+      },
+    },
+  )) as { deck: number };
+  return deck;
 }
 
 async function electron(output: (message: string) => void): Promise<string> {
@@ -112,25 +159,46 @@ async function electron(output: (message: string) => void): Promise<string> {
   return installElectron();
 }
 
-async function printWithElectron(
-  job: PdfJob,
-  output: (message: string) => void,
-  executable: string,
-): Promise<void> {
-  const { code, signal, errors } = await runElectron(
-    executable,
-    fileURLToPath(new URL('./app/main.js', import.meta.url)),
-    [JSON.stringify(job)],
-    output,
-  );
-  if (code === PRINT_FAILED) {
-    throw new Error('Some decks could not be printed.');
-  }
+/** Throws if Electron didn't exit successfully. */
+function checkExit({ code, signal, errors }: ElectronExit): void {
   if (code !== 0) {
     throw new Error(
       `${signal === null ? `Electron exited with code ${String(code)}` : `Electron stopped with signal ${signal}`}.${errors.trim() === '' ? '' : `\n\n${errors.trim()}`}`,
     );
   }
+}
+
+async function printWithElectron(
+  job: PdfJob,
+  output: (message: string) => void,
+  executable: string,
+): Promise<void> {
+  const exit = await runElectron(
+    executable,
+    fileURLToPath(new URL('./app/main.js', import.meta.url)),
+    [JSON.stringify(job)],
+    output,
+  );
+  if (exit.code === PRINT_FAILED) {
+    throw new Error('Some decks could not be printed.');
+  }
+  checkExit(exit);
+}
+
+async function presentWithElectron(
+  job: PresentJob,
+  output: (message: string) => void,
+  executable: string,
+): Promise<void> {
+  checkExit(
+    await runElectron(
+      executable,
+      fileURLToPath(new URL('./app/present.js', import.meta.url)),
+      [JSON.stringify(job)],
+      output,
+      { windows: true },
+    ),
+  );
 }
 
 /** Runs the command with the arguments in `argv`. */
@@ -143,6 +211,10 @@ export async function run(
     print = async (job, output) => {
       await printWithElectron(job, output, await getElectron());
     },
+    present = async (job, output) => {
+      await presentWithElectron(job, output, await getElectron());
+    },
+    chooseDeck = chooseInTerminal,
   }: RunOptions = {},
 ): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -210,20 +282,37 @@ export async function run(
           page,
           pdfs: prints.map((print): PdfOutput => {
             const file = `${output}${suffix(print)}.pdf`;
-            const relative = path.relative(cwd, file);
-            return {
-              print,
-              output: file,
-              label:
-                relative.startsWith('..') || path.isAbsolute(relative)
-                  ? file
-                  : relative,
-            };
+            return { print, output: file, label: label(cwd, file) };
           }),
         })),
         paper: values.paper === undefined ? 'A4' : paperChoice(values.paper),
       };
       await print(job, output);
+      return;
+    }
+    case 'present': {
+      if (paths.length > 1) {
+        throw new Error('Choose one deck to present.');
+      }
+      const input = paths[0] ?? 'dist';
+      const decks = await findDecks([input], { cwd });
+      let deck = decks[0];
+      if (decks.length > 1) {
+        const labels = decks.map(({ root, page }) =>
+          label(cwd, path.join(root, page)),
+        );
+        const index = await chooseDeck(labels);
+        if (index === undefined) {
+          throw new Error(
+            `${input} has several decks. Choose one of them, e.g.:\n\n${labels.map((deck) => `  seminar present ${deck}`).join('\n')}`,
+          );
+        }
+        deck = decks[index];
+      }
+      if (deck === undefined) {
+        throw new Error(`${input} has no decks.`);
+      }
+      await present({ root: deck.root, page: deck.page }, output);
       return;
     }
     case 'install-electron': {

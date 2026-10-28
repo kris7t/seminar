@@ -18,11 +18,11 @@ import { useId, useState, type JSX } from 'react';
 
 import type { Translate } from '../i18n/messages.ts';
 import { useT, useUiLanguage } from '../i18n/UiLanguageContext.ts';
-import type { ScreenDetailed, ScreenDetails } from './screens.ts';
+import type { ScreenChoice, ScreenDetailed } from './screens.ts';
 
 export interface ScreenDialogProps {
   /** The screens to choose from, or `undefined` if the dialog is closed. */
-  screens: ScreenDetails | undefined;
+  screens: ScreenChoice | undefined;
   onChoose: (screen: ScreenDetailed) => void;
   onClose: () => void;
 }
@@ -74,7 +74,7 @@ function ScreenForm({
   screens: { screens, currentScreen },
   onChoose,
   onClose,
-}: ScreenDialogProps & { screens: ScreenDetails }): JSX.Element {
+}: ScreenDialogProps & { screens: ScreenChoice }): JSX.Element {
   const t = useT();
   const labelId = useId();
   // Most likely, the presentation goes to the projector, not to the screen
