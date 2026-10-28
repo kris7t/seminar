@@ -21,6 +21,7 @@ npm run dev
 
 Choose plugins and either the default theme or an editable theme with Roboto.
 Self-contained builds are enabled by default; you can disable them during setup.
+Choose which PDFs `npm run pdf` saves, like the slides or handouts with notes.
 The setup also offers to install dependencies; if you skip that step, run
 `npm install` before starting the development server.
 See [Getting started](packages/docs/docs/guide/getting-started.md) to create
@@ -147,11 +148,20 @@ audience, too (M, or `mirrorPointer: true` in the frontmatter to start with
 it). The audience then also sees its shape, hover and focus styles, the caret
 and selection of text fields, selected text, and the ripples of buttons.
 
+### Printing and PDFs
+
+Ctrl+P prints the deck from the browser, as slides, slides with notes, or
+several slides per sheet. Slides with steps are split into as few pages as
+needed to show everything. `npm run pdf` saves the same layouts as PDFs, with
+the table of contents as their outline and the numbers of the slides as page
+numbers.
+
 ## Packages
 
 | Package                                              | Description                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------- |
 | [`create-seminar`](packages/create)                  | Creates a presentation project with Vite, plugins, and a theme |
+| [`@seminar/cli`](packages/cli)                       | Command line that saves built decks as PDFs                    |
 | [`@seminar/core`](packages/core)                     | Deck, slides, steps, themes, and the presenter view            |
 | [`@seminar/elements`](packages/elements)             | Reusable presentation elements and MDX directives              |
 | [`@seminar/mdx`](packages/mdx)                       | Compiles decks written in MDX                                  |
