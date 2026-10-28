@@ -12,12 +12,22 @@ windows are:
 - Escape, or leaving full screen with the compositor, ends the presentation,
 - on KWin, scripts that crashed processes left loaded are unloaded.
 
+GNOME Shell can't take windows out of full screen with Window Calls, so it
+skips that test.
+
 ## Requirements
 
-- Sway, with `swaymsg`, and KWin 6 (`kwin_wayland`). The tests for a
-  compositor that isn't installed are skipped.
+- Sway, with `swaymsg`, KWin 6 (`kwin_wayland`), and GNOME Shell 47 or
+  newer, with `gsettings`. The tests for a compositor that isn't installed
+  are skipped.
 - `dbus-daemon`.
-- The command line and the example deck, built with `npm run build`.
+- For GNOME Shell, a release of the Window Calls extension, which the tests
+  download from extensions.gnome.org into the cache of Seminar and check
+  against its digest. Set `SEMINAR_E2E_WINDOW_CALLS` to the path of its zip
+  to install that instead, e.g., offline. GNOME Shell may still update it
+  from extensions.gnome.org while it runs.
+- The command line and the example deck, built with `npm run build`, also
+  after changes to the libraries, which the example deck is built with.
 - The Electron of the command line, which the tests download if needed, like
   `seminar install-electron`.
 

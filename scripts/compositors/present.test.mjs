@@ -9,6 +9,7 @@ import path from 'node:path';
 import { after, afterEach, before, describe, it } from 'node:test';
 
 import { waitForPage } from './cdp.mjs';
+import { gnome } from './gnome.mjs';
 import { kwin } from './kwin.mjs';
 import { freePort, Session, until } from './session.mjs';
 import { sway } from './sway.mjs';
@@ -117,10 +118,12 @@ async function screenChoices(presenter, outputs) {
 
 /** Returns the window of the compositor that is in full screen, if any. */
 async function fullscreenWindow(compositor) {
-  return (await compositor.windows()).find(({ fullscreen }) => fullscreen);
+  const windows = await compositor.windows();
+  debug('windows', windows);
+  return windows.find(({ fullscreen }) => fullscreen);
 }
 
-for (const target of [sway, kwin]) {
+for (const target of [sway, kwin, gnome]) {
   describe(
     target.name,
     { skip: !target.available() && `no ${target.name}` },
@@ -217,7 +220,12 @@ for (const target of [sway, kwin]) {
 
       it(
         'ends the presentation when the compositor leaves full screen',
-        { timeout: TIMEOUT },
+        {
+          timeout: TIMEOUT,
+          skip:
+            target.leavesFullscreen === false &&
+            `${target.name} can't leave full screen`,
+        },
         async () => {
           const { compositor } = context;
           const deck = await present(context);
