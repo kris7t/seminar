@@ -193,11 +193,15 @@ for (const target of [sway, kwin, gnome]) {
           );
           const audience = await deck.audience();
           debug('connected to the slides');
-          assert.deepEqual(
-            await audience.evaluate('[innerWidth, innerHeight]'),
-            [chosen.output.width, chosen.output.height],
-            'the slides fill the screen',
-          );
+          // The page may be resized after the compositor has told us.
+          await until(async () => {
+            const [width, height] = await audience.evaluate(
+              '[innerWidth, innerHeight]',
+            );
+            return (
+              width === chosen.output.width && height === chosen.output.height
+            );
+          }, 'the slides to fill the screen');
 
           // Escape ends the presentation.
           await audience.press('Escape', 'Escape', 27, undefined, {
