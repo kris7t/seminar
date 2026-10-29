@@ -46,7 +46,7 @@ export default function Home(): JSX.Element {
                 <CodeBlock language="bash" title="Create a presentation">
                   npm create seminar@latest my-talk
                 </CodeBlock>
-                <p>Requires Node.js 24 or newer.</p>
+                <p>Requires Node.js 22 or newer.</p>
               </div>
               <div className={styles['actions']}>
                 <Link

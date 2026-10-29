@@ -218,7 +218,7 @@ export function createProject(options: ProjectOptions): void {
     version: '0.0.0',
     private: true,
     type: 'module',
-    engines: { node: '>=24' },
+    engines: { node: '^22.22.2 || >=24' },
     scripts: {
       dev: 'vite',
       build: 'tsc --noEmit && vite build',
@@ -306,7 +306,7 @@ ${seminarOptions.join('\n')}
     '.gitignore': 'node_modules/\ndist/\n*.tsbuildinfo\n',
     'README.md': `# ${manifest.name}
 
-Requires Node.js 24 or newer.
+Requires Node.js 22 or newer.
 
 Run \`npm install\` first if you skipped dependency installation during setup
 or are setting up a fresh checkout.

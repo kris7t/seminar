@@ -24,7 +24,7 @@
     "index.d.ts"
   ],
   "engines": {
-    "node": ">=24"
+    "node": "^22.22.2 || >=24"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.3.0"

@@ -28,7 +28,7 @@
     "!dist/**/*.test.*"
   ],
   "engines": {
-    "node": ">=24"
+    "node": "^22.22.2 || >=24"
   },
   "dependencies": {
     "@mdx-js/mdx": "^3.1.1",

@@ -11,7 +11,7 @@ build is a single, self-contained HTML file that works offline.
 
 ## Getting started
 
-Seminar needs Node.js 24 or newer. Create a presentation project with:
+Seminar needs Node.js 22 or newer. Create a presentation project with:
 
 ```sh
 npm create seminar@latest my-talk

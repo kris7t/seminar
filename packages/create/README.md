@@ -1,7 +1,7 @@
 # create-seminar
 
 Create a [Seminar](https://seminar.run) presentation project with Vite.
-Requires Node.js 24 or newer.
+Requires Node.js 22 or newer.
 
 ```sh
 npm create seminar@latest my-talk

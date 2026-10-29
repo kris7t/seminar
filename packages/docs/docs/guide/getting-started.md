@@ -5,7 +5,7 @@ sidebar_position: 2
 # Getting started
 
 Create a presentation project, edit your slides, and share the result as a
-single HTML file. You need Node.js 24 or newer.
+single HTML file. You need Node.js 22 or newer.
 
 ## Create a project
 

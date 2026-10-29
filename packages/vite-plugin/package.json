@@ -22,7 +22,7 @@
     "!dist/**/*.test.*"
   ],
   "engines": {
-    "node": ">=24"
+    "node": "^22.22.2 || >=24"
   },
   "dependencies": {
     "@seminar/core": "0.1.1",

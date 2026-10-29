@@ -14,7 +14,7 @@
     "!dist/**/*.tsbuildinfo"
   ],
   "engines": {
-    "node": ">=24"
+    "node": "^22.22.2 || >=24"
   },
   "dependencies": {
     "@electron/get": "^5.1.0",
