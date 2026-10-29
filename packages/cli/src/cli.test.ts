@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { BuildJob } from './build.ts';
-import { run } from './cli.ts';
+import { Interrupted, run } from './cli.ts';
 import type { PdfJob, PresentJob } from './job.ts';
 
 const DECK = '<!doctype html><body><div id="seminar-root"></div></body>';
@@ -211,6 +211,7 @@ async function present(argv: string[], choice?: number): Promise<Presented> {
     output: () => undefined,
     build: async (job) => {
       result.built = job;
+      await mkdir(job.outDir, { recursive: true });
       await writeFile(
         path.join(job.outDir, path.basename(job.deck, '.deck.mdx') + '.html'),
         DECK,
@@ -230,6 +231,18 @@ async function present(argv: string[], choice?: number): Promise<Presented> {
     expect(existsSync(result.built.outDir)).toBe(false);
   }
   return result;
+}
+
+/** Resolves when `signal` is aborted. */
+function aborted(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve();
+    }
+    signal.addEventListener('abort', () => {
+      resolve();
+    });
+  });
 }
 
 describe('seminar present', () => {
@@ -283,7 +296,10 @@ describe('seminar present', () => {
     expect(built).toEqual({
       project: directory,
       deck: path.join(directory, 'decks/talk.deck.mdx'),
-      outDir: expect.any(String) as string,
+      outDir: path.join(
+        directory,
+        'node_modules/.cache/seminar/present/decks/talk',
+      ),
     });
     expect(job).toEqual({ root: built?.outDir, page: 'talk.html' });
   });
@@ -309,6 +325,56 @@ describe('seminar present', () => {
       },
     });
     expect(presented?.page).toBe('talks/talk.html');
+  });
+
+  it('stops presenting and cleans up on a signal', async () => {
+    await page('vite.config.ts', '');
+    await page('decks/talk.deck.mdx', '# Talk');
+    const listeners = process.listenerCount('SIGHUP');
+    let outDir = '';
+    const presenting = run(['present', 'decks/talk.deck.mdx'], {
+      cwd: directory,
+      output: () => undefined,
+      build: async (job) => {
+        outDir = job.outDir;
+        await mkdir(outDir, { recursive: true });
+        await writeFile(path.join(outDir, 'talk.html'), DECK);
+      },
+      present: async (_job, _output, signal) => {
+        process.emit('SIGHUP', 'SIGHUP');
+        // Like Electron, which exits when it is stopped.
+        await aborted(signal);
+      },
+    });
+    await expect(presenting).rejects.toEqual(new Interrupted('SIGHUP'));
+    await expect(presenting).rejects.toHaveProperty('signal', 'SIGHUP');
+    expect(existsSync(outDir)).toBe(false);
+    expect(process.listenerCount('SIGHUP')).toBe(listeners);
+  });
+
+  it('stops building and cleans up on a signal', async () => {
+    await page('vite.config.ts', '');
+    await page('decks/talk.deck.mdx', '# Talk');
+    let outDir = '';
+    let presented = false;
+    const presenting = run(['present', 'decks/talk.deck.mdx'], {
+      cwd: directory,
+      output: () => undefined,
+      build: async (job, signal) => {
+        outDir = job.outDir;
+        await mkdir(outDir, { recursive: true });
+        process.emit('SIGINT', 'SIGINT');
+        await aborted(signal);
+        throw new Error('vite build stopped with signal SIGTERM.');
+      },
+      present: () => {
+        presented = true;
+        return Promise.resolve();
+      },
+    });
+    await expect(presenting).rejects.toHaveProperty('signal', 'SIGINT');
+    expect(presented).toBe(false);
+    expect(existsSync(outDir)).toBe(false);
   });
 
   it('builds and presents the only deck of the project', async () => {

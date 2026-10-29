@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { mkdtemp, rm, stat } from 'node:fs/promises';
-import os from 'node:os';
+import { rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -9,6 +8,7 @@ import prompts from 'prompts';
 
 import {
   buildDeck,
+  buildDirectory,
   DECK_SUFFIX,
   findProject,
   findSources,
@@ -121,12 +121,16 @@ export interface RunOptions {
   electron?: () => Promise<string>;
   /** Prints the PDFs of `job`, calling `output` with each message. */
   print?: (job: PdfJob, output: (message: string) => void) => Promise<void>;
-  /** Builds the deck of `job` with Vite. */
-  build?: (job: BuildJob) => Promise<void>;
-  /** Presents the deck of `job`, calling `output` with each message. */
+  /** Builds the deck of `job` with Vite, stopping if `signal` is aborted. */
+  build?: (job: BuildJob, signal: AbortSignal) => Promise<void>;
+  /**
+   * Presents the deck of `job`, calling `output` with each message, and
+   * stopping if `signal` is aborted.
+   */
   present?: (
     job: PresentJob,
     output: (message: string) => void,
+    signal: AbortSignal,
   ) => Promise<void>;
   /**
    * Asks which of the decks with `labels` to present, and returns its index,
@@ -163,6 +167,61 @@ async function choose<T>(
     );
   }
   return items[index];
+}
+
+/** Thrown when the command was stopped by `signal` after cleaning up. */
+export class Interrupted extends Error {
+  readonly signal: NodeJS.Signals;
+
+  constructor(signal: NodeJS.Signals) {
+    super(`Stopped by ${signal}.`);
+    this.signal = signal;
+  }
+}
+
+/** Signals that stop the command, e.g., Ctrl+C or closing the terminal. */
+const STOP_SIGNALS: readonly NodeJS.Signals[] = ['SIGINT', 'SIGHUP', 'SIGTERM'];
+
+/**
+ * Runs `task` with an abort signal that is aborted by the signals that stop
+ * the command, so that it can stop its child processes and clean up, and
+ * then throws {@link Interrupted}. Stops right away on a second signal, in
+ * case the task can't stop.
+ */
+async function interruptible(
+  task: (signal: AbortSignal) => Promise<void>,
+): Promise<void> {
+  const controller = new AbortController();
+  let received: NodeJS.Signals | undefined;
+  const removeListeners = () => {
+    for (const signal of STOP_SIGNALS) {
+      process.off(signal, stop);
+    }
+  };
+  const stop = (signal: NodeJS.Signals) => {
+    if (received !== undefined) {
+      removeListeners();
+      process.kill(process.pid, signal);
+      return;
+    }
+    received = signal;
+    controller.abort();
+  };
+  for (const signal of STOP_SIGNALS) {
+    process.on(signal, stop);
+  }
+  try {
+    await task(controller.signal);
+  } catch (error) {
+    if (received === undefined) {
+      throw error;
+    }
+  } finally {
+    removeListeners();
+  }
+  if (received !== undefined) {
+    throw new Interrupted(received);
+  }
 }
 
 async function chooseInTerminal(
@@ -226,14 +285,20 @@ async function presentWithElectron(
   job: PresentJob,
   output: (message: string) => void,
   executable: string,
+  abortSignal: AbortSignal,
 ): Promise<void> {
   checkExit(
     await runElectron(
       executable,
       fileURLToPath(new URL('./app/present.js', import.meta.url)),
       [JSON.stringify(job)],
-      output,
-      { windows: true },
+      // The terminal may be gone after a signal, e.g., SIGHUP.
+      (line) => {
+        if (!abortSignal.aborted) {
+          output(line);
+        }
+      },
+      { windows: true, abortSignal },
     ),
   );
 }
@@ -248,8 +313,8 @@ export async function run(
     print = async (job, output) => {
       await printWithElectron(job, output, await getElectron());
     },
-    present = async (job, output) => {
-      await presentWithElectron(job, output, await getElectron());
+    present = async (job, output, signal) => {
+      await presentWithElectron(job, output, await getElectron(), signal);
     },
     build = buildDeck,
     chooseDeck = chooseInTerminal,
@@ -344,7 +409,9 @@ export async function run(
         if (deck === undefined) {
           throw new Error(`${input} has no decks.`);
         }
-        await present({ root: deck.root, page: deck.page }, output);
+        await interruptible((signal) =>
+          present({ root: deck.root, page: deck.page }, output, signal),
+        );
         return;
       }
       let project: string | undefined;
@@ -378,29 +445,31 @@ export async function run(
           );
         }
       }
-      const outDir = await mkdtemp(path.join(os.tmpdir(), 'seminar-present-'));
-      try {
-        output(`Building ${label(cwd, deck)}...`);
-        await build({ project, deck, outDir });
-        // Older versions of the Vite plugin build all decks, so find the page
-        // of the deck: the longest one that its path ends with.
-        const page = `/${path
-          .relative(project, deck)
-          .slice(0, -DECK_SUFFIX.length)
-          .split(path.sep)
-          .join('/')}.html`;
-        const built = (
-          await findDecks([outDir], { cwd }).catch((): DeckPage[] => [])
-        )
-          .filter((built) => page.endsWith(`/${built.page}`))
-          .sort((a, b) => b.page.length - a.page.length)[0];
-        if (built === undefined) {
-          throw new Error(`Building ${label(cwd, deck)} made no deck.`);
+      const outDir = buildDirectory(project, deck);
+      await interruptible(async (signal) => {
+        try {
+          output(`Building ${label(cwd, deck)}...`);
+          await build({ project, deck, outDir }, signal);
+          // Older versions of the Vite plugin build all decks, so find the page
+          // of the deck: the longest one that its path ends with.
+          const page = `/${path
+            .relative(project, deck)
+            .slice(0, -DECK_SUFFIX.length)
+            .split(path.sep)
+            .join('/')}.html`;
+          const built = (
+            await findDecks([outDir], { cwd }).catch((): DeckPage[] => [])
+          )
+            .filter((built) => page.endsWith(`/${built.page}`))
+            .sort((a, b) => b.page.length - a.page.length)[0];
+          if (built === undefined) {
+            throw new Error(`Building ${label(cwd, deck)} made no deck.`);
+          }
+          await present({ root: built.root, page: built.page }, output, signal);
+        } finally {
+          await rm(outDir, { recursive: true, force: true });
         }
-        await present({ root: built.root, page: built.page }, output);
-      } finally {
-        await rm(outDir, { recursive: true, force: true });
-      }
+      });
       return;
     }
     case 'install-electron': {

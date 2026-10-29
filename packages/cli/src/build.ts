@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -117,6 +118,19 @@ export interface BuildJob {
   outDir: string;
 }
 
+/**
+ * Returns the directory in `project` to build `deck` into: the same one every
+ * time, so that `vite build` empties it of the previous build, even if that
+ * couldn't be removed, e.g., because the command was killed.
+ */
+export function buildDirectory(project: string, deck: string): string {
+  const cache = path.join(project, 'node_modules/.cache/seminar/present');
+  const relative = path.relative(project, deck).slice(0, -DECK_SUFFIX.length);
+  return relative.startsWith('..') || path.isAbsolute(relative)
+    ? path.join(cache, createHash('sha256').update(deck).digest('hex'))
+    : path.join(cache, relative);
+}
+
 /** Returns the executable script of the Vite installed in `project`. */
 function findVite(project: string): string {
   const manifest = resolveVite(project, 'vite/package.json');
@@ -128,9 +142,14 @@ function findVite(project: string): string {
 
 /**
  * Builds only the deck of `job` with `vite build`, which shows its warnings
- * and errors in the terminal.
+ * and errors in the terminal. Stops Vite when `abortSignal` is aborted, and settles
+ * once it has exited.
  */
-export function buildDeck({ project, deck, outDir }: BuildJob): Promise<void> {
+export function buildDeck(
+  { project, deck, outDir }: BuildJob,
+  abortSignal?: AbortSignal,
+): Promise<void> {
+  abortSignal?.throwIfAborted();
   const vite = findVite(project);
   return new Promise((resolve, reject) => {
     const child = spawn(
@@ -150,8 +169,11 @@ export function buildDeck({ project, deck, outDir }: BuildJob): Promise<void> {
         stdio: ['ignore', 'inherit', 'inherit'],
       },
     );
+    const stop = () => child.kill();
+    abortSignal?.addEventListener('abort', stop, { once: true });
     child.once('error', reject);
     child.once('close', (code, signal) => {
+      abortSignal?.removeEventListener('abort', stop);
       if (code === 0) {
         resolve();
       } else {

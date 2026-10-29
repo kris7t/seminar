@@ -23,7 +23,9 @@ seminar present dist                  # one of the decks built in dist/
 
 `seminar present` builds the deck with `vite build` in the closest directory
 with a Vite config, leaving out the other decks and pages of the project, and
-presents it without touching `dist/`. Without a path, it builds the deck in
+presents it without touching `dist/`. It builds into
+`node_modules/.cache/seminar/present/`, and removes the build when the
+presentation ends, or when it is stopped, e.g., with Ctrl+C. Without a path, it builds the deck in
 the root of the Vite project, e.g., `decks/`. If there are several decks, it
 asks which one to present. The deck opens in
 a window, and asks right away which screen should show the slides, as if you

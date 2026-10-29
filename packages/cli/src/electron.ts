@@ -212,20 +212,27 @@ export interface ElectronExit {
 
 /**
  * Runs `script` in Electron, and calls `output` with each line it writes to
- * its standard output.
+ * its standard output. Stops Electron when `abortSignal` is aborted, and
+ * settles once it has exited.
  */
 export function runElectron(
   executable: string,
   script: string,
   args: readonly string[],
   output: (line: string) => void,
-  options: Pick<ElectronRunOptions, 'windows'> = {},
+  {
+    abortSignal,
+    ...options
+  }: Pick<ElectronRunOptions, 'windows'> & { abortSignal?: AbortSignal } = {},
 ): Promise<ElectronExit> {
+  abortSignal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     const child = spawn(executable, electronArgs(script, args, options), {
       env: electronEnv(process.env),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    const stop = () => child.kill();
+    abortSignal?.addEventListener('abort', stop, { once: true });
     let pending = '';
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
       const lines = (pending + chunk).split(/\r?\n/);
@@ -241,6 +248,7 @@ export function runElectron(
     });
     child.once('error', reject);
     child.once('close', (code, signal) => {
+      abortSignal?.removeEventListener('abort', stop);
       if (pending !== '') {
         output(pending);
       }
