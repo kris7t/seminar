@@ -14,7 +14,7 @@ Run these commands in your terminal:
 ```sh
 npm create seminar@latest my-talk
 cd my-talk
-npm run dev
+npm run preview
 ```
 
 The setup asks which presentation features to include, which theme to use,
@@ -22,10 +22,12 @@ and how to build your presentation. Keep the defaults to start with math
 formulas, highlighted code, callouts, and columns, and to share your
 presentation as a single HTML file. You can change these choices later.
 It also offers to install dependencies (yes by default). If you skip that
-step, run `npm install` before `npm run dev`.
+step, run `npm install` before `npm run preview`.
 
-Open the local address printed in the terminal. Leave the command running
-while you work on your slides.
+The preview opens your presentation in a window of its own. Leave the command
+running while you work on your slides, and the preview updates as you save
+them. To preview in a browser instead, run `npm run dev` and open the local
+address printed in the terminal.
 
 ## Edit your slides
 
@@ -44,7 +46,7 @@ An introduction
 - :step Make the connection
 ```
 
-Save the file to see your changes in the browser. The presentation stays on
+Save the file to see your changes in the preview. The presentation stays on
 the slide you are editing. Add more `.deck.mdx` files under `decks/` to keep
 several presentations in the same project.
 

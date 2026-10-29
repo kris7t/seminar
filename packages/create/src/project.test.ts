@@ -132,8 +132,9 @@ it('presents the deck with the command line', () => {
   expect(read(directory, 'README.md')).toContain(
     'Run `npm run present` to build the presentation and present it',
   );
+  expect(read(directory, 'README.md')).toContain('```sh\nnpm run preview\n```');
   expect(read(directory, 'README.md')).toContain(
-    'Run `npm run preview` to preview it in the same app instead',
+    'Run `npm run dev` to preview it in a browser instead.',
   );
 });
 
@@ -415,7 +416,9 @@ describe('dependency installation', () => {
       path.join(cwd, 'talk'),
     );
     const messages = output.mock.calls.flat().join('\n');
-    expect(messages).toContain('npm run dev');
+    expect(messages).toContain(
+      "Next steps:\n  cd 'talk'\n  npm run preview\n\nRun `npm run dev` to preview it in a browser instead.",
+    );
     expect(messages).not.toContain('  npm install\n');
   });
   it.each([

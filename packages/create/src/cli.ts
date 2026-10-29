@@ -297,7 +297,7 @@ export async function run(
     }
   }
   output(
-    `\nNext steps:\n${changeDirectory}${install ? '' : '  npm install\n'}  npm run dev\n\nRun \`npm run present\` to present it with the presenter view.${
+    `\nNext steps:\n${changeDirectory}${install ? '' : '  npm install\n'}  npm run preview\n\nRun \`npm run dev\` to preview it in a browser instead.\nRun \`npm run present\` to present it with the presenter view.${
       pdfs.length === 0
         ? ''
         : '\nRun `npm run pdf` to save the presentation as PDF.'

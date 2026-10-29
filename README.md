@@ -16,14 +16,14 @@ Seminar needs Node.js 22 or newer. Create a presentation project with:
 ```sh
 npm create seminar@latest my-talk
 cd my-talk
-npm run dev
+npm run preview
 ```
 
 Choose plugins and either the default theme or an editable theme with Roboto.
 Self-contained builds are enabled by default; you can disable them during setup.
 Choose which PDFs `npm run pdf` saves, like the slides or handouts with notes.
 The setup also offers to install dependencies; if you skip that step, run
-`npm install` before starting the development server.
+`npm install` before `npm run preview`.
 See [Getting started](packages/docs/docs/guide/getting-started.md) to create
 a project or configure an existing one.
 

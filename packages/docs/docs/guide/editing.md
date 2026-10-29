@@ -4,21 +4,30 @@ sidebar_position: 3
 
 # Editing and live preview
 
-Keep your editor and the browser side by side. Once you have
+Keep your editor and the preview side by side. Once you have
 [created a project](getting-started.md), saving a deck updates the presentation
 in place, so you can work on a slide while looking at it.
 
 ## Preview your changes
 
-From your project directory, start the development server:
+From your project directory, start the preview:
 
 ```sh
-npm run dev
+npm run preview
 ```
 
-Open the address Vite prints and navigate to the slide you want to edit.
-Change `decks/index.deck.mdx` and save it. With
-`@vitejs/plugin-react` enabled, Seminar keeps the current slide, open
+It starts the development server on a free port and opens the deck in the app
+of `npm run present`, so you don't need to open it in a browser. Press P to try
+the presentation on your screens without the permission prompts of the
+browser. Run `npx seminar preview decks/talk.deck.mdx` to preview another
+deck. See the
+[`@seminar/cli` package](https://github.com/kris7t/seminar/tree/main/packages/cli#readme).
+
+To preview in a browser instead, run `npm run dev`, and open the address Vite
+prints.
+
+Navigate to the slide you want to edit. Change `decks/index.deck.mdx` and save
+it. With `@vitejs/plugin-react` enabled, Seminar keeps the current slide, open
 panels, presenter view, and shared slide state when the deck updates.
 Without the React plugin, a deck change reloads the page instead.
 
@@ -29,13 +38,6 @@ presentation; live state isn't saved back into the file.
 
 If compilation fails, check Vite's error overlay and terminal output. Fix
 the error and save again to update the preview.
-
-To preview a deck in the app of `npm run present` instead of a browser, run
-`npm run preview`, or `npx seminar preview decks/talk.deck.mdx` for another
-deck. It starts the development server on a free port, and updates
-the deck in place like the browser. Press P to try the presentation on your
-screens without the permission prompts of the browser. See the
-[`@seminar/cli` package](https://github.com/kris7t/seminar/tree/main/packages/cli#readme).
 
 ## Work in your editor
 

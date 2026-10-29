@@ -6,7 +6,7 @@ Requires Node.js 22 or newer.
 ```sh
 npm create seminar@latest my-talk
 cd my-talk
-npm run dev
+npm run preview
 ```
 
 Choose which plugins to enable: Elements (callouts and columns), MathJax
@@ -18,11 +18,13 @@ handouts with notes, or handouts with 2, 4, or 6 slides on each sheet. With
 none selected, the project has no `npm run pdf`. Every project has
 `npm run present`, which builds the presentation and presents it with the
 presenter view, choosing the screen of the slides without browser prompts. Finally, choose whether to install dependencies now (yes by default). If you
-skip installation, run `npm install` before `npm run dev`.
+skip installation, run `npm install` before `npm run preview`.
 
 The starter includes `decks/index.deck.mdx` with examples of the selected
-features, Vite and TypeScript configuration, and commands to develop, build,
-preview, and check types. Vite's root is `decks/`, so deck discovery only
+features, Vite and TypeScript configuration, and commands to preview, build,
+present, and check types. `npm run preview` opens the deck in the app of
+`npm run present` and updates it as you edit it; `npm run dev` serves it to a
+browser instead. Vite's root is `decks/`, so deck discovery only
 searches that directory.
 `npm run build` produces `dist/index.html`. By default, it is self-contained;
 when disabled, deploy the whole `dist/` directory with its scripts and assets.

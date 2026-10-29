@@ -312,10 +312,11 @@ Run \`npm install\` first if you skipped dependency installation during setup
 or are setting up a fresh checkout.
 
 \`\`\`sh
-npm run dev
+npm run preview
 \`\`\`
 
-Edit \`decks/index.deck.mdx\` while the development server is running.
+Edit \`decks/index.deck.mdx\` while the preview is open, and it updates as you
+save. Run \`npm run dev\` to preview it in a browser instead.
 Imports such as \`@/MyComponent\` resolve to \`src/MyComponent\`.
 ${options.theme === 'custom' ? '\nEdit `src/theme.ts` to customize the theme and fonts.\n' : ''}
 Run \`npm run build\` to create \`dist/index.html\`${
@@ -326,8 +327,6 @@ Run \`npm run build\` to create \`dist/index.html\`${
 Toggle \`selfContained\` in \`vite.config.ts\` to change the build format.
 
 Run \`npm run present\` to build the presentation and present it.
-Run \`npm run preview\` to preview it in the same app instead, which updates
-it as you edit it.
 ${
   pdfs.length === 0
     ? ''
