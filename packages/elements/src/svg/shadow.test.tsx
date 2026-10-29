@@ -34,6 +34,12 @@ describe('parseBoxShadow', () => {
     expect(parseBoxShadow('inset 0 1px 2px black, 0 1em red')).toEqual([]);
   });
 
+  it('rejects long lengths without a unit in linear time', () => {
+    const start = performance.now();
+    expect(parseBoxShadow(`0 ${'9'.repeat(50_000)}x`)).toEqual([]);
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
   it('measures how far the layers reach', () => {
     expect(shadowExtent(parseBoxShadow('0 3px 5px -1px black'))).toBe(7);
     expect(shadowExtent([])).toBe(0);

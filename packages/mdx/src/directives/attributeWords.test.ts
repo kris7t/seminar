@@ -27,6 +27,13 @@ describe('parseAttributeWords', () => {
     });
   });
 
+  it('reads unclosed braces in linear time', () => {
+    const text = '{ '.repeat(100_000);
+    const start = performance.now();
+    expect(parseAttributeWords(text).rest).toBe(text.trim());
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
   it('reads nothing from nothing', () => {
     expect(parseAttributeWords(undefined)).toEqual({
       attributes: { classes: [], attributes: new Map() },

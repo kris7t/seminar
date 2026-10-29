@@ -30,7 +30,7 @@ function splitTopLevel(value: string, separator: RegExp): string[] {
 }
 
 function pixels(token: string): number | undefined {
-  const match = /^(-?(?:\d+\.?\d*|\.\d+))(px)?$/.exec(token);
+  const match = /^(-?(?:\d+(?:\.\d*)?|\.\d+))(px)?$/.exec(token);
   if (match === null || (match[2] === undefined && Number(match[1]) !== 0)) {
     return undefined;
   }
