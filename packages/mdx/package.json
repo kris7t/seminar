@@ -1,6 +1,6 @@
 {
   "name": "@seminar/mdx",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MDX support for Seminar presentations",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",

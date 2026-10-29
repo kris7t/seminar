@@ -1,6 +1,6 @@
 {
   "name": "@seminar/elements",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Reusable presentation elements for Seminar decks",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -50,14 +50,14 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^9.5.0",
-    "@seminar/core": "0.1.1",
+    "@seminar/core": "0.2.0",
     "react": "^19.0.0"
   },
   "devDependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.5.0",
-    "@seminar/core": "0.1.1",
+    "@seminar/core": "0.2.0",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "react": "^19.3.1",

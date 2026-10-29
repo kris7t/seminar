@@ -1,6 +1,6 @@
 {
   "name": "@seminar/cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Command line for Seminar presentations, e.g., to present decks or print them as PDF",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -24,7 +24,7 @@
     "yauzl": "^3.4.0"
   },
   "devDependencies": {
-    "@seminar/core": "0.1.1",
+    "@seminar/core": "0.2.0",
     "@types/prompts": "^2.4.9",
     "@types/yauzl": "^3.4.0",
     "electron": "45.1.0"
