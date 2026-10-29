@@ -293,6 +293,20 @@ describe('captureThumbnail', () => {
     );
   });
 
+  it('fetches resources without the signal, which html-to-image caches', async () => {
+    vi.mocked(toPng).mockResolvedValueOnce('image');
+    const frame = document.createElement('div');
+    frame.innerHTML = '<span style="font-family:A">Text</span>';
+    document.body.append(frame);
+    await captureThumbnail(frame, new AbortController().signal);
+    expect(vi.mocked(getFontEmbedCSS).mock.calls[0]?.[1]).not.toHaveProperty(
+      'fetchRequestInit',
+    );
+    expect(vi.mocked(toPng).mock.calls[0]?.[1]).not.toHaveProperty(
+      'fetchRequestInit',
+    );
+  });
+
   it('embeds the collected font families without repeated inline declarations', async () => {
     const mock = vi.spyOn(window, 'getComputedStyle');
     const original = mock.getMockImplementation();

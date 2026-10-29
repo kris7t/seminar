@@ -225,10 +225,12 @@ export async function captureThumbnail(
 ): Promise<string> {
   const { clone, fonts } = await freezeSlide(frame, signal);
   signal?.throwIfAborted();
+  // Resources are fetched without the signal: html-to-image would warn about
+  // aborted fetches, and cache their empty results for later thumbnails,
+  // while the results of fetches that complete are reused.
   const resourceOptions = {
     includeQueryParams: true,
     preferredFontFormat: 'woff2',
-    fetchRequestInit: signal === undefined ? {} : { signal },
   };
   // Font discovery needs only the families we already read, rather than a
   // second walk or repeated inline declarations on every frozen element.
