@@ -108,6 +108,8 @@ const COARSE_POINTER_QUERY = '(pointer: coarse)';
 
 const LIST_STYLES = {
   minWidth: 220,
+  // Instead of the paper, which clips the scrollbar to its rounded corners.
+  overflowY: 'auto',
   '& .MuiMenuItem-root': { pl: 1.5 },
   // MenuItem sets the width of the icon with a selector of the same form, so
   // we need to be at least as specific.
@@ -523,7 +525,9 @@ function MenuSurface({
       <Dialog
         open={open}
         onClose={onClose}
-        slotProps={{ paper: { 'aria-label': label, lang } }}
+        slotProps={{
+          paper: { 'aria-label': label, lang, sx: { overflow: 'hidden' } },
+        }}
       >
         <MenuList autoFocusItem={open} sx={LIST_STYLES}>
           {children}
@@ -546,7 +550,10 @@ function MenuSurface({
             },
           })}
       slotProps={{
-        paper: { lang },
+        paper: {
+          lang,
+          sx: { display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+        },
         list: { dense: true, sx: LIST_STYLES, 'aria-label': label },
       }}
     >
