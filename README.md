@@ -141,9 +141,9 @@ window shows the current slide, previews of the next step and slide, the
 notes, and a toolbar with a timer and the clock. Clicking the previews also
 goes to the next step, while clicks on the notes select their text. With
 several screens in a Chromium-based browser, Start presentation asks which
-screen to show the slides on. `seminar present` shows a built deck that way
-without asking for permissions, and also on Wayland, where browsers can't
-choose the screen.
+screen to show the slides on. To present a built deck without the permission
+prompts, use `seminar present`. It also shows the slides on the chosen screen
+on Wayland, where browsers can't.
 
 Both windows render the same slide with shared state, so interactive slides
 work in front of the audience. The mouse pointer can be shown to the

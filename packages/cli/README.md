@@ -1,10 +1,12 @@
 # @seminar/cli
 
-Command line for [Seminar](https://seminar.run) presentations. Requires
-Node.js 24 or newer.
+The `seminar` command presents built [Seminar](https://seminar.run) decks and
+saves them as PDFs. It runs the decks in an app of its own, made with
+Electron. Requires Node.js 24 or newer.
 
-Projects created with `npm create seminar` already have it, and save PDFs
-with `npm run pdf`. To add it to other projects:
+Projects created with `npm create seminar` already have it, with
+`npm run present`, and `npm run pdf` if you chose PDFs. To add it to other
+projects:
 
 ```sh
 npm install --save-dev @seminar/cli
@@ -12,24 +14,32 @@ npm install --save-dev @seminar/cli
 
 ## Presenting
 
-`seminar present` presents a deck built into `dist/`, or the deck at the path
-it's given, like `seminar present dist/talk.html`. If there are several,
-it asks which one. It starts the presentation right away, and asks which
-screen to show the slides on, like pressing P in a browser, but without
-asking for permissions first.
+```sh
+seminar present                 # the deck in dist/
+seminar present dist/talk.html  # another deck
+```
 
-On Wayland, where browsers can't choose the screen of their windows, it
-shows the slides in full screen on the screen chosen if the compositor
-supports the wlr foreign toplevel management protocol, like Sway, or is
-COSMIC, or the KWin of KDE Plasma. On GNOME, it needs the
-[Window Calls](https://extensions.gnome.org/extension/4724/window-calls/)
-extension for that, which lets other apps move windows, too. Otherwise,
-move the window of the slides to the screen of the audience, and click it to
-go full screen.
+If there are several decks, it asks which one to present. The deck opens in
+a window, and asks right away which screen should show the slides, as if you
+pressed P. Unlike a browser, it doesn't ask for permissions first.
+
+On Wayland, browsers can't choose the screen of a window, so
+`seminar present` asks the compositor instead. This works with:
+
+- Sway, and other compositors with the wlr foreign toplevel management
+  protocol,
+- COSMIC,
+- KDE Plasma,
+- GNOME, with the
+  [Window Calls](https://extensions.gnome.org/extension/4724/window-calls/)
+  extension.
+
+With other compositors, move the window of the slides to the screen of the
+audience, and click it to go full screen.
 
 ## Saving PDFs
 
-`seminar pdf` saves each deck built into `dist/` as a PDF next to it, like
+`seminar pdf` saves each deck in `dist/` as a PDF next to it, like
 `dist/index.pdf`. Build the decks first, e.g., in a script of your
 `package.json`:
 
@@ -37,7 +47,7 @@ go full screen.
 "pdf": "vite build && seminar pdf"
 ```
 
-Its options choose the same as the Print dialog of the decks:
+The options match the Print dialog of the decks:
 
 | Option                           | What it does                                 |
 | -------------------------------- | -------------------------------------------- |
@@ -49,23 +59,21 @@ Its options choose the same as the Print dialog of the decks:
 | `--paper <size>`                 | Paper of handouts, like `A4` or `Letter`     |
 | `--out-dir <dir>`                | Where to save the PDFs                       |
 
-To save several layouts at once, list them separated by commas, like
-`--layout slides,notes,grid --per-sheet 4,6`. Handouts have their layout at
-the end of their names, like `dist/index-notes.pdf` and `dist/index-4up.pdf`,
-while the slides keep the name of the deck.
+To save several layouts at once, separate them with commas, like
+`--layout slides,notes,grid --per-sheet 4,6`. The PDF of the slides has the
+name of the deck. Handouts add their layout to it, like `dist/index-notes.pdf`
+and `dist/index-4up.pdf`.
 
-The PDFs have the title, authors, description, and keywords of the deck in
-their properties, and the table of contents of the deck, or the titles of
-its slides, as their outline. With one slide on each sheet, their page
-numbers are the numbers of the slides.
+The PDFs keep the title, authors, description, and keywords of the deck. Their
+outline is the table of contents of the deck, or the titles of its slides.
+With one slide on each sheet, the page numbers are the slide numbers.
 
 ## Electron
 
-Seminar presents decks and saves PDFs with
-[Electron](https://www.electronjs.org/), which it downloads into the cache
-directory of your user account the first time. Run
-`seminar install-electron` to download it ahead of time, e.g., before a
-talk, or in a separate step of continuous integration.
+The app is made with [Electron](https://www.electronjs.org/). The first time
+you use it, `seminar` downloads Electron into the cache directory of your
+user account. To download it ahead of time, e.g., before a talk or in a step
+of continuous integration, run `seminar install-electron`.
 
 | Environment variable | What it sets                                 |
 | -------------------- | -------------------------------------------- |
