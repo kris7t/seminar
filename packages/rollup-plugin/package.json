@@ -1,6 +1,6 @@
 {
   "name": "@seminar/rollup-plugin",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Rollup and Vite plugin for Seminar presentations",
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
@@ -29,14 +29,14 @@
   "dependencies": {
     "@mdx-js/rollup": "^3.1.1",
     "@rollup/pluginutils": "^5.4.0",
-    "@seminar/mdx": "0.2.0",
-    "@seminar/theme-default": "0.2.0",
+    "@seminar/mdx": "0.2.1",
+    "@seminar/theme-default": "0.2.1",
     "unified": "^11.0.5"
   },
   "devDependencies": {
-    "@seminar/core": "0.2.0",
-    "@seminar/elements": "0.2.0",
-    "@seminar/plugin-mathjax": "0.2.0",
+    "@seminar/core": "0.2.1",
+    "@seminar/elements": "0.2.1",
+    "@seminar/plugin-mathjax": "0.2.1",
     "rollup": "^4.64.6",
     "vite": "^8.3.4"
   },
