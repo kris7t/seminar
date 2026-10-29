@@ -26,6 +26,8 @@ import {
   getDeckPath,
   getHtmlPath,
   HTML_SUFFIX,
+  isInside,
+  selectedDeck,
   type Input,
 } from '../decks.ts';
 import {
@@ -87,17 +89,6 @@ const SKIP_FOCUS_STYLE = `#${SKIP_ID}:focus { position: fixed; top: 0; left: 0; 
 
 /** Prefix of the virtual modules that render decks. */
 const ENTRY_PREFIX = '\0seminar-entry:';
-
-/** Whether `file` is inside of the directory `root`, not in a sibling. */
-function isInside(root: string, file: string): boolean {
-  const relative = path.relative(root, file);
-  return (
-    relative !== '' &&
-    relative !== '..' &&
-    !relative.startsWith(`..${path.sep}`) &&
-    !path.isAbsolute(relative)
-  );
-}
 
 /** Whether `htmlPath` is not a real file, but generated for a deck. */
 function isGenerated(htmlPath: string): boolean {
@@ -521,6 +512,15 @@ export function seminarEntries({
         return undefined;
       }
       const build = config.build;
+      const onlyDeck = selectedDeck() !== undefined;
+      if (onlyDeck && build !== undefined) {
+        // Leave out the other pages, too. Inputs of the config are merged with
+        // ours, so they have to be removed from it.
+        delete build.rolldownOptions?.input;
+        // Still supported by Vite as an alias.
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        delete build.rollupOptions?.input;
+      }
       const ssr =
         (content === 'ssr' || content === 'both') && command === 'serve'
           ? serverResolveOptions(config)
@@ -529,14 +529,16 @@ export function seminarEntries({
         ...(ssr === undefined ? {} : { ssr }),
         build: {
           rolldownOptions: {
-            input: addInputs(
-              build?.rolldownOptions?.input ??
-                // Still supported by Vite as an alias.
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
-                build?.rollupOptions?.input,
-              root,
-              decks,
-            ),
+            input: onlyDeck
+              ? decks.map(getHtmlPath)
+              : addInputs(
+                  build?.rolldownOptions?.input ??
+                    // Still supported by Vite as an alias.
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
+                    build?.rollupOptions?.input,
+                  root,
+                  decks,
+                ),
           },
         },
       };

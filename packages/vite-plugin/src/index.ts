@@ -52,6 +52,10 @@ export interface SeminarPluginOptions extends RollupSeminarPluginOptions {
  * With `@vitejs/plugin-react`, the dev server updates decks in place when they
  * change, keeping their state (see {@link seminarHotReload}).
  *
+ * If the `SEMINAR_DECK` environment variable is set to the path of a deck,
+ * only that deck is built, without the other decks and pages of the project,
+ * as `seminar present` does.
+ *
  * Theme modules that aren't packages with a compile-time config are imported
  * with the module runner of Vite to read their `seminar` export (see
  * `SeminarConfig` in `@seminar/core`). This takes about a second, so modules are

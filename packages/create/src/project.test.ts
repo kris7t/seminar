@@ -126,7 +126,7 @@ it('presents the deck with the command line', () => {
   const directory = path.join(workspace(), 'talk');
   createProject({ directory, plugins: [], theme: 'default', pdfs: [] });
   const manifest = JSON.parse(read(directory, 'package.json')) as Manifest;
-  expect(manifest.scripts['present']).toBe('npm run build && seminar present');
+  expect(manifest.scripts['present']).toBe('seminar present');
   expect(manifest.devDependencies['@seminar/cli']).toBe(VERSION);
   expect(read(directory, 'README.md')).toContain(
     'Run `npm run present` to build the presentation and present it',

@@ -4,21 +4,25 @@ import {
   type Server,
 } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import react from '@vitejs/plugin-react';
 import {
   build,
+  type ConfigEnv,
   createLogger,
   createServer,
   defaultClientConditions,
   type InlineConfig,
   type Rolldown,
+  type UserConfig,
   type ViteDevServer,
 } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import seminar from '../index.ts';
+import { DECK_ENV } from '../decks.ts';
+import seminar, { seminarEntries } from '../index.ts';
 
 const root = fileURLToPath(new URL('../test/fixtures', import.meta.url));
 
@@ -163,6 +167,31 @@ describe('seminarEntries', () => {
         .join('');
       expect(code).toMatch(/MJX-\d+-NCM-/);
       expect(code).not.toMatch(/MJX-\d+-STX-/);
+    });
+
+    it(`only builds the deck in ${DECK_ENV}`, () => {
+      vi.stubEnv(DECK_ENV, path.join(root, 'talk.deck.mdx'));
+      try {
+        const plugin = seminarEntries();
+        const userConfig: UserConfig = {
+          root,
+          build: { rolldownOptions: { input: { other: 'other.html' } } },
+        };
+        const config = plugin.config as (
+          config: UserConfig,
+          env: ConfigEnv,
+        ) => UserConfig | undefined;
+        expect(
+          config(userConfig, { command: 'build', mode: 'production' }),
+        ).toEqual({
+          build: {
+            rolldownOptions: { input: [path.join(root, 'talk.html')] },
+          },
+        });
+        expect(userConfig.build?.rolldownOptions?.input).toBeUndefined();
+      } finally {
+        vi.unstubAllEnvs();
+      }
     });
   });
 

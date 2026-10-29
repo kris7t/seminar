@@ -1,11 +1,20 @@
 import { readFileSync } from 'node:fs';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import type { PagesPerSheet, PrintLayout, PrintOptions } from '@seminar/core';
 import prompts from 'prompts';
 
-import { findDecks } from './decks.ts';
+import {
+  buildDeck,
+  DECK_SUFFIX,
+  findProject,
+  findSources,
+  type BuildJob,
+} from './build.ts';
+import { findDecks, type DeckPage } from './decks.ts';
 import {
   ELECTRON_VERSION,
   findElectron,
@@ -31,12 +40,16 @@ const VERSION = (
 const HELP = `Usage: seminar <command> [options]
 
 Commands:
-  present [path]      Present a built deck (default: dist)
+  present [path]      Build and present a deck of the project, or present
+                      a built deck
   pdf [paths...]      Save built decks as PDF files (default: dist)
   install-electron    Download the Electron that Seminar runs, e.g., in CI
 
-present asks which deck to present if there are several, and starts the
-presentation right away, letting you choose the screen of the audience.
+present builds a .deck.mdx file with Vite, or the deck of the Vite project
+if no path is given, and asks which one if there are several. Give it an
+.html page or a directory of built decks to present them without building.
+It starts the presentation right away, letting you choose the screen of the
+audience.
 
 Options of pdf:
   --layout <slides|notes|grid>  Slides, slides with notes, or several slides
@@ -108,6 +121,8 @@ export interface RunOptions {
   electron?: () => Promise<string>;
   /** Prints the PDFs of `job`, calling `output` with each message. */
   print?: (job: PdfJob, output: (message: string) => void) => Promise<void>;
+  /** Builds the deck of `job` with Vite. */
+  build?: (job: BuildJob) => Promise<void>;
   /** Presents the deck of `job`, calling `output` with each message. */
   present?: (
     job: PresentJob,
@@ -126,6 +141,28 @@ function label(cwd: string, file: string): string {
   return relative.startsWith('..') || path.isAbsolute(relative)
     ? file
     : relative;
+}
+
+/**
+ * Returns the item of `items` with one of `labels` that `chooseDeck` chooses,
+ * or throws with the commands to choose one of them, if it can't ask.
+ */
+async function choose<T>(
+  items: readonly T[],
+  labels: readonly string[],
+  several: string,
+  chooseDeck: (labels: readonly string[]) => Promise<number | undefined>,
+): Promise<T | undefined> {
+  if (items.length <= 1) {
+    return items[0];
+  }
+  const index = await chooseDeck(labels);
+  if (index === undefined) {
+    throw new Error(
+      `${several} Choose one of them, e.g.:\n\n${labels.map((deck) => `  seminar present ${deck}`).join('\n')}`,
+    );
+  }
+  return items[index];
 }
 
 async function chooseInTerminal(
@@ -214,6 +251,7 @@ export async function run(
     present = async (job, output) => {
       await presentWithElectron(job, output, await getElectron());
     },
+    build = buildDeck,
     chooseDeck = chooseInTerminal,
   }: RunOptions = {},
 ): Promise<void> {
@@ -294,25 +332,75 @@ export async function run(
       if (paths.length > 1) {
         throw new Error('Choose one deck to present.');
       }
-      const input = paths[0] ?? 'dist';
-      const decks = await findDecks([input], { cwd });
-      let deck = decks[0];
-      if (decks.length > 1) {
-        const labels = decks.map(({ root, page }) =>
-          label(cwd, path.join(root, page)),
+      const [input] = paths;
+      if (input !== undefined && !input.endsWith(DECK_SUFFIX)) {
+        const decks = await findDecks([input], { cwd });
+        const deck = await choose(
+          decks,
+          decks.map(({ root, page }) => label(cwd, path.join(root, page))),
+          `${input} has several decks.`,
+          chooseDeck,
         );
-        const index = await chooseDeck(labels);
-        if (index === undefined) {
+        if (deck === undefined) {
+          throw new Error(`${input} has no decks.`);
+        }
+        await present({ root: deck.root, page: deck.page }, output);
+        return;
+      }
+      let project: string | undefined;
+      let deck: string | undefined;
+      if (input === undefined) {
+        project = findProject(cwd);
+        if (project === undefined) {
           throw new Error(
-            `${input} has several decks. Choose one of them, e.g.:\n\n${labels.map((deck) => `  seminar present ${deck}`).join('\n')}`,
+            `Found no Vite project here. Choose a deck to present, e.g.:\n\n  seminar present talk${DECK_SUFFIX}\n  seminar present dist/index.html`,
           );
         }
-        deck = decks[index];
+        const sources = await findSources(project);
+        deck = await choose(
+          sources,
+          sources.map((source) => label(cwd, source)),
+          'The project has several decks.',
+          chooseDeck,
+        );
+        if (deck === undefined) {
+          throw new Error(`The project in ${project} has no decks.`);
+        }
+      } else {
+        deck = path.resolve(cwd, input);
+        if (!(await stat(deck).catch(() => undefined))?.isFile()) {
+          throw new Error(`${input} doesn't exist.`);
+        }
+        project = findProject(path.dirname(deck));
+        if (project === undefined) {
+          throw new Error(
+            `${input} isn't in a Vite project with a Vite config, e.g., vite.config.ts.`,
+          );
+        }
       }
-      if (deck === undefined) {
-        throw new Error(`${input} has no decks.`);
+      const outDir = await mkdtemp(path.join(os.tmpdir(), 'seminar-present-'));
+      try {
+        output(`Building ${label(cwd, deck)}...`);
+        await build({ project, deck, outDir });
+        // Older versions of the Vite plugin build all decks, so find the page
+        // of the deck: the longest one that its path ends with.
+        const page = `/${path
+          .relative(project, deck)
+          .slice(0, -DECK_SUFFIX.length)
+          .split(path.sep)
+          .join('/')}.html`;
+        const built = (
+          await findDecks([outDir], { cwd }).catch((): DeckPage[] => [])
+        )
+          .filter((built) => page.endsWith(`/${built.page}`))
+          .sort((a, b) => b.page.length - a.page.length)[0];
+        if (built === undefined) {
+          throw new Error(`Building ${label(cwd, deck)} made no deck.`);
+        }
+        await present({ root: built.root, page: built.page }, output);
+      } finally {
+        await rm(outDir, { recursive: true, force: true });
       }
-      await present({ root: deck.root, page: deck.page }, output);
       return;
     }
     case 'install-electron': {

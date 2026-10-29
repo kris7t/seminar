@@ -1,8 +1,10 @@
+import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import type { BuildJob } from './build.ts';
 import { run } from './cli.ts';
 import type { PdfJob, PresentJob } from './job.ts';
 
@@ -171,19 +173,51 @@ describe('seminar pdf', () => {
   });
 });
 
+/** Makes a Vite project with a fake Vite, whose config has `root`. */
+async function project(root?: string): Promise<void> {
+  await page('vite.config.ts', '');
+  await page(
+    'node_modules/vite/package.json',
+    JSON.stringify({
+      name: 'vite',
+      type: 'module',
+      exports: { '.': './index.js', './package.json': './package.json' },
+      bin: { vite: 'bin/vite.js' },
+    }),
+  );
+  await page(
+    'node_modules/vite/index.js',
+    `export async function loadConfigFromFile() {
+  return { config: ${JSON.stringify(root === undefined ? {} : { root })} };
+}`,
+  );
+}
+
+interface Presented {
+  job?: PresentJob;
+  asked?: readonly string[];
+  built?: BuildJob;
+}
+
 /**
  * Runs the command, choosing `choice` if it asks which deck to present, and
- * returns the job that it presents and what it asked, if anything.
+ * returns the job that it presents, what it asked, and what it built, if
+ * anything. Builds decks into pages with their names.
  */
-async function present(
-  argv: string[],
-  choice?: number,
-): Promise<{ job?: PresentJob; asked?: readonly string[] }> {
-  const result: { job?: PresentJob; asked?: readonly string[] } = {};
+async function present(argv: string[], choice?: number): Promise<Presented> {
+  const result: Presented = {};
   await run(argv, {
     cwd: directory,
     output: () => undefined,
+    build: async (job) => {
+      result.built = job;
+      await writeFile(
+        path.join(job.outDir, path.basename(job.deck, '.deck.mdx') + '.html'),
+        DECK,
+      );
+    },
     present: (job) => {
+      expect(existsSync(path.join(job.root, job.page))).toBe(true);
       result.job = job;
       return Promise.resolve();
     },
@@ -192,14 +226,17 @@ async function present(
       return Promise.resolve(choice);
     },
   });
+  if (result.built !== undefined) {
+    expect(existsSync(result.built.outDir)).toBe(false);
+  }
   return result;
 }
 
 describe('seminar present', () => {
-  it('presents the deck in dist', async () => {
+  it('presents the deck in a directory', async () => {
     await page('dist/index.html');
     await page('dist/other.html', '<!doctype html><p>Not a deck</p>');
-    expect(await present(['present'])).toEqual({
+    expect(await present(['present', 'dist'])).toEqual({
       job: { root: path.join(directory, 'dist'), page: 'index.html' },
     });
   });
@@ -215,7 +252,7 @@ describe('seminar present', () => {
   it('asks which deck to present if there are several', async () => {
     await page('dist/index.html');
     await page('dist/talks/second.html');
-    expect(await present(['present'], 1)).toEqual({
+    expect(await present(['present', 'dist'], 1)).toEqual({
       job: { root: path.join(directory, 'dist'), page: 'talks/second.html' },
       asked: [
         path.join('dist', 'index.html'),
@@ -227,7 +264,7 @@ describe('seminar present', () => {
   it("lists the decks if it can't ask which one to present", async () => {
     await page('dist/index.html');
     await page('dist/talks/second.html');
-    await expect(present(['present'])).rejects.toThrow(
+    await expect(present(['present', 'dist'])).rejects.toThrow(
       `dist has several decks. Choose one of them, e.g.:
 
   seminar present ${path.join('dist', 'index.html')}
@@ -236,5 +273,94 @@ describe('seminar present', () => {
     await expect(
       present(['present', 'dist/index.html', 'dist/talks/second.html']),
     ).rejects.toThrow('Choose one deck to present.');
+  });
+
+  it('builds and presents a deck given by its source', async () => {
+    await page('vite.config.ts', '');
+    await page('decks/talk.deck.mdx', '# Talk');
+    await page('decks/other.deck.mdx', '# Other');
+    const { built, job } = await present(['present', 'decks/talk.deck.mdx']);
+    expect(built).toEqual({
+      project: directory,
+      deck: path.join(directory, 'decks/talk.deck.mdx'),
+      outDir: expect.any(String) as string,
+    });
+    expect(job).toEqual({ root: built?.outDir, page: 'talk.html' });
+  });
+
+  it('finds the page of the deck among others built with it', async () => {
+    await page('vite.config.ts', '');
+    await page('decks/talks/talk.deck.mdx', '# Talk');
+    let presented: PresentJob | undefined;
+    await run(['present', 'decks/talks/talk.deck.mdx'], {
+      cwd: directory,
+      output: () => undefined,
+      build: async ({ outDir }) => {
+        for (const name of ['talk.html', 'talks/talk.html', 'other.html']) {
+          await mkdir(path.dirname(path.join(outDir, name)), {
+            recursive: true,
+          });
+          await writeFile(path.join(outDir, name), DECK);
+        }
+      },
+      present: (job) => {
+        presented = job;
+        return Promise.resolve();
+      },
+    });
+    expect(presented?.page).toBe('talks/talk.html');
+  });
+
+  it('builds and presents the only deck of the project', async () => {
+    await project('decks');
+    await page('decks/talk.deck.mdx', '# Talk');
+    await page('src/fixture.deck.mdx', '# Outside of the root');
+    await page('decks/page.deck.mdx', '# Page with its own HTML');
+    await page('decks/page.html', '<!doctype html>');
+    await page('node_modules/package/package.deck.mdx', '# Package');
+    const { built, job, asked } = await present(['present']);
+    expect(built?.deck).toBe(path.join(directory, 'decks/talk.deck.mdx'));
+    expect(job?.page).toBe('talk.html');
+    expect(asked).toBeUndefined();
+  });
+
+  it('asks which deck of the project to build', async () => {
+    await project();
+    await page('decks/talk.deck.mdx', '# Talk');
+    await page('decks/other.deck.mdx', '# Other');
+    const { built, asked } = await present(['present'], 1);
+    expect(asked).toEqual([
+      path.join('decks', 'other.deck.mdx'),
+      path.join('decks', 'talk.deck.mdx'),
+    ]);
+    expect(built?.deck).toBe(path.join(directory, 'decks/talk.deck.mdx'));
+    await expect(present(['present'])).rejects.toThrow(
+      `The project has several decks. Choose one of them, e.g.:
+
+  seminar present ${path.join('decks', 'other.deck.mdx')}
+  seminar present ${path.join('decks', 'talk.deck.mdx')}`,
+    );
+  });
+
+  it('explains what is missing to build a deck', async () => {
+    await expect(present(['present'])).rejects.toThrow(
+      'Found no Vite project here.',
+    );
+    await page('decks/talk.deck.mdx', '# Talk');
+    await expect(present(['present', 'decks/talk.deck.mdx'])).rejects.toThrow(
+      "decks/talk.deck.mdx isn't in a Vite project",
+    );
+    await page('vite.config.ts', '');
+    await expect(present(['present', 'decks/other.deck.mdx'])).rejects.toThrow(
+      "decks/other.deck.mdx doesn't exist.",
+    );
+    await expect(present(['present'])).rejects.toThrow(
+      `Vite isn't installed in ${directory}.`,
+    );
+    await project();
+    await rm(path.join(directory, 'decks'), { recursive: true });
+    await expect(present(['present'])).rejects.toThrow(
+      `The project in ${directory} has no decks.`,
+    );
   });
 });

@@ -223,7 +223,7 @@ export function createProject(options: ProjectOptions): void {
       dev: 'vite',
       build: 'tsc --noEmit && vite build',
       preview: 'vite preview',
-      present: 'npm run build && seminar present',
+      present: 'seminar present',
       ...(pdfs.length === 0
         ? {}
         : { pdf: `npm run build && ${pdfCommand(pdfs)}` }),

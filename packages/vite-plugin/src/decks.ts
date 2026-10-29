@@ -25,10 +25,46 @@ export function getHtmlPath(deckPath: string): string {
 }
 
 /**
+ * Environment variable with the path of the only deck to build or serve, if
+ * set, e.g., by `seminar present`, which leaves out the other decks and pages.
+ */
+export const DECK_ENV = 'SEMINAR_DECK';
+
+/** Returns the only deck to build from {@link DECK_ENV}, if it is set. */
+export function selectedDeck(): string | undefined {
+  const deck = process.env[DECK_ENV];
+  return deck === undefined || deck === '' ? undefined : deck;
+}
+
+/** Whether `file` is inside of the directory `root`, not in a sibling. */
+export function isInside(root: string, file: string): boolean {
+  const relative = path.relative(root, file);
+  return (
+    relative !== '' &&
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
+/**
  * Finds the decks in `root` that get generated HTML pages, i.e., that don't
- * have a real HTML file next to them.
+ * have a real HTML file next to them, or only the deck in {@link DECK_ENV}.
  */
 export function findDecks(root: string): string[] {
+  const selected = selectedDeck();
+  if (selected !== undefined) {
+    const deck = path.resolve(selected);
+    if (!deck.endsWith(DECK_SUFFIX) || !existsSync(deck)) {
+      throw new Error(`${DECK_ENV}=${selected} isn't a deck.`);
+    }
+    if (!isInside(root, deck) || existsSync(getHtmlPath(deck))) {
+      throw new Error(
+        `${DECK_ENV}=${selected} doesn't get a generated page in ${root}.`,
+      );
+    }
+    return [deck];
+  }
   return globSync(`**/*${DECK_SUFFIX}`, {
     cwd: root,
     exclude: ['**/node_modules/**'],

@@ -1,7 +1,7 @@
 # @seminar/cli
 
-The `seminar` command presents built [Seminar](https://seminar.run) decks and
-saves them as PDFs. It runs the decks in an app of its own, made with
+The `seminar` command presents [Seminar](https://seminar.run) decks and saves
+built decks as PDFs. It runs the decks in an app of its own, made with
 Electron. Requires Node.js 24 or newer.
 
 Projects created with `npm create seminar` already have it, with
@@ -15,11 +15,17 @@ npm install --save-dev @seminar/cli
 ## Presenting
 
 ```sh
-seminar present                 # the deck in dist/
-seminar present dist/talk.html  # another deck
+seminar present                       # build the deck of the project
+seminar present decks/talk.deck.mdx   # build another deck
+seminar present dist/talk.html        # a deck built already
+seminar present dist                  # one of the decks built in dist/
 ```
 
-If there are several decks, it asks which one to present. The deck opens in
+`seminar present` builds the deck with `vite build` in the closest directory
+with a Vite config, leaving out the other decks and pages of the project, and
+presents it without touching `dist/`. Without a path, it builds the deck in
+the root of the Vite project, e.g., `decks/`. If there are several decks, it
+asks which one to present. The deck opens in
 a window, and asks right away which screen should show the slides, as if you
 pressed P. Unlike a browser, it doesn't ask for permissions first.
 
