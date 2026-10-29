@@ -175,7 +175,7 @@ async function printWithElectron(
 ): Promise<void> {
   const exit = await runElectron(
     executable,
-    fileURLToPath(new URL('./app/main.js', import.meta.url)),
+    fileURLToPath(new URL('./app/pdf.js', import.meta.url)),
     [JSON.stringify(job)],
     output,
   );

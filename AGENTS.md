@@ -15,12 +15,7 @@ React presentations. See `README.md` for the features and the syntax of decks.
   components, plugins, and the default theme.
 - `create`: the `create-seminar` initializer, released with the libraries.
 - `cli`: the `seminar` command, which presents built decks and saves them as
-  PDFs with an Electron that it downloads, and whose apps give decks a
-  `seminarHost`. On Wayland, it places the audience window with the wlr
-  foreign toplevel management or the COSMIC toplevel management protocols,
-  with a client in `src/app/wayland/`,
-  with KWin scripts over D-Bus, in `src/app/kwin/`, or with the Window Calls
-  extension of GNOME Shell, in `src/app/gnome/`.
+  PDFs in Electron apps, and places windows through the compositor on Wayland.
 - `example`: the example deck, also used for trying out changes by hand.
 - `docs`: the Docusaurus site, with guides in `packages/docs/docs/`.
 

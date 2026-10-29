@@ -11,9 +11,13 @@ import {
 } from 'electron';
 
 import type { HostOptions, PresentJob } from '../job.ts';
-import type { Compositor, CompositorWindow, Output } from './compositor.ts';
-import { GnomeWindows } from './gnome/gnome.ts';
-import { KWinWindows } from './kwin/kwin.ts';
+import type {
+  Compositor,
+  CompositorWindow,
+  Output,
+} from '../compositor/compositor.ts';
+import { GnomeWindows } from '../compositor/gnome/gnome.ts';
+import { KWinWindows } from '../compositor/kwin/kwin.ts';
 import {
   PRELOAD,
   pageUrl,
@@ -21,7 +25,10 @@ import {
   roots,
   serveRoots,
 } from './serve.ts';
-import { waylandSocket, WaylandWindows } from './wayland/windows.ts';
+import {
+  waylandSocket,
+  WaylandWindows,
+} from '../compositor/wayland/windows.ts';
 import { featureArea } from './windowFeatures.ts';
 
 /** How long to wait for the compositor to show windows, in milliseconds. */

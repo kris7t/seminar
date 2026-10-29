@@ -74,11 +74,11 @@ export const gnome = {
   async start(session) {
     // From the build of the command line, which the tests need anyway.
     const { DBusConnection, socketPath } =
-      await import('../../packages/cli/dist/app/dbus.js');
+      await import('../../packages/cli/dist/compositor/dbus.js');
     const { displayOutputs } =
-      await import('../../packages/cli/dist/app/gnome/displayConfig.js');
+      await import('../../packages/cli/dist/compositor/gnome/displayConfig.js');
     const { outputAt } =
-      await import('../../packages/cli/dist/app/compositor.js');
+      await import('../../packages/cli/dist/compositor/compositor.js');
     const { cacheDirectory } =
       await import('../../packages/cli/dist/electron.js');
     const { unzip } = await import('../../packages/cli/dist/unzip.js');

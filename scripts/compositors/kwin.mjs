@@ -29,7 +29,7 @@ export const kwin = {
   async start(session) {
     // From the build of the command line, which the tests need anyway.
     const { DBusConnection, socketPath } =
-      await import('../../packages/cli/dist/app/dbus.js');
+      await import('../../packages/cli/dist/compositor/dbus.js');
     const compositor = session.spawn(
       'kwin_wayland',
       [
