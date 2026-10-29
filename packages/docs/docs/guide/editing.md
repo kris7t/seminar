@@ -30,9 +30,9 @@ presentation; live state isn't saved back into the file.
 If compilation fails, check Vite's error overlay and terminal output. Fix
 the error and save again to update the preview.
 
-To preview a deck in the app of `seminar present` instead of a browser, run
-`npx seminar preview`, or `npx seminar preview decks/talk.deck.mdx` for
-another deck. It starts the development server on a free port, and updates
+To preview a deck in the app of `npm run present` instead of a browser, run
+`npm run preview`, or `npx seminar preview decks/talk.deck.mdx` for another
+deck. It starts the development server on a free port, and updates
 the deck in place like the browser. Press P to try the presentation on your
 screens without the permission prompts of the browser. See the
 [`@seminar/cli` package](https://github.com/kris7t/seminar/tree/main/packages/cli#readme).

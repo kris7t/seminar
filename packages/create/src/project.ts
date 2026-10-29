@@ -222,7 +222,7 @@ export function createProject(options: ProjectOptions): void {
     scripts: {
       dev: 'vite',
       build: 'tsc --noEmit && vite build',
-      preview: 'vite preview',
+      preview: 'seminar preview',
       present: 'seminar present',
       ...(pdfs.length === 0
         ? {}
@@ -322,10 +322,12 @@ Run \`npm run build\` to create \`dist/index.html\`${
       options.selfContained === false
         ? ' with separate scripts and assets.\nDeploy the whole `dist/` directory to your web host.'
         : ', a self-contained presentation\nthat you can open in a browser or share.'
-    } Run \`npm run preview\` to preview the build.
+    }
 Toggle \`selfContained\` in \`vite.config.ts\` to change the build format.
 
 Run \`npm run present\` to build the presentation and present it.
+Run \`npm run preview\` to preview it in the same app instead, which updates
+it as you edit it.
 ${
   pdfs.length === 0
     ? ''

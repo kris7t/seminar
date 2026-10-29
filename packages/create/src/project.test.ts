@@ -127,9 +127,13 @@ it('presents the deck with the command line', () => {
   createProject({ directory, plugins: [], theme: 'default', pdfs: [] });
   const manifest = JSON.parse(read(directory, 'package.json')) as Manifest;
   expect(manifest.scripts['present']).toBe('seminar present');
+  expect(manifest.scripts['preview']).toBe('seminar preview');
   expect(manifest.devDependencies['@seminar/cli']).toBe(VERSION);
   expect(read(directory, 'README.md')).toContain(
     'Run `npm run present` to build the presentation and present it',
+  );
+  expect(read(directory, 'README.md')).toContain(
+    'Run `npm run preview` to preview it in the same app instead',
   );
 });
 

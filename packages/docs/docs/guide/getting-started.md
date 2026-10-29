@@ -106,8 +106,7 @@ host. Content that fetches data or embeds an external website still needs
 access to those services.
 
 If you chose separate scripts and assets during setup, deploy the whole
-`dist/` directory instead. Run `npm run preview` to preview the built
-presentation locally.
+`dist/` directory instead.
 
 To present it, with the presenter view on your screen and the slides on
 the screen you choose, run:
