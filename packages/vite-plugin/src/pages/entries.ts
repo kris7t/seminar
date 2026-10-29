@@ -521,14 +521,26 @@ export function seminarEntries({
         // eslint-disable-next-line @typescript-eslint/no-deprecated
         delete build.rollupOptions?.input;
       }
+      const rendersDocuments = content === 'ssr' || content === 'both';
       const ssr =
-        (content === 'ssr' || content === 'both') && command === 'serve'
+        rendersDocuments && command === 'serve'
           ? serverResolveOptions(config)
           : undefined;
+      const checks = build?.rolldownOptions?.checks;
+      // Rendering the documents of decks for their pages takes most of the
+      // time of the build, which Rolldown would warn about, though it can't
+      // be helped.
+      const quiet =
+        rendersDocuments &&
+        checks?.bundlerTimings === undefined &&
+        // Still supported by Rolldown as an alias.
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        checks?.pluginTimings === undefined;
       return {
         ...(ssr === undefined ? {} : { ssr }),
         build: {
           rolldownOptions: {
+            ...(quiet ? { checks: { bundlerTimings: false } } : {}),
             input: onlyDeck
               ? decks.map(getHtmlPath)
               : addInputs(

@@ -11,6 +11,7 @@ import react from '@vitejs/plugin-react';
 import {
   build,
   type ConfigEnv,
+  createBuilder,
   createLogger,
   createServer,
   defaultClientConditions,
@@ -21,7 +22,7 @@ import {
 } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { DECK_ENV } from '../decks.ts';
+import { DECK_ENV, ENVIRONMENT_PREFIX } from '../decks.ts';
 import seminar, { seminarEntries } from '../index.ts';
 
 const root = fileURLToPath(new URL('../test/fixtures', import.meta.url));
@@ -131,6 +132,18 @@ async function serve(
   }
 }
 
+/** Returns what the config hook of `seminarEntries` adds to `config`. */
+function buildConfig(
+  config: UserConfig,
+  options?: Parameters<typeof seminarEntries>[0],
+): UserConfig | undefined {
+  const hook = seminarEntries(options).config as (
+    config: UserConfig,
+    env: ConfigEnv,
+  ) => UserConfig | undefined;
+  return hook(config, { command: 'build', mode: 'production' });
+}
+
 describe('seminarEntries', () => {
   describe('build', () => {
     let output: Rolldown.RolldownOutput;
@@ -172,27 +185,47 @@ describe('seminarEntries', () => {
     it(`only builds the deck in ${DECK_ENV}`, () => {
       vi.stubEnv(DECK_ENV, path.join(root, 'talk.deck.mdx'));
       try {
-        const plugin = seminarEntries();
         const userConfig: UserConfig = {
           root,
           build: { rolldownOptions: { input: { other: 'other.html' } } },
         };
-        const config = plugin.config as (
-          config: UserConfig,
-          env: ConfigEnv,
-        ) => UserConfig | undefined;
-        expect(
-          config(userConfig, { command: 'build', mode: 'production' }),
-        ).toEqual({
-          build: {
-            rolldownOptions: { input: [path.join(root, 'talk.html')] },
-          },
-        });
+        expect(buildConfig(userConfig)?.build?.rolldownOptions?.input).toEqual([
+          path.join(root, 'talk.html'),
+        ]);
         expect(userConfig.build?.rolldownOptions?.input).toBeUndefined();
       } finally {
         vi.unstubAllEnvs();
       }
     });
+  });
+
+  it('leaves out warnings about the time of rendering documents', async () => {
+    const checks = (
+      options?: Parameters<typeof seminarEntries>[0],
+      build: UserConfig['build'] = {},
+    ) => buildConfig({ root, build }, options)?.build?.rolldownOptions?.checks;
+    expect(checks()).toEqual({ bundlerTimings: false });
+    expect(checks({ content: 'markdown' })).toBeUndefined();
+    expect(
+      checks({}, { rolldownOptions: { checks: { bundlerTimings: true } } }),
+    ).toBeUndefined();
+    // In every environment, with or without self-contained decks.
+    for (const selfContained of [true, false]) {
+      const builder = await createBuilder({
+        ...config,
+        plugins: [seminar({ selfContained })],
+      });
+      expect(
+        Object.keys(builder.environments).some((name) =>
+          name.startsWith(ENVIRONMENT_PREFIX),
+        ),
+      ).toBe(selfContained);
+      for (const environment of Object.values(builder.environments)) {
+        expect(environment.config.build.rolldownOptions.checks).toMatchObject({
+          bundlerTimings: false,
+        });
+      }
+    }
   });
 
   describe('dev server', () => {
