@@ -13,7 +13,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "present": "tsc --build ../cli && vite build && seminar present"
+    "present": "tsc --build ../cli && vite build && node ../cli/dist/index.js present"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
