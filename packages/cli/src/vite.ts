@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 export const DECK_SUFFIX = '.deck.mdx';
 
@@ -39,6 +39,18 @@ export function findProject(directory: string): string | undefined {
   }
 }
 
+/**
+ * Returns the path of the page that Vite generates for `deck` in `root`, with
+ * `/` separators, e.g., `talks/intro.html` for `talks/intro.deck.mdx`.
+ */
+export function pagePath(root: string, deck: string): string {
+  return `${path
+    .relative(root, deck)
+    .slice(0, -DECK_SUFFIX.length)
+    .split(path.sep)
+    .join('/')}.html`;
+}
+
 /** Returns the path of `specifier` imported from the Vite project in `project`. */
 function resolveVite(project: string, specifier: string): string {
   try {
@@ -50,40 +62,46 @@ function resolveVite(project: string, specifier: string): string {
   }
 }
 
-/** What we need from the API of Vite. */
-interface Vite {
-  loadConfigFromFile(
-    configEnv: {
-      command: 'build';
-      mode: string;
-      isSsrBuild: boolean;
-      isPreview: boolean;
-    },
-    configFile: undefined,
-    configRoot: string,
-  ): Promise<{ config: { root?: string } } | null>;
+/**
+ * Returns the path of the script `name` that runs in a process of its own,
+ * which is TypeScript like this module when running from the sources, e.g.,
+ * in tests.
+ */
+function script(name: string): string {
+  return fileURLToPath(
+    new URL(
+      `./${name}${path.extname(fileURLToPath(import.meta.url))}`,
+      import.meta.url,
+    ),
+  );
+}
+
+/** What the script that reads the config of Vite sends. */
+export interface RootMessage {
+  root: string;
 }
 
 /**
  * Returns the root directory of the Vite project in `project`, as its Vite
- * config sets it.
+ * config sets it. The config is loaded in a process of its own, since it
+ * may load modules that, e.g., listen for signals.
  */
-async function findRoot(project: string): Promise<string> {
-  const vite = (await import(
-    pathToFileURL(resolveVite(project, 'vite')).href
-  )) as Vite;
-  const loaded = await vite.loadConfigFromFile(
-    {
-      command: 'build',
-      mode: 'production',
-      isSsrBuild: false,
-      isPreview: false,
-    },
-    undefined,
-    project,
-  );
-  // Vite resolves the root from the working directory, where it is run.
-  return path.resolve(project, loaded?.config.root ?? '.');
+function findRoot(project: string): Promise<string> {
+  const vite = resolveVite(project, 'vite');
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [script('viteRoot'), vite], {
+      cwd: project,
+      stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+    });
+    child.once('error', reject);
+    child.once('message', ({ root }: RootMessage) => {
+      resolve(root);
+    });
+    child.once('close', () => {
+      // Unless it has already sent the root.
+      reject(new Error(`Vite could not load the config of ${project}.`));
+    });
+  });
 }
 
 /**
@@ -185,6 +203,75 @@ export function buildDeck(
           ),
         );
       }
+    });
+  });
+}
+
+/** A deck to serve with the dev server of Vite. */
+export interface ServeJob {
+  /** Directory of the Vite project, with its config. */
+  project: string;
+  /** Path of the `.deck.mdx` file. */
+  deck: string;
+}
+
+/** A running dev server of Vite. */
+export interface DevServer {
+  /** URL of the page of the deck. */
+  url: string;
+  /** Stops the dev server, and resolves once it has exited. */
+  close: () => Promise<void>;
+}
+
+/** What the script of the dev server sends once it serves the deck. */
+export interface DevServerMessage {
+  url: string;
+}
+
+/**
+ * Starts the dev server of Vite for the deck of `job` on a free port, in a
+ * process of its own, which shows its warnings and errors in the terminal.
+ * Stops it when `abortSignal` is aborted.
+ */
+export function serveDeck(
+  { project, deck }: ServeJob,
+  abortSignal?: AbortSignal,
+): Promise<DevServer> {
+  abortSignal?.throwIfAborted();
+  const vite = resolveVite(project, 'vite');
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [script('devServer'), vite, deck], {
+      cwd: project,
+      env: { ...process.env, [DECK_ENV]: deck },
+      stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+    });
+    const stop = () => child.kill();
+    abortSignal?.addEventListener('abort', stop, { once: true });
+    const exited = new Promise<void>((resolve) => {
+      child.once('close', () => {
+        abortSignal?.removeEventListener('abort', stop);
+        resolve();
+      });
+    });
+    child.once('error', reject);
+    child.once('message', ({ url }: DevServerMessage) => {
+      resolve({
+        url,
+        close: async () => {
+          stop();
+          await exited;
+        },
+      });
+    });
+    child.once('close', (code, signal) => {
+      // Unless it has already sent the URL.
+      reject(
+        new Error(
+          signal === null
+            ? `The dev server of Vite exited with code ${String(code)}.`
+            : `The dev server of Vite stopped with signal ${signal}.`,
+        ),
+      );
     });
   });
 }

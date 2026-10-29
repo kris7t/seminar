@@ -1,7 +1,7 @@
 # @seminar/cli
 
-The `seminar` command presents [Seminar](https://seminar.run) decks and saves
-built decks as PDFs. It runs the decks in an app of its own, made with
+The `seminar` command presents and previews [Seminar](https://seminar.run)
+decks, and saves built decks as PDFs. It runs the decks in an app of its own, made with
 Electron. Requires Node.js 24 or newer.
 
 Projects created with `npm create seminar` already have it, with
@@ -44,6 +44,19 @@ On Wayland, browsers can't choose the screen of a window, so
 
 With other compositors, move the window of the slides to the screen of the
 audience, and click it to go full screen.
+
+## Previewing
+
+```sh
+seminar preview                       # the deck of the project
+seminar preview decks/talk.deck.mdx   # another deck
+```
+
+`seminar preview` chooses the deck like `seminar present`, but serves it
+with the dev server of Vite instead of building it, and opens it in the same
+app, which updates the deck as you edit it. The title of its window says that
+it's a preview, and it doesn't start presenting until you press P, which then
+works like in `seminar present`, also on Wayland.
 
 ## Saving PDFs
 

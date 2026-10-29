@@ -28,6 +28,11 @@ export interface SeminarHost {
    */
   readonly present?: boolean | undefined;
   /**
+   * Whether the deck is a preview, e.g., served by the dev server of Vite,
+   * which the title of its window says.
+   */
+  readonly preview?: boolean | undefined;
+  /**
    * Returns the area of the screen that the window of the deck is on, if the
    * application knows it better than the browser, e.g., on Wayland, where
    * pages can't tell where their windows are.

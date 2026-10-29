@@ -4,9 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { BuildJob } from './build.ts';
+import type { BuildJob } from './vite.ts';
 import { Interrupted, run } from './cli.ts';
-import type { PdfJob, PresentJob } from './job.ts';
+import type { BuiltDeck, PdfJob, PresentJob } from './job.ts';
 
 const DECK = '<!doctype html><body><div id="seminar-root"></div></body>';
 
@@ -193,8 +193,16 @@ async function project(root?: string): Promise<void> {
   );
 }
 
+/** Returns `job` as a built deck, which `seminar present` presents. */
+function built(job: PresentJob): BuiltDeck {
+  if (!('root' in job)) {
+    throw new Error(`Not a built deck: ${job.url}`);
+  }
+  return job;
+}
+
 interface Presented {
-  job?: PresentJob;
+  job?: BuiltDeck;
   asked?: readonly string[];
   built?: BuildJob;
 }
@@ -218,8 +226,10 @@ async function present(argv: string[], choice?: number): Promise<Presented> {
       );
     },
     present: (job) => {
-      expect(existsSync(path.join(job.root, job.page))).toBe(true);
-      result.job = job;
+      result.job = built(job);
+      expect(existsSync(path.join(result.job.root, result.job.page))).toBe(
+        true,
+      );
       return Promise.resolve();
     },
     chooseDeck: (labels) => {
@@ -307,7 +317,7 @@ describe('seminar present', () => {
   it('finds the page of the deck among others built with it', async () => {
     await page('vite.config.ts', '');
     await page('decks/talks/talk.deck.mdx', '# Talk');
-    let presented: PresentJob | undefined;
+    let presented: BuiltDeck | undefined;
     await run(['present', 'decks/talks/talk.deck.mdx'], {
       cwd: directory,
       output: () => undefined,
@@ -320,7 +330,7 @@ describe('seminar present', () => {
         }
       },
       present: (job) => {
-        presented = job;
+        presented = built(job);
         return Promise.resolve();
       },
     });
@@ -428,5 +438,101 @@ describe('seminar present', () => {
     await expect(present(['present'])).rejects.toThrow(
       `The project in ${directory} has no decks.`,
     );
+  });
+});
+
+describe('seminar preview', () => {
+  /**
+   * Runs the command, choosing `choice` if it asks which deck to preview, and
+   * returns what it served, what it previewed, and whether it closed the dev
+   * server afterwards.
+   */
+  async function preview(argv: string[], choice?: number) {
+    const result: {
+      served?: { project: string; deck: string };
+      job?: PresentJob;
+      closed: boolean;
+    } = { closed: false };
+    await run(argv, {
+      cwd: directory,
+      output: () => undefined,
+      serve: (job) => {
+        result.served = job;
+        return Promise.resolve({
+          url: 'http://127.0.0.1:1234/talk.html',
+          close: () => {
+            result.closed = true;
+            return Promise.resolve();
+          },
+        });
+      },
+      present: (job) => {
+        expect(result.closed).toBe(false);
+        result.job = job;
+        return Promise.resolve();
+      },
+      chooseDeck: () => Promise.resolve(choice),
+    });
+    return result;
+  }
+
+  it('previews the deck of the project with the dev server', async () => {
+    await project('decks');
+    await page('decks/talk.deck.mdx', '# Talk');
+    expect(await preview(['preview'])).toEqual({
+      served: {
+        project: directory,
+        deck: path.join(directory, 'decks/talk.deck.mdx'),
+      },
+      job: { url: 'http://127.0.0.1:1234/talk.html' },
+      closed: true,
+    });
+  });
+
+  it('previews a deck given by its source', async () => {
+    await page('vite.config.ts', '');
+    await page('decks/talk.deck.mdx', '# Talk');
+    expect(
+      (await preview(['preview', 'decks/talk.deck.mdx'])).served?.deck,
+    ).toBe(path.join(directory, 'decks/talk.deck.mdx'));
+  });
+
+  it('only previews the sources of decks', async () => {
+    await page('dist/index.html');
+    await expect(preview(['preview', 'dist/index.html'])).rejects.toThrow(
+      'Choose a .deck.mdx file to preview. To present a built deck, use seminar present dist/index.html.',
+    );
+    await project();
+    await page('decks/talk.deck.mdx', '# Talk');
+    await page('decks/other.deck.mdx', '# Other');
+    await expect(preview(['preview'])).rejects.toThrow(
+      `The project has several decks. Choose one of them, e.g.:
+
+  seminar preview ${path.join('decks', 'other.deck.mdx')}`,
+    );
+  });
+
+  it('stops the dev server on a signal', async () => {
+    await page('vite.config.ts', '');
+    await page('decks/talk.deck.mdx', '# Talk');
+    let closed = false;
+    const previewing = run(['preview', 'decks/talk.deck.mdx'], {
+      cwd: directory,
+      output: () => undefined,
+      serve: () =>
+        Promise.resolve({
+          url: 'http://127.0.0.1:1234/talk.html',
+          close: () => {
+            closed = true;
+            return Promise.resolve();
+          },
+        }),
+      present: async (_job, _output, signal) => {
+        process.emit('SIGINT', 'SIGINT');
+        await aborted(signal);
+      },
+    });
+    await expect(previewing).rejects.toHaveProperty('signal', 'SIGINT');
+    expect(closed).toBe(true);
   });
 });

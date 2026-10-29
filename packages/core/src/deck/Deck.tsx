@@ -738,6 +738,18 @@ function InteractiveDeck({
       startPresentation();
     }
   }, [host]);
+  // Tell the preview apart from the presentation in the title of its window.
+  const previewLabel = t('preview');
+  useEffect(() => {
+    if (host?.preview !== true) {
+      return undefined;
+    }
+    const title = document.title;
+    document.title = `${title} (${previewLabel})`;
+    return () => {
+      document.title = title;
+    };
+  }, [host, previewLabel]);
   const closePresenterView = presenterView.close;
   const onEscape = useCallback(() => {
     if (!presenting) {

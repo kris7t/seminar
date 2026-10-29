@@ -12,8 +12,12 @@ import {
   DECK_SUFFIX,
   findProject,
   findSources,
+  pagePath,
+  serveDeck,
   type BuildJob,
-} from './build.ts';
+  type DevServer,
+  type ServeJob,
+} from './vite.ts';
 import { findDecks, type DeckPage } from './decks.ts';
 import {
   ELECTRON_VERSION,
@@ -42,6 +46,8 @@ const HELP = `Usage: seminar <command> [options]
 Commands:
   present [path]      Build and present a deck of the project, or present
                       a built deck
+  preview [path]      Preview a deck of the project with the dev server of
+                      Vite, updating it as you edit it
   pdf [paths...]      Save built decks as PDF files (default: dist)
   install-electron    Download the Electron that Seminar runs, e.g., in CI
 
@@ -50,6 +56,10 @@ if no path is given, and asks which one if there are several. Give it an
 .html page or a directory of built decks to present them without building.
 It starts the presentation right away, letting you choose the screen of the
 audience.
+
+preview chooses the deck like present, but serves it with the dev server
+of Vite instead of building it, and doesn't start the presentation until
+you press P.
 
 Options of pdf:
   --layout <slides|notes|grid>  Slides, slides with notes, or several slides
@@ -124,8 +134,13 @@ export interface RunOptions {
   /** Builds the deck of `job` with Vite, stopping if `signal` is aborted. */
   build?: (job: BuildJob, signal: AbortSignal) => Promise<void>;
   /**
-   * Presents the deck of `job`, calling `output` with each message, and
-   * stopping if `signal` is aborted.
+   * Starts the dev server of Vite for the deck of `job`, stopping it if
+   * `signal` is aborted.
+   */
+  serve?: (job: ServeJob, signal: AbortSignal) => Promise<DevServer>;
+  /**
+   * Presents or previews the deck of `job`, calling `output` with each
+   * message, and stopping if `signal` is aborted.
    */
   present?: (
     job: PresentJob,
@@ -133,7 +148,7 @@ export interface RunOptions {
     signal: AbortSignal,
   ) => Promise<void>;
   /**
-   * Asks which of the decks with `labels` to present, and returns its index,
+   * Asks which of the decks with `labels` to show, and returns its index,
    * or `undefined` if it can't ask, e.g., outside of a terminal.
    */
   chooseDeck?: (labels: readonly string[]) => Promise<number | undefined>;
@@ -155,6 +170,7 @@ async function choose<T>(
   items: readonly T[],
   labels: readonly string[],
   several: string,
+  command: string,
   chooseDeck: (labels: readonly string[]) => Promise<number | undefined>,
 ): Promise<T | undefined> {
   if (items.length <= 1) {
@@ -163,7 +179,7 @@ async function choose<T>(
   const index = await chooseDeck(labels);
   if (index === undefined) {
     throw new Error(
-      `${several} Choose one of them, e.g.:\n\n${labels.map((deck) => `  seminar present ${deck}`).join('\n')}`,
+      `${several} Choose one of them, e.g.:\n\n${labels.map((deck) => `  seminar ${command} ${deck}`).join('\n')}`,
     );
   }
   return items[index];
@@ -303,6 +319,50 @@ async function presentWithElectron(
   );
 }
 
+/**
+ * Returns the deck to build or serve for `command`: the `.deck.mdx` file at
+ * `input`, or the deck of the Vite project that `cwd` is in, asking with
+ * `chooseDeck` which one if there are several.
+ */
+async function chooseSource(
+  input: string | undefined,
+  command: string,
+  cwd: string,
+  chooseDeck: (labels: readonly string[]) => Promise<number | undefined>,
+): Promise<ServeJob> {
+  if (input !== undefined) {
+    const deck = path.resolve(cwd, input);
+    if (!(await stat(deck).catch(() => undefined))?.isFile()) {
+      throw new Error(`${input} doesn't exist.`);
+    }
+    const project = findProject(path.dirname(deck));
+    if (project === undefined) {
+      throw new Error(
+        `${input} isn't in a Vite project with a Vite config, e.g., vite.config.ts.`,
+      );
+    }
+    return { project, deck };
+  }
+  const project = findProject(cwd);
+  if (project === undefined) {
+    throw new Error(
+      `Found no Vite project here. Choose a deck to ${command}, e.g.:\n\n  seminar ${command} talk${DECK_SUFFIX}${command === 'present' ? '\n  seminar present dist/index.html' : ''}`,
+    );
+  }
+  const sources = await findSources(project);
+  const deck = await choose(
+    sources,
+    sources.map((source) => label(cwd, source)),
+    'The project has several decks.',
+    command,
+    chooseDeck,
+  );
+  if (deck === undefined) {
+    throw new Error(`The project in ${project} has no decks.`);
+  }
+  return { project, deck };
+}
+
 /** Runs the command with the arguments in `argv`. */
 export async function run(
   argv: string[],
@@ -317,6 +377,7 @@ export async function run(
       await presentWithElectron(job, output, await getElectron(), signal);
     },
     build = buildDeck,
+    serve = serveDeck,
     chooseDeck = chooseInTerminal,
   }: RunOptions = {},
 ): Promise<void> {
@@ -404,6 +465,7 @@ export async function run(
           decks,
           decks.map(({ root, page }) => label(cwd, path.join(root, page))),
           `${input} has several decks.`,
+          'present',
           chooseDeck,
         );
         if (deck === undefined) {
@@ -414,37 +476,12 @@ export async function run(
         );
         return;
       }
-      let project: string | undefined;
-      let deck: string | undefined;
-      if (input === undefined) {
-        project = findProject(cwd);
-        if (project === undefined) {
-          throw new Error(
-            `Found no Vite project here. Choose a deck to present, e.g.:\n\n  seminar present talk${DECK_SUFFIX}\n  seminar present dist/index.html`,
-          );
-        }
-        const sources = await findSources(project);
-        deck = await choose(
-          sources,
-          sources.map((source) => label(cwd, source)),
-          'The project has several decks.',
-          chooseDeck,
-        );
-        if (deck === undefined) {
-          throw new Error(`The project in ${project} has no decks.`);
-        }
-      } else {
-        deck = path.resolve(cwd, input);
-        if (!(await stat(deck).catch(() => undefined))?.isFile()) {
-          throw new Error(`${input} doesn't exist.`);
-        }
-        project = findProject(path.dirname(deck));
-        if (project === undefined) {
-          throw new Error(
-            `${input} isn't in a Vite project with a Vite config, e.g., vite.config.ts.`,
-          );
-        }
-      }
+      const { project, deck } = await chooseSource(
+        input,
+        'present',
+        cwd,
+        chooseDeck,
+      );
       const outDir = buildDirectory(project, deck);
       await interruptible(async (signal) => {
         try {
@@ -452,11 +489,7 @@ export async function run(
           await build({ project, deck, outDir }, signal);
           // Older versions of the Vite plugin build all decks, so find the page
           // of the deck: the longest one that its path ends with.
-          const page = `/${path
-            .relative(project, deck)
-            .slice(0, -DECK_SUFFIX.length)
-            .split(path.sep)
-            .join('/')}.html`;
+          const page = `/${pagePath(project, deck)}`;
           const built = (
             await findDecks([outDir], { cwd }).catch((): DeckPage[] => [])
           )
@@ -468,6 +501,29 @@ export async function run(
           await present({ root: built.root, page: built.page }, output, signal);
         } finally {
           await rm(outDir, { recursive: true, force: true });
+        }
+      });
+      return;
+    }
+    case 'preview': {
+      if (paths.length > 1) {
+        throw new Error('Choose one deck to preview.');
+      }
+      const [input] = paths;
+      if (input !== undefined && !input.endsWith(DECK_SUFFIX)) {
+        throw new Error(
+          `Choose a ${DECK_SUFFIX} file to preview. To present a built deck, use seminar present ${input}.`,
+        );
+      }
+      const job = await chooseSource(input, 'preview', cwd, chooseDeck);
+      await interruptible(async (signal) => {
+        output(`Starting the dev server of ${label(cwd, job.deck)}...`);
+        const server = await serve(job, signal);
+        try {
+          output(`Previewing ${server.url}`);
+          await present({ url: server.url }, output, signal);
+        } finally {
+          await server.close();
         }
       });
       return;

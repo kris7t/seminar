@@ -54,7 +54,13 @@ const job = JSON.parse(process.argv.at(-1) ?? '') as PresentJob;
 
 // Each directory of decks has its own origin, which stays the same between
 // presentations, along with what decks store, like the language of the UI.
-const host = `deck-${createHash('sha256').update(job.root).digest('hex').slice(0, 16)}`;
+const host =
+  'url' in job
+    ? new URL(job.url).host
+    : `deck-${createHash('sha256').update(job.root).digest('hex').slice(0, 16)}`;
+
+/** The name of the deck in messages. */
+const name = 'url' in job ? new URL(job.url).pathname.slice(1) : job.page;
 
 registerScheme();
 app.setPath('userData', path.join(app.getPath('appData'), 'seminar'));
@@ -185,8 +191,10 @@ async function showAudience(
 }
 
 function present(compositor: Compositor | undefined): void {
-  roots.set(host, job.root);
-  serveRoots();
+  if ('root' in job) {
+    roots.set(host, job.root);
+    serveRoots();
+  }
   // The audience windows that the deck opened, which are blank pages that
   // it renders into, and ask for full screen with their own URL.
   const audiences = new WeakSet<Electron.WebContents>();
@@ -252,7 +260,7 @@ function present(compositor: Compositor | undefined): void {
   });
   webContents.on('console-message', ({ level, message }) => {
     if (level === 'error' || level === 'warning') {
-      console.log(`${job.page}: ${message}`);
+      console.log(`${name}: ${message}`);
     }
   });
   webContents.on('will-navigate', (event) => {
@@ -266,7 +274,10 @@ function present(compositor: Compositor | undefined): void {
     // Not for the audience window, which shows what the deck renders.
     event.returnValue = (
       event.sender === webContents
-        ? { present: true, placesWindows: compositor !== undefined }
+        ? {
+            ...('url' in job ? { preview: true } : { present: true }),
+            placesWindows: compositor !== undefined,
+          }
         : {}
     ) satisfies HostOptions;
   });
@@ -357,7 +368,7 @@ function present(compositor: Compositor | undefined): void {
     placeAudience = undefined;
   });
 
-  void presenter.loadURL(pageUrl(host, job.page));
+  void presenter.loadURL('url' in job ? job.url : pageUrl(host, job.page));
 }
 
 app.on('window-all-closed', () => {

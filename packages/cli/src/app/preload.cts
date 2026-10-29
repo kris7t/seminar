@@ -19,6 +19,7 @@ const host: SeminarHost = {
         },
       }),
   present: options.present,
+  preview: options.preview,
   ...(options.placesWindows === true
     ? {
         currentScreen: () =>

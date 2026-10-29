@@ -37,18 +37,31 @@ export interface PdfJob {
   paper: PaperSize;
 }
 
-/** A deck to present. */
-export interface PresentJob {
+/** A built deck to present, which starts presenting right away. */
+export interface BuiltDeck {
   /** Directory that the page of the deck is served from. */
   root: string;
   /** Path of the page of the deck in `root`, with `/` separators. */
   page: string;
 }
 
+/**
+ * A deck served by the dev server of Vite to preview, which isn't presented
+ * until the presenter starts the presentation.
+ */
+export interface PreviewedDeck {
+  /** URL of the page of the deck. */
+  url: string;
+}
+
+/** A deck to show in the app of `seminar present` or `seminar preview`. */
+export type PresentJob = BuiltDeck | PreviewedDeck;
+
 /** What the preload script makes the `seminarHost` of a deck from. */
 export interface HostOptions {
   print?: PrintOptions;
   present?: boolean;
+  preview?: boolean;
   /**
    * Whether the app knows the screens of windows, and puts the audience
    * window on its screen itself, as on Wayland.

@@ -208,6 +208,17 @@ describe('starting the presentation', () => {
     expect(requestFullscreen).toHaveBeenCalledWith({ navigationUI: 'hide' });
   });
 
+  it('says in the title if the host shows a preview of the deck', () => {
+    document.title = 'Deck';
+    const host: SeminarHost = { preview: true };
+    Object.assign(window, { seminarHost: host });
+    renderDeck();
+    expect(document.title).toBe('Deck (Preview)');
+    expect(requestFullscreen).not.toHaveBeenCalled();
+    cleanup();
+    expect(document.title).toBe('Deck');
+  });
+
   it('asks the host of the deck which screen this window is on', async () => {
     stub('isExtended', window.screen, true);
     stub('getScreenDetails', window, () =>

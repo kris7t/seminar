@@ -1,5 +1,6 @@
-// Presents the example deck with `seminar present` in compositors started
-// for the tests, and checks with the compositors where the windows are.
+// Presents the example deck with `seminar present` and `seminar preview` in
+// compositors started for the tests, and checks with the compositors where
+// the windows are.
 // See README.md.
 
 import assert from 'node:assert/strict';
@@ -17,6 +18,7 @@ import { sway } from './sway.mjs';
 const root = path.resolve(import.meta.dirname, '../..');
 const CLI = path.join(root, 'packages/cli/dist/index.js');
 const DECK = path.join(root, 'packages/example/dist/index.html');
+const SOURCE = path.join(root, 'packages/example/index.deck.mdx');
 
 /** How long a test may take, in milliseconds. */
 const TIMEOUT = 120_000;
@@ -41,26 +43,37 @@ function shellQuote(value) {
 }
 
 /**
- * Presents the example deck, with Electron listening for DevTools, and
- * returns the presenter window of the deck.
+ * Presents the example deck, or previews it with `preview`, with Electron
+ * listening for DevTools, and returns the presenter window of the deck.
  */
-async function present({ session, compositor, executable, decks }) {
+async function present(
+  { session, compositor, executable, decks },
+  { preview = false } = {},
+) {
   const port = await freePort();
   const wrapper = await session.writeFile(
     `electron-${String(port)}.sh`,
     `#!/bin/sh\nexec ${shellQuote(executable)} --remote-debugging-port=${String(port)} "$@"\n`,
     0o755,
   );
-  const cli = session.spawn(process.execPath, [CLI, 'present', DECK], {
-    env: { ...compositor.env, SEMINAR_ELECTRON: wrapper },
-    cwd: root,
-  });
+  const cli = session.spawn(
+    process.execPath,
+    preview ? [CLI, 'preview', SOURCE] : [CLI, 'present', DECK],
+    {
+      env: { ...compositor.env, SEMINAR_ELECTRON: wrapper },
+      cwd: root,
+    },
+  );
   decks.add(cli);
-  debug('started seminar present');
+  debug(`started seminar ${preview ? 'preview' : 'present'}`);
   let presenter;
   try {
     presenter = await Promise.race([
-      waitForPage(port, ({ url }) => url.startsWith('seminar:'), 'the deck'),
+      waitForPage(
+        port,
+        ({ url }) => url.startsWith(preview ? 'http://127.0.0.1:' : 'seminar:'),
+        'the deck',
+      ),
       cli.exited.then(({ code }) => {
         throw new Error(`seminar present exited with ${String(code)}`);
       }),
@@ -336,6 +349,49 @@ for (const target of [sway, kwin, gnome]) {
               ),
             'the presenter view',
           );
+          const { code, output } = await deck.close();
+          assert.equal(code, 0, output);
+        },
+      );
+
+      it(
+        'previews the deck, and presents it once asked to',
+        { timeout: TIMEOUT },
+        async () => {
+          const { compositor } = context;
+          const deck = await present(context, { preview: true });
+          await until(
+            async () =>
+              /\(Preview\)$/.test(
+                await deck.presenter.evaluate('document.title'),
+              ),
+            'the title of the preview',
+          );
+          assert.equal(
+            await deck.presenter.evaluate(
+              'document.querySelector("[role=dialog]") === null',
+            ),
+            true,
+            'the presentation not to start',
+          );
+
+          await deck.presenter.press('p', 'KeyP', 80, 'p');
+          const outputs = await compositor.outputs();
+          const choices = await screenChoices(deck.presenter, outputs);
+          const [presenterWindow] = await compositor.windows();
+          assert.equal(
+            choices.find(({ current }) => current)?.output?.name,
+            presenterWindow?.output,
+            'the screen of the presenter',
+          );
+          const chosen = choices.find(({ checked }) => checked);
+          await deck.presenter.press('Enter', 'Enter', 13, '\r');
+          const audienceWindow = await until(
+            () => fullscreenWindow(compositor),
+            'the slides in full screen',
+          );
+          assert.equal(audienceWindow.output, chosen.output.name);
+
           const { code, output } = await deck.close();
           assert.equal(code, 0, output);
         },
