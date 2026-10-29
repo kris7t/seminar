@@ -76,6 +76,7 @@ export const sway = {
               title: node.name,
               output: on,
               fullscreen: node.fullscreen_mode !== 0,
+              focused: node.focused,
               width: node.rect.width,
               height: node.rect.height,
             });

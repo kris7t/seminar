@@ -60,6 +60,14 @@ export function findGlobal(globals: readonly Global[], name: string): Global {
   return global;
 }
 
+/** How to ask the compositor for things with a window. */
+export interface ToplevelRequests {
+  /** Asks for it in full screen on the output with the id of our object. */
+  readonly fullscreen: (output: number) => void;
+  /** Asks to focus it for the seat with the id of our object. */
+  readonly activate: (seat: number) => void;
+}
+
 /** What the client gives a protocol to list windows with. */
 export interface ProtocolContext {
   readonly connection: WaylandConnection;
@@ -72,14 +80,8 @@ export interface ProtocolContext {
     version: number,
     handler: EventHandler,
   ) => number;
-  /**
-   * Adds a window, with how to ask for it in full screen on the output with
-   * the id of our object.
-   */
-  readonly add: (
-    toplevel: Toplevel,
-    requestFullscreen: (output: number) => void,
-  ) => void;
+  /** Adds a window, with how to ask the compositor for things with it. */
+  readonly add: (toplevel: Toplevel, requests: ToplevelRequests) => void;
   /** Removes a window that was closed. */
   readonly remove: (toplevel: Toplevel) => void;
   /** Tells that the compositor has sent a complete update. */

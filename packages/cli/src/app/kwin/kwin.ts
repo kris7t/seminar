@@ -289,6 +289,9 @@ export class KWinWindows implements Compositor {
         }
         return true;
       },
+      activate: async () => {
+        await this.#run({ find: 'id', id, activate: true });
+      },
     };
   }
 

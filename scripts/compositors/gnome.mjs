@@ -148,7 +148,7 @@ export const gnome = {
       async windows() {
         const monitors = await outputs();
         const windows = [];
-        for (const { id, title, wm_class } of JSON.parse(
+        for (const { id, title, wm_class, focus } of JSON.parse(
           await windowCall('List'),
         )) {
           if (wm_class !== 'electron') {
@@ -168,6 +168,7 @@ export const gnome = {
             output: outputAt(monitors, { left: x, top: y, width, height })
               ?.name,
             fullscreen,
+            focused: focus,
             width,
             height,
           });

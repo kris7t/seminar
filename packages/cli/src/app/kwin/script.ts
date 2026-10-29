@@ -3,11 +3,11 @@ import type { Output } from '../compositor.ts';
 /**
  * Which window of the app a script finds: the one with `caption`, or with the
  * internal `id` of KWin, which it puts in full screen on the output named
- * `fullscreenOn`, if given.
+ * `fullscreenOn`, if given, or focuses if `activate`.
  */
 export type ScriptAction =
   | { find: 'caption'; caption: string }
-  | { find: 'id'; id: string; fullscreenOn?: string };
+  | { find: 'id'; id: string; fullscreenOn?: string; activate?: boolean };
 
 /** A window, as a script reports it. */
 export interface ReportedWindow {
@@ -76,6 +76,9 @@ if (window !== undefined && action.fullscreenOn !== undefined) {
     workspace.sendClientToScreen(window, output);
     window.fullScreen = true;
   }
+}
+if (window !== undefined && action.activate === true) {
+  workspace.activeWindow = window;
 }
 const report = { outputs };
 if (window !== undefined) {

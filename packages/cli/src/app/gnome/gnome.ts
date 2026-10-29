@@ -194,6 +194,9 @@ export class GnomeWindows implements Compositor {
         }
         return details !== undefined;
       },
+      activate: async () => {
+        await this.#windowCall('Activate', 'u', [id]);
+      },
     };
   }
 

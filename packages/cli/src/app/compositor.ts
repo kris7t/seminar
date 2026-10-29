@@ -53,6 +53,8 @@ export interface CompositorWindow {
    * @returns Whether it did so within `timeout` milliseconds.
    */
   place(output: Output, timeout: number): Promise<boolean>;
+  /** Asks the compositor to focus the window. */
+  activate(): Promise<void>;
 }
 
 /** A compositor that lets the app place its windows. */

@@ -327,6 +327,20 @@ function present(compositor: Compositor | undefined): void {
   });
   webContents.on('did-create-window', (window) => {
     audiences.add(window.webContents);
+    // The compositor focuses the new window, but the presenter controls the
+    // presentation from the presenter window. Only the compositor can focus
+    // it on Wayland.
+    window.once('enter-full-screen', () => {
+      void presenterWindow
+        .then(async (found) => {
+          if (found === undefined) {
+            presenter.focus();
+          } else {
+            await found.activate();
+          }
+        })
+        .catch(() => undefined);
+    });
     const output = audienceOutput;
     audienceOutput = undefined;
     if (compositor?.fullscreens === true && output !== undefined) {

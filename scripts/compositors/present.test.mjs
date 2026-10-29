@@ -202,6 +202,13 @@ for (const target of [sway, kwin, gnome]) {
               width === chosen.output.width && height === chosen.output.height
             );
           }, 'the slides to fill the screen');
+          // The presenter controls the presentation from its window.
+          await until(
+            async () =>
+              (await compositor.windows()).find(({ fullscreen }) => !fullscreen)
+                ?.focused,
+            'the presenter window to be focused',
+          );
 
           // Escape ends the presentation.
           await audience.press('Escape', 'Escape', 27, undefined, {

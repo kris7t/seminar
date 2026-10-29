@@ -38,6 +38,7 @@ const COSMIC_TOPLEVEL_STATE = 8;
 const COSMIC_TOPLEVEL_DESTROY = 0;
 
 const MANAGER_CAPABILITIES = 0;
+const MANAGER_ACTIVATE = 2;
 const MANAGER_SET_FULLSCREEN = 7;
 const CAPABILITY_FULLSCREEN = 5;
 
@@ -94,8 +95,13 @@ export const cosmic: ToplevelProtocol = {
         }
       });
       connection.send(info, INFO_GET_COSMIC_TOPLEVEL, [extension, id]);
-      add(toplevel, (output) => {
-        connection.send(manager, MANAGER_SET_FULLSCREEN, [extension, output]);
+      add(toplevel, {
+        fullscreen: (output) => {
+          connection.send(manager, MANAGER_SET_FULLSCREEN, [extension, output]);
+        },
+        activate: (seat) => {
+          connection.send(manager, MANAGER_ACTIVATE, [extension, seat]);
+        },
       });
       connection.listen(id, (event, eventArgs) => {
         switch (event) {

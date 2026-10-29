@@ -26,6 +26,7 @@ const TOPLEVEL_OUTPUT_LEAVE = 3;
 const TOPLEVEL_STATE = 4;
 const TOPLEVEL_DONE = 5;
 const TOPLEVEL_CLOSED = 6;
+const TOPLEVEL_ACTIVATE = 4;
 const TOPLEVEL_DESTROY = 7;
 const TOPLEVEL_SET_FULLSCREEN = 8;
 
@@ -43,8 +44,13 @@ export const wlr: ToplevelProtocol = {
       }
       const id = args.uint();
       const toplevel = newToplevel(id);
-      add(toplevel, (output) => {
-        connection.send(id, TOPLEVEL_SET_FULLSCREEN, [output]);
+      add(toplevel, {
+        fullscreen: (output) => {
+          connection.send(id, TOPLEVEL_SET_FULLSCREEN, [output]);
+        },
+        activate: (seat) => {
+          connection.send(id, TOPLEVEL_ACTIVATE, [seat]);
+        },
       });
       connection.listen(id, (event, eventArgs) => {
         switch (event) {

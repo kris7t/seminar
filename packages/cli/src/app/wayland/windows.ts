@@ -14,6 +14,7 @@ import {
   type Global,
   type Toplevel,
   type ToplevelProtocol,
+  type ToplevelRequests,
 } from './protocols.ts';
 import {
   WaylandConnection,
@@ -88,11 +89,9 @@ export class WaylandWindows implements Compositor {
   /** Outputs by the name of their globals. */
   readonly #outputs = new Map<number, Output>();
   readonly #toplevels = new Map<number, Toplevel>();
-  /** Asks to show a window in full screen on the output with an id. */
-  readonly #requestFullscreen = new WeakMap<
-    Toplevel,
-    (output: number) => void
-  >();
+  readonly #requests = new WeakMap<Toplevel, ToplevelRequests>();
+  /** Id of our object of the seat that activates windows, if any. */
+  readonly #seat: number | undefined;
   readonly #protocol: BoundProtocol;
   /** Called whenever the compositor has sent a complete update. */
   readonly #listeners = new Set<() => void>();
@@ -116,12 +115,15 @@ export class WaylandWindows implements Compositor {
         this.#addOutput(global);
       }
     }
+    const seat = globals.find((global) => global.interface === 'wl_seat');
+    this.#seat =
+      seat === undefined ? undefined : this.#bind(seat, 1, () => undefined);
     this.#protocol = protocol.bind(globals, {
       connection,
       bind: (global, version, handler) => this.#bind(global, version, handler),
-      add: (toplevel, requestFullscreen) => {
+      add: (toplevel, requests) => {
         this.#toplevels.set(toplevel.id, toplevel);
-        this.#requestFullscreen.set(toplevel, requestFullscreen);
+        this.#requests.set(toplevel, requests);
       },
       remove: (toplevel) => {
         toplevel.closed = true;
@@ -318,6 +320,10 @@ export class WaylandWindows implements Compositor {
               ? Promise.resolve(false)
               : this.fullscreen(toplevel, ours, timeout);
           },
+          activate: () => {
+            this.activate(toplevel);
+            return Promise.resolve();
+          },
         };
   }
 
@@ -337,7 +343,7 @@ export class WaylandWindows implements Compositor {
     output: Output,
     timeout: number,
   ): Promise<boolean> {
-    this.#requestFullscreen.get(toplevel)?.(output.id);
+    this.#requests.get(toplevel)?.fullscreen(output.id);
     return this.#until(
       () =>
         !toplevel.closed &&
@@ -345,6 +351,13 @@ export class WaylandWindows implements Compositor {
         toplevel.outputs.has(output.id),
       timeout,
     );
+  }
+
+  /** Asks the compositor to focus `toplevel`, if there's a seat. */
+  activate(toplevel: Toplevel): void {
+    if (this.#seat !== undefined) {
+      this.#requests.get(toplevel)?.activate(this.#seat);
+    }
   }
 
   close(): void {
