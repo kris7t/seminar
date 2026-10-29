@@ -4,7 +4,6 @@ import GridViewIcon from '@mui/icons-material/GridView';
 import HighlightAltIcon from '@mui/icons-material/HighlightAlt';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 import MouseIcon from '@mui/icons-material/Mouse';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -25,6 +24,7 @@ import {
   useState,
   type ComponentType,
   type JSX,
+  type MouseEvent,
   type ReactNode,
 } from 'react';
 
@@ -32,9 +32,17 @@ import { useDeck } from '../deck/DeckContext.ts';
 import { formatShortcut } from '../i18n/messages.ts';
 import { useT, useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
+import { ToolbarMenuButton } from '../menu/MenuButton.tsx';
+import {
+  NO_DRAG_REGION,
+  TITLE_WIDTH,
+  TitleBar,
+  titleBarInsets,
+} from '../menu/TitleBar.tsx';
+import type { TitleBar as TitleBarArea } from '../menu/useTitleBar.ts';
 import type { PointerMode } from './mirror/pointer.tsx';
 
-/** Height of the toolbar, in pixels. */
+/** Height of the toolbar, in pixels, and of the title bar of the window. */
 export const TOOLBAR_HEIGHT = 48;
 
 /**
@@ -140,7 +148,14 @@ function ToolButton({
 
 function Group({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <Box
+      sx={{
+        ...NO_DRAG_REGION,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.5,
+      }}
+    >
       {children}
     </Box>
   );
@@ -175,6 +190,12 @@ export interface PresenterToolbarProps {
   menuOpen: boolean;
   /** Opens the menu of the deck at a position. */
   onOpenMenu: (position: MenuPosition) => void;
+  /**
+   * The title bar of the window, if the page draws it, which the toolbar is
+   * then, with the title between its buttons, instead of being below the
+   * presenter view. It spans the window.
+   */
+  titleBar?: { area: TitleBarArea; color: string } | undefined;
 }
 
 /**
@@ -205,6 +226,7 @@ export function PresenterToolbar({
   onLaserPointer,
   menuOpen,
   onOpenMenu,
+  titleBar,
 }: PresenterToolbarProps): JSX.Element {
   const { lang, t } = useUiLanguage();
   const clockFormat = useClockFormat(lang);
@@ -225,8 +247,15 @@ export function PresenterToolbar({
     setMouseNavigation,
   } = deck;
   const now = useNow(start);
-  const reduced = width < MIN_FULL_TOOLBAR_WIDTH;
-  const compact = width < MIN_REDUCED_TOOLBAR_WIDTH;
+  // The buttons leave room for the window controls and the title.
+  const insets =
+    titleBar === undefined ? undefined : titleBarInsets(titleBar.area, 0);
+  const available =
+    insets === undefined
+      ? width
+      : width - insets.left - insets.right - TITLE_WIDTH;
+  const reduced = available < MIN_FULL_TOOLBAR_WIDTH;
+  const compact = available < MIN_REDUCED_TOOLBAR_WIDTH;
   const slideNumber = (
     <Tooltip title={`${t('goToSlide')} (G)`}>
       <Button
@@ -238,13 +267,165 @@ export function PresenterToolbar({
       </Button>
     </Tooltip>
   );
+  const startGroup = compact ? (
+    <Group>{slideNumber}</Group>
+  ) : (
+    <Group>
+      <ToolButton
+        label={t('previousSlide')}
+        shortcut="PgUp"
+        icon={KeyboardDoubleArrowLeftIcon}
+        onClick={() => {
+          deck.previousSlide();
+        }}
+        disabled={previousSlideIndex === undefined}
+      />
+      <ToolButton
+        label={t('previousStep')}
+        shortcut="Left"
+        icon={NavigateBeforeIcon}
+        onClick={deck.previous}
+        disabled={previousSlideIndex === undefined && atFirstStep}
+      />
+      {slideNumber}
+      <ToolButton
+        label={t('nextStep')}
+        shortcut="Right"
+        icon={NavigateNextIcon}
+        onClick={deck.next}
+        disabled={nextSlideIndex === undefined && atLastStep}
+      />
+      <ToolButton
+        label={t('nextSlide')}
+        shortcut="PgDn"
+        icon={KeyboardDoubleArrowRightIcon}
+        onClick={() => {
+          deck.nextSlide();
+        }}
+        disabled={nextSlideIndex === undefined}
+      />
+      {!reduced && (
+        <>
+          <ToolButton
+            label={t('slideOverview')}
+            shortcut="O"
+            icon={GridViewIcon}
+            onClick={() => {
+              deck.setShowOverview(true);
+            }}
+          />
+          <ToolButton
+            label={t('tableOfContents')}
+            shortcut="T"
+            icon={TocIcon}
+            pressed={showToc}
+            disabled={toc.length === 0}
+            onClick={() => {
+              setShowToc(!showToc);
+            }}
+          />
+          <ToolButton
+            label={t('steps')}
+            shortcut="Shift+T"
+            icon={AutoAwesomeMotionIcon}
+            pressed={showSteps}
+            onClick={() => {
+              setShowSteps(!showSteps);
+            }}
+          />
+        </>
+      )}
+      <ToolButton
+        label={t('focusOnNotes')}
+        shortcut="N"
+        icon={SpeakerNotesIcon}
+        pressed={notesOnly}
+        onClick={() => {
+          setNotesOnly(!notesOnly);
+        }}
+      />
+      <ToolButton
+        label={t('showPointer')}
+        shortcut="M"
+        icon={MouseIcon}
+        pressed={pointerMode === 'mirror'}
+        onClick={onMirrorPointer}
+      />
+      <ToolButton
+        label={t('laserPointer')}
+        shortcut="L"
+        icon={FlareIcon}
+        pressed={pointerMode === 'laser'}
+        onClick={onLaserPointer}
+      />
+      {!reduced && (
+        <ToolButton
+          label={t('textSelection')}
+          shortcut="S"
+          icon={HighlightAltIcon}
+          pressed={!mouseNavigation}
+          onClick={() => {
+            setMouseNavigation(!mouseNavigation);
+          }}
+        />
+      )}
+    </Group>
+  );
+  const endGroup = (
+    <Group>
+      <Typography
+        aria-label={t('timeElapsed')}
+        sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+      >
+        {formatElapsed(now - start)}
+      </Typography>
+      <ToolButton
+        label={t('resetTimeElapsed')}
+        shortcut="R"
+        icon={RestartAltIcon}
+        onClick={onResetTimer}
+      />
+      <Typography
+        aria-label={t('currentTime')}
+        sx={{
+          ml: 2,
+          color: 'text.secondary',
+          fontVariantNumeric: 'tabular-nums',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {clockFormat.format(now)}
+      </Typography>
+      <ToolbarMenuButton
+        open={menuOpen}
+        onOpen={onOpenMenu}
+        above={titleBar === undefined}
+      />
+    </Group>
+  );
+  const toolbar = {
+    role: 'toolbar',
+    'aria-label': t('presenterControls'),
+    onMouseDown: (event: MouseEvent) => {
+      event.preventDefault();
+    },
+  };
+  if (titleBar !== undefined) {
+    return (
+      <TitleBar
+        {...toolbar}
+        area={titleBar.area}
+        color={titleBar.color}
+        // Like the line above the toolbar below the presenter view.
+        divider
+        start={<Box sx={{ px: 1 }}>{startGroup}</Box>}
+        end={<Box sx={{ px: 1 }}>{endGroup}</Box>}
+      />
+    );
+  }
   return (
     <Box
-      role="toolbar"
-      aria-label={t('presenterControls')}
-      onMouseDown={(event) => {
-        event.preventDefault();
-      }}
+      {...toolbar}
       sx={{
         flex: 'none',
         display: 'flex',
@@ -262,155 +443,8 @@ export function PresenterToolbar({
         borderColor: 'divider',
       }}
     >
-      {compact ? (
-        <Group>{slideNumber}</Group>
-      ) : (
-        <Group>
-          <ToolButton
-            label={t('previousSlide')}
-            shortcut="PgUp"
-            icon={KeyboardDoubleArrowLeftIcon}
-            onClick={() => {
-              deck.previousSlide();
-            }}
-            disabled={previousSlideIndex === undefined}
-          />
-          <ToolButton
-            label={t('previousStep')}
-            shortcut="Left"
-            icon={NavigateBeforeIcon}
-            onClick={deck.previous}
-            disabled={previousSlideIndex === undefined && atFirstStep}
-          />
-          {slideNumber}
-          <ToolButton
-            label={t('nextStep')}
-            shortcut="Right"
-            icon={NavigateNextIcon}
-            onClick={deck.next}
-            disabled={nextSlideIndex === undefined && atLastStep}
-          />
-          <ToolButton
-            label={t('nextSlide')}
-            shortcut="PgDn"
-            icon={KeyboardDoubleArrowRightIcon}
-            onClick={() => {
-              deck.nextSlide();
-            }}
-            disabled={nextSlideIndex === undefined}
-          />
-          {!reduced && (
-            <>
-              <ToolButton
-                label={t('slideOverview')}
-                shortcut="O"
-                icon={GridViewIcon}
-                onClick={() => {
-                  deck.setShowOverview(true);
-                }}
-              />
-              <ToolButton
-                label={t('tableOfContents')}
-                shortcut="T"
-                icon={TocIcon}
-                pressed={showToc}
-                disabled={toc.length === 0}
-                onClick={() => {
-                  setShowToc(!showToc);
-                }}
-              />
-              <ToolButton
-                label={t('steps')}
-                shortcut="Shift+T"
-                icon={AutoAwesomeMotionIcon}
-                pressed={showSteps}
-                onClick={() => {
-                  setShowSteps(!showSteps);
-                }}
-              />
-            </>
-          )}
-          <ToolButton
-            label={t('focusOnNotes')}
-            shortcut="N"
-            icon={SpeakerNotesIcon}
-            pressed={notesOnly}
-            onClick={() => {
-              setNotesOnly(!notesOnly);
-            }}
-          />
-          <ToolButton
-            label={t('showPointer')}
-            shortcut="M"
-            icon={MouseIcon}
-            pressed={pointerMode === 'mirror'}
-            onClick={onMirrorPointer}
-          />
-          <ToolButton
-            label={t('laserPointer')}
-            shortcut="L"
-            icon={FlareIcon}
-            pressed={pointerMode === 'laser'}
-            onClick={onLaserPointer}
-          />
-          {!reduced && (
-            <ToolButton
-              label={t('textSelection')}
-              shortcut="S"
-              icon={HighlightAltIcon}
-              pressed={!mouseNavigation}
-              onClick={() => {
-                setMouseNavigation(!mouseNavigation);
-              }}
-            />
-          )}
-        </Group>
-      )}
-      <Group>
-        <Typography
-          aria-label={t('timeElapsed')}
-          sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
-        >
-          {formatElapsed(now - start)}
-        </Typography>
-        <ToolButton
-          label={t('resetTimeElapsed')}
-          shortcut="R"
-          icon={RestartAltIcon}
-          onClick={onResetTimer}
-        />
-        <Typography
-          aria-label={t('currentTime')}
-          sx={{
-            ml: 2,
-            color: 'text.secondary',
-            fontVariantNumeric: 'tabular-nums',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {clockFormat.format(now)}
-        </Typography>
-        <Tooltip title={t('menu')}>
-          <IconButton
-            aria-label={t('menu')}
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            color="inherit"
-            onClick={(event) => {
-              const { top, right } =
-                event.currentTarget.getBoundingClientRect();
-              onOpenMenu({
-                top,
-                left: right,
-                align: 'right',
-                verticalAlign: 'bottom',
-              });
-            }}
-          >
-            <MoreVertIcon />
-          </IconButton>
-        </Tooltip>
-      </Group>
+      {startGroup}
+      {endGroup}
     </Box>
   );
 }

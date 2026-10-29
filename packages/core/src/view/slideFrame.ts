@@ -170,3 +170,27 @@ export const FITTED_SLIDE_FRAME_STYLES: SxProps<Theme> = {
   bgcolor: 'background.default',
   color: 'text.primary',
 };
+
+/** Margins above and below an area, in CSS pixels. */
+export interface VerticalMargins {
+  top: number;
+  bottom: number;
+}
+
+/**
+ * Returns the margins of the area of the slide, `size` large, under a title
+ * bar `height` high that covers its top, so that the slide isn't under the
+ * title bar. The slide stays as large as without the title bar if it fits,
+ * and the bars above and below it are as even as they can be, e.g., the same
+ * height if there's room for that.
+ */
+export function titleBarMargins(
+  size: { width: number; height: number },
+  height: number,
+): VerticalMargins {
+  // The room left above and below the slide when it takes the whole width.
+  const spare = size.height - (size.width * SLIDE_HEIGHT) / SLIDE_WIDTH;
+  return spare >= 2 * height
+    ? { top: 0, bottom: 0 }
+    : { top: height, bottom: Math.max(0, spare - height) };
+}

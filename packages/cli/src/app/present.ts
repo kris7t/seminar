@@ -27,6 +27,12 @@ import { featureArea } from './windowFeatures.ts';
 /** How long to wait for the compositor to show windows, in milliseconds. */
 const COMPOSITOR_TIMEOUT = 3000;
 
+/**
+ * Height of the title bar of the presenter window, as the toolbar of the
+ * presenter view, which moves into it.
+ */
+const TITLE_BAR_HEIGHT = 48;
+
 /** Name of the audience window, see `usePresenterView` of the deck. */
 const AUDIENCE_WINDOW = 'seminar-audience';
 
@@ -195,6 +201,15 @@ function present(compositor: Compositor | undefined): void {
   const presenter = new BrowserWindow({
     show: false,
     autoHideMenuBar: true,
+    backgroundColor: '#000',
+    // The deck draws the title bar, under the window controls, see
+    // useTitleBar of core.
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#0000',
+      symbolColor: '#fff',
+      height: TITLE_BAR_HEIGHT,
+    },
     webPreferences: { preload: PRELOAD, sandbox: true, contextIsolation: true },
   });
   const { webContents } = presenter;

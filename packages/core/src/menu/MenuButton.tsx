@@ -1,4 +1,5 @@
-import { Box, IconButton } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { Box, IconButton, Tooltip } from '@mui/material';
 import type { JSX } from 'react';
 
 import { useT } from '../i18n/UiLanguageContext.ts';
@@ -77,5 +78,47 @@ export function MenuButton({
         }}
       />
     </IconButton>
+  );
+}
+
+export interface ToolbarMenuButtonProps extends MenuButtonProps {
+  /** Whether the menu opens above the button, e.g., at the bottom of the window. */
+  above?: boolean;
+}
+
+/**
+ * Button that opens the context menu of the deck from a toolbar, like the
+ * toolbar of the presenter view, or the title bar of the window.
+ *
+ * Should be rendered with the {@link darkUiTheme}.
+ */
+export function ToolbarMenuButton({
+  open,
+  onOpen,
+  above = false,
+}: ToolbarMenuButtonProps): JSX.Element {
+  const t = useT();
+  return (
+    <Tooltip title={t('menu')}>
+      <IconButton
+        aria-label={t('menu')}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        color="inherit"
+        onClick={(event) => {
+          const button = event.currentTarget;
+          const { top, bottom, right } = button.getBoundingClientRect();
+          // Like the MenuButton.
+          button.blur();
+          onOpen(
+            above
+              ? { top, left: right, align: 'right', verticalAlign: 'bottom' }
+              : { top: bottom, left: right, align: 'right' },
+          );
+        }}
+      >
+        <MoreVertIcon />
+      </IconButton>
+    </Tooltip>
   );
 }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { fitArea, slideScaleStyles } from './slideFrame.ts';
+import { fitArea, slideScaleStyles, titleBarMargins } from './slideFrame.ts';
 
 describe('fitArea', () => {
   it('fits the slide into the middle of the area', () => {
@@ -105,6 +105,32 @@ describe('slideScaleStyles', () => {
     expect(slideScaleStyles(1.5)).toEqual({
       zoom: 1.5,
       '--seminar-zoom': 1.5,
+    });
+  });
+});
+
+describe('titleBarMargins', () => {
+  // The slide takes 900 pixels of the height at this width.
+  const width = 1600;
+
+  it('centers the slide in the window if the bars are as high as the title bar', () => {
+    expect(titleBarMargins({ width, height: 1000 }, 48)).toEqual({
+      top: 0,
+      bottom: 0,
+    });
+  });
+
+  it('keeps the size of the slide, below the title bar', () => {
+    expect(titleBarMargins({ width, height: 960 }, 48)).toEqual({
+      top: 48,
+      bottom: 12,
+    });
+  });
+
+  it('makes the slide smaller if it would be under the title bar', () => {
+    expect(titleBarMargins({ width, height: 920 }, 48)).toEqual({
+      top: 48,
+      bottom: 0,
     });
   });
 });

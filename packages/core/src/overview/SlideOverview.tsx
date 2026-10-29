@@ -252,6 +252,11 @@ export interface SlideOverviewProps {
   onClose: () => void;
   /** Handlers that open the context menu of the deck. */
   menuHandlers?: ContextMenuHandlers | undefined;
+  /**
+   * Distance from the top of the window, e.g., below the title bar, which
+   * still moves the window.
+   */
+  top?: number | undefined;
 }
 
 /**
@@ -272,6 +277,7 @@ export function SlideOverview({
   cache,
   onClose,
   menuHandlers,
+  top = 0,
 }: SlideOverviewProps): JSX.Element {
   const {
     overviewIndex,
@@ -337,6 +343,7 @@ export function SlideOverview({
         sx={{
           position: 'fixed',
           inset: 0,
+          top,
           overflowY: 'auto',
           p: 2,
           bgcolor: 'background.default',

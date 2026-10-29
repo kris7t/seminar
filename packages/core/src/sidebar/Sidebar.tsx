@@ -2,6 +2,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, ButtonBase, Typography } from '@mui/material';
 import { useId, type JSX, type ReactNode } from 'react';
 
+import { DRAG_REGION } from '../menu/TitleBar.tsx';
+
 /** Width of the sidebar in CSS pixels. */
 export const SIDEBAR_WIDTH = 280;
 
@@ -117,6 +119,11 @@ function Section({
 
 export interface SidebarProps {
   sections: readonly SidebarSection[];
+  /**
+   * Height of the title bar of the window, if the page draws it, which the
+   * sidebar extends into.
+   */
+  titleBarHeight?: number | undefined;
 }
 
 /**
@@ -129,7 +136,10 @@ export interface SidebarProps {
  *
  * Should be rendered with the {@link uiTheme}.
  */
-export function Sidebar({ sections }: SidebarProps): JSX.Element {
+export function Sidebar({
+  sections,
+  titleBarHeight,
+}: SidebarProps): JSX.Element {
   return (
     <Box
       sx={{
@@ -144,6 +154,9 @@ export function Sidebar({ sections }: SidebarProps): JSX.Element {
         borderColor: 'divider',
       }}
     >
+      {titleBarHeight !== undefined && (
+        <Box sx={{ ...DRAG_REGION, flex: 'none', height: titleBarHeight }} />
+      )}
       {sections.map(({ key, ...section }) => (
         <Section key={key} {...section} />
       ))}
