@@ -109,6 +109,16 @@ If you chose separate scripts and assets during setup, deploy the whole
 `dist/` directory instead. Run `npm run preview` to preview the built
 presentation locally.
 
+To present it, with the presenter view on your screen and the slides on
+the screen you choose, run:
+
+```sh
+npm run present
+```
+
+This builds the presentation and opens it without the permission prompts of
+the browser. See [Full screen and screens](presenting.md#full-screen-and-screens).
+
 To save your presentation as PDF, run:
 
 ```sh

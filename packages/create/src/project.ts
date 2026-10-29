@@ -223,6 +223,7 @@ export function createProject(options: ProjectOptions): void {
       dev: 'vite',
       build: 'tsc --noEmit && vite build',
       preview: 'vite preview',
+      present: 'npm run build && seminar present',
       ...(pdfs.length === 0
         ? {}
         : { pdf: `npm run build && ${pdfCommand(pdfs)}` }),
@@ -241,7 +242,7 @@ export function createProject(options: ProjectOptions): void {
         : '@seminar/theme-default',
     ]),
     devDependencies: dependencies([
-      ...(pdfs.length === 0 ? [] : ['@seminar/cli']),
+      '@seminar/cli',
       '@seminar/mdx',
       '@seminar/vite-plugin',
       '@vitejs/plugin-react',
@@ -323,6 +324,8 @@ Run \`npm run build\` to create \`dist/index.html\`${
         : ', a self-contained presentation\nthat you can open in a browser or share.'
     } Run \`npm run preview\` to preview the build.
 Toggle \`selfContained\` in \`vite.config.ts\` to change the build format.
+
+Run \`npm run present\` to build the presentation and present it.
 ${
   pdfs.length === 0
     ? ''
@@ -333,9 +336,9 @@ Run \`npm run pdf\` to build the presentation and save it as ${pdfFiles(
       )
         .map((file) => `\`${file}\``)
         .join(', ')}.
-The first time, this downloads the browser that saves the PDFs.
 `
 }
+
 [Seminar documentation](https://seminar.run)
 `,
     ...(options.theme === 'custom' ? { 'src/theme.ts': customTheme } : {}),

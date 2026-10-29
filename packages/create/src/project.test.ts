@@ -122,6 +122,17 @@ it.each(['default', 'custom'] as const)(
   },
 );
 
+it('presents the deck with the command line', () => {
+  const directory = path.join(workspace(), 'talk');
+  createProject({ directory, plugins: [], theme: 'default', pdfs: [] });
+  const manifest = JSON.parse(read(directory, 'package.json')) as Manifest;
+  expect(manifest.scripts['present']).toBe('npm run build && seminar present');
+  expect(manifest.devDependencies['@seminar/cli']).toBe(VERSION);
+  expect(read(directory, 'README.md')).toContain(
+    'Run `npm run present` to build the presentation and present it',
+  );
+});
+
 describe('PDFs', () => {
   it('saves PDFs of the slides by default', () => {
     const directory = path.join(workspace(), 'talk');
@@ -154,7 +165,6 @@ describe('PDFs', () => {
     createProject({ directory, plugins: [], theme: 'default', pdfs: [] });
     const manifest = JSON.parse(read(directory, 'package.json')) as Manifest;
     expect(manifest.scripts).not.toHaveProperty('pdf');
-    expect(manifest.devDependencies).not.toHaveProperty('@seminar/cli');
     expect(read(directory, 'README.md')).not.toContain('npm run pdf');
   });
 });
@@ -266,7 +276,7 @@ describe('CLI', () => {
         .scripts['pdf'],
     ).toBe('npm run build && seminar pdf --layout slides,grid --per-sheet 4');
     expect(output.mock.calls.flat().join('\n')).toContain(
-      'Run `npm run pdf` to save the presentation as PDF.',
+      'Run `npm run present` to present it with the presenter view.\nRun `npm run pdf` to save the presentation as PDF.',
     );
     output.mockClear();
     await run(['none', '--yes', '--pdf', 'none'], {
@@ -279,6 +289,7 @@ describe('CLI', () => {
         .scripts,
     ).not.toHaveProperty('pdf');
     expect(output.mock.calls.flat().join('\n')).not.toContain('npm run pdf');
+    expect(output.mock.calls.flat().join('\n')).toContain('npm run present');
     await expect(
       run(['other', '--yes', '--pdf', 'poster'], {
         cwd,

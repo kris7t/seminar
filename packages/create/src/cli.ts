@@ -297,10 +297,10 @@ export async function run(
     }
   }
   output(
-    `\nNext steps:\n${changeDirectory}${install ? '' : '  npm install\n'}  npm run dev${
+    `\nNext steps:\n${changeDirectory}${install ? '' : '  npm install\n'}  npm run dev\n\nRun \`npm run present\` to present it with the presenter view.${
       pdfs.length === 0
         ? ''
-        : '\n\nRun `npm run pdf` to save the presentation as PDF.'
+        : '\nRun `npm run pdf` to save the presentation as PDF.'
     }`,
   );
 }

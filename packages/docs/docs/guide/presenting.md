@@ -81,6 +81,7 @@ should show the slides. You can also open the presenter view and move the
 audience window to the screen you want to use.
 
 To present without the permission prompts of the browser, run
+`npm run present` in a project created with `npm create seminar`, or
 `npx seminar present` after building the presentation. It also shows the
 slides on the screen you choose on Wayland, where browsers can't, if the
 compositor supports it, like Sway, COSMIC, KDE Plasma, or GNOME with the
@@ -144,7 +145,7 @@ show the numbers of the slides as page numbers, and the outline of the PDF
 is the table of contents of the deck.
 
 The first time, `npm run pdf` downloads the browser that saves the PDFs,
-about 100 MB.
+about 100 MB, which `npm run present` also uses.
 
 To save other layouts, or to save PDFs in other projects, see the
 [`@seminar/cli` package](https://github.com/kris7t/seminar/tree/main/packages/cli#readme).

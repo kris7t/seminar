@@ -15,7 +15,9 @@ four are selected by default. Then choose the default theme or an editable `src/
 whether to inline scripts and assets into each HTML file (on by default).
 Choose which PDFs `npm run pdf` saves: the slides (selected by default),
 handouts with notes, or handouts with 2, 4, or 6 slides on each sheet. With
-none selected, the project has no `npm run pdf`. Finally, choose whether to install dependencies now (yes by default). If you
+none selected, the project has no `npm run pdf`. Every project has
+`npm run present`, which builds the presentation and presents it with the
+presenter view, choosing the screen of the slides without browser prompts. Finally, choose whether to install dependencies now (yes by default). If you
 skip installation, run `npm install` before `npm run dev`.
 
 The starter includes `decks/index.deck.mdx` with examples of the selected
