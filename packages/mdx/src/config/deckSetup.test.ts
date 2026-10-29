@@ -95,6 +95,32 @@ describe('loadDeckSetup', () => {
     );
   });
 
+  it('loads the configs of the packages of Seminar without importing them', async () => {
+    const importModule: ModuleImporter = (specifier) =>
+      Promise.reject(new Error(`Imported ${specifier}`));
+    const setup = await loadDeckSetup({
+      plugins: [
+        '@seminar/elements',
+        '@seminar/plugin-mathjax',
+        '@seminar/plugin-pele',
+        '@seminar/plugin-shiki',
+      ],
+      theme: '@seminar/theme-default',
+      pluginsImporter: import.meta.filename,
+      themeImporter: import.meta.filename,
+      importModule,
+      // Plugins of unified are imported, but they export any plugin here.
+      importPlugin: () =>
+        Promise.resolve({
+          module: new Proxy({}, { get: () => () => undefined }),
+        }),
+    });
+    expect(setup.warnings).toEqual([]);
+    expect(setup.seminarConfigs.map(({ source }) => source)).toContain(
+      '@seminar/theme-default',
+    );
+  });
+
   it('reports plugins that cannot be found', async () => {
     const deckPath = path.join(root, 'talk.deck.mdx');
     const setup = await loadDeckSetup({

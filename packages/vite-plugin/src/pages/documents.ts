@@ -1,4 +1,11 @@
-import { createServer, type ResolvedConfig, type ViteDevServer } from 'vite';
+import { registerHooks } from 'node:module';
+
+import {
+  createServer,
+  isCSSRequest,
+  type ResolvedConfig,
+  type ViteDevServer,
+} from 'vite';
 
 import { imageMarkers } from '../inline/images.ts';
 
@@ -207,8 +214,30 @@ interface DocumentModule {
   render: () => Promise<string>;
 }
 
+let ignoresStyleSheets = false;
+
+/**
+ * Makes Node.js load style sheets as empty modules. The server leaves packages
+ * in `node_modules` to Node.js, which can't load the style sheets that they
+ * import, e.g., the fonts of themes. Documents don't need styles, and Node.js
+ * would fail to load style sheets anyway, so this affects nothing else.
+ */
+function ignoreStyleSheets(): void {
+  if (ignoresStyleSheets) {
+    return;
+  }
+  ignoresStyleSheets = true;
+  registerHooks({
+    load: (url, context, nextLoad) =>
+      url.startsWith('file:') && isCSSRequest(url)
+        ? { format: 'module', source: '', shortCircuit: true }
+        : nextLoad(url, context),
+  });
+}
+
 /** Renders decks with the modules that `server` loads for the server. */
 export function documentRenderer(server: ViteDevServer): RenderDocument {
+  ignoreStyleSheets();
   return async (deckPath) => {
     const module = (await server.ssrLoadModule(
       deckPath + DOCUMENT_QUERY,

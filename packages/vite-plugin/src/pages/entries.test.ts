@@ -335,6 +335,26 @@ describe('seminarEntries', () => {
     <meta property="og:description" content="What the analytical engine can do" />`);
     });
 
+    it('renders decks with packages that import CSS', async () => {
+      const warn = vi.fn<(message: string) => void>();
+      const logger = createLogger('silent');
+      logger.warn = warn;
+      const [html = ''] = await serve(
+        {
+          root: fileURLToPath(
+            new URL('../test/fixtures-package', import.meta.url),
+          ),
+          customLogger: logger,
+          logLevel: 'warn',
+        },
+        ['/package.html'],
+      );
+      expect(warn).not.toHaveBeenCalled();
+      expect(html).toContain(
+        'id="a-theme-from-a-package">A theme from a package ',
+      );
+    });
+
     it('falls back to the Markdown of the deck with a warning', async () => {
       const warn = vi.fn<(message: string) => void>();
       const logger = createLogger('silent');

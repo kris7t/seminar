@@ -6,3 +6,4 @@ coverage/
 .docusaurus/
 artifacts/
 packages/*/LICENSE
+!packages/vite-plugin/src/test/fixtures-package/node_modules/

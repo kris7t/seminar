@@ -5,6 +5,7 @@
   "homepage": "https://seminar.run",
   "license": "Apache-2.0",
   "type": "module",
+  "seminar": {},
   "exports": {
     ".": {
       "@seminar/source": "./src/index.ts",
