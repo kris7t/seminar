@@ -1,6 +1,6 @@
-import { use, useMemo, type JSX, type ReactNode } from 'react';
+import { useMemo, type JSX, type ReactNode } from 'react';
 
-import { StepPositionStoreContext } from '../steps/StepPositionStoreContext.ts';
+import { useStepPositions } from '../steps/StepPositionStoreContext.ts';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import type { SlideView, SlideViewKind } from './SlideViewContext.ts';
@@ -25,7 +25,7 @@ export function SlideMirror({
     () => ({ index, kind, interactive: false }),
     [index, kind],
   );
-  const stepPositions = use(StepPositionStoreContext);
+  const stepPositions = useStepPositions();
   const stepStore = useMemo(
     () => new StepStore({ position: stepPositions.stepPosition(index) }),
     [stepPositions, index],

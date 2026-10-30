@@ -1,10 +1,14 @@
-import { createContext, type Context } from 'react';
+import { createContext, use, type Context } from 'react';
 
-import { StepPositionStore } from './StepPositionStore.ts';
+import type { StepPositionStore } from './StepPositionStore.ts';
 
-/**
- * The positions in the steps of the slides of the enclosing deck. Outside of a
- * deck, slides share a store of their own.
- */
-export const StepPositionStoreContext: Context<StepPositionStore> =
-  createContext(new StepPositionStore());
+/** The positions in the steps of the slides of the enclosing deck. */
+export const StepPositionStoreContext: Context<StepPositionStore | undefined> =
+  createContext<StepPositionStore | undefined>(undefined);
+
+/** Returns the positions in the steps of the slides of the enclosing deck. */
+export function useStepPositions(): StepPositionStore {
+  const store = use(StepPositionStoreContext);
+  if (store === undefined) throw new Error('Mirrors of slides require a Deck');
+  return store;
+}

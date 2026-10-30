@@ -22,6 +22,8 @@ import { Slide } from '../slide/Slide.tsx';
 import { useSlideView } from '../view/SlideViewContext.ts';
 import { useResetSlideState, useSlideState } from '../state/useSlideState.ts';
 import { StateStore } from '../state/StateStore.ts';
+import { StepPositionStore } from '../steps/StepPositionStore.ts';
+import { StepPositionStoreContext } from '../steps/StepPositionStoreContext.ts';
 import { defineDeckStore } from '../state/defineStore.ts';
 import { useStore } from '../state/useStore.ts';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
@@ -1025,20 +1027,25 @@ describe('cached slide thumbnails', () => {
   it('keeps background loading from holding the presented slide’s transitions', async () => {
     const transitions = new SlideTransitions();
     const hold = vi.spyOn(transitions, 'hold');
+    const rendered = vi.fn();
     function Loading(): JSX.Element {
+      rendered();
       useTransitionHold(true);
       return <span>Loading</span>;
     }
     render(
       <SlideTransitionsContext value={transitions}>
-        <ThumbnailRenderer
-          cache={new ThumbnailCache()}
-          slides={[<Loading key="loading" />]}
-          shownIndex={undefined}
-        />
+        <StepPositionStoreContext value={new StepPositionStore()}>
+          <ThumbnailRenderer
+            cache={new ThumbnailCache()}
+            slides={[<Loading key="loading" />]}
+            shownIndex={undefined}
+          />
+        </StepPositionStoreContext>
       </SlideTransitionsContext>,
     );
     await finish();
+    expect(rendered).toHaveBeenCalled();
     expect(hold).not.toHaveBeenCalled();
   });
 
