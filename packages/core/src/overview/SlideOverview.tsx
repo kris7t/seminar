@@ -137,8 +137,9 @@ function Thumbnail({
           sx={[
             {
               position: 'relative',
-              width: THUMBNAIL_WIDTH,
-              height: THUMBNAIL_HEIGHT,
+              // The width of the column, which may be wider than the image.
+              width: '100%',
+              aspectRatio: `${String(THUMBNAIL_WIDTH)} / ${String(THUMBNAIL_HEIGHT)}`,
               overflow: 'hidden',
               bgcolor: 'background.default',
               // Layer translucent master colors over the slide theme's base.
@@ -397,7 +398,10 @@ export function SlideOverview({
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: `repeat(auto-fill, ${String(THUMBNAIL_WIDTH + 16)}px)`,
+                    // As many columns as fit, which then share the room
+                    // left, so that it's not left at the end of the rows.
+                    // The same in every division, even with fewer slides.
+                    gridTemplateColumns: `repeat(auto-fill, minmax(${String(THUMBNAIL_WIDTH + 16)}px, 1fr))`,
                     gap: 1,
                   }}
                 >
