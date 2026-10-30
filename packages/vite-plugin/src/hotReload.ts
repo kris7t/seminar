@@ -18,6 +18,11 @@ function renderRefreshWrapper(id: string): string {
 import * as __seminarRefreshRuntime from ${JSON.stringify(REACT_REFRESH_RUNTIME)};
 import * as __seminarDeckExports from ${deck};
 if (import.meta.hot && window.$RefreshReg$) {
+  // Slides that fail after a hot update reset their state, see \`@seminar/core\`.
+  import.meta.hot.on('vite:beforeUpdate', () => {
+    const updates = Symbol.for('seminar.hotUpdates');
+    globalThis[updates] = (globalThis[updates] ?? 0) + 1;
+  });
   const register = (exports) => {
     for (const [name, value] of Object.entries(exports)) {
       if (typeof value === 'function') {

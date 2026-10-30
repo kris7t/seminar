@@ -30,6 +30,9 @@ export class StateStore {
     [changes: readonly StateChange[]]
   >();
   readonly #changedListeners = new Listeners();
+  readonly #resets = new Map<StateOwner, number>();
+  readonly #resetListeners = new Listeners();
+  #allResets = 0;
   #changed: ReadonlySet<StateOwner> = new Set();
 
   /** Listens to values that were set, reset, or moved, but not initialized. */
@@ -101,6 +104,15 @@ export class StateStore {
   readonly subscribeChanged: (listener: () => void) => () => void =
     this.#changedListeners.subscribe;
 
+  /** Counts the resets of the owner, even if it had no values. */
+  getResets(owner: StateOwner): number {
+    return this.#allResets + (this.#resets.get(owner) ?? 0);
+  }
+
+  /** Listens to changes of {@link getResets}. */
+  readonly subscribeResets: (listener: () => void) => () => void =
+    this.#resetListeners.subscribe;
+
   /** Removes the values of the owner, so that its views initialize them again. */
   reset(owner: StateOwner): void {
     const changes = changesOf(owner, this.#values.get(owner));
@@ -108,6 +120,8 @@ export class StateStore {
     this.#notifyChanges(changes);
     if (this.#changed.has(owner))
       this.#setChanged(new Set([...this.#changed].filter((o) => o !== owner)));
+    this.#resets.set(owner, (this.#resets.get(owner) ?? 0) + 1);
+    this.#resetListeners.notify();
   }
 
   /** Removes every value. */
@@ -118,6 +132,8 @@ export class StateStore {
     this.#values.clear();
     this.#notifyChanges(changes);
     if (this.#changed.size > 0) this.#setChanged(new Set());
+    this.#allResets += 1;
+    this.#resetListeners.notify();
   }
 
   /**

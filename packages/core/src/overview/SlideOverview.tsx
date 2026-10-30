@@ -1,3 +1,4 @@
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 import {
   Box,
   ButtonBase,
@@ -111,6 +112,11 @@ function Thumbnail({
     () => cache.getBackground(index),
     () => undefined,
   );
+  const failed = useSyncExternalStore(
+    cache.subscribe,
+    () => cache.isFailed(index),
+    () => false,
+  );
   // Keep the focus on the current slide, so that Enter selects it when the
   // arrow keys change the current slide.
   useEffect(() => {
@@ -158,14 +164,28 @@ function Thumbnail({
             spare && !current && { opacity: 0.5 },
           ]}
         >
-          {image !== undefined && (
-            <Box
-              component="img"
-              src={image}
-              alt=""
-              draggable={false}
-              sx={{ display: 'block', width: '100%', height: '100%' }}
+          {failed ? (
+            <ErrorOutlineIcon
+              color="error"
+              titleAccess={t('slideError')}
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                m: 'auto',
+                width: '40%',
+                height: '40%',
+              }}
             />
+          ) : (
+            image !== undefined && (
+              <Box
+                component="img"
+                src={image}
+                alt=""
+                draggable={false}
+                sx={{ display: 'block', width: '100%', height: '100%' }}
+              />
+            )
           )}
         </Box>
       </ThemeProvider>

@@ -1,6 +1,7 @@
 import { KeyedListeners } from '../state/Listeners.ts';
 import type { StateOwner, StateStore } from '../state/StateStore.ts';
 import { captureThumbnail } from './captureThumbnail.ts';
+import { SLIDE_ERROR_ATTRIBUTE } from '../view/SlideErrorBoundary.tsx';
 import { slideBackground } from '../view/slideBackground.ts';
 
 /** A step path and view kind; no state values are retained. */
@@ -21,6 +22,7 @@ export class ThumbnailCache {
   #queueVersion = 0;
   readonly #shown = new Map<number, number>();
   readonly #attempted = new Set<number>();
+  readonly #failed = new Set<number>();
   readonly #listeners = new Set<() => void>();
   readonly #foreground = new Set<symbol>();
   readonly #background = new Set<AbortController>();
@@ -194,6 +196,26 @@ export class ThumbnailCache {
     return undefined;
   }
 
+  /** Whether the slide failed to render when it was last rendered. */
+  isFailed(index: number): boolean {
+    return this.#failed.has(index);
+  }
+
+  /** Records whether the slide failed to render, which replaces its image. */
+  setFailed(index: number, failed: boolean): void {
+    if (this.#failed.has(index) === failed) return;
+    if (failed) this.#failed.add(index);
+    else this.#failed.delete(index);
+    this.#notify();
+  }
+
+  /** Records whether `frame` shows the error of the slide, and returns it. */
+  checkFailed(index: number, frame: HTMLElement): boolean {
+    const failed = frame.querySelector(`[${SLIDE_ERROR_ATTRIBUTE}]`) !== null;
+    this.setFailed(index, failed);
+    return failed;
+  }
+
   /** Failed background captures wait for invalidation or a shown view. */
   skip(index: number): void {
     this.#attempted.add(index);
@@ -206,7 +228,7 @@ export class ThumbnailCache {
     signal?: AbortSignal,
     state?: ThumbnailState,
   ): Promise<void> {
-    if (signal?.aborted) return;
+    if (signal?.aborted || this.checkFailed(index, frame)) return;
     if (!shown && this.isCapturingShown()) return;
     if (!shown && this.#shown.has(index)) {
       return;

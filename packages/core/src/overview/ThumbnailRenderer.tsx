@@ -23,7 +23,7 @@ import type { ThumbnailCache } from './ThumbnailCache.ts';
 import { whenIdle } from './whenIdle.ts';
 
 class ThumbnailBoundary extends Component<
-  { children: ReactNode; onSkip: () => void },
+  { children: ReactNode; onError: () => void },
   { failed: boolean }
 > {
   override state = { failed: false };
@@ -33,7 +33,7 @@ class ThumbnailBoundary extends Component<
   }
 
   override componentDidCatch(): void {
-    this.props.onSkip();
+    this.props.onError();
   }
 
   override render(): ReactNode {
@@ -218,10 +218,14 @@ export function ThumbnailRenderer({
     }
     onDone();
   }, [cache, index, onDone]);
+  const onError = useCallback(() => {
+    if (index !== undefined) cache.setFailed(index, true);
+    onSkip();
+  }, [cache, index, onSkip]);
   return index === undefined ? null : (
     // Loading in the background must not hold the transitions of the deck.
     <SlideTransitionsContext value={transitions}>
-      <ThumbnailBoundary key={index} onSkip={onSkip}>
+      <ThumbnailBoundary key={index} onError={onError}>
         <Suspense fallback={<SkipThumbnail onSkip={onSkip} />}>
           <BackgroundThumbnail
             cache={cache}

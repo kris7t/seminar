@@ -34,6 +34,14 @@ describe('seminarHotReload', () => {
     expect(code).toContain('stores.tsx#count#1');
   });
 
+  it('counts hot updates in decks, for slides that fail after them', async () => {
+    const code = await transformStores({
+      plugins: [seminarHotReload({ include: /stores\.tsx$/ }), react()],
+    });
+    expect(code).toContain("hot.on('vite:beforeUpdate'");
+    expect(code).toContain("Symbol.for('seminar.hotUpdates')");
+  });
+
   it('leaves stores alone without React Fast Refresh or hot updates', async () => {
     expect(
       await transformStores({ plugins: [seminarHotReload()] }),

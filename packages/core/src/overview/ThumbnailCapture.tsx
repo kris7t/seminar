@@ -79,6 +79,7 @@ export function ThumbnailCapture({
     let reused = cache.restore(index, state);
     const schedule = (force = false) => {
       if (!activeRef.current || controller.signal.aborted) return;
+      if (cache.checkFailed(index, frame)) return;
       const next = getState();
       if (next.path !== state.path) {
         captureController?.abort();

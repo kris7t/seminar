@@ -28,6 +28,7 @@ import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Step } from '../steps/Step.tsx';
 import { captureThumbnail } from './captureThumbnail.ts';
 import { ThumbnailCache } from './ThumbnailCache.ts';
+import { SLIDE_ERROR_ATTRIBUTE } from '../view/SlideErrorBoundary.tsx';
 import { ThumbnailRenderer } from './ThumbnailRenderer.tsx';
 import {
   SlideTransitions,
@@ -1151,6 +1152,24 @@ describe('cached slide thumbnails', () => {
 });
 
 describe('ThumbnailCache', () => {
+  it('records whether a frame shows the error of its slide', () => {
+    const cache = new ThumbnailCache();
+    const listener = vi.fn();
+    cache.subscribe(listener);
+    const frame = document.createElement('div');
+    frame.append(document.createElement('div'));
+    expect(cache.checkFailed(0, frame)).toBe(false);
+    expect(listener).not.toHaveBeenCalled();
+    frame.firstElementChild?.setAttribute(SLIDE_ERROR_ATTRIBUTE, '');
+    expect(cache.checkFailed(0, frame)).toBe(true);
+    expect(cache.isFailed(0)).toBe(true);
+    expect(cache.isFailed(1)).toBe(false);
+    expect(listener).toHaveBeenCalledOnce();
+    frame.firstElementChild?.remove();
+    expect(cache.checkFailed(0, frame)).toBe(false);
+    expect(cache.isFailed(0)).toBe(false);
+  });
+
   it('invalidates only recorded dependencies, batching deck resets and stopping on cleanup', () => {
     const cache = new ThumbnailCache();
     const state = new StateStore();

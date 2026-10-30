@@ -413,10 +413,13 @@ function InteractiveDeck({
   );
   const resetSlide = useCallback(
     (index: number) => {
+      // The slide renders again when its state is reset, and it may have failed
+      // because of its step, so on the same slide, the step can't wait for a
+      // fade, which has nothing to fade to anyway.
+      goTo(index, 'start', { transition: index !== slideIndex });
       state.reset(recapOf[index] ?? index);
-      goTo(index);
     },
-    [state, recapOf, goTo],
+    [state, recapOf, goTo, slideIndex],
   );
   const deckChanged = changedStates.size > 0;
   const toc = useMemo(

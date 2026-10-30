@@ -41,7 +41,7 @@ export function SlideViewProvider({
   return (
     <SlideViewContext value={view}>
       {SHOWN_KINDS.has(view.kind) ? (
-        <SlideErrorBoundary>
+        <SlideErrorBoundary view={view}>
           <StateScopeProvider>{children}</StateScopeProvider>
         </SlideErrorBoundary>
       ) : (

@@ -137,9 +137,18 @@ first non-spare slide (or the first slide if all are spare).
 ## Errors
 
 A slide that throws an error while rendering shows the error in its place,
-in the audience window, too, while the rest of the deck keeps working. It's
-rendered again when the presenter comes back to it, or when its code changes
-in the dev server. When printing, it is left out instead.
+while the rest of the deck keeps working. The audience window leaves out the
+stack trace. The overview shows an icon for the slide, and printing leaves it
+out.
+
+The button below the error is like Reset slide in the menu: it resets the state
+of the slide, goes to its first step, and renders it again in every view. The
+slide is also rendered again when the presenter comes back to it, or when its
+code changes in the dev server.
+
+If a slide fails after its code changed in the dev server, its state is reset
+by itself, since it may no longer fit the code, while it stays on its step, and
+the error only shows if the slide fails even after that.
 
 ## Views
 
