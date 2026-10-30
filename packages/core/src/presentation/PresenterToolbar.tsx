@@ -239,6 +239,8 @@ export function PresenterToolbar({
     nextSlideIndex,
     previousSlideIndex,
     toc,
+    showOverview,
+    setShowOverview,
     showToc,
     setShowToc,
     showSteps,
@@ -310,8 +312,9 @@ export function PresenterToolbar({
             label={t('slideOverview')}
             shortcut="O"
             icon={GridViewIcon}
+            pressed={showOverview}
             onClick={() => {
-              deck.setShowOverview(true);
+              setShowOverview(!showOverview);
             }}
           />
           <ToolButton

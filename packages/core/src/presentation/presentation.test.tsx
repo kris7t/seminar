@@ -755,10 +755,16 @@ describe('the presenter toolbar', () => {
     await user.keyboard('n');
     expect(focusNotes.getAttribute('aria-pressed')).toBe('false');
     expect(panel.textContent).toContain('End of the presentation');
-    await user.click(screen.getByRole('button', { name: 'Slide overview' }));
+    const overview = screen.getByRole('button', { name: 'Slide overview' });
+    expect(overview.getAttribute('aria-pressed')).toBe('false');
+    await user.click(overview);
     expect(
       screen.getByRole('region', { name: 'Slide overview' }),
     ).toBeDefined();
+    expect(overview.getAttribute('aria-pressed')).toBe('true');
+    await user.click(overview);
+    expect(screen.queryByRole('region', { name: 'Slide overview' })).toBeNull();
+    expect(overview.getAttribute('aria-pressed')).toBe('false');
     remove();
   });
 
