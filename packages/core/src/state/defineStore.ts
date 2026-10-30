@@ -15,6 +15,13 @@ export interface DeckStoreOptions<T, Key, Action> {
    * like the setter of `useState`.
    */
   reduce?: ((state: T, action: Action, key: Key) => T) | undefined;
+  /**
+   * Identifies the store across hot reloads, which evaluate its definition
+   * again, so that it keeps its values unless `initial` changes. The dev
+   * server of `@seminar/vite-plugin` sets it, so it only needs to be set with
+   * other tools.
+   */
+  id?: string | undefined;
 }
 
 /** Options of a store of slides, see {@link defineSlideStore}. */
@@ -45,6 +52,8 @@ export interface StoreDefinition<
 > {
   readonly kind: 'slideStore' | 'deckStore';
   readonly transient: boolean;
+  /** Tells apart the values of the store from those of other stores. */
+  readonly family: object;
   readonly initial: (key: Key) => T;
   readonly reduce: (state: T, action: Action, key: Key) => T;
 }
@@ -56,15 +65,32 @@ export function applyAction<T>(state: T, action: SetStateAction<T>): T {
     : action;
 }
 
+/** The latest definition of each store with an id, across hot reloads. */
+const identified = new Map<string, { signature: string; family: object }>();
+
+/** Returns the family of a store, which stays if its signature does. */
+function familyOf(id: string | undefined, signature: string): object {
+  if (id === undefined) return {};
+  let entry = identified.get(id);
+  if (entry?.signature !== signature) {
+    entry = { signature, family: {} };
+    identified.set(id, entry);
+  }
+  return entry.family;
+}
+
 function define(
   kind: 'slideStore' | 'deckStore',
   {
     initial = () => undefined,
     reduce = applyAction,
     transient = false,
+    id,
   }: SlideStoreOptions<unknown, unknown, unknown>,
 ): StoreDefinition<unknown, unknown, unknown> {
-  return { kind, transient, initial, reduce };
+  const signature = `${kind} ${String(transient)} ${String(initial)}`;
+  const family = familyOf(id, signature);
+  return { kind, transient, family, initial, reduce };
 }
 
 /**
@@ -121,6 +147,6 @@ export function defineDeckStore<
 export function defineDeckStore(
   options: DeckStoreOptions<unknown, unknown, unknown> = {},
 ): StoreDefinition<unknown, unknown, unknown> {
-  const { initial, reduce } = options;
-  return define('deckStore', { initial, reduce });
+  const { initial, reduce, id } = options;
+  return define('deckStore', { initial, reduce, id });
 }

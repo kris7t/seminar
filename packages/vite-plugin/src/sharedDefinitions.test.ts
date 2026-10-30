@@ -51,3 +51,45 @@ it('removes unused cache and resource definitions and their lazy imports', async
   expect(code).not.toContain('defineResource');
   expect(code).not.toContain('defineCache');
 });
+
+it('removes unused store definitions', async () => {
+  const entry = 'virtual:store-definitions';
+  const definitions = fileURLToPath(
+    new URL('../../core/src/state/defineStore.ts', import.meta.url),
+  );
+  const result = await build({
+    configFile: false,
+    logLevel: 'silent',
+    plugins: [
+      {
+        name: 'store-definitions-test',
+        resolveId(id) {
+          return id === entry ? id : undefined;
+        },
+        load(id) {
+          if (id !== entry) return undefined;
+          return `
+          import { defineSlideStore, defineDeckStore } from ${JSON.stringify(definitions)};
+          const slide = defineSlideStore({ initial: () => 'unused-slide' });
+          const deck = defineDeckStore({ initial: () => 'unused-deck' });
+          export const kept = 42;
+        `;
+        },
+      },
+    ],
+    build: {
+      write: false,
+      minify: false,
+      rolldownOptions: { input: entry, preserveEntrySignatures: 'strict' },
+    },
+  });
+  const output = (
+    Array.isArray(result) ? result[0] : result
+  ) as Rolldown.RolldownOutput;
+  const code = output.output
+    .map((file) => (file.type === 'chunk' ? file.code : ''))
+    .join('');
+  expect(code).toContain('42');
+  expect(code).not.toContain('unused-slide');
+  expect(code).not.toContain('unused-deck');
+});

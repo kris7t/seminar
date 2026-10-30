@@ -120,6 +120,35 @@ describe('defineSlideStore and defineDeckStore', () => {
   });
 });
 
+describe('the id of a store', () => {
+  const initial = () => 0;
+
+  it('keeps its family when it is defined again', () => {
+    const first = defineSlideStore({ initial, id: 'kept' });
+    expect(defineSlideStore({ initial, id: 'kept' }).family).toBe(first.family);
+    expect(defineSlideStore({ initial, id: 'other' }).family).not.toBe(
+      first.family,
+    );
+  });
+
+  it('starts over if the initial value or kind of the store changes', () => {
+    const first = defineSlideStore({ initial: () => 0, id: 'changed' });
+    expect(
+      defineSlideStore({ initial: () => 1, id: 'changed' }).family,
+    ).not.toBe(first.family);
+    const slide = defineSlideStore({ initial, id: 'kind' });
+    expect(defineDeckStore({ initial, id: 'kind' }).family).not.toBe(
+      slide.family,
+    );
+  });
+
+  it('is not needed to tell apart stores', () => {
+    expect(defineSlideStore({ initial }).family).not.toBe(
+      defineSlideStore({ initial }).family,
+    );
+  });
+});
+
 describe('useStore', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');

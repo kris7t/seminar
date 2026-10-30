@@ -56,7 +56,9 @@ export class StructuralKeys {
         if (!array && prototype !== Object.prototype && prototype !== null)
           return `identity:${String(this.#identity(value))}`;
         if (ancestors.has(value))
-          throw new TypeError('Cyclic cache arguments need a custom key');
+          throw new TypeError(
+            'Cyclic keys are not supported. Caches can derive a custom key from their arguments.',
+          );
         ancestors.add(value);
         const result = array
           ? `array:${String(value.length)}[${value.map((item: unknown) => this.#key(item, ancestors)).join(',')}]`
@@ -71,6 +73,6 @@ export class StructuralKeys {
         return result;
       }
     }
-    throw new TypeError('Unsupported cache key');
+    throw new TypeError('Unsupported key');
   }
 }

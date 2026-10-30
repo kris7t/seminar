@@ -1,5 +1,7 @@
 import { createFilter, type FilterPattern, type Plugin } from 'vite';
 
+import { identifyStores } from './identifyStores.ts';
+
 /** The plugin of `@vitejs/plugin-react` that serves its refresh runtime. */
 const REACT_REFRESH_PLUGIN = 'vite:react-refresh';
 
@@ -51,6 +53,9 @@ if (import.meta.hot && window.$RefreshReg$) {
  * `@vitejs/plugin-react`. The slides and other components of a deck are named
  * so that the refresh runtime doesn't take them for components, so they are
  * registered by hand. Without the plugin, changed decks reload the page.
+ *
+ * Stores get ids, so that they keep their values when their definitions are
+ * evaluated again (see {@link identifyStores}).
  */
 export function seminarHotReload({
   include = /\.deck\.mdx$/,
@@ -69,14 +74,19 @@ export function seminarHotReload({
     },
 
     transform(code, id) {
-      if (
-        !enabled ||
-        this.environment.config.consumer !== 'client' ||
-        !isDeck(id)
-      ) {
+      if (!enabled || this.environment.config.consumer !== 'client') {
         return undefined;
       }
-      return { code: code + renderRefreshWrapper(id), map: null };
+      const identified = identifyStores(code, id);
+      if (!isDeck(id)) {
+        return identified === undefined
+          ? undefined
+          : { code: identified, map: null };
+      }
+      return {
+        code: (identified ?? code) + renderRefreshWrapper(id),
+        map: null,
+      };
     },
   };
 }

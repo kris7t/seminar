@@ -60,7 +60,7 @@ export function useStore<T, Key, Action, Selected>(
       : definition.transient
         ? 'visit'
         : 'slide',
-    definition,
+    definition.family,
     encodedKey,
     initial,
     reduce,

@@ -119,6 +119,10 @@ const [yes, vote] = useStore(poll, { select: (votes) => votes.yes });
 `select` picks the part of the value that the component shows, so that it
 only renders again if that part changes.
 
+When a module changes in the dev server of `@seminar/vite-plugin`, its stores
+keep their values, unless their variables are renamed, or their `initial`
+functions change, so that editing the initial value shows it.
+
 Values of slide stores are kept like those of `useSlideState`, and pass
 `transient: true` to `defineSlideStore` for transient values. Reset slide
 resets the slide stores of the slide, and Reset deck in the menu resets
