@@ -19,7 +19,7 @@ type Values = Map<object, Map<string, unknown>>;
  *
  * Values belong to an owner, and are stored by their family, which tells
  * apart the values of different APIs, e.g., `useSlideState` and
- * `useDeckState`, and by a key within the family. They can be of any type.
+ * `useStore`, and by a key within the family. They can be of any type.
  * A value that was never set reads as `undefined`.
  */
 export class StateStore {

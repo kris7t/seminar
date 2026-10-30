@@ -39,7 +39,7 @@ function Counter() {
   );
 }
 
-describe('useDeckState', () => {
+describe('deck stores', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
   });

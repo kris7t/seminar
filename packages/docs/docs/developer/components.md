@@ -53,6 +53,9 @@ one in a namespace with its own id:
 </>
 ```
 
+States without ids are also told apart within their namespace, so a namespace
+can replace ids around a part of the slide that mounts later.
+
 ### Transient state
 
 To keep the views of a slide in sync without saving anything, make the state

@@ -98,7 +98,7 @@ export default defineConfig({ plugins: [seminar(options), react()] });
   );
   write(
     'Probe.tsx',
-    `import { useDeckState, useSlideState, useSlideView, HUNGARIAN } from '@seminar/core';
+    `import { defineStore, useSlideState, useSlideView, useStore, HUNGARIAN } from '@seminar/core';
 import { DynamicFormula } from '@seminar/plugin-mathjax/dynamic';
 import type { DeckMdxOptions } from '@seminar/mdx';
 import type { SeminarPluginOptions } from '@seminar/rollup-plugin';
@@ -106,9 +106,10 @@ import theme from '@seminar/theme-default';
 import catalog from '@seminar/core/locales/hu.json' with { type: 'json' };
 export const options: DeckMdxOptions = {};
 export const rollupOptions: SeminarPluginOptions = {};
+const shared = defineStore<string>({ scope: 'deck' });
 export default function Probe() {
   const [count, setCount] = useSlideState(0);
-  const [value] = useDeckState<string>('value');
+  const [value] = useStore(shared);
   const view = useSlideView();
   return <button style={{ color: theme.palette.text.primary }} onClick={() => setCount(count + 1)} title={catalog.resetDeck + HUNGARIAN.lang + String(view.mirrorPointer) + (value ?? '')}><DynamicFormula tex={String(count)} /></button>;
 }
