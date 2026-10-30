@@ -1,44 +1,23 @@
-import AutoAwesomeMotionIcon from '@mui/icons-material/AutoAwesomeMotion';
 import FlareIcon from '@mui/icons-material/Flare';
-import GridViewIcon from '@mui/icons-material/GridView';
-import HighlightAltIcon from '@mui/icons-material/HighlightAlt';
-import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
-import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 import MouseIcon from '@mui/icons-material/Mouse';
-import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SpeakerNotesIcon from '@mui/icons-material/SpeakerNotes';
-import TocIcon from '@mui/icons-material/Toc';
-import {
-  Box,
-  Button,
-  IconButton,
-  Tooltip,
-  Typography,
-  type SvgIconProps,
-} from '@mui/material';
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type ComponentType,
-  type JSX,
-  type MouseEvent,
-  type ReactNode,
-} from 'react';
+import { Box, Typography } from '@mui/material';
+import { useEffect, useMemo, useState, type JSX, type MouseEvent } from 'react';
 
-import { useDeck } from '../deck/DeckContext.ts';
-import { formatShortcut } from '../i18n/messages.ts';
-import { useT, useUiLanguage } from '../i18n/UiLanguageContext.ts';
+import { useUiLanguage } from '../i18n/UiLanguageContext.ts';
 import type { MenuPosition } from '../interaction/useContextMenu.ts';
 import { ToolbarMenuButton } from '../menu/MenuButton.tsx';
+import { TitleBar } from '../menu/TitleBar.tsx';
 import {
-  NO_DRAG_REGION,
-  TITLE_WIDTH,
-  TitleBar,
-  titleBarInsets,
-} from '../menu/TitleBar.tsx';
+  fitToolbar,
+  NavigationButtons,
+  SlideNumberButton,
+  TextSelectionButton,
+  ToolButton,
+  ToolGroup,
+  ViewButtons,
+} from '../menu/toolbar.tsx';
 import type { TitleBar as TitleBarArea } from '../menu/useTitleBar.ts';
 import type { PointerMode } from './mirror/pointer.tsx';
 
@@ -77,87 +56,11 @@ export function formatElapsed(milliseconds: number): string {
     : `${String(minutes)}:${pad(seconds)}`;
 }
 
-/**
- * Narrowest toolbar that shows all of its buttons, in pixels. In narrower
- * ones, only the buttons for navigating and the settings of the
- * presenter view are shown, since the menu has the others.
- */
-const MIN_FULL_TOOLBAR_WIDTH = 840;
-
-/**
- * Narrowest toolbar that shows buttons other than the menu, in pixels. In
- * narrower ones, the actions are only in the menu.
- */
-const MIN_REDUCED_TOOLBAR_WIDTH = 640;
-
 /** Formats the time of day in the language of the user interface. */
 function useClockFormat(lang: string): Intl.DateTimeFormat {
   return useMemo(
     () => new Intl.DateTimeFormat(lang, { hour: 'numeric', minute: '2-digit' }),
     [lang],
-  );
-}
-
-interface ToolButtonProps {
-  label: string;
-  /** The keyboard shortcut, shown in the tooltip. */
-  shortcut?: string;
-  icon: ComponentType<SvgIconProps>;
-  onClick: () => void;
-  disabled?: boolean;
-  /** Whether the button is a toggle that is on, if it's a toggle. */
-  pressed?: boolean;
-}
-
-function ToolButton({
-  label,
-  shortcut,
-  icon: Icon,
-  onClick,
-  disabled = false,
-  pressed,
-}: ToolButtonProps): JSX.Element {
-  const t = useT();
-  const button = (
-    <IconButton
-      aria-label={label}
-      aria-pressed={pressed}
-      disabled={disabled}
-      onClick={onClick}
-      color={pressed === true ? 'primary' : 'inherit'}
-    >
-      <Icon />
-    </IconButton>
-  );
-  // Tooltips need an element that gets pointer events, unlike a disabled
-  // button.
-  return disabled ? (
-    button
-  ) : (
-    <Tooltip
-      title={
-        shortcut === undefined
-          ? label
-          : `${label} (${formatShortcut(t, shortcut)})`
-      }
-    >
-      {button}
-    </Tooltip>
-  );
-}
-
-function Group({ children }: { children: ReactNode }): JSX.Element {
-  return (
-    <Box
-      sx={{
-        ...NO_DRAG_REGION,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 0.5,
-      }}
-    >
-      {children}
-    </Box>
   );
 }
 
@@ -230,114 +133,16 @@ export function PresenterToolbar({
 }: PresenterToolbarProps): JSX.Element {
   const { lang, t } = useUiLanguage();
   const clockFormat = useClockFormat(lang);
-  const deck = useDeck();
-  const {
-    slideIndex,
-    slideCount,
-    atFirstStep,
-    atLastStep,
-    nextSlideIndex,
-    previousSlideIndex,
-    toc,
-    showOverview,
-    setShowOverview,
-    showToc,
-    setShowToc,
-    showSteps,
-    setShowSteps,
-    mouseNavigation,
-    setMouseNavigation,
-  } = deck;
   const now = useNow(start);
-  // The buttons leave room for the window controls and the title.
-  const insets =
-    titleBar === undefined ? undefined : titleBarInsets(titleBar.area, 0);
-  const available =
-    insets === undefined
-      ? width
-      : width - insets.left - insets.right - TITLE_WIDTH;
-  const reduced = available < MIN_FULL_TOOLBAR_WIDTH;
-  const compact = available < MIN_REDUCED_TOOLBAR_WIDTH;
-  const slideNumber = (
-    <Tooltip title={`${t('goToSlide')} (G)`}>
-      <Button
-        color="inherit"
-        onClick={onGoToSlide}
-        sx={{ minWidth: 72, fontVariantNumeric: 'tabular-nums' }}
-      >
-        {slideIndex + 1} / {slideCount}
-      </Button>
-    </Tooltip>
-  );
+  const { reduced, compact } = fitToolbar(width, titleBar?.area);
   const startGroup = compact ? (
-    <Group>{slideNumber}</Group>
+    <ToolGroup>
+      <SlideNumberButton onGoToSlide={onGoToSlide} />
+    </ToolGroup>
   ) : (
-    <Group>
-      <ToolButton
-        label={t('previousSlide')}
-        shortcut="PgUp"
-        icon={KeyboardDoubleArrowLeftIcon}
-        onClick={() => {
-          deck.previousSlide();
-        }}
-        disabled={previousSlideIndex === undefined}
-      />
-      <ToolButton
-        label={t('previousStep')}
-        shortcut="Left"
-        icon={NavigateBeforeIcon}
-        onClick={deck.previous}
-        disabled={previousSlideIndex === undefined && atFirstStep}
-      />
-      {slideNumber}
-      <ToolButton
-        label={t('nextStep')}
-        shortcut="Right"
-        icon={NavigateNextIcon}
-        onClick={deck.next}
-        disabled={nextSlideIndex === undefined && atLastStep}
-      />
-      <ToolButton
-        label={t('nextSlide')}
-        shortcut="PgDn"
-        icon={KeyboardDoubleArrowRightIcon}
-        onClick={() => {
-          deck.nextSlide();
-        }}
-        disabled={nextSlideIndex === undefined}
-      />
-      {!reduced && (
-        <>
-          <ToolButton
-            label={t('slideOverview')}
-            shortcut="O"
-            icon={GridViewIcon}
-            pressed={showOverview}
-            onClick={() => {
-              setShowOverview(!showOverview);
-            }}
-          />
-          <ToolButton
-            label={t('tableOfContents')}
-            shortcut="T"
-            icon={TocIcon}
-            pressed={showToc}
-            disabled={toc.length === 0}
-            onClick={() => {
-              setShowToc(!showToc);
-            }}
-          />
-          <ToolButton
-            label={t('steps')}
-            shortcut="Shift+T"
-            icon={AutoAwesomeMotionIcon}
-            pressed={showSteps}
-            onClick={() => {
-              setShowSteps(!showSteps);
-            }}
-          />
-        </>
-      )}
+    <ToolGroup>
+      <NavigationButtons onGoToSlide={onGoToSlide} />
+      {!reduced && <ViewButtons />}
       <ToolButton
         label={t('focusOnNotes')}
         shortcut="N"
@@ -361,21 +166,11 @@ export function PresenterToolbar({
         pressed={pointerMode === 'laser'}
         onClick={onLaserPointer}
       />
-      {!reduced && (
-        <ToolButton
-          label={t('textSelection')}
-          shortcut="S"
-          icon={HighlightAltIcon}
-          pressed={!mouseNavigation}
-          onClick={() => {
-            setMouseNavigation(!mouseNavigation);
-          }}
-        />
-      )}
-    </Group>
+      {!reduced && <TextSelectionButton />}
+    </ToolGroup>
   );
   const endGroup = (
-    <Group>
+    <ToolGroup>
       <Typography
         aria-label={t('timeElapsed')}
         sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
@@ -404,7 +199,7 @@ export function PresenterToolbar({
         onOpen={onOpenMenu}
         above={titleBar === undefined}
       />
-    </Group>
+    </ToolGroup>
   );
   const toolbar = {
     role: 'toolbar',

@@ -57,34 +57,11 @@ function WindowTitle(): JSX.Element {
   );
 }
 
-/** Room that the window controls take in a title bar, in pixels. */
-export interface TitleBarInsets {
-  left: number;
-  right: number;
-}
-
-/**
- * Returns the room that the window controls take in a title bar that is
- * `offset` from the left edge of the window.
- */
-export function titleBarInsets(
-  area: TitleBarArea,
-  offset: number,
-): TitleBarInsets {
-  return { left: Math.max(0, area.left - offset), right: area.right };
-}
-
 export interface TitleBarProps extends Pick<
   BoxProps,
   'role' | 'aria-label' | 'onMouseDown'
 > {
   area: TitleBarArea;
-  /**
-   * Room left at the start of the title bar, e.g., for the sidebar, which
-   * starts at the top of the window. The title bar spans the window, but
-   * neither covers nor moves the window by that room.
-   */
-  offset?: number;
   /** The background color, which the window controls are drawn on, too. */
   color: string;
   /** Shown at the start of the title bar, after the window controls there. */
@@ -112,7 +89,6 @@ export interface TitleBarProps extends Pick<
  */
 export function TitleBar({
   area,
-  offset = 0,
   color,
   start,
   end,
@@ -134,10 +110,7 @@ export function TitleBar({
         height: area.height,
         overflow: 'hidden',
         color: 'text.primary',
-        // Only the controls get the pointer in the room left at the start,
-        // and they don't move the window.
-        pointerEvents: 'none',
-        '& button': { ...NO_DRAG_REGION, pointerEvents: 'auto' },
+        '& button': NO_DRAG_REGION,
       }}
     >
       <Box
@@ -145,17 +118,15 @@ export function TitleBar({
           ...DRAG_REGION,
           position: 'absolute',
           inset: 0,
-          left: offset,
           bgcolor: color,
           ...(divider && { borderBottom: 1, borderColor: 'divider' }),
-          pointerEvents: 'auto',
         }}
       />
       <Box
         sx={{
           position: 'relative',
           display: 'flex',
-          pl: `${String(Math.max(offset, area.left))}px`,
+          pl: `${String(area.left)}px`,
         }}
       >
         {start}

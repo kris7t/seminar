@@ -35,6 +35,8 @@ function renderDeck() {
 
 describe('TitleBar', () => {
   beforeEach(() => {
+    // Wide enough for all the buttons of the title bar.
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1280);
     window.history.replaceState(null, '', '#');
     document.title = 'My talk';
     overlay = new FakeOverlay();
@@ -50,17 +52,58 @@ describe('TitleBar', () => {
     Reflect.deleteProperty(navigator, 'windowControlsOverlay');
   });
 
-  it('shows the title and the menu button next to the window controls', () => {
+  it('shows the title and the buttons next to the window controls', () => {
     renderDeck();
     const titleBar = screen.getByRole('banner');
-    expect(titleBar.textContent).toBe('My talk');
+    expect(titleBar.textContent).toContain('My talk');
     expect(getComputedStyle(titleBar).height).toBe('48px');
     expect(
       getComputedStyle(titleBar.lastElementChild ?? titleBar).paddingRight,
     ).toBe('100px');
+    for (const name of [
+      'Menu',
+      'Start presentation',
+      'Next slide',
+      'Slide overview',
+      'Steps',
+      'Text selection',
+    ]) {
+      expect(titleBar.contains(screen.getByRole('button', { name }))).toBe(
+        true,
+      );
+    }
+  });
+
+  it('leaves out the buttons that the menu has if they do not fit', () => {
+    overlay.rect = new DOMRect(0, 0, 1000, 48);
+    renderDeck();
+    expect(screen.getByRole('button', { name: 'Next slide' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Slide overview' })).toBeNull();
+    overlay.change({ rect: new DOMRect(0, 0, 800, 48) });
+    expect(screen.queryByRole('button', { name: 'Next slide' })).toBeNull();
+    expect(screen.getByRole('button', { name: /Go to slide/ })).toBeDefined();
     expect(
-      titleBar.contains(screen.getByRole('button', { name: 'Menu' })),
-    ).toBe(true);
+      screen.getByRole('button', { name: 'Start presentation' }),
+    ).toBeDefined();
+  });
+
+  it('toggles the overview and the sidebar', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    const overview = screen.getByRole('button', { name: 'Slide overview' });
+    await user.click(overview);
+    expect(overview.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen.getByRole('region', { name: 'Slide overview' }),
+    ).toBeDefined();
+    await user.click(overview);
+    expect(screen.queryByRole('region', { name: 'Slide overview' })).toBeNull();
+    const steps = screen.getByRole('button', { name: 'Steps' });
+    await user.click(steps);
+    expect(steps.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen.getByRole('button', { name: 'Steps', expanded: true }),
+    ).toBeDefined();
   });
 
   it('is hidden while the window draws its title bar, e.g., in full screen', () => {
@@ -73,50 +116,41 @@ describe('TitleBar', () => {
     expect(screen.getByRole('banner')).toBeDefined();
   });
 
-  it('leaves room for window controls on the left, or the sidebar', async () => {
-    const user = userEvent.setup();
+  it('leaves room for window controls on the left', () => {
     overlay.rect = new DOMRect(100, 0, window.innerWidth - 100, 48);
     renderDeck();
     // After the background.
-    const start = () => screen.getByRole('banner').children[1];
-    expect(getComputedStyle(start() ?? document.body).paddingLeft).toBe(
-      '100px',
-    );
-    await user.keyboard('{Shift>}T{/Shift}');
-    expect(getComputedStyle(start() ?? document.body).paddingLeft).toBe(
-      '280px',
-    );
+    const start = screen.getByRole('banner').children[1];
+    expect(getComputedStyle(start ?? document.body).paddingLeft).toBe('100px');
   });
 
-  it('leaves room above the sidebar, unless it is below the title bar', async () => {
-    const iframe = document.createElement('iframe');
-    document.body.append(iframe);
-    vi.spyOn(window, 'open').mockReturnValue(iframe.contentWindow);
+  it('covers the letterbox above the slides, unless the sidebar is open', async () => {
     const user = userEvent.setup();
     renderDeck();
+    const titleBar = screen.getByRole('banner');
+    // The box of the title bar, outside of the box that provides the theme.
+    const box = () => titleBar.parentElement?.parentElement ?? document.body;
+    const background = () => titleBar.firstElementChild ?? titleBar;
+    const slides = screen.getByRole('main');
+    expect(getComputedStyle(box()).position).toBe('absolute');
+    expect(getComputedStyle(background()).borderBottomWidth).not.toBe('1px');
+    // Below the title bar, since the letterbox has no room for it.
+    expect(getComputedStyle(slides).marginTop).toBe('48px');
     await user.keyboard('{Shift>}T{/Shift}');
-    const room = () =>
-      screen
-        .getByRole('button', { name: 'Steps', expanded: true })
-        .closest('h2')?.parentElement?.previousElementSibling;
-    expect(getComputedStyle(room() ?? document.body).height).toBe('48px');
-    // The presenter view spans the window with its title bar.
-    await user.keyboard('{Shift>}P{/Shift}');
-    expect(room()).toBeNull();
-    iframe.remove();
+    // Above the sidebar, and separated from it, without being remounted.
+    expect(screen.getByRole('banner')).toBe(titleBar);
+    expect(getComputedStyle(box()).position).not.toBe('absolute');
+    expect(getComputedStyle(background()).borderBottomWidth).toBe('1px');
+    expect(getComputedStyle(slides).marginTop).not.toBe('48px');
   });
 
   it('spans the window above the overview', async () => {
     const user = userEvent.setup();
     renderDeck();
-    await user.keyboard('{Shift>}T{/Shift}');
     await user.keyboard('o');
     const overview = screen.getByRole('region', { name: 'Slide overview' });
     expect(getComputedStyle(overview).top).toBe('48px');
     expect(screen.getAllByRole('banner')).toHaveLength(1);
-    // Outside of the box that provides the theme.
-    const parent = screen.getByRole('banner').parentElement?.parentElement;
-    expect(getComputedStyle(parent ?? document.body).position).toBe('fixed');
   });
 
   it('has the toolbar of the presenter view, with the title', async () => {

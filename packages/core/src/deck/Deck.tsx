@@ -91,8 +91,8 @@ import {
   type PrintedDocument,
   type PrintOptions,
 } from '../print/PrintView.tsx';
-import { MenuButton, ToolbarMenuButton } from '../menu/MenuButton.tsx';
-import { TitleBar } from '../menu/TitleBar.tsx';
+import { DeckTitleBar } from '../menu/DeckTitleBar.tsx';
+import { MenuButton } from '../menu/MenuButton.tsx';
 import { useTitleBar } from '../menu/useTitleBar.ts';
 import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
 import { darkUiTheme, uiTheme } from '../menu/uiTheme.ts';
@@ -115,11 +115,7 @@ import { resolveToc, type TocEntry } from './tableOfContents.ts';
 import type { UiLocale } from '../i18n/messages.ts';
 import { UiLanguageContext } from '../i18n/UiLanguageContext.ts';
 import { useUiLanguageState } from '../i18n/useUiLanguageState.ts';
-import {
-  Sidebar,
-  SIDEBAR_WIDTH,
-  type SidebarSection,
-} from '../sidebar/Sidebar.tsx';
+import { Sidebar, type SidebarSection } from '../sidebar/Sidebar.tsx';
 import { StepTree } from '../sidebar/StepTree.tsx';
 import { useSlideProbe } from '../view/SlideProbe.tsx';
 import { TocList } from '../sidebar/TocList.tsx';
@@ -841,17 +837,18 @@ function InteractiveDeck({
     menuOpen: menuPosition !== undefined,
     onOpenMenu: openMenu,
   };
-  // Like the presenter view and the overview, or the letterbox around the
-  // slides.
+  // Below the title bar, which then separates them from the window controls,
+  // instead of the title bar covering the letterbox above the slides.
+  const belowTitleBar = presenting || showSidebar;
+  // Like the presenter view, the sidebar, and the overview, or the letterbox
+  // around the slides.
   const titleBarColor =
-    presenting || showOverview
+    belowTitleBar || showOverview
       ? darkUiTheme.palette.background.default
       : 'common.black';
   const titleBarElement = titleBar !== undefined && (
     <UiThemeProvider dark>
       {presenting ? (
-        // Instead of below the presenter view, spanning the window above the
-        // sidebar.
         <PresenterToolbar
           {...toolbarProps}
           // Unlike the presenter view, doesn't change with the sidebar, so it
@@ -860,30 +857,21 @@ function InteractiveDeck({
           titleBar={{ area: titleBar, color: titleBarColor }}
         />
       ) : (
-        <TitleBar
+        <DeckTitleBar
           area={titleBar}
-          // The sidebar starts at the top, unless the overview covers it.
-          offset={showSidebar && !showOverview ? SIDEBAR_WIDTH : 0}
           color={titleBarColor}
           // Like in the presenter view.
-          divider={showOverview}
-          end={
-            // Like in the toolbar of the presenter view.
-            <Box sx={{ px: 1 }}>
-              <ToolbarMenuButton
-                open={menuPosition !== undefined}
-                onOpen={openMenu}
-              />
-            </Box>
-          }
+          divider={belowTitleBar || showOverview}
+          onGoToSlide={openGoToSlide}
+          onPresent={presentation.toggle}
+          menuOpen={menuPosition !== undefined}
+          onOpenMenu={openMenu}
         />
       )}
     </UiThemeProvider>
   );
-  // Out of the presenter view, the title bar covers the letterbox above the
-  // slide.
   const letterbox =
-    titleBar !== undefined && !presenting
+    titleBar !== undefined && !belowTitleBar
       ? titleBarMargins(presenterAreaSize, titleBar.height)
       : undefined;
 
@@ -913,21 +901,41 @@ function InteractiveDeck({
                         flexDirection: 'column',
                       }}
                     >
-                      {presenting && titleBarElement}
-                      <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
+                      {titleBarElement !== false && (
+                        // Always in the same place, so that it isn't remounted
+                        // when the sidebar is toggled.
+                        <Box
+                          sx={[
+                            { flex: 'none' },
+                            !belowTitleBar && {
+                              // Above the slides and the overview.
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              zIndex: 1,
+                            },
+                          ]}
+                        >
+                          {titleBarElement}
+                        </Box>
+                      )}
+                      <Box
+                        sx={{
+                          flex: 1,
+                          minHeight: 0,
+                          display: 'flex',
+                          // Below the title bar, whatever the order of the
+                          // slides within.
+                          isolation: 'isolate',
+                        }}
+                      >
                         {showSidebar && (
                           // Outside of the slides, so that clicks don't navigate. Dark
                           // like the letterbox around the slides, the overview, and the
                           // presenter view.
                           <UiThemeProvider dark>
-                            <Sidebar
-                              sections={sidebarSections}
-                              // Next to the title bar, which spans the window above the
-                              // sidebar in the presenter view.
-                              titleBarHeight={
-                                presenting ? undefined : titleBar?.height
-                              }
-                            />
+                            <Sidebar sections={sidebarSections} />
                           </UiThemeProvider>
                         )}
                         {/*
@@ -1238,14 +1246,6 @@ function InteractiveDeck({
                         menuHandlers={menuHandlers}
                         top={titleBar?.height}
                       />
-                    )}
-                    {!presenting && (
-                      // Above the slides, the sidebar, and the overview.
-                      <Box
-                        sx={{ position: 'fixed', top: 0, left: 0, right: 0 }}
-                      >
-                        {titleBarElement}
-                      </Box>
                     )}
                     {/* Outside of the slides, so that events don't bubble to them. */}
                     <ThemeProvider theme={uiTheme}>
