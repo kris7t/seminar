@@ -284,7 +284,11 @@ describe('useStore', () => {
     await user.click(screen.getByRole('button', { name: 'a' }));
     await user.keyboard('{PageDown}');
     expect(screen.getByRole('button', { name: 'a!' })).toBeDefined();
-    expect(initial.mock.calls).toEqual([[{ question: 'q' }]]);
+    // Equal keys share a value, once in the deck and once in the probe.
+    expect(initial.mock.calls).toEqual([
+      [{ question: 'q' }],
+      [{ question: 'q' }],
+    ]);
   });
 
   it('dispatches actions to the reducer', async () => {

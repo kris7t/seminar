@@ -11,8 +11,8 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import { StateStore } from '../state/StateStore.ts';
 import {
+  createStateStores,
   StateStoresContext,
   useStateStores,
 } from '../state/StateStoresContext.ts';
@@ -66,14 +66,13 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
   const [container] = useState(
     () => document.implementation.createHTMLDocument('').body,
   );
-  // State of its own, so that the probe doesn't set up the state of the
-  // slides, but it reads the state of the deck and records what it reads.
-  const stores = useStateStores();
-  const [slideState] = useState(() => new StateStore());
-  const [visitState] = useState(() => new StateStore());
-  const probeStores = useMemo(
-    () => ({ ...stores, slides: slideState, visit: visitState }),
-    [stores, slideState, visitState],
+  // State of its own, so that effects and initial values on the slides don't
+  // set up the state of the deck, but it records what they read.
+  const { recordUse } = useStateStores();
+  const [ownStores] = useState(createStateStores);
+  const stores = useMemo(
+    () => ({ ...ownStores, recordUse }),
+    [ownStores, recordUse],
   );
   const framesRef = useRef<(HTMLDivElement | null)[]>([]);
   const probes = useMemo(
@@ -87,7 +86,7 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
         const frame = framesRef.current[index];
         return {
           steps: store.getTree().length > 0,
-          state: slideState.hasState(index),
+          state: stores.slides.hasState(index),
           backgroundColor:
             frame === undefined || frame === null
               ? undefined
@@ -95,9 +94,9 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
         };
       }),
     );
-  }, [probes, slideState, onProbe]);
+  }, [probes, stores, onProbe]);
   return createPortal(
-    <StateStoresContext value={probeStores}>
+    <StateStoresContext value={stores}>
       {probes.map(({ slide, store }, index) => (
         // Slides are positional, see `Deck`.
         // eslint-disable-next-line @eslint-react/no-array-index-key

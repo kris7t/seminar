@@ -6,7 +6,9 @@ import { Deck } from '../deck/Deck.tsx';
 import { useDeck } from '../deck/DeckContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { useSlideView, type SlideView } from './SlideViewContext.ts';
+import { defineDeckStore } from '../state/defineStore.ts';
 import { useSlideState } from '../state/useSlideState.ts';
+import { useStore } from '../state/useStore.ts';
 import { Step } from '../steps/Step.tsx';
 
 function HasSteps(): JSX.Element {
@@ -111,6 +113,40 @@ describe('useSlideProbe', () => {
         shown: false,
       },
     ]);
+  });
+
+  it('keeps deck stores from what it renders', async () => {
+    const store = defineDeckStore({ initial: () => 'initial' });
+    const views: string[] = [];
+    function Writer(): null {
+      const { kind } = useSlideView();
+      const [, set] = useStore(store);
+      useEffect(() => {
+        views.push(kind);
+        if (kind === 'probe') set('written by the probe');
+      }, [kind, set]);
+      return null;
+    }
+    function Reader(): JSX.Element {
+      const [value] = useStore(store);
+      const { deckChanged } = useDeck();
+      return (
+        <output data-testid="deck">{`${value} ${String(deckChanged)}`}</output>
+      );
+    }
+    render(
+      <Deck>
+        <Slide title="First">
+          <Reader />
+        </Slide>
+        <Slide title="Second">
+          <Writer />
+        </Slide>
+      </Deck>,
+    );
+    await idle();
+    expect(views).toContain('probe');
+    expect(screen.getByTestId('deck').textContent).toBe('initial false');
   });
 
   it('keeps the state of the slides to themselves', async () => {
