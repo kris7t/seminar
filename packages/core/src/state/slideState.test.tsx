@@ -13,7 +13,6 @@ import { Deck } from '../deck/Deck.tsx';
 import { useDeck } from '../deck/DeckContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
-import { StepStore } from '../steps/StepStore.ts';
 import { SlideStateScope } from './SlideStateScope.tsx';
 import { SlideStateStore } from './SlideStateStore.ts';
 import { useResetSlideState, useSlideState } from './useSlideState.ts';
@@ -66,7 +65,7 @@ describe('SlideStateStore', () => {
     expect(invalidated).not.toHaveBeenCalled();
   });
 
-  it('resets regular state while retaining transient values and step positions', () => {
+  it('resets regular state while retaining transient values', () => {
     const store = new SlideStateStore();
     store.getOrInit(0, 'mirror', () => 0, true);
     store.getOrInit(1, 'mirror', () => 0, true);
@@ -74,7 +73,6 @@ describe('SlideStateStore', () => {
     store.set(1, 'mirror', 2);
     store.set(0, 'answer', 3);
     store.set(1, 'answer', 4);
-    store.stepPosition(0).set({ path: [1], toEnd: false });
     expect(store.hasState(0)).toBe(true);
     store.reset(0);
     expect(store.get(0, 'answer')).toBeUndefined();
@@ -86,39 +84,29 @@ describe('SlideStateStore', () => {
     expect(store.get(1, 'mirror')).toBe(2);
     expect(store.hasState(1)).toBe(false);
     expect(store.getChanged().size).toBe(0);
-    expect(store.stepPosition(0).get().path).toEqual([1]);
   });
 
-  it('clears all slide state and restores every saved step target on a full reset', () => {
+  it('clears all slide state on a full reset', () => {
     const store = new SlideStateStore();
-    const position = store.stepPosition(0);
     store.getOrInit(0, 'answer', () => 0);
     store.getOrInit(0, 'mirror', () => 0, true);
     store.set(0, 'answer', 1);
     store.set(0, 'mirror', 2);
-    position.set({ path: [2], toEnd: false, group: 'later', texts: ['old'] });
-    store.stepPosition(1).set({ path: [3, 1], toEnd: true });
     const value = vi.fn();
     const mirror = vi.fn();
-    const steps = vi.fn();
     const invalidated = vi.fn();
     store.subscribe(0, 'answer', value);
     store.subscribe(0, 'mirror', mirror);
-    position.subscribe(steps);
     store.subscribeState(invalidated);
     store.resetAll();
     expect(store.get(0, 'answer')).toBeUndefined();
     expect(store.get(0, 'mirror')).toBeUndefined();
     expect(store.getChanged().size).toBe(0);
-    expect(store.stepPosition(0)).toBe(position);
-    expect(position.get()).toEqual({ path: [], toEnd: false, inRange: true });
-    expect(store.stepPosition(1).get()).toEqual(position.get());
     expect(value).toHaveBeenCalledOnce();
     expect(mirror).toHaveBeenCalledOnce();
-    expect(steps).toHaveBeenCalledOnce();
     expect(invalidated.mock.calls).toEqual([[[0]]]);
     store.resetAll();
-    expect(steps).toHaveBeenCalledOnce();
+    expect(value).toHaveBeenCalledOnce();
     expect(invalidated).toHaveBeenCalledOnce();
   });
 
@@ -158,12 +146,11 @@ describe('SlideStateStore', () => {
     expect(store.get(1, 'value')).toBe(1);
   });
 
-  it('reports changed slides without counting initialization, unchanged writes, or steps', () => {
+  it('reports changed slides without counting initialization or unchanged writes', () => {
     const store = new SlideStateStore();
     const listener = vi.fn();
     const unsubscribe = store.subscribeState(listener);
     store.getOrInit(0, 'a', () => 1);
-    store.stepPosition(0).set({ path: [1], toEnd: false });
     expect(listener).not.toHaveBeenCalled();
     store.set(0, 'a', 2);
     store.set(0, 'a', 2);
@@ -205,21 +192,17 @@ describe('SlideStateStore', () => {
     expect(listener).toHaveBeenCalledTimes(1);
     expect(store.get(0, 'a')).toBe(3);
     expect(store.get(1, 'a')).toBe(4);
-    expect(store.stepPosition(0)).toBe(store.stepPosition(0));
   });
 
-  it('tracks and resets changed state, but not the steps', () => {
+  it('tracks and resets changed state', () => {
     const store = new SlideStateStore();
     const changed = vi.fn();
     store.subscribeChanged(changed);
     store.getOrInit(0, 'a', () => 1);
-    store.stepPosition(0).set({ path: [1], toEnd: false });
-    // Only initialized, and the steps don't count.
+    // Only initialized.
     expect(store.hasState(0)).toBe(true);
     expect(store.hasState(1)).toBe(false);
     expect(store.getChanged().size).toBe(0);
-    store.stepPosition(1).set({ path: [1], toEnd: false });
-    expect(store.hasState(1)).toBe(false);
     store.set(0, 'a', 2);
     const snapshot = store.getChanged();
     expect([...snapshot]).toEqual([0]);
@@ -233,14 +216,12 @@ describe('SlideStateStore', () => {
     expect(store.getChanged().size).toBe(0);
     expect(store.hasState(0)).toBe(false);
     expect(store.getOrInit(0, 'a', () => 1)).toBe(1);
-    expect(store.stepPosition(0).get().path).toEqual([1]);
   });
 
   it('moves the state of slides to other indices', () => {
     const store = new SlideStateStore();
     store.set(0, 'a', 'first');
     store.set(1, 'a', 'second');
-    store.stepPosition(1).set({ path: [2], toEnd: false });
     const listener = vi.fn();
     store.subscribe(2, 'a', listener);
     // A slide was added before the second one, and the first was removed.
@@ -248,20 +229,8 @@ describe('SlideStateStore', () => {
     expect(store.has(0, 'a')).toBe(false);
     expect(store.has(1, 'a')).toBe(false);
     expect(store.get(2, 'a')).toBe('second');
-    expect(store.stepPosition(2).get().path).toEqual([2]);
     expect([...store.getChanged()]).toEqual([2]);
     expect(listener).toHaveBeenCalled();
-  });
-
-  it('shares the position in the steps between step stores', () => {
-    const position = new SlideStateStore().stepPosition(0);
-    const a = new StepStore({ position });
-    const b = new StepStore({ position });
-    const listener = vi.fn();
-    b.subscribe(listener);
-    a.reset([], true);
-    expect(listener).toHaveBeenCalled();
-    expect(b.getPath()).toEqual(a.getPath());
   });
 });
 

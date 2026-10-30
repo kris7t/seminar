@@ -11,6 +11,7 @@ import {
 
 import type { SlideTransitions } from '../transitions/SlideTransitions.ts';
 import type { SlideStateStore } from '../state/SlideStateStore.ts';
+import type { StepPositionStore } from '../steps/StepPositionStore.ts';
 import type { StepTarget } from '../steps/StepPosition.ts';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';
 import { compareStepPaths } from '../steps/stepRange.ts';
@@ -155,8 +156,8 @@ function readLocation(
  *
  * See {@link parseLocation} for the format of the location hash.
  *
- * The position in the steps of each slide is kept in `slideState`, so that
- * other views of the slide show the same step.
+ * The position in the steps of each slide is kept in `stepPositions`, so
+ * that other views of the slide show the same step.
  *
  * Going forward and back skips spare slides, unless the current slide is
  * spare (see {@link findNextSlide}).
@@ -168,12 +169,16 @@ function readLocation(
  * @param aliases Further ids that refer to slides, e.g., of divisions of the
  *   deck without slides of their own, by the index of the slide.
  * @param spares Whether each slide is spare.
+ * @param slideState The state of the slides, which moves along with them.
+ * @param stepPositions The positions in the steps of the slides, which also
+ *   move along with them.
  */
 export function useDeckNavigation(
   slideIds: readonly (string | undefined)[],
   aliases: ReadonlyMap<string, number>,
   spares: readonly boolean[],
   slideState: SlideStateStore,
+  stepPositions: StepPositionStore,
   fades?: DeckTransitions,
 ): DeckNavigation {
   const transitions = fades?.transitions;
@@ -187,15 +192,15 @@ export function useDeckNavigation(
     const location = readLocation(slideIds, aliases);
     const index = location?.slideIndex ?? findFirstSlide(spares);
     if (location !== undefined) {
-      slideState.stepPosition(index).set(targetOf(location));
+      stepPositions.stepPosition(index).set(targetOf(location));
     }
     return index;
   });
   const [requestedIndex, setRequestedIndex] = useState(initialIndex);
   const slideIndex = clamp(requestedIndex);
   const stepStore = useMemo(
-    () => new StepStore({ position: slideState.stepPosition(slideIndex) }),
-    [slideState, slideIndex],
+    () => new StepStore({ position: stepPositions.stepPosition(slideIndex) }),
+    [stepPositions, slideIndex],
   );
   // Steps may appear without the path changing, so these are followed on their
   // own.
@@ -249,7 +254,7 @@ export function useDeckNavigation(
           // The position of each slide is kept, so restoring needs nothing
           // else.
           if (steps !== 'restore') {
-            slideState
+            stepPositions
               .stepPosition(newIndex)
               .set({ path: [], toEnd: steps === 'end', inRange: true });
           }
@@ -257,7 +262,7 @@ export function useDeckNavigation(
         transition,
       );
     },
-    [clamp, slideState, changeSlide],
+    [clamp, stepPositions, changeSlide],
   );
   const nextSlideIndex = findNextSlide(spares, slideIndex);
   const previousSlideIndex = findPreviousSlide(spares, slideIndex);
@@ -344,7 +349,7 @@ export function useDeckNavigation(
     if (location !== undefined) {
       changeSlide(newIndex, () => {
         setRequestedIndex(newIndex);
-        slideState.stepPosition(newIndex).set(targetOf(location));
+        stepPositions.stepPosition(newIndex).set(targetOf(location));
       });
     }
     // If we stay on the same slide, the steps of the slide are already known,
@@ -378,6 +383,7 @@ export function useDeckNavigation(
         return;
       }
       slideState.move(indices);
+      stepPositions.move(indices);
       const newIndex = indices[slideIndex];
       if (newIndex !== undefined && newIndex !== slideIndex) {
         // Along with the state of the slides, which can't move while

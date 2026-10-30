@@ -1,3 +1,4 @@
+import { Listeners } from '../state/Listeners.ts';
 import type { StepPath } from './StepStore.ts';
 
 /** The requested position in the steps of a slide. */
@@ -56,20 +57,13 @@ export function createStepPosition(
   initial: StepTarget = INITIAL_STEP_TARGET,
 ): StepPosition {
   let target = initial;
-  const listeners = new Set<() => void>();
+  const listeners = new Listeners();
   return {
     get: () => target,
     set(newTarget) {
       target = newTarget;
-      for (const listener of listeners) {
-        listener();
-      }
+      listeners.notify();
     },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    subscribe: listeners.subscribe,
   };
 }

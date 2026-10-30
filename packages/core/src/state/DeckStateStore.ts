@@ -1,3 +1,5 @@
+import { KeyedListeners, Listeners } from './Listeners.ts';
+
 /**
  * State of a deck that all of its slides share, by key, e.g., answers that
  * the audience gave on one slide and that later slides show.
@@ -7,23 +9,14 @@
  */
 export class DeckStateStore {
   readonly #values = new Map<string, unknown>();
-  readonly #listeners = new Map<string, Set<() => void>>();
-  readonly #changeListeners = new Set<() => void>();
-  readonly #stateListeners = new Set<(keys: readonly string[]) => void>();
+  readonly #listeners = new KeyedListeners<string>();
+  readonly #changeListeners = new Listeners();
+  readonly #stateListeners = new Listeners<[keys: readonly string[]]>();
 
   /** Listens to changed keys, including resets, even when no view is mounted. */
-  subscribeState = (
+  readonly subscribeState: (
     listener: (keys: readonly string[]) => void,
-  ): (() => void) => {
-    this.#stateListeners.add(listener);
-    return () => {
-      this.#stateListeners.delete(listener);
-    };
-  };
-
-  #notifyState(keys: readonly string[]): void {
-    for (const listener of this.#stateListeners) listener(keys);
-  }
+  ) => () => void = this.#stateListeners.subscribe;
 
   get(key: string): unknown {
     return this.#values.get(key);
@@ -39,40 +32,23 @@ export class DeckStateStore {
     } else {
       this.#values.set(key, value);
     }
-    this.#notifyState([key]);
-    for (const listener of this.#listeners.get(key) ?? []) {
-      listener();
-    }
+    this.#stateListeners.notify([key]);
+    this.#listeners.notify(key);
     if (wasChanged !== this.#values.size > 0) {
-      this.#notifyChanged();
+      this.#changeListeners.notify();
     }
   }
 
   subscribe(key: string, listener: () => void): () => void {
-    let listeners = this.#listeners.get(key);
-    if (listeners === undefined) {
-      listeners = new Set();
-      this.#listeners.set(key, listeners);
-    }
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) {
-        this.#listeners.delete(key);
-      }
-    };
+    return this.#listeners.subscribe(key, listener);
   }
 
   /** Whether any value is set. */
   getChanged = (): boolean => this.#values.size > 0;
 
   /** Listens to changes of {@link getChanged}. */
-  subscribeChanged = (listener: () => void): (() => void) => {
-    this.#changeListeners.add(listener);
-    return () => {
-      this.#changeListeners.delete(listener);
-    };
-  };
+  readonly subscribeChanged: (listener: () => void) => () => void =
+    this.#changeListeners.subscribe;
 
   /** Removes every value. */
   reset(): void {
@@ -81,18 +57,8 @@ export class DeckStateStore {
       return;
     }
     this.#values.clear();
-    this.#notifyState(keys);
-    for (const key of keys) {
-      for (const listener of this.#listeners.get(key) ?? []) {
-        listener();
-      }
-    }
-    this.#notifyChanged();
-  }
-
-  #notifyChanged(): void {
-    for (const listener of this.#changeListeners) {
-      listener();
-    }
+    this.#stateListeners.notify(keys);
+    for (const key of keys) this.#listeners.notify(key);
+    this.#changeListeners.notify();
   }
 }

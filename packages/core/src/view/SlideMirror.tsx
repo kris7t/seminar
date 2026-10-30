@@ -1,6 +1,6 @@
 import { use, useMemo, type JSX, type ReactNode } from 'react';
 
-import { SlideStateContext } from '../state/SlideStateContext.ts';
+import { StepPositionStoreContext } from '../steps/StepPositionStoreContext.ts';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import type { SlideView, SlideViewKind } from './SlideViewContext.ts';
@@ -25,10 +25,10 @@ export function SlideMirror({
     () => ({ index, kind, interactive: false }),
     [index, kind],
   );
-  const slideState = use(SlideStateContext);
+  const stepPositions = use(StepPositionStoreContext);
   const stepStore = useMemo(
-    () => new StepStore({ position: slideState.stepPosition(index) }),
-    [slideState, index],
+    () => new StepStore({ position: stepPositions.stepPosition(index) }),
+    [stepPositions, index],
   );
   return (
     <StepStoreContext value={stepStore}>

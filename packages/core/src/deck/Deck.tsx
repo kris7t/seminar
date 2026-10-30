@@ -111,6 +111,8 @@ import {
 import { DeckStateStore } from '../state/DeckStateStore.ts';
 import { SlideStateStore } from '../state/SlideStateStore.ts';
 import { SharedWorkProvider } from '../shared/SharedWorkProvider.tsx';
+import { StepPositionStore } from '../steps/StepPositionStore.ts';
+import { StepPositionStoreContext } from '../steps/StepPositionStoreContext.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { resolveToc, type TocEntry } from './tableOfContents.ts';
 import type { UiLocale } from '../i18n/messages.ts';
@@ -324,6 +326,7 @@ function InteractiveDeck({
   const spares = useSpares(slides.map(isSpare));
   const [slideState] = useState(() => new SlideStateStore());
   const [deckState] = useState(() => new DeckStateStore());
+  const [stepPositions] = useState(() => new StepPositionStore());
   useEffect(
     () => thumbnails.observe(deckState, slideState),
     [thumbnails, deckState, slideState],
@@ -357,7 +360,7 @@ function InteractiveDeck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slideIds, aliases, spares, slideState, {
+  } = useDeckNavigation(slideIds, aliases, spares, slideState, stepPositions, {
     transitions,
     stepFade,
     slideFade,
@@ -449,6 +452,7 @@ function InteractiveDeck({
     deckState.reset();
     slideState.resetAll();
     transientState.resetAll();
+    stepPositions.resetAll();
     for (let index = 0; index < slideCount; index += 1)
       thumbnails.invalidate(index);
     setShowOverview(false);
@@ -458,6 +462,7 @@ function InteractiveDeck({
     deckState,
     slideState,
     transientState,
+    stepPositions,
     slideCount,
     thumbnails,
     setShowOverview,
@@ -1330,11 +1335,13 @@ function InteractiveDeck({
       <SlideStateUsageContext value={thumbnails.recordSlideStateUse}>
         <SharedWorkProvider>
           <TransientSlideStateContext value={transientState}>
-            <PointerMirroringContext
-              value={presenting && pointerMode === 'mirror'}
-            >
-              {content}
-            </PointerMirroringContext>
+            <StepPositionStoreContext value={stepPositions}>
+              <PointerMirroringContext
+                value={presenting && pointerMode === 'mirror'}
+              >
+                {content}
+              </PointerMirroringContext>
+            </StepPositionStoreContext>
           </TransientSlideStateContext>
         </SharedWorkProvider>
       </SlideStateUsageContext>

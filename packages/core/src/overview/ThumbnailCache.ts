@@ -1,4 +1,5 @@
 import type { DeckStateStore } from '../state/DeckStateStore.ts';
+import { KeyedListeners } from '../state/Listeners.ts';
 import type { SlideStateStore } from '../state/SlideStateStore.ts';
 import { captureThumbnail } from './captureThumbnail.ts';
 import { slideBackground } from '../view/slideBackground.ts';
@@ -18,7 +19,7 @@ export class ThumbnailCache {
   readonly #deckStateUsers = new Map<string, Set<number>>();
   readonly #slideStateUsers = new Map<number, Set<number>>();
   readonly #invalidations = new Map<number, symbol>();
-  readonly #invalidationListeners = new Map<number, Set<() => void>>();
+  readonly #invalidationListeners = new KeyedListeners<number>();
   #queueVersion = 0;
   readonly #shown = new Map<number, number>();
   readonly #attempted = new Set<number>();
@@ -118,16 +119,7 @@ export class ThumbnailCache {
 
   /** Lets mounted slides refresh from their actual appearance after invalidation. */
   subscribeInvalidation(index: number, listener: () => void): () => void {
-    let listeners = this.#invalidationListeners.get(index);
-    if (listeners === undefined) {
-      listeners = new Set();
-      this.#invalidationListeners.set(index, listeners);
-    }
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) this.#invalidationListeners.delete(index);
-    };
+    return this.#invalidationListeners.subscribe(index, listener);
   }
 
   /** Whether the requested path has a successful capture since invalidation. */
@@ -164,8 +156,7 @@ export class ThumbnailCache {
     this.#versions.set(index, (this.#versions.get(index) ?? 0) + 1);
     this.#invalidations.set(index, Symbol());
     this.#queueVersion += 1;
-    for (const listener of this.#invalidationListeners.get(index) ?? [])
-      listener();
+    this.#invalidationListeners.notify(index);
     this.#notify();
   }
 

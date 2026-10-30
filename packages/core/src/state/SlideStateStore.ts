@@ -1,11 +1,4 @@
-import {
-  INITIAL_STEP_TARGET,
-  type StepPosition,
-  type StepTarget,
-} from '../steps/StepPosition.ts';
-
-/** Key of the position in the steps of a slide. */
-const STEP_KEY = 'seminar:steps';
+import { KeyedListeners, Listeners } from './Listeners.ts';
 
 interface StateValue {
   value: unknown;
@@ -23,25 +16,18 @@ interface StateValue {
  */
 export class SlideStateStore {
   readonly #values = new Map<string, StateValue>();
-  readonly #listeners = new Map<string, Set<() => void>>();
-  readonly #stepPositions = new Map<number, StepPosition>();
-  readonly #changeListeners = new Set<() => void>();
-  readonly #stateListeners = new Set<(indices: readonly number[]) => void>();
+  readonly #listeners = new KeyedListeners<string>();
+  readonly #changeListeners = new Listeners();
+  readonly #stateListeners = new Listeners<[indices: readonly number[]]>();
   #changed: ReadonlySet<number> = new Set();
 
-  /** Listens to changed slides, excluding transient values, steps, and initialization. */
-  subscribeState = (
+  /** Listens to changed slides, excluding transient values and initialization. */
+  readonly subscribeState: (
     listener: (indices: readonly number[]) => void,
-  ): (() => void) => {
-    this.#stateListeners.add(listener);
-    return () => {
-      this.#stateListeners.delete(listener);
-    };
-  };
+  ) => () => void = this.#stateListeners.subscribe;
 
   #notifyState(indices: readonly number[]): void {
-    if (indices.length === 0) return;
-    for (const listener of this.#stateListeners) listener(indices);
+    if (indices.length > 0) this.#stateListeners.notify(indices);
   }
 
   #id(slideIndex: number, key: string): string {
@@ -83,57 +69,37 @@ export class SlideStateStore {
       return;
     }
     this.#values.set(id, { value, transient: previous?.transient ?? false });
-    if (key !== STEP_KEY && previous?.transient !== true)
+    if (previous?.transient !== true) {
       this.#notifyState([slideIndex]);
-    if (
-      key !== STEP_KEY &&
-      previous?.transient !== true &&
-      !this.#changed.has(slideIndex)
-    ) {
-      this.#setChanged(new Set([...this.#changed, slideIndex]));
+      if (!this.#changed.has(slideIndex))
+        this.#setChanged(new Set([...this.#changed, slideIndex]));
     }
-    this.#notify(id);
-  }
-
-  #notify(id: string): void {
-    for (const listener of this.#listeners.get(id) ?? []) {
-      listener();
-    }
+    this.#listeners.notify(id);
   }
 
   #setChanged(changed: ReadonlySet<number>): void {
     this.#changed = changed;
-    for (const listener of this.#changeListeners) {
-      listener();
-    }
+    this.#changeListeners.notify();
   }
 
-  /**
-   * Whether the slide has non-transient state other than its position in its
-   * steps, e.g., from `useSlideState`.
-   */
+  /** Whether the slide has non-transient state, e.g., from `useSlideState`. */
   hasState(slideIndex: number): boolean {
     return this.#keysOf(slideIndex).length > 0;
   }
 
   /**
-   * The slides whose non-transient state other than their position in their
-   * steps was set since they were reset, rather than only initialized. The
+   * The slides whose non-transient state was set since they were reset, rather than only initialized. The
    * result is the same object until it changes.
    */
   getChanged = (): ReadonlySet<number> => this.#changed;
 
   /** Listens to changes of {@link getChanged}. */
-  subscribeChanged = (listener: () => void): (() => void) => {
-    this.#changeListeners.add(listener);
-    return () => {
-      this.#changeListeners.delete(listener);
-    };
-  };
+  readonly subscribeChanged: (listener: () => void) => () => void =
+    this.#changeListeners.subscribe;
 
   /**
-   * Removes the non-transient state of the slide other than its position in
-   * its steps, so that its views initialize it again.
+   * Removes the non-transient state of the slide, so that its views initialize
+   * it again.
    */
   reset(slideIndex: number): void {
     const ids = this.#keysOf(slideIndex);
@@ -147,29 +113,22 @@ export class SlideStateStore {
       );
     }
     for (const id of ids) {
-      this.#notify(id);
+      this.#listeners.notify(id);
     }
   }
 
-  /**
-   * Removes every value, including transient state and saved step positions.
-   * Each slide and recap starts at the beginning of its own step range.
-   */
+  /** Removes every value, including transient state. */
   resetAll(): void {
     const ids = [...this.#values.keys()];
     const slides = new Set(
       ids
-        .filter(
-          (id) =>
-            !id.endsWith(`\u0000${STEP_KEY}`) &&
-            this.#values.get(id)?.transient !== true,
-        )
+        .filter((id) => this.#values.get(id)?.transient !== true)
         .map((id) => Number(id.slice(0, id.indexOf('\u0000')))),
     );
     this.#values.clear();
     this.#notifyState([...slides]);
     if (this.#changed.size > 0) this.#setChanged(new Set());
-    for (const id of ids) this.#notify(id);
+    for (const id of ids) this.#listeners.notify(id);
   }
 
   /**
@@ -192,7 +151,6 @@ export class SlideStateStore {
     const changed = new Set<number>();
     for (const id of ids) {
       if (
-        !id.endsWith(`\u0000${STEP_KEY}`) &&
         (this.#values.get(id)?.transient === false ||
           values.get(id)?.transient === false) &&
         (this.#values.has(id) !== values.has(id) ||
@@ -214,55 +172,18 @@ export class SlideStateStore {
       ),
     );
     for (const id of ids) {
-      this.#notify(id);
+      this.#listeners.notify(id);
     }
   }
 
   #keysOf(slideIndex: number): string[] {
     const prefix = this.#id(slideIndex, '');
-    const steps = this.#id(slideIndex, STEP_KEY);
     return [...this.#values.keys()].filter(
-      (id) =>
-        id.startsWith(prefix) &&
-        id !== steps &&
-        this.#values.get(id)?.transient !== true,
+      (id) => id.startsWith(prefix) && this.#values.get(id)?.transient !== true,
     );
   }
 
   subscribe(slideIndex: number, key: string, listener: () => void): () => void {
-    const id = this.#id(slideIndex, key);
-    let listeners = this.#listeners.get(id);
-    if (listeners === undefined) {
-      listeners = new Set();
-      this.#listeners.set(id, listeners);
-    }
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) {
-        this.#listeners.delete(id);
-      }
-    };
-  }
-
-  /**
-   * Returns the position in the steps of a slide, which all of its views
-   * share. The result is the same object for the same slide.
-   */
-  stepPosition(slideIndex: number): StepPosition {
-    let position = this.#stepPositions.get(slideIndex);
-    if (position === undefined) {
-      position = {
-        get: () =>
-          (this.get(slideIndex, STEP_KEY) as StepTarget | undefined) ??
-          INITIAL_STEP_TARGET,
-        set: (target) => {
-          this.set(slideIndex, STEP_KEY, target);
-        },
-        subscribe: (listener) => this.subscribe(slideIndex, STEP_KEY, listener),
-      };
-      this.#stepPositions.set(slideIndex, position);
-    }
-    return position;
+    return this.#listeners.subscribe(this.#id(slideIndex, key), listener);
   }
 }

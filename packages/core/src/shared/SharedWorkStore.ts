@@ -5,6 +5,7 @@ import type {
   ResourceDependencies,
   ResourceValues,
 } from './definitions.ts';
+import { StructuralKeys } from './StructuralKeys.ts';
 
 const PENDING: LoadResult<never> = {
   status: 'pending',
@@ -62,9 +63,7 @@ export class SharedWorkStore {
   readonly #resources = new Map<ResourceDefinition<unknown>, ResourceEntry>();
   readonly #caches = new Map<object, CacheState>();
   readonly #slides = new Map<number, number>();
-  readonly #identities = new WeakMap<object, number>();
-  readonly #symbols = new Map<symbol, number>();
-  #nextIdentity = 0;
+  readonly #keys = new StructuralKeys();
   #clock = 0;
   #owners = 0;
   #disposed = false;
@@ -294,66 +293,9 @@ export class SharedWorkStore {
     definition: { key?(args: Args): unknown },
     args: Args,
   ): string {
-    return this.#key(
+    return this.#keys.of(
       definition.key === undefined ? args : definition.key(args),
-      new Set(),
     );
-  }
-
-  #identity(value: object): number {
-    let identity = this.#identities.get(value);
-    if (identity === undefined) {
-      identity = ++this.#nextIdentity;
-      this.#identities.set(value, identity);
-    }
-    return identity;
-  }
-
-  #key(value: unknown, ancestors: Set<object>): string {
-    if (value === null) return 'null';
-    switch (typeof value) {
-      case 'undefined':
-        return 'undefined';
-      case 'boolean':
-        return value ? 'true' : 'false';
-      case 'string':
-        return JSON.stringify(value);
-      case 'number':
-        return `number:${Object.is(value, -0) ? '-0' : String(value)}`;
-      case 'bigint':
-        return `bigint:${String(value)}`;
-      case 'symbol': {
-        let identity = this.#symbols.get(value);
-        if (identity === undefined) {
-          identity = ++this.#nextIdentity;
-          this.#symbols.set(value, identity);
-        }
-        return `symbol:${String(identity)}`;
-      }
-      case 'function':
-        return `identity:${String(this.#identity(value))}`;
-      case 'object': {
-        const array = Array.isArray(value);
-        const prototype: unknown = Object.getPrototypeOf(value);
-        if (!array && prototype !== Object.prototype && prototype !== null)
-          return `identity:${String(this.#identity(value))}`;
-        if (ancestors.has(value))
-          throw new TypeError('Cyclic cache arguments need a custom key');
-        ancestors.add(value);
-        const result = array
-          ? `array:${String(value.length)}[${value.map((item: unknown) => this.#key(item, ancestors)).join(',')}]`
-          : `{${Object.keys(value)
-              .sort()
-              .map(
-                (key) =>
-                  `${JSON.stringify(key)}:${this.#key((value as Record<string, unknown>)[key], ancestors)}`,
-              )
-              .join(',')}}`;
-        ancestors.delete(value);
-        return result;
-      }
-    }
-    throw new TypeError('Unsupported cache key');
   }
 
   /** Releases resources after all computations borrowing them have settled. */
@@ -369,7 +311,7 @@ export class SharedWorkStore {
     this.#resources.clear();
     this.#caches.clear();
     this.#slides.clear();
-    this.#symbols.clear();
+    this.#keys.clear();
     const results = await Promise.allSettled(disposing);
     const errors = results.flatMap((result) =>
       result.status === 'rejected' ? [result.reason as unknown] : [],

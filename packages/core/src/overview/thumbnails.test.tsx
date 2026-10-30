@@ -1181,7 +1181,6 @@ describe('ThumbnailCache', () => {
     expect(listeners[2]).not.toHaveBeenCalled();
     slides.getOrInit(0, 'value', () => 0);
     slides.getOrInit(0, 'mirror', () => 0, true);
-    slides.stepPosition(0).set({ path: [1], toEnd: false });
     slides.set(0, 'mirror', 1);
     expect(listeners[0]).toHaveBeenCalledTimes(3);
     slides.set(0, 'value', 1);
