@@ -28,10 +28,24 @@ export interface SeminarHost {
    */
   readonly present?: boolean | undefined;
   /**
+   * Lets the deck start the presentation by itself (see `present`), which
+   * browsers otherwise only allow in response to the presenter, e.g., after
+   * the page reloaded while the presentation was in full screen, as the dev
+   * server of Vite may do when it finds new dependencies. Resolves once it
+   * may.
+   */
+  readonly activate?: (() => Promise<void>) | undefined;
+  /**
    * Whether the deck is a preview, e.g., served by the dev server of Vite,
    * which the title of its window says.
    */
   readonly preview?: boolean | undefined;
+  /**
+   * Called when the presenter stops the presentation, e.g., when the slides
+   * leave full screen, or the presenter view closes, or cancels choosing the
+   * screen to start it on, so that the application can quit afterwards.
+   */
+  readonly presentationEnded?: (() => void) | undefined;
   /**
    * Returns the area of the screen that the window of the deck is on, if the
    * application knows it better than the browser, e.g., on Wayland, where

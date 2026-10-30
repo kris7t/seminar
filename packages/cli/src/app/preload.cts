@@ -20,6 +20,10 @@ const host: SeminarHost = {
       }),
   present: options.present,
   preview: options.preview,
+  activate: () => ipcRenderer.invoke('seminar:activate') as Promise<void>,
+  presentationEnded: () => {
+    ipcRenderer.send('seminar:presentation-ended');
+  },
   ...(options.placesWindows === true
     ? {
         currentScreen: () =>

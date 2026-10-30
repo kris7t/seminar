@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getSeminarHost } from '../host/SeminarHost.ts';
 import {
@@ -10,6 +10,7 @@ import {
   type ScreenDetailed,
   type ScreenDetails,
 } from './screens.ts';
+import { useFullscreen } from './useFullscreen.ts';
 import type { PresenterView } from './usePresenterView.ts';
 
 export interface Presentation {
@@ -103,6 +104,18 @@ export function usePresentation(presenterView: PresenterView): Presentation {
   }, [details]);
 
   const { audience, open, close } = presenterView;
+  // Tell the host when the presentation ends, in this window or in the
+  // audience window.
+  const fullscreen = useFullscreen();
+  const presenting = audience !== undefined || fullscreen;
+  const wasPresentingRef = useRef(false);
+  useEffect(() => {
+    if (wasPresentingRef.current && !presenting) {
+      getSeminarHost()?.presentationEnded?.();
+    }
+    wasPresentingRef.current = presenting;
+  }, [presenting]);
+
   const toggle = useCallback(() => {
     if (audience !== undefined) {
       close();
@@ -165,6 +178,7 @@ export function usePresentation(presenterView: PresenterView): Presentation {
   const cancel = useCallback(() => {
     setScreens(undefined);
     setDetails(undefined);
+    getSeminarHost()?.presentationEnded?.();
   }, []);
 
   return { toggle, screens, choose, cancel };

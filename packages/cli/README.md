@@ -29,7 +29,9 @@ presentation ends, or when it is stopped, e.g., with Ctrl+C. Without a path, it 
 the root of the Vite project, e.g., `decks/`. If there are several decks, it
 asks which one to present. The deck opens in
 a window, and asks right away which screen should show the slides, as if you
-pressed P. Unlike a browser, it doesn't ask for permissions first.
+pressed P. Unlike a browser, it doesn't ask for permissions first. Once you
+stop presenting, or cancel choosing the screen, it quits, unless you give it
+`--no-quit-at-end`.
 
 On Wayland, browsers can't choose the screen of a window, so
 `seminar present` asks the compositor instead. This works with:
@@ -57,6 +59,11 @@ with the dev server of Vite instead of building it, and opens it in the same
 app, which updates the deck as you edit it. The title of its window says that
 it's a preview, and it doesn't start presenting until you press P, which then
 works like in `seminar present`, also on Wayland.
+
+With `--present`, it starts presenting right away, and quits once you stop,
+like `seminar present`. With `--no-quit-at-end`, it stays open instead.
+`--quit-at-end` makes it start presenting right away and quit at the end,
+too.
 
 ## Saving PDFs
 

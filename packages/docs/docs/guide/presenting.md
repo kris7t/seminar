@@ -83,7 +83,7 @@ audience window to the screen you want to use.
 To present without the permission prompts of the browser, run
 `npm run present` in a project created with `npm create seminar`, or
 `npx seminar present`, which builds the presentation, and asks which one if
-there are several. It also shows the
+there are several. It quits once you stop presenting. It also shows the
 slides on the screen you choose on Wayland, where browsers can't, if the
 compositor supports it, like Sway, COSMIC, KDE Plasma, or GNOME with the
 Window Calls extension. See the

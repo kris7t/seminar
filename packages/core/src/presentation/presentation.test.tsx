@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { Button } from '@mui/material';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
@@ -206,6 +207,88 @@ describe('starting the presentation', () => {
     Object.assign(window, { seminarHost: host });
     renderDeck();
     expect(requestFullscreen).toHaveBeenCalledWith({ navigationUI: 'hide' });
+  });
+
+  it('lets the host of the deck allow starting by itself first', async () => {
+    let activated: () => void = () => undefined;
+    const activate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          activated = resolve;
+        }),
+    );
+    const host: SeminarHost = { present: true, activate };
+    Object.assign(window, { seminarHost: host });
+    renderDeck();
+    expect(activate).toHaveBeenCalledOnce();
+    expect(requestFullscreen).not.toHaveBeenCalled();
+    await act(async () => {
+      activated();
+      await Promise.resolve();
+    });
+    expect(requestFullscreen).toHaveBeenCalledWith({ navigationUI: 'hide' });
+  });
+
+  it('starts only once if the host says so in strict mode', () => {
+    const host: SeminarHost = { present: true };
+    Object.assign(window, { seminarHost: host });
+    // Like the pages of decks, which run effects twice in development.
+    render(
+      <StrictMode>
+        <Deck>
+          <Slide title="First" />
+        </Deck>
+      </StrictMode>,
+    );
+    expect(requestFullscreen).toHaveBeenCalledOnce();
+  });
+
+  it('tells the host when the presentation leaves full screen', () => {
+    const presentationEnded = vi.fn();
+    const host: SeminarHost = { presentationEnded };
+    Object.assign(window, { seminarHost: host });
+    stub('fullscreenElement', document, document.documentElement);
+    renderDeck();
+    expect(presentationEnded).not.toHaveBeenCalled();
+    stub('fullscreenElement', document, null);
+    act(() => {
+      document.dispatchEvent(new Event('fullscreenchange'));
+    });
+    expect(presentationEnded).toHaveBeenCalledOnce();
+  });
+
+  it('tells the host when the audience window closes', async () => {
+    stub('isExtended', window.screen, true);
+    stub('getScreenDetails', window, () =>
+      Promise.resolve(screenDetails([laptop, projector], laptop)),
+    );
+    const presentationEnded = vi.fn();
+    const host: SeminarHost = { presentationEnded };
+    Object.assign(window, { seminarHost: host });
+    const { remove } = fakeAudienceWindow();
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    await user.click(await screen.findByRole('button', { name: 'OK' }));
+    expect(presentationEnded).not.toHaveBeenCalled();
+    await user.keyboard('p');
+    expect(presentationEnded).toHaveBeenCalledOnce();
+    remove();
+  });
+
+  it('tells the host when choosing the screen is cancelled', async () => {
+    stub('isExtended', window.screen, true);
+    stub('getScreenDetails', window, () =>
+      Promise.resolve(screenDetails([laptop, projector], laptop)),
+    );
+    const presentationEnded = vi.fn();
+    const host: SeminarHost = { presentationEnded };
+    Object.assign(window, { seminarHost: host });
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+    expect(presentationEnded).toHaveBeenCalledOnce();
   });
 
   it('says in the title if the host shows a preview of the deck', () => {

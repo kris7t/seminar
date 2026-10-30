@@ -55,11 +55,19 @@ present builds a .deck.mdx file with Vite, or the deck of the Vite project
 if no path is given, and asks which one if there are several. Give it an
 .html page or a directory of built decks to present them without building.
 It starts the presentation right away, letting you choose the screen of the
-audience.
+audience, and quits once you stop it.
 
 preview chooses the deck like present, but serves it with the dev server
 of Vite instead of building it, and doesn't start the presentation until
 you press P.
+
+Options of present and preview:
+  --present                     Start the presentation right away when
+                                previewing, and quit once you stop it
+  --no-quit-at-end              Stay open once you stop the presentation,
+                                or cancel choosing its screen
+  --quit-at-end                 Quit then, also when previewing, which
+                                starts the presentation right away
 
 Options of pdf:
   --layout <slides|notes|grid>  Slides, slides with notes, or several slides
@@ -393,11 +401,20 @@ export async function run(
       headers: { type: 'boolean' },
       paper: { type: 'string' },
       'out-dir': { type: 'string' },
+      present: { type: 'boolean' },
+      'quit-at-end': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
       version: { type: 'boolean', short: 'v' },
     },
   });
   const [command, ...paths] = positionals;
+  // Whether the presentation starts right away, and the app quits at its
+  // end, which is what starting it right away is for, unless asked not to.
+  const presentNow =
+    command !== 'preview' ||
+    values.present === true ||
+    values['quit-at-end'] === true;
+  const quitAtEnd = values['quit-at-end'] ?? presentNow;
   if (values.help === true || command === 'help') {
     output(HELP);
     return;
@@ -472,7 +489,11 @@ export async function run(
           throw new Error(`${input} has no decks.`);
         }
         await interruptible((signal) =>
-          present({ root: deck.root, page: deck.page }, output, signal),
+          present(
+            { root: deck.root, page: deck.page, quitAtEnd },
+            output,
+            signal,
+          ),
         );
         return;
       }
@@ -498,7 +519,11 @@ export async function run(
           if (built === undefined) {
             throw new Error(`Building ${label(cwd, deck)} made no deck.`);
           }
-          await present({ root: built.root, page: built.page }, output, signal);
+          await present(
+            { root: built.root, page: built.page, quitAtEnd },
+            output,
+            signal,
+          );
         } finally {
           await rm(outDir, { recursive: true, force: true });
         }
@@ -521,7 +546,11 @@ export async function run(
         const server = await serve(job, signal);
         try {
           output(`Previewing ${server.url}`);
-          await present({ url: server.url }, output, signal);
+          await present(
+            { url: server.url, present: presentNow, quitAtEnd },
+            output,
+            signal,
+          );
         } finally {
           await server.close();
         }

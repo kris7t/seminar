@@ -275,11 +275,26 @@ function present(compositor: Compositor | undefined): void {
     event.returnValue = (
       event.sender === webContents
         ? {
-            ...('url' in job ? { preview: true } : { present: true }),
+            ...('url' in job
+              ? { preview: true, present: job.present }
+              : { present: true }),
             placesWindows: compositor !== undefined,
           }
         : {}
     ) satisfies HostOptions;
+  });
+  // Code run as a gesture of the user lets the deck enter full screen by
+  // itself, which Chromium doesn't allow after the page reloaded in full
+  // screen otherwise.
+  ipcMain.handle('seminar:activate', async (event) => {
+    if (event.sender === webContents) {
+      await webContents.executeJavaScript('undefined', true);
+    }
+  });
+  ipcMain.on('seminar:presentation-ended', (event) => {
+    if (event.sender === webContents && job.quitAtEnd) {
+      app.quit();
+    }
   });
   ipcMain.handle(
     'seminar:current-screen',

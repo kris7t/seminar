@@ -43,15 +43,21 @@ export interface BuiltDeck {
   root: string;
   /** Path of the page of the deck in `root`, with `/` separators. */
   page: string;
+  /** Whether the app quits once the presentation ends. */
+  quitAtEnd: boolean;
 }
 
 /**
  * A deck served by the dev server of Vite to preview, which isn't presented
- * until the presenter starts the presentation.
+ * until the presenter starts the presentation, unless it's to `present`
+ * right away.
  */
 export interface PreviewedDeck {
   /** URL of the page of the deck. */
   url: string;
+  present: boolean;
+  /** Whether the app quits once the presentation ends. */
+  quitAtEnd: boolean;
 }
 
 /** A deck to show in the app of `seminar present` or `seminar preview`. */

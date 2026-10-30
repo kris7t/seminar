@@ -260,7 +260,22 @@ describe('seminar present', () => {
     await page('dist/index.html');
     await page('dist/other.html', '<!doctype html><p>Not a deck</p>');
     expect(await present(['present', 'dist'])).toEqual({
-      job: { root: path.join(directory, 'dist'), page: 'index.html' },
+      job: {
+        root: path.join(directory, 'dist'),
+        page: 'index.html',
+        quitAtEnd: true,
+      },
+    });
+  });
+
+  it('stays open at the end of the presentation if asked to', async () => {
+    await page('dist/index.html');
+    expect(await present(['present', 'dist', '--no-quit-at-end'])).toEqual({
+      job: {
+        root: path.join(directory, 'dist'),
+        page: 'index.html',
+        quitAtEnd: false,
+      },
     });
   });
 
@@ -268,7 +283,11 @@ describe('seminar present', () => {
     await page('build/talk.html');
     await page('build/other.html');
     expect(await present(['present', 'build/talk.html'])).toEqual({
-      job: { root: path.join(directory, 'build'), page: 'talk.html' },
+      job: {
+        root: path.join(directory, 'build'),
+        page: 'talk.html',
+        quitAtEnd: true,
+      },
     });
   });
 
@@ -276,7 +295,11 @@ describe('seminar present', () => {
     await page('dist/index.html');
     await page('dist/talks/second.html');
     expect(await present(['present', 'dist'], 1)).toEqual({
-      job: { root: path.join(directory, 'dist'), page: 'talks/second.html' },
+      job: {
+        root: path.join(directory, 'dist'),
+        page: 'talks/second.html',
+        quitAtEnd: true,
+      },
       asked: [
         path.join('dist', 'index.html'),
         path.join('dist', 'talks/second.html'),
@@ -311,7 +334,11 @@ describe('seminar present', () => {
         'node_modules/.cache/seminar/present/decks/talk',
       ),
     });
-    expect(job).toEqual({ root: built?.outDir, page: 'talk.html' });
+    expect(job).toEqual({
+      root: built?.outDir,
+      page: 'talk.html',
+      quitAtEnd: true,
+    });
   });
 
   it('finds the page of the deck among others built with it', async () => {
@@ -484,8 +511,39 @@ describe('seminar preview', () => {
         project: directory,
         deck: path.join(directory, 'decks/talk.deck.mdx'),
       },
-      job: { url: 'http://127.0.0.1:1234/talk.html' },
+      job: {
+        url: 'http://127.0.0.1:1234/talk.html',
+        present: false,
+        quitAtEnd: false,
+      },
       closed: true,
+    });
+  });
+
+  it('starts the presentation right away if asked to', async () => {
+    await project('decks');
+    await page('decks/talk.deck.mdx', '# Talk');
+    expect((await preview(['preview', '--present'])).job).toEqual({
+      url: 'http://127.0.0.1:1234/talk.html',
+      present: true,
+      quitAtEnd: true,
+    });
+    expect(
+      (await preview(['preview', '--present', '--no-quit-at-end'])).job,
+    ).toEqual({
+      url: 'http://127.0.0.1:1234/talk.html',
+      present: true,
+      quitAtEnd: false,
+    });
+  });
+
+  it('starts the presentation to quit at its end', async () => {
+    await project('decks');
+    await page('decks/talk.deck.mdx', '# Talk');
+    expect((await preview(['preview', '--quit-at-end'])).job).toEqual({
+      url: 'http://127.0.0.1:1234/talk.html',
+      present: true,
+      quitAtEnd: true,
     });
   });
 

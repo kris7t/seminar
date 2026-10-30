@@ -14,6 +14,7 @@ import {
   useEffect,
   useEffectEvent,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type JSX,
@@ -727,11 +728,22 @@ function InteractiveDeck({
     };
   }, [printReady, closePrint]);
   const presentation = usePresentation(presenterView);
-  // An application that shows the deck may start the presentation right away.
+  // An application that shows the deck may start the presentation right away,
+  // but only once, even if effects run twice, as in strict mode, where a
+  // second start would stop the presentation, or fail to enter full screen
+  // again.
   const startPresentation = useEffectEvent(presentation.toggle);
+  const startedRef = useRef(false);
   useEffect(() => {
-    if (host?.present === true) {
-      startPresentation();
+    if (host?.present === true && !startedRef.current) {
+      startedRef.current = true;
+      if (host.activate === undefined) {
+        startPresentation();
+      } else {
+        host.activate().then(startPresentation, (error: unknown) => {
+          console.warn('Could not start the presentation:', error);
+        });
+      }
     }
   }, [host]);
   // Tell the preview apart from the presentation in the title of its window.
