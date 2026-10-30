@@ -1,5 +1,6 @@
 import {
   use,
+  useEffect,
   useId,
   useState,
   type Dispatch,
@@ -13,7 +14,8 @@ import { useResetState, useStateValue } from './useStateValue.ts';
 export interface SlideStateOptions {
   /**
    * Identifies the state within the slide (or the enclosing
-   * {@link SlideStateScope}).
+   * {@link SlideStateNamespace}). Components that are mounted at the same time
+   * need different keys.
    *
    * Without a key, the state is identified by the order in which the
    * components of the slide first render, which is the same in every view of
@@ -55,7 +57,8 @@ export function useSlideState<T>(
   initial: T | (() => T),
   { key, transient = false }: SlideStateOptions = {},
 ): [T, Dispatch<SetStateAction<T>>] {
-  const scope = use(StateScopeContext) ?? DETACHED_SCOPE;
+  const viewScope = use(StateScopeContext);
+  const scope = viewScope ?? DETACHED_SCOPE;
   const instanceId = useId();
   const stateKey =
     key === undefined
@@ -66,6 +69,11 @@ export function useSlideState<T>(
       typeof initial === 'function' ? (initial as () => T)() : initial;
     return () => value;
   });
+  useEffect(
+    () =>
+      viewScope?.claims.claim(stateKey, instanceId, initialValue(), transient),
+    [viewScope, stateKey, instanceId, initialValue, transient],
+  );
   return useStateValue(
     transient ? 'visit' : 'slide',
     SLIDE_STATE,

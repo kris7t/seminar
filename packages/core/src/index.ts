@@ -97,9 +97,9 @@ export {
   type SlideElementReference,
 } from './slide/SlideElements.tsx';
 export {
-  SlideStateScope,
-  type SlideStateScopeProps,
-} from './state/SlideStateScope.tsx';
+  SlideStateNamespace,
+  type SlideStateNamespaceProps,
+} from './state/SlideStateNamespace.tsx';
 export {
   useResetSlideState,
   useSlideState,

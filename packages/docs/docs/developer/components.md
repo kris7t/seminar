@@ -35,9 +35,13 @@ initial value.
 
 States are told apart by the order in which the components of the slide
 first render. Pass a `key`, e.g., `useSlideState(0, { key: 'count' })`, for
-components that mount later, e.g., when a tab is selected. `SlideStateScope`
-gives the states inside it a namespace of their own, e.g., in components rendered
-several times, or that mount after the slide.
+components that mount later, e.g., when a tab is selected. `SlideStateNamespace`
+gives the states inside it a namespace of their own, e.g., to render a component
+with a fixed key several times on a slide. Components mounted at the same time
+need different keys or namespaces: they share their state otherwise, which logs
+a warning. It throws if their initial values differ, if one of them is
+transient, or if two namespaces have the same id. Initial values that aren't
+plain data, e.g., media streams, can't be compared, so they only warn.
 
 This makes `useSlideState` a drop-in replacement for `useState` in simple
 components. Components that mount conditionally, or that share state with

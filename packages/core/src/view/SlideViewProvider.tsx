@@ -1,7 +1,7 @@
 import { use, useEffect, type JSX, type ReactNode } from 'react';
 
 import { SharedWorkContext } from '../shared/SharedWorkContext.ts';
-import { StateScopeProvider } from '../state/SlideStateScope.tsx';
+import { StateScopeProvider } from '../state/SlideStateNamespace.tsx';
 import { SlideViewContext, type SlideView } from './SlideViewContext.ts';
 
 export interface SlideViewProviderProps {
@@ -25,7 +25,7 @@ export function SlideViewProvider({
   );
   return (
     <SlideViewContext value={view}>
-      <StateScopeProvider path="">{children}</StateScopeProvider>
+      <StateScopeProvider>{children}</StateScopeProvider>
     </SlideViewContext>
   );
 }

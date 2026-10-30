@@ -6,14 +6,14 @@ import {
   within,
 } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { useDeck } from '../deck/DeckContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
-import { SlideStateScope } from './SlideStateScope.tsx';
+import { SlideStateNamespace } from './SlideStateNamespace.tsx';
 import { useResetSlideState, useSlideState } from './useSlideState.ts';
 import { createStateStores, StateStoresContext } from './StateStoresContext.ts';
 import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
@@ -255,7 +255,7 @@ describe('useSlideState', () => {
     expect(screen.getByText('a: 1')).toBeDefined();
   });
 
-  it('identifies state by keys and scopes', async () => {
+  it('identifies state by keys and namespaces', async () => {
     const user = userEvent.setup();
     function Toggle() {
       const [shown, setShown] = useState(false);
@@ -276,12 +276,12 @@ describe('useSlideState', () => {
     render(
       <Deck defaultMouseNavigation={false}>
         <Slide title="First">
-          <SlideStateScope id="left">
+          <SlideStateNamespace id="left">
             <Counter name="left" />
-          </SlideStateScope>
-          <SlideStateScope id="right">
+          </SlideStateNamespace>
+          <SlideStateNamespace id="right">
             <Counter name="right" />
-          </SlideStateScope>
+          </SlideStateNamespace>
           <Toggle />
         </Slide>
       </Deck>,
@@ -297,6 +297,194 @@ describe('useSlideState', () => {
     expect(image).toContain('right: 1');
     expect(image).toContain('late: 1');
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  describe('with the same state in several components', () => {
+    function Value({
+      initial,
+      transient = false,
+      stateKey = 'same',
+    }: {
+      initial: unknown;
+      transient?: boolean;
+      stateKey?: string | null;
+    }) {
+      const [value] = useSlideState(initial, {
+        key: stateKey ?? undefined,
+        transient,
+      });
+      return <output>{JSON.stringify(value)}</output>;
+    }
+    function renderView(children: ReactNode) {
+      return render(
+        <StateStoresContext value={createStateStores()}>
+          <SlideViewProvider
+            view={{ index: 0, kind: 'audience', interactive: true }}
+          >
+            {children}
+          </SlideViewProvider>
+        </StateStoresContext>,
+      );
+    }
+    const silenceWarnings = () =>
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    it('warns, since they share it', () => {
+      const warn = silenceWarnings();
+      renderView(
+        <>
+          <Value initial={[1, { a: 2 }]} />
+          <Value initial={[1, { a: 2 }]} />
+          <Value initial={[1, { a: 2 }]} />
+        </>,
+      );
+      expect(warn).toHaveBeenCalledOnce();
+      expect(warn.mock.calls[0]?.[0]).toContain('"/same"');
+    });
+
+    it('tells apart components without keys by their order', () => {
+      const warn = silenceWarnings();
+      renderView(
+        <>
+          <Value initial={[]} stateKey={null} />
+          <Value initial={[1]} stateKey={null} />
+          <Value initial={[]} stateKey={null} transient />
+        </>,
+      );
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('throws for the same key of transient and other state', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      expect(() =>
+        renderView(
+          <>
+            <Value initial={1} />
+            <Value initial={1} transient />
+          </>,
+        ),
+      ).toThrow('both transient and non-transient');
+    });
+
+    it('throws for namespaces with the same id, rather than for their state', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const warn = silenceWarnings();
+      expect(() =>
+        renderView(
+          <>
+            <SlideStateNamespace id="a">
+              <Value initial={1} stateKey={null} />
+            </SlideStateNamespace>
+            <SlideStateNamespace id="a">
+              <Value initial={2} stateKey={null} />
+            </SlideStateNamespace>
+          </>,
+        ),
+      ).toThrow('"/a"');
+      expect(warn).not.toHaveBeenCalled();
+      expect(() =>
+        renderView(
+          <>
+            <SlideStateNamespace id="a" />
+            <SlideStateNamespace id="a" />
+          </>,
+        ),
+      ).toThrow('"/a"');
+    });
+
+    it('allows the same id in other namespaces', () => {
+      renderView(
+        <>
+          <SlideStateNamespace id="a">
+            <SlideStateNamespace id="c" />
+          </SlideStateNamespace>
+          <SlideStateNamespace id="b">
+            <SlideStateNamespace id="c" />
+          </SlideStateNamespace>
+        </>,
+      );
+    });
+
+    it('only warns about initial values that it cannot compare', () => {
+      const warn = silenceWarnings();
+      const makeFunction = () => () => 0;
+      renderView(
+        <>
+          <Value initial={new Date(0)} />
+          <Value initial={new Date(1)} />
+          <Value stateKey="nested" initial={[new Date(0), 1]} />
+          <Value stateKey="nested" initial={[new Date(1), 1]} />
+          <Value stateKey="function" initial={makeFunction} />
+          <Value stateKey="function" initial={makeFunction} />
+        </>,
+      );
+      expect(warn).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([
+      [1, 2, false],
+      [{ a: 1 }, { a: 2 }, false],
+      [[1], [1, 2], false],
+      [[], {}, false],
+      [[new Date(0), 1], [new Date(0), 2], false],
+      [new Date(0), 1, false],
+    ])(
+      'throws with different initial values (%j, %j, transient: %j)',
+      (a, b, transient) => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        expect(() =>
+          renderView(
+            <>
+              <Value initial={a} />
+              <Value initial={b} transient={transient} />
+            </>,
+          ),
+        ).toThrow('different initial values');
+      },
+    );
+
+    it('allows the same key in other views and namespaces, and after unmounting', async () => {
+      const user = userEvent.setup();
+      const warn = silenceWarnings();
+      function Tabs() {
+        const [tab, setTab] = useState(0);
+        return (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setTab(1);
+              }}
+            >
+              Next tab
+            </button>
+            <Value key={tab} initial={1} />
+          </>
+        );
+      }
+      render(
+        <StateStoresContext value={createStateStores()}>
+          <SlideViewProvider
+            view={{ index: 0, kind: 'audience', interactive: true }}
+          >
+            <Tabs />
+            <SlideStateNamespace id="a">
+              <Value initial={2} />
+            </SlideStateNamespace>
+            <SlideStateNamespace id="b">
+              <Value initial={3} />
+            </SlideStateNamespace>
+          </SlideViewProvider>
+          <SlideViewProvider
+            view={{ index: 0, kind: 'preview', interactive: false }}
+          >
+            <Value initial={1} />
+          </SlideViewProvider>
+        </StateStoresContext>,
+      );
+      await user.click(screen.getByRole('button', { name: 'Next tab' }));
+      expect(warn).not.toHaveBeenCalled();
+    });
   });
 
   it('warns about components without keys that mount later', async () => {
