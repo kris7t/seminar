@@ -22,7 +22,8 @@ import { Slide } from '../slide/Slide.tsx';
 import { useSlideView } from '../view/SlideViewContext.ts';
 import { useResetSlideState, useSlideState } from '../state/useSlideState.ts';
 import { StateStore } from '../state/StateStore.ts';
-import { useDeckState } from '../state/useDeckState.ts';
+import { defineDeckStore } from '../state/defineStore.ts';
+import { useStore } from '../state/useStore.ts';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Step } from '../steps/Step.tsx';
 import { captureThumbnail } from './captureThumbnail.ts';
@@ -33,6 +34,8 @@ import {
   SlideTransitionsContext,
 } from '../transitions/SlideTransitions.ts';
 import { useTransitionHold } from '../transitions/settling.ts';
+
+const deckNumbers = defineDeckStore<number, string>();
 
 const capture = vi.mocked(captureThumbnail);
 const tasks = new Map<number, IdleRequestCallback>();
@@ -324,7 +327,7 @@ describe('cached slide thumbnails', () => {
   it('recaptures for changed deck and shared slide state, and changed step paths', async () => {
     function State(): JSX.Element {
       const [slide, setSlide] = useSlideState(0);
-      const [deck, setDeck] = useDeckState<number>('count');
+      const [deck, setDeck] = useStore(deckNumbers, { key: 'count' });
       return (
         <>
           <button
@@ -500,7 +503,7 @@ describe('cached slide thumbnails', () => {
 
   it('keeps all step snapshots of a slide that never reads deck state', async () => {
     function Writer(): JSX.Element {
-      const [count, setCount] = useDeckState<number>('count');
+      const [count, setCount] = useStore(deckNumbers, { key: 'count' });
       return (
         <button
           onClick={() => {
@@ -542,7 +545,7 @@ describe('cached slide thumbnails', () => {
 
   it('refreshes only thumbnails that read a changed deck-state key, including shown slides', async () => {
     function Value({ name }: { name: string }): JSX.Element {
-      const [value, setValue] = useDeckState<number>(name);
+      const [value, setValue] = useStore(deckNumbers, { key: name });
       return (
         <button
           onClick={() => {
@@ -657,7 +660,7 @@ describe('cached slide thumbnails', () => {
   it('keeps stale previews visible through invalidation and superseded background captures', async () => {
     let change: ((value: number) => void) | undefined;
     function Value(): JSX.Element {
-      const [value, setValue] = useDeckState<number>('value');
+      const [value, setValue] = useStore(deckNumbers, { key: 'value' });
       const { interactive } = useSlideView();
       useEffect(() => {
         if (interactive) change = setValue;

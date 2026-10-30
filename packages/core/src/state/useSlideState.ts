@@ -6,6 +6,7 @@ import {
   type SetStateAction,
 } from 'react';
 
+import { applyAction } from './defineStore.ts';
 import { StateScope, StateScopeContext } from './StateScope.ts';
 import { useResetState, useStateValue } from './useStateValue.ts';
 
@@ -34,6 +35,10 @@ const DETACHED_SCOPE = new StateScope('detached');
 
 /** Family of the values of {@link useSlideState}. */
 const SLIDE_STATE = {};
+
+function identity<T>(value: T): T {
+  return value;
+}
 
 /**
  * Like `useState`, but the state belongs to the slide instead of the
@@ -66,6 +71,8 @@ export function useSlideState<T>(
     SLIDE_STATE,
     stateKey,
     initialValue,
+    applyAction<T>,
+    identity<T>,
   );
 }
 

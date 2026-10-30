@@ -34,9 +34,9 @@ Components reach decks in three ways:
 
 A good slide component follows these rules:
 
-- **Keep shared state in `useSlideState`.** Each slide is rendered several
-  times: for the audience, in the presenter view, and as thumbnails.
-  With `useState`, each copy would have its own state.
+- **Keep shared state in `useSlideState` or a store.** Each slide is
+  rendered several times: for the audience, in the presenter view, and as
+  thumbnails. With `useState`, each copy would have its own state.
 - **Don't use global ids.** Several copies of a slide can be on the page at
   once. Get ids from `useSlideElementId`.
 - **Measure in slide pixels.** Slides are 1280 × 720 pixels, scaled to fit

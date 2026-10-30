@@ -104,10 +104,10 @@ import { Calculator } from './src/Calculator.tsx';
 <Calculator />
 ```
 
-Components can keep their state with `useSlideState` from `@seminar/core`,
-which shares it between every view of the slide, e.g., the presenter view and
-the audience window, so that interactive slides work in front of the
-audience.
+Components can keep their state with `useSlideState` or in a store from
+`defineSlideStore` in `@seminar/core`, which share it between every view of
+the slide, e.g., the presenter view and the audience window, so that
+interactive slides work in front of the audience.
 
 ## Naming elements
 

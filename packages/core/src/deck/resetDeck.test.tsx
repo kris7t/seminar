@@ -3,10 +3,13 @@ import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Slide } from '../slide/Slide.tsx';
-import { useDeckState } from '../state/useDeckState.ts';
+import { defineDeckStore } from '../state/defineStore.ts';
+import { useStore } from '../state/useStore.ts';
 import { useSlideState } from '../state/useSlideState.ts';
 import { Step } from '../steps/Step.tsx';
 import { Deck } from './Deck.tsx';
+
+const deckNumbers = defineDeckStore<number, string>();
 
 async function resetDeck(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Menu' }));
@@ -16,7 +19,7 @@ async function resetDeck(user: ReturnType<typeof userEvent.setup>) {
 
 function State() {
   const [slide, setSlide] = useSlideState(0);
-  const [deck, setDeck] = useDeckState<number>('value');
+  const [deck, setDeck] = useStore(deckNumbers, { key: 'value' });
   const [mirror, setMirror] = useSlideState(0, { transient: true });
   return (
     <>

@@ -39,6 +39,10 @@ components that mount later, e.g., when a tab is selected. `SlideStateScope`
 gives the states inside it a namespace of their own, e.g., in components rendered
 several times, or that mount after the slide.
 
+This makes `useSlideState` a drop-in replacement for `useState` in simple
+components. Components that mount conditionally, or that share state with
+other components, should define a [store](#stores) instead.
+
 The state can be any value, including objects that only exist while the deck
 runs, like a media stream that one view creates for the others.
 
@@ -58,30 +62,69 @@ Transient state doesn't add a state marker or reset button to the slide,
 and updating it doesn't mark the slide or deck as changed. Reset slide
 leaves it alone; Reset deck clears it.
 
-## Deck state
+## Stores
 
-`useDeckState` keeps state that several slides share, like an answer that
-the audience gives on one slide and that a later slide shows:
+A store is typed state that you define once, outside of components, and read
+with `useStore`. The definition identifies the state, so every component
+that imports it shares the same values, and they can't collide with the
+state of other components.
+
+`defineSlideStore` defines state that belongs to each slide, like
+`useSlideState`, and `defineDeckStore` defines state that every slide shares,
+like an answer that the audience gives on one slide and that a later slide
+shows:
 
 ```tsx
-import { useDeckState } from '@seminar/core';
+import { defineDeckStore, useStore } from '@seminar/core';
+
+const vote = defineDeckStore<'yes' | 'no'>();
 
 export function Vote() {
-  const [vote, setVote] = useDeckState<string>('vote');
-  return <button onClick={() => setVote('yes')}>{vote ?? 'No vote'}</button>;
+  const [value, setValue] = useStore(vote);
+  return <button onClick={() => setValue('yes')}>{value ?? 'No vote'}</button>;
 }
 ```
 
-Every slide that uses the same key gets the same state. Use keys that other
-components won't use, like the name of your component.
+Without an `initial` function, values are `undefined` until they are set.
+Stores hold a value for each key, which `initial` receives. The type of its
+parameter is the type of the keys, and `useStore` requires a key unless that
+type allows `undefined`:
 
-The state is `undefined` until it is set. There is no initial value, since
-the slides that share the state could give different ones. Setting it to
-`undefined` resets it.
+```tsx
+const answers = defineDeckStore({
+  initial: (question: string) => '',
+});
 
-Reset deck in the menu clears all deck and slide state, including transient
-values, resets every slide and recap to the first step of its own range, and
-shows the first non-spare slide (or the first slide if all are spare).
+const [answer, setAnswer] = useStore(answers, { key: 'favorite-color' });
+```
+
+Keys that are plain objects or arrays are compared by their contents, other
+objects by identity.
+
+With a `reduce` function, `useStore` returns a function that dispatches
+actions to it instead of a setter, like `useReducer`:
+
+```tsx
+const poll = defineDeckStore({
+  initial: () => ({ yes: 0, no: 0 }),
+  reduce: (votes, vote: 'yes' | 'no') => ({
+    ...votes,
+    [vote]: votes[vote] + 1,
+  }),
+});
+
+const [yes, vote] = useStore(poll, { select: (votes) => votes.yes });
+```
+
+`select` picks the part of the value that the component shows, so that it
+only renders again if that part changes.
+
+Values of slide stores are kept like those of `useSlideState`, and pass
+`transient: true` to `defineSlideStore` for transient values. Reset slide
+resets the slide stores of the slide, and Reset deck in the menu resets
+every store and all slide state, including transient values. It also resets
+every slide and recap to the first step of its own range, and shows the
+first non-spare slide (or the first slide if all are spare).
 
 ## Views
 

@@ -1,9 +1,9 @@
 import {
   use,
   useCallback,
+  useMemo,
   useSyncExternalStore,
   type Dispatch,
-  type SetStateAction,
 } from 'react';
 
 import { SlideViewContext } from '../view/SlideViewContext.ts';
@@ -15,6 +15,31 @@ import { StateStoresContext } from './StateStoresContext.ts';
  * recaps, or the views of one visit to a slide.
  */
 export type StateLocation = 'deck' | 'slide' | 'visit';
+
+/**
+ * Returns a function that selects from the value, but only again if the value
+ * changes, so that a new selection of the same value doesn't render again.
+ */
+function selector<T, Selected>(
+  getValue: () => T,
+  select: (state: T) => Selected,
+): () => Selected {
+  let last: { value: T; selected: Selected } | undefined;
+  return () => {
+    const value = getValue();
+    if (last === undefined || !Object.is(last.value, value)) {
+      const selected = select(value);
+      last = {
+        value,
+        selected:
+          last !== undefined && Object.is(last.selected, selected)
+            ? last.selected
+            : selected,
+      };
+    }
+    return last.selected;
+  };
+}
 
 /** Returns the store and the owner of the values of the enclosing view. */
 function useStateOwner(location: StateLocation): [StateStore, StateOwner] {
@@ -33,15 +58,19 @@ function useStateOwner(location: StateLocation): [StateStore, StateOwner] {
 }
 
 /**
- * Like `useState`, but the value of `key` in `family` is kept in the store of
- * `location`, initialized with `initial` if given. `initial` must not change.
+ * Like `useReducer`, but the value of `key` in `family` is kept in the store
+ * of `location`, initialized with `initial` if given, and the result is the
+ * value picked by `select`. The component only renders again if that changes.
+ * `initial` and `reduce` must not change while the key stays the same.
  */
-export function useStateValue<T>(
+export function useStateValue<T, Action, Selected>(
   location: StateLocation,
   family: object,
   key: string,
-  initial?: () => T,
-): [T, Dispatch<SetStateAction<T>>] {
+  initial: (() => T) | undefined,
+  reduce: (state: T, action: Action) => T,
+  select: (state: T) => Selected,
+): [Selected, Dispatch<Action>] {
   const [store, owner] = useStateOwner(location);
   const { recordUse } = use(StateStoresContext);
   const { index } = use(SlideViewContext);
@@ -57,21 +86,18 @@ export function useStateValue<T>(
     (listener: () => void) => store.subscribe(owner, family, key, listener),
     [store, owner, family, key],
   );
-  const value = useSyncExternalStore(subscribe, getValue, getValue);
-  const setValue = useCallback<Dispatch<SetStateAction<T>>>(
-    (action) => {
-      store.set(
-        owner,
-        family,
-        key,
-        typeof action === 'function'
-          ? (action as (previous: T) => T)(getValue())
-          : action,
-      );
-    },
-    [store, owner, family, key, getValue],
+  const getSelected = useMemo(
+    () => selector(getValue, select),
+    [getValue, select],
   );
-  return [value, setValue];
+  const selected = useSyncExternalStore(subscribe, getSelected, getSelected);
+  const dispatch = useCallback<Dispatch<Action>>(
+    (action) => {
+      store.set(owner, family, key, reduce(getValue(), action));
+    },
+    [store, owner, family, key, reduce, getValue],
+  );
+  return [selected, dispatch];
 }
 
 /**

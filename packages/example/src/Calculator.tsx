@@ -1,5 +1,10 @@
 import { Box, Button, TextField, Typography } from '@mui/material';
-import { useResetSlideState, useSlideState, useSlideView } from '@seminar/core';
+import {
+  defineSlideStore,
+  useResetSlideState,
+  useSlideView,
+  useStore,
+} from '@seminar/core';
 import type { JSX } from 'react';
 
 function parse(value: string): number | undefined {
@@ -7,15 +12,35 @@ function parse(value: string): number | undefined {
   return value.trim() === '' || Number.isNaN(number) ? undefined : number;
 }
 
+interface Sum {
+  a: string;
+  b: string;
+  sum: number | undefined;
+}
+
+type SumAction = { type: 'a' | 'b'; value: string } | { type: 'compute' };
+
+const sum = defineSlideStore({
+  initial: (): Sum => ({ a: '', b: '', sum: undefined }),
+  reduce: (state, action: SumAction): Sum => {
+    if (action.type !== 'compute') {
+      return { ...state, [action.type]: action.value };
+    }
+    const x = parse(state.a);
+    const y = parse(state.b);
+    return x === undefined || y === undefined
+      ? state
+      : { ...state, sum: x + y };
+  },
+});
+
 /**
  * Adds two numbers, to try interactive widgets in the presenter view. The
- * values are slide state, so the audience sees them, too, and Reset resets
- * the state of the slide.
+ * values are in a slide store, so the audience sees them, too, and Reset
+ * resets the state of the slide.
  */
 export function Calculator(): JSX.Element {
-  const [a, setA] = useSlideState('');
-  const [b, setB] = useSlideState('');
-  const [c, setC] = useSlideState<number | undefined>(undefined);
+  const [{ a, b, sum: c }, dispatch] = useStore(sum);
   const reset = useResetSlideState();
   const valid = parse(a) !== undefined && parse(b) !== undefined;
   // Below the headings of the slides in documents.
@@ -25,11 +50,7 @@ export function Calculator(): JSX.Element {
       component="form"
       onSubmit={(event) => {
         event.preventDefault();
-        const x = parse(a);
-        const y = parse(b);
-        if (x !== undefined && y !== undefined) {
-          setC(x + y);
-        }
+        dispatch({ type: 'compute' });
       }}
       sx={{ display: 'flex', alignItems: 'center', gap: 3, mt: 4 }}
     >
@@ -37,7 +58,7 @@ export function Calculator(): JSX.Element {
         label="A"
         value={a}
         onChange={(event) => {
-          setA(event.target.value);
+          dispatch({ type: 'a', value: event.target.value });
         }}
         slotProps={{ htmlInput: { inputMode: 'decimal' } }}
         sx={{ width: 200 }}
@@ -49,7 +70,7 @@ export function Calculator(): JSX.Element {
         label="B"
         value={b}
         onChange={(event) => {
-          setB(event.target.value);
+          dispatch({ type: 'b', value: event.target.value });
         }}
         slotProps={{ htmlInput: { inputMode: 'decimal' } }}
         sx={{ width: 200 }}
