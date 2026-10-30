@@ -69,9 +69,9 @@ it('removes unused store definitions', async () => {
         load(id) {
           if (id !== entry) return undefined;
           return `
-          import { defineSlideStore, defineDeckStore } from ${JSON.stringify(definitions)};
-          const slide = defineSlideStore({ initial: () => 'unused-slide' });
-          const deck = defineDeckStore({ initial: () => 'unused-deck' });
+          import { defineStore } from ${JSON.stringify(definitions)};
+          const slide = defineStore({ initial: () => 'unused-slide' });
+          const deck = defineStore({ scope: 'deck', initial: () => 'unused-deck' });
           export const kept = 42;
         `;
         },

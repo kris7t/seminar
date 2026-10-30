@@ -7,7 +7,7 @@ lectures as Markdown presentations. Requires Node.js 24 or newer.
 
 Use `Deck`, `Slide`, and `Step` to write presentations in React. Components
 share state across slide views with `useSlideState`, and define stores of
-slides and decks with `defineSlideStore` and `defineDeckStore`.
+slides and decks with `defineStore`.
 
 [Documentation](https://seminar.run/developer/components) ·
 [Source](https://github.com/kris7t/seminar/tree/main/packages/core)

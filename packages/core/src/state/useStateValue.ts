@@ -7,14 +7,9 @@ import {
 } from 'react';
 
 import { DEFAULT_VIEW, SlideViewContext } from '../view/SlideViewContext.ts';
+import type { StoreScope } from './defineStore.ts';
 import type { StateOwner, StateStore } from './StateStore.ts';
 import { useStateStores } from './StateStoresContext.ts';
-
-/**
- * Who shares a value: every slide of the deck, every view of a slide and its
- * recaps, or the views of one visit to a slide.
- */
-export type StateLocation = 'deck' | 'slide' | 'visit';
 
 /**
  * Returns a function that selects from the value, but only again if the value
@@ -35,44 +30,43 @@ function selector<T, Selected>(
 }
 
 /** Returns the store and the owner of the values of the enclosing view. */
-function useStateOwner(location: StateLocation): [StateStore, StateOwner] {
+function useStateOwner(scope: StoreScope): [StateStore, StateOwner] {
   const stores = useStateStores();
   const view = use(SlideViewContext);
   const { index, stateIndex } = view;
-  if (location !== 'deck' && view === DEFAULT_VIEW)
+  if (scope !== 'deck' && view === DEFAULT_VIEW)
     throw new Error(
       'Slide state requires a slide. Use a deck store outside of slides.',
     );
-  switch (location) {
+  switch (scope) {
     case 'deck':
       return [stores.deck, 'deck'];
     case 'slide':
       // Recaps share the state of the slide they recap.
       return [stores.slides, stateIndex ?? index];
-    case 'visit':
-      // But each visit to a recap has its own.
-      return [stores.visit, index];
+    case 'transient':
+      return [stores.transient, index];
   }
 }
 
 /**
  * Like `useReducer`, but the value of `key` in `family` is kept in the store
- * of `location`, initialized with `initial` if given, and the result is the
+ * of `scope`, initialized with `initial` if given, and the result is the
  * value picked by `select`. The component only renders again if that changes.
  * `initial` and `reduce` must not change while the key stays the same.
  */
 export function useStateValue<T, Action, Selected>(
-  location: StateLocation,
+  scope: StoreScope,
   family: object,
   key: string,
   initial: (() => T) | undefined,
   reduce: (state: T, action: Action) => T,
   select: (state: T) => Selected,
 ): [Selected, Dispatch<Action>] {
-  const [store, owner] = useStateOwner(location);
+  const [store, owner] = useStateOwner(scope);
   const { recordUse } = useStateStores();
   const { index } = use(SlideViewContext);
-  if (location !== 'visit') recordUse?.(index, owner, family, key);
+  if (scope !== 'transient') recordUse?.(index, owner, family, key);
   const getValue = useCallback(
     () =>
       (initial === undefined
@@ -100,13 +94,13 @@ export function useStateValue<T, Action, Selected>(
 
 /**
  * Returns a function that resets the state of the slide of the enclosing view,
- * which its recaps share, and of the current visit to it.
+ * which its recaps share, including its transient state.
  */
 export function useResetState(): () => void {
-  const [visitStore, visitOwner] = useStateOwner('visit');
+  const [transientStore, transientOwner] = useStateOwner('transient');
   const [store, owner] = useStateOwner('slide');
   return useCallback(() => {
-    visitStore.reset(visitOwner);
+    transientStore.reset(transientOwner);
     store.reset(owner);
-  }, [visitStore, visitOwner, store, owner]);
+  }, [transientStore, transientOwner, store, owner]);
 }

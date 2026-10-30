@@ -1044,7 +1044,7 @@ describe('mirroring the interaction', () => {
     const { audience, remove } = fakeAudienceWindow();
     const user = userEvent.setup();
     function Counter() {
-      const [value, setValue] = useSlideState(0, { transient: true });
+      const [value, setValue] = useSlideState(0, { scope: 'transient' });
       return (
         <button
           onClick={() => {

@@ -1,7 +1,22 @@
 import type { SetStateAction } from 'react';
 
-/** Options of a store of the deck, see {@link defineDeckStore}. */
-export interface DeckStoreOptions<T, Key, Action> {
+/**
+ * Who shares the values of a store:
+ *
+ * - `'slide'`: each slide has its own values, which every view of the slide and
+ *   its recaps share. They are kept when the slide is left.
+ * - `'deck'`: every slide shares the values, e.g., to show on one slide what
+ *   the audience chose on another.
+ * - `'transient'`: keeps the views of a slide in sync without saving anything.
+ *   The values start over when the slide is shown again, and don't mark the
+ *   slide as changed.
+ */
+export type StoreScope = 'slide' | 'deck' | 'transient';
+
+/** Options of a store, see {@link defineStore}. */
+export interface StoreOptions<T, Key, Action> {
+  /** Who shares the values of the store. Defaults to `'slide'`. */
+  scope?: StoreScope | undefined;
   /**
    * Returns the initial value of `key`, when a view first reads it. It runs
    * while rendering, so it must be pure. Without it, values are `undefined`
@@ -24,33 +39,19 @@ export interface DeckStoreOptions<T, Key, Action> {
   id?: string | undefined;
 }
 
-/** Options of a store of slides, see {@link defineSlideStore}. */
-export interface SlideStoreOptions<T, Key, Action> extends DeckStoreOptions<
-  T,
-  Key,
-  Action
-> {
-  /**
-   * Keeps the values of one visit to the slide, e.g., for mirroring, like
-   * `useSlideState` with `transient: true`. Transient values start over on
-   * each visit, and don't mark the slide as changed. Defaults to `false`.
-   */
-  transient?: boolean | undefined;
-}
-
 /**
  * Typed state that slides or the deck keep by key, created with
- * {@link defineSlideStore} or {@link defineDeckStore}, and read with
- * {@link useStore}. The definition identifies the state, so components that
- * share state import the same definition.
+ * {@link defineStore}, and read with {@link useStore}. The definition
+ * identifies the state, so components that share state import the same
+ * definition.
  */
 export interface StoreDefinition<
   T,
   Key = undefined,
   Action = SetStateAction<T>,
 > {
-  readonly kind: 'slideStore' | 'deckStore';
-  readonly transient: boolean;
+  readonly kind: 'store';
+  readonly scope: StoreScope;
   /** Tells apart the values of the store from those of other stores. */
   readonly family: object;
   readonly initial: (key: Key) => T;
@@ -78,74 +79,36 @@ function familyOf(id: string | undefined, signature: string): object {
   return entry.family;
 }
 
-function define(
-  kind: 'slideStore' | 'deckStore',
-  {
-    initial = () => undefined,
-    reduce = applyAction,
-    transient = false,
-    id,
-  }: SlideStoreOptions<unknown, unknown, unknown>,
-): StoreDefinition<unknown, unknown, unknown> {
-  const signature = `${kind} ${String(transient)} ${String(initial)}`;
-  const family = familyOf(id, signature);
-  return { kind, transient, family, initial, reduce };
-}
-
 /**
- * Defines state that belongs to each slide, so every view of the slide and
- * its recaps share it, e.g., the slide shown to the audience and its
- * thumbnail in the overview. Each slide has a value for each key.
+ * Defines state that doesn't belong to a component, so that every view of a
+ * slide shows the same value, and it can outlive the component. The store has
+ * a value for each key, and `scope` tells who shares the values.
  *
- * The values are kept when the slide is left, unless they are transient. Reset
- * slide, or a function from `useResetSlideState`, resets them.
+ * Resetting a slide resets its values. Reset deck resets all of them.
  */
-export function defineSlideStore<
-  T,
-  Key = undefined,
-  Action = SetStateAction<T>,
->(
-  options: SlideStoreOptions<T, Key, Action> & {
+export function defineStore<T, Key = undefined, Action = SetStateAction<T>>(
+  options: StoreOptions<T, Key, Action> & {
     initial: (key: Key) => T;
   },
 ): StoreDefinition<T, Key, Action>;
-export function defineSlideStore<
+export function defineStore<
   T = undefined,
   Key = undefined,
   Action = SetStateAction<T | undefined>,
 >(
-  options?: SlideStoreOptions<T | undefined, Key, Action>,
+  options?: StoreOptions<T | undefined, Key, Action>,
 ): StoreDefinition<T | undefined, Key, Action>;
 /* @__NO_SIDE_EFFECTS__ */
-export function defineSlideStore(
-  options: SlideStoreOptions<unknown, unknown, unknown> = {},
-): StoreDefinition<unknown, unknown, unknown> {
-  return define('slideStore', options);
-}
-
-/**
- * Defines state that belongs to the deck, so every slide shares it, e.g., to
- * show on one slide what the audience chose on another. The deck has a value
- * for each key.
- *
- * Reset deck in the menu resets the values.
- */
-export function defineDeckStore<T, Key = undefined, Action = SetStateAction<T>>(
-  options: DeckStoreOptions<T, Key, Action> & {
-    initial: (key: Key) => T;
-  },
-): StoreDefinition<T, Key, Action>;
-export function defineDeckStore<
-  T = undefined,
-  Key = undefined,
-  Action = SetStateAction<T | undefined>,
->(
-  options?: DeckStoreOptions<T | undefined, Key, Action>,
-): StoreDefinition<T | undefined, Key, Action>;
-/* @__NO_SIDE_EFFECTS__ */
-export function defineDeckStore(
-  options: DeckStoreOptions<unknown, unknown, unknown> = {},
-): StoreDefinition<unknown, unknown, unknown> {
-  const { initial, reduce, id } = options;
-  return define('deckStore', { initial, reduce, id });
+export function defineStore({
+  scope = 'slide',
+  initial = () => undefined,
+  reduce = applyAction,
+  id,
+}: StoreOptions<unknown, unknown, unknown> = {}): StoreDefinition<
+  unknown,
+  unknown,
+  unknown
+> {
+  const family = familyOf(id, `${scope} ${String(initial)}`);
+  return { kind: 'store', scope, family, initial, reduce };
 }

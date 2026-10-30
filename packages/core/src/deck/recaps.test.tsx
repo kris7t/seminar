@@ -122,7 +122,7 @@ describe('recaps in a deck', () => {
     const user = userEvent.setup();
     function State() {
       const [saved, setSaved] = useSlideState(0);
-      const [mirror, setMirror] = useSlideState(0, { transient: true });
+      const [mirror, setMirror] = useSlideState(0, { scope: 'transient' });
       return (
         <button
           onClick={() => {

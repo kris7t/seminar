@@ -10,11 +10,10 @@ export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { DeckDocument, type DeckDocumentProps } from './deck/DeckDocument.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
 export {
-  defineDeckStore,
-  defineSlideStore,
-  type DeckStoreOptions,
-  type SlideStoreOptions,
+  defineStore,
   type StoreDefinition,
+  type StoreOptions,
+  type StoreScope,
 } from './state/defineStore.ts';
 export { useStore, type UseStoreOptions } from './state/useStore.ts';
 export {

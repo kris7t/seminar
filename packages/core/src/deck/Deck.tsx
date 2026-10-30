@@ -355,7 +355,7 @@ function InteractiveDeck({
     stepFade,
     slideFade,
   });
-  const visitState = useMemo(
+  const transientState = useMemo(
     () => new StateStore(),
     // Each visit starts fresh; retained frames keep the previous store.
     // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
@@ -365,10 +365,10 @@ function InteractiveDeck({
     () => ({
       deck: state,
       slides: state,
-      visit: visitState,
+      transient: transientState,
       recordUse: thumbnails.recordStateUse,
     }),
-    [state, visitState, thumbnails],
+    [state, transientState, thumbnails],
   );
   const { probed, probe } = useSlideProbe(slides);
   useEffect(() => {
@@ -412,8 +412,8 @@ function InteractiveDeck({
     [slides, recapOf, probed, stateChanged],
   );
   const transientStateChanged = useSyncExternalStore(
-    visitState.subscribeChanged,
-    visitState.getChanged,
+    transientState.subscribeChanged,
+    transientState.getChanged,
   ).has(slideIndex);
   const resetSlide = useCallback(
     (index: number) => {
@@ -422,13 +422,13 @@ function InteractiveDeck({
       // fade, which has nothing to fade to anyway.
       goTo(index, 'start', { transition: index !== slideIndex });
       const owner = recapOf[index] ?? index;
-      visitState.reset(index);
+      transientState.reset(index);
       // The current slide may be a recap of the same slide.
       if ((recapOf[slideIndex] ?? slideIndex) === owner)
-        visitState.reset(slideIndex);
+        transientState.reset(slideIndex);
       state.reset(owner);
     },
-    [state, visitState, recapOf, goTo, slideIndex],
+    [state, transientState, recapOf, goTo, slideIndex],
   );
   const deckChanged = changedStates.size > 0;
   const toc = useMemo(
@@ -457,7 +457,7 @@ function InteractiveDeck({
     // Apply pending navigation before clearing the positions it may write.
     transitions.skip();
     state.resetAll();
-    visitState.resetAll();
+    transientState.resetAll();
     stepPositions.resetAll();
     for (let index = 0; index < slideCount; index += 1)
       thumbnails.invalidate(index);
@@ -466,7 +466,7 @@ function InteractiveDeck({
   }, [
     transitions,
     state,
-    visitState,
+    transientState,
     stepPositions,
     slideCount,
     thumbnails,

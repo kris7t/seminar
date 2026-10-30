@@ -199,7 +199,7 @@ export function SlideErrorBoundary({
     () => stores?.slides.getResets(owner) ?? 0,
   );
   const reset = useCallback(() => {
-    stores?.visit.reset(view.index);
+    stores?.transient.reset(view.index);
     stores?.slides.reset(owner);
   }, [stores, owner, view.index]);
   const onCatch = useCallback(() => {

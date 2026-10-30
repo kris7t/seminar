@@ -55,18 +55,15 @@ one in a namespace with its own id:
 
 ### Transient state
 
-Transient state lasts for one visit to the slide. Use it for internal values
-that only mirror a component between views:
+To keep the views of a slide in sync without saving anything, make the state
+transient:
 
 ```tsx
-const [text, setText] = useSlideState('', { transient: true });
+const [text, setText] = useSlideState('', { scope: 'transient' });
 ```
 
-It starts over when the presenter returns to the slide. It stays through
-steps, the overview, and opening or closing the presenter view.
-
-Transient state doesn't add a state marker to the slide, and changing it
-doesn't mark the slide or the deck as changed.
+It doesn't add a state marker to the slide, and changing it doesn't mark the
+slide or the deck as changed. It starts over when the slide is shown again.
 
 ## Stores
 
@@ -74,19 +71,14 @@ A store is typed state that you define once, outside of components. Every
 component that imports the definition shares its values, and no other
 component can collide with them.
 
-There are two kinds of stores:
-
-- `defineSlideStore` defines state that belongs to each slide, like
-  `useSlideState`.
-- `defineDeckStore` defines state that every slide shares, like an answer given
-  on one slide and shown on a later one.
-
-Read and set their values with `useStore`:
+By default, a store belongs to each slide, like `useSlideState`. With
+`scope: 'deck'`, every slide shares it, like an answer given on one slide and
+shown on a later one:
 
 ```tsx
-import { defineDeckStore, useStore } from '@seminar/core';
+import { defineStore, useStore } from '@seminar/core';
 
-const vote = defineDeckStore<'yes' | 'no'>();
+const vote = defineStore<'yes' | 'no'>({ scope: 'deck' });
 
 export function Vote() {
   const [value, setValue] = useStore(vote);
@@ -103,7 +95,7 @@ Values are `undefined` until they are set, unless the store has an `initial`
 function:
 
 ```tsx
-const count = defineSlideStore({ initial: () => 0 });
+const count = defineStore({ initial: () => 0 });
 ```
 
 ### Keys
@@ -112,7 +104,8 @@ A store can hold a value for each key. The parameter of `initial` sets the type
 of the keys:
 
 ```tsx
-const answers = defineDeckStore({
+const answers = defineStore({
+  scope: 'deck',
   initial: (question: string) => '',
 });
 
@@ -131,7 +124,8 @@ With a `reduce` function, `useStore` returns a function that dispatches actions
 instead of a setter, like `useReducer`:
 
 ```tsx
-const poll = defineDeckStore({
+const poll = defineStore({
+  scope: 'deck',
   initial: () => ({ yes: 0, no: 0 }),
   reduce: (votes, vote: 'yes' | 'no') => ({
     ...votes,
@@ -150,12 +144,15 @@ With `select`, the component only renders again if the selected part changes:
 const [yes] = useStore(poll, { select: (votes) => votes.yes });
 ```
 
+If a store holds many independent values, give each one a key, so that changing
+one doesn't affect the others.
+
 ### Transient stores
 
-Slide stores can be transient, like [transient state](#transient-state):
+Stores can also be [transient](#transient-state):
 
 ```tsx
-const text = defineSlideStore({ initial: () => '', transient: true });
+const text = defineStore({ scope: 'transient', initial: () => '' });
 ```
 
 ### Hot reload

@@ -7,8 +7,12 @@ import {
   type SetStateAction,
 } from 'react';
 
-import { applyAction } from './defineStore.ts';
-import { LAZY_INITIAL, StateScope, StateScopeContext } from './StateScope.ts';
+import { applyAction, type StoreScope } from './defineStore.ts';
+import {
+  LAZY_INITIAL,
+  StateNamespace,
+  StateNamespaceContext,
+} from './StateNamespace.ts';
 import { useResetState, useStateValue } from './useStateValue.ts';
 
 export interface SlideStateOptions {
@@ -24,16 +28,16 @@ export interface SlideStateOptions {
    */
   id?: string | undefined;
   /**
-   * Shares internal state, e.g., for mirroring, without a state marker or
-   * reset button on the slide. Transient values start over on each visit,
-   * and aren't marked as changed. Resets clear them, like other state. Defaults
-   * to `false`.
+   * Who shares the state: `'slide'` keeps it with the slide, and `'transient'`
+   * keeps the views of the slide in sync without saving anything, so it starts
+   * over when the slide is shown again, and doesn't mark the slide as changed.
+   * Defaults to `'slide'`. Use a store for state that the deck shares.
    */
-  transient?: boolean | undefined;
+  scope?: Exclude<StoreScope, 'deck'> | undefined;
 }
 
-/** Scope of state outside of the views of a deck, where it can't be used. */
-const DETACHED_SCOPE = new StateScope('detached');
+/** Namespace of state outside of the views of a deck, where it can't be used. */
+const DETACHED_NAMESPACE = new StateNamespace('detached');
 
 /** Family of the values of {@link useSlideState}. */
 const SLIDE_STATE = {};
@@ -47,21 +51,21 @@ function identity<T>(value: T): T {
  * component, so it is shared by every view of the slide, e.g., by the slide
  * shown to the audience and its thumbnail in the overview. Non-transient
  * state is kept when the slide is rendered again later; transient state
- * lasts for one visit.
+ * only keeps the views in sync.
  *
  * The state may be of any type.
  */
 export function useSlideState<T>(
   initial: T | (() => T),
-  { id, transient = false }: SlideStateOptions = {},
+  { id, scope = 'slide' }: SlideStateOptions = {},
 ): [T, Dispatch<SetStateAction<T>>] {
-  const viewScope = use(StateScopeContext);
-  const scope = viewScope ?? DETACHED_SCOPE;
+  const viewNamespace = use(StateNamespaceContext);
+  const namespace = viewNamespace ?? DETACHED_NAMESPACE;
   const instanceId = useId();
   const stateId =
     id === undefined
-      ? `${scope.path}#${String(scope.indexOf(instanceId))}`
-      : `${scope.path}/${id}`;
+      ? `${namespace.path}#${String(namespace.indexOf(instanceId))}`
+      : `${namespace.path}/${id}`;
   // Runs only when the state has no value, like the initial value of a store,
   // so after a reset, too. Another id is another state, with its initial value.
   const { getInitial, comparable } = useMemo(
@@ -73,11 +77,11 @@ export function useSlideState<T>(
     [stateId],
   );
   useEffect(
-    () => viewScope?.claims.claim(stateId, instanceId, comparable, transient),
-    [viewScope, stateId, instanceId, comparable, transient],
+    () => viewNamespace?.claims.claim(stateId, instanceId, comparable, scope),
+    [viewNamespace, stateId, instanceId, comparable, scope],
   );
   return useStateValue(
-    transient ? 'visit' : 'slide',
+    scope,
     SLIDE_STATE,
     stateId,
     getInitial,

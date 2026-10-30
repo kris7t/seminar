@@ -27,7 +27,10 @@ function Counter({
   stateId?: string;
   transient?: boolean;
 }) {
-  const [count, setCount] = useSlideState(0, { id: stateId, transient });
+  const [count, setCount] = useSlideState(0, {
+    id: stateId,
+    scope: transient ? 'transient' : 'slide',
+  });
   return (
     <button
       type="button"
@@ -414,7 +417,7 @@ describe('useSlideState', () => {
     }) {
       const [value] = useSlideState(initial, {
         id: stateId ?? undefined,
-        transient,
+        scope: transient ? 'transient' : 'slide',
       });
       return <output>{JSON.stringify(value)}</output>;
     }
@@ -466,7 +469,7 @@ describe('useSlideState', () => {
         </>,
       );
       expect(screen.getByRole('alert').textContent).toContain(
-        'both transient and non-transient',
+        'in different scopes',
       );
     });
 

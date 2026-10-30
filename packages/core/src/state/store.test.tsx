@@ -15,22 +15,22 @@ import { Deck } from '../deck/Deck.tsx';
 import { useDeck } from '../deck/DeckContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
-import {
-  defineDeckStore,
-  defineSlideStore,
-  type StoreDefinition,
-} from './defineStore.ts';
+import { defineStore, type StoreDefinition } from './defineStore.ts';
 import { createStateStores, StateStoresContext } from './StateStoresContext.ts';
 import { useResetSlideState, useSlideState } from './useSlideState.ts';
 import { useStore } from './useStore.ts';
 
-const count = defineSlideStore({ initial: () => 0 });
-const transientCount = defineSlideStore({
+const count = defineStore({ initial: () => 0 });
+const transientCount = defineStore({
   initial: () => 0,
-  transient: true,
+  scope: 'transient',
 });
-const answers = defineDeckStore({ initial: (question: string) => question });
-const poll = defineDeckStore({
+const answers = defineStore({
+  scope: 'deck',
+  initial: (question: string) => question,
+});
+const poll = defineStore({
+  scope: 'deck',
   initial: () => ({ yes: 0, no: 0 }),
   reduce: (votes, vote: 'yes' | 'no') => ({
     ...votes,
@@ -72,7 +72,7 @@ function Answer({ question }: { question: string }) {
   );
 }
 
-describe('defineSlideStore and defineDeckStore', () => {
+describe('defineStore and defineStore', () => {
   it('infer the types of values, keys, and actions', () => {
     expectTypeOf(count).toEqualTypeOf<
       StoreDefinition<number, undefined, SetStateAction<number>>
@@ -83,14 +83,14 @@ describe('defineSlideStore and defineDeckStore', () => {
     expectTypeOf(poll).toEqualTypeOf<
       StoreDefinition<{ yes: number; no: number }, undefined, 'yes' | 'no'>
     >();
-    expectTypeOf(defineDeckStore<string, number>()).toEqualTypeOf<
+    expectTypeOf(defineStore<string, number>({ scope: 'deck' })).toEqualTypeOf<
       StoreDefinition<
         string | undefined,
         number,
         SetStateAction<string | undefined>
       >
     >();
-    expectTypeOf(defineSlideStore()).toEqualTypeOf<
+    expectTypeOf(defineStore()).toEqualTypeOf<
       StoreDefinition<undefined, undefined, SetStateAction<undefined>>
     >();
   });
@@ -109,7 +109,8 @@ describe('defineSlideStore and defineDeckStore', () => {
       useStore(answers, { key: 1 });
       // @ts-expect-error The store has no keys.
       useStore(count, { key: 'a' });
-      const optional = defineDeckStore({
+      const optional = defineStore({
+        scope: 'deck',
         initial: (key: string | undefined) => key ?? '',
       });
       useStore(optional);
@@ -124,27 +125,25 @@ describe('the id of a store', () => {
   const initial = () => 0;
 
   it('keeps its family when it is defined again', () => {
-    const first = defineSlideStore({ initial, id: 'kept' });
-    expect(defineSlideStore({ initial, id: 'kept' }).family).toBe(first.family);
-    expect(defineSlideStore({ initial, id: 'other' }).family).not.toBe(
-      first.family,
-    );
+    const first = defineStore({ initial, id: 'kept' });
+    expect(defineStore({ initial, id: 'kept' }).family).toBe(first.family);
+    expect(defineStore({ initial, id: 'other' }).family).not.toBe(first.family);
   });
 
   it('starts over if the initial value or kind of the store changes', () => {
-    const first = defineSlideStore({ initial: () => 0, id: 'changed' });
-    expect(
-      defineSlideStore({ initial: () => 1, id: 'changed' }).family,
-    ).not.toBe(first.family);
-    const slide = defineSlideStore({ initial, id: 'kind' });
-    expect(defineDeckStore({ initial, id: 'kind' }).family).not.toBe(
+    const first = defineStore({ initial: () => 0, id: 'changed' });
+    expect(defineStore({ initial: () => 1, id: 'changed' }).family).not.toBe(
+      first.family,
+    );
+    const slide = defineStore({ initial, id: 'kind' });
+    expect(defineStore({ scope: 'deck', initial, id: 'kind' }).family).not.toBe(
       slide.family,
     );
   });
 
   it('is not needed to tell apart stores', () => {
-    expect(defineSlideStore({ initial }).family).not.toBe(
-      defineSlideStore({ initial }).family,
+    expect(defineStore({ initial }).family).not.toBe(
+      defineStore({ initial }).family,
     );
   });
 });
@@ -298,7 +297,7 @@ describe('useStore', () => {
   it('shares deck stores between slides by key', async () => {
     const user = userEvent.setup();
     const initial = vi.fn((key: { question: string }) => key.question);
-    const tracked = defineDeckStore({ initial });
+    const tracked = defineStore({ scope: 'deck', initial });
     function Tracked() {
       const [value] = useStore(tracked, { key: { question: 'q' } });
       return <span>{value}</span>;

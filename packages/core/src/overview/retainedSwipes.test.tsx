@@ -103,7 +103,7 @@ describe('swiping while capturing a departed slide', () => {
 
   it('keeps departing transient values for capture and starts fresh on an immediate return', async () => {
     function Counter() {
-      const [count, setCount] = useSlideState(0, { transient: true });
+      const [count, setCount] = useSlideState(0, { scope: 'transient' });
       return (
         <button
           onClick={() => {

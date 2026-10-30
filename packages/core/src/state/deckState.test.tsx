@@ -5,11 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
-import { defineDeckStore } from './defineStore.ts';
+import { defineStore } from './defineStore.ts';
 import { useStore } from './useStore.ts';
 import { useSlideState } from './useSlideState.ts';
 
-const deckNumbers = defineDeckStore<number, string>();
+const deckNumbers = defineStore<number, string>({ scope: 'deck' });
 
 function Answer({ name }: { name: string }) {
   const [answer, setAnswer] = useStore(deckNumbers, { key: 'answer' });

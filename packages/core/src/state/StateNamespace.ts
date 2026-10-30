@@ -47,7 +47,7 @@ function differs(
 export class StateClaims {
   readonly #claims = new Map<
     string,
-    Map<string, { initial: unknown; transient: boolean }>
+    Map<string, { initial: unknown; scope: string }>
   >();
   readonly #namespaces = new Set<string>();
   readonly #warned = new Set<string>();
@@ -57,7 +57,7 @@ export class StateClaims {
   /**
    * Records that the mounted instance identified by `instance` uses the state
    * `id`, until the returned function is called. Throws if another instance
-   * uses it as transient and the other as non-transient state, or with
+   * uses it in another scope, or with
    * another initial value, since only one of them is used. Warns if another
    * instance uses it otherwise, since they share the state.
    */
@@ -65,7 +65,7 @@ export class StateClaims {
     id: string,
     instance: string,
     initial: unknown,
-    transient: boolean,
+    scope: string,
   ): () => void {
     if (this.#namespacesClashed) return () => undefined;
     let claims = this.#claims.get(id);
@@ -74,9 +74,9 @@ export class StateClaims {
       this.#claims.set(id, claims);
     }
     const others = [...claims.values()];
-    if (others.some((other) => other.transient !== transient)) {
+    if (others.some((other) => other.scope !== scope)) {
       throw new Error(
-        `Several components on the same slide use the state "${id}" as both transient and non-transient state. Give them different ids.`,
+        `Several components on the same slide use the state "${id}" in different scopes. Give them different ids.`,
       );
     }
     if (others.some((other) => differs(other.initial, initial))) {
@@ -90,7 +90,7 @@ export class StateClaims {
         `Several components on the same slide use the state "${id}", so they share it. Give them different ids or namespaces if they shouldn't, or use a store if they should.`,
       );
     }
-    claims.set(instance, { initial, transient });
+    claims.set(instance, { initial, scope });
     return () => {
       claims.delete(instance);
     };
@@ -118,14 +118,14 @@ export class StateClaims {
 /**
  * Identifies the state of the components in a view of a slide (or a part of
  * it, see {@link SlideStateNamespace}) without explicit ids: each instance
- * gets the next index when it first renders in the scope.
+ * gets the next index when it first renders in the namespace.
  */
-export class StateScope {
+export class StateNamespace {
   readonly path: string;
-  /** Shared by the scopes of a view, since namespaces can have the same id. */
+  /** Shared by the namespaces of a view, since namespaces can have the same id. */
   readonly claims: StateClaims;
   readonly #indices = new Map<string, number>();
-  /** Whether the components that render with the scope have mounted. */
+  /** Whether the components that render with the namespace have mounted. */
   #committed = false;
 
   constructor(path = '', claims: StateClaims = new StateClaims()) {
@@ -133,12 +133,12 @@ export class StateScope {
     this.claims = claims;
   }
 
-  /** Returns a new scope for the namespace `id` in this scope. */
-  child(id: string): StateScope {
-    return new StateScope(`${this.path}/${id}`, this.claims);
+  /** Returns a new namespace for `id` inside this one. */
+  child(id: string): StateNamespace {
+    return new StateNamespace(`${this.path}/${id}`, this.claims);
   }
 
-  /** Marks the components that rendered with the scope as mounted. */
+  /** Marks the components that rendered with the namespace as mounted. */
   commit(): void {
     this.#committed = true;
   }
@@ -162,6 +162,5 @@ export class StateScope {
   }
 }
 
-export const StateScopeContext: Context<StateScope | undefined> = createContext<
-  StateScope | undefined
->(undefined);
+export const StateNamespaceContext: Context<StateNamespace | undefined> =
+  createContext<StateNamespace | undefined>(undefined);

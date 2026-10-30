@@ -1,6 +1,6 @@
 import { Box, Button, TextField, Typography } from '@mui/material';
 import {
-  defineSlideStore,
+  defineStore,
   useResetSlideState,
   useSlideView,
   useStore,
@@ -20,7 +20,7 @@ interface Sum {
 
 type SumAction = { type: 'a' | 'b'; value: string } | { type: 'compute' };
 
-const sum = defineSlideStore({
+const sum = defineStore({
   initial: (): Sum => ({ a: '', b: '', sum: undefined }),
   reduce: (state, action: SumAction): Sum => {
     if (action.type !== 'compute') {

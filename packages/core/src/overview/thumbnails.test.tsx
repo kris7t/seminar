@@ -24,7 +24,7 @@ import { useResetSlideState, useSlideState } from '../state/useSlideState.ts';
 import { StateStore } from '../state/StateStore.ts';
 import { StepPositionStore } from '../steps/StepPositionStore.ts';
 import { StepPositionStoreContext } from '../steps/StepPositionStoreContext.ts';
-import { defineDeckStore } from '../state/defineStore.ts';
+import { defineStore } from '../state/defineStore.ts';
 import { useStore } from '../state/useStore.ts';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Step } from '../steps/Step.tsx';
@@ -38,7 +38,7 @@ import {
 } from '../transitions/SlideTransitions.ts';
 import { useTransitionHold } from '../transitions/settling.ts';
 
-const deckNumbers = defineDeckStore<number, string>();
+const deckNumbers = defineStore<number, string>({ scope: 'deck' });
 
 const capture = vi.mocked(captureThumbnail);
 const tasks = new Map<number, IdleRequestCallback>();
@@ -292,7 +292,7 @@ describe('cached slide thumbnails', () => {
 
   it('reuses captured step paths after transient state resets and reconstructs on another visit', async () => {
     function Mirrored(): JSX.Element {
-      const [value, setValue] = useSlideState(0, { transient: true });
+      const [value, setValue] = useSlideState(0, { scope: 'transient' });
       useEffect(() => {
         setValue((previous) => previous + 1);
       }, [setValue]);
@@ -784,7 +784,7 @@ describe('cached slide thumbnails', () => {
 
   it('discards retained visit state when a deck reset supersedes its pending capture', async () => {
     function State(): JSX.Element {
-      const [mirror, setMirror] = useSlideState(0, { transient: true });
+      const [mirror, setMirror] = useSlideState(0, { scope: 'transient' });
       const { resetDeck } = useDeck();
       return (
         <>

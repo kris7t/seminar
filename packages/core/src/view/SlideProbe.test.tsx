@@ -6,7 +6,7 @@ import { Deck } from '../deck/Deck.tsx';
 import { useDeck } from '../deck/DeckContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { useSlideView, type SlideView } from './SlideViewContext.ts';
-import { defineDeckStore } from '../state/defineStore.ts';
+import { defineStore } from '../state/defineStore.ts';
 import { useSlideState } from '../state/useSlideState.ts';
 import { useStore } from '../state/useStore.ts';
 import { Step } from '../steps/Step.tsx';
@@ -116,7 +116,7 @@ describe('useSlideProbe', () => {
   });
 
   it('keeps deck stores from what it renders', async () => {
-    const store = defineDeckStore({ initial: () => 'initial' });
+    const store = defineStore({ scope: 'deck', initial: () => 'initial' });
     const views: string[] = [];
     function Writer(): null {
       const { kind } = useSlideView();
@@ -179,7 +179,7 @@ describe('useSlideProbe', () => {
   it('keeps probe transient values separate from the currently presented slide', async () => {
     function Mirrored(): JSX.Element {
       const { kind } = useSlideView();
-      const [value, setValue] = useSlideState('live', { transient: true });
+      const [value, setValue] = useSlideState('live', { scope: 'transient' });
       useEffect(() => {
         if (kind === 'probe') setValue('probe');
       }, [kind, setValue]);

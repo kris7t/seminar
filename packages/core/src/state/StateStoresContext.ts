@@ -8,8 +8,8 @@ export interface StateStores {
   deck: StateStore;
   /** Holds the state of the slides, owned by the index of the slide. */
   slides: StateStore;
-  /** Holds the state of one visit to the slides, owned by the index of the view. */
-  visit: StateStore;
+  /** Holds transient state, owned by the index of the view, until the slide changes. */
+  transient: StateStore;
   /**
    * Records that the slide of a view reads a value of `deck` or `slides`,
    * including reads in probes and mirrors, e.g., to update its thumbnail.
@@ -27,7 +27,7 @@ export interface StateStores {
 /** Creates stores in which the deck and its slides share a store. */
 export function createStateStores(): StateStores {
   const state = new StateStore();
-  return { deck: state, slides: state, visit: new StateStore() };
+  return { deck: state, slides: state, transient: new StateStore() };
 }
 
 /** The state of the enclosing deck. */

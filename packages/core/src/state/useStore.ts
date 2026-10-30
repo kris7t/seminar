@@ -25,8 +25,7 @@ function identity<T>(value: T): T {
 }
 
 /**
- * Like `useReducer`, but the value belongs to a slide or the deck, see
- * {@link defineSlideStore} and {@link defineDeckStore}. Returns the value of
+ * Like `useReducer`, but the value belongs to a slide or the deck, see {@link defineStore}. Returns the value of
  * the key in the store, or the part of it that `select` picks, and a function
  * that sets it, or dispatches an action to the reducer of the store.
  */
@@ -55,11 +54,7 @@ export function useStore<T, Key, Action, Selected>(
     [definition, stableKey],
   );
   return useStateValue(
-    definition.kind === 'deckStore'
-      ? 'deck'
-      : definition.transient
-        ? 'visit'
-        : 'slide',
+    definition.scope,
     definition.family,
     encodedKey,
     initial,

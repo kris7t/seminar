@@ -1,10 +1,7 @@
 import { parseSync } from 'vite';
 
 const CORE_PACKAGE = '@seminar/core';
-const DEFINITIONS: ReadonlySet<string> = new Set([
-  'defineSlideStore',
-  'defineDeckStore',
-]);
+const DEFINITION = 'defineStore';
 
 interface AstNode {
   type: string;
@@ -56,11 +53,7 @@ function definitionNames(program: AstNode): ReadonlySet<string> {
     }
     for (const specifier of statement.specifiers ?? []) {
       const imported = specifier.imported?.name;
-      if (
-        typeof imported === 'string' &&
-        DEFINITIONS.has(imported) &&
-        specifier.local !== undefined
-      ) {
+      if (imported === DEFINITION && specifier.local !== undefined) {
         names.add(specifier.local.name);
       }
     }

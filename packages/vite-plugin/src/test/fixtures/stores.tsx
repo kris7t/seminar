@@ -1,7 +1,7 @@
-import { defineSlideStore, useStore } from '@seminar/core';
+import { defineStore, useStore } from '@seminar/core';
 import type { JSX } from 'react';
 
-const count = defineSlideStore<number>();
+const count = defineStore<number>();
 
 export function Count(): JSX.Element {
   const [value] = useStore(count);

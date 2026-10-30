@@ -1,7 +1,7 @@
 import { use, useEffect, type JSX, type ReactNode } from 'react';
 
 import { SharedWorkContext } from '../shared/SharedWorkContext.ts';
-import { StateScopeProvider } from '../state/SlideStateNamespace.tsx';
+import { StateNamespaceProvider } from '../state/SlideStateNamespace.tsx';
 import { SlideErrorBoundary } from './SlideErrorBoundary.tsx';
 import {
   SlideViewContext,
@@ -42,10 +42,10 @@ export function SlideViewProvider({
     <SlideViewContext value={view}>
       {SHOWN_KINDS.has(view.kind) ? (
         <SlideErrorBoundary view={view}>
-          <StateScopeProvider>{children}</StateScopeProvider>
+          <StateNamespaceProvider>{children}</StateNamespaceProvider>
         </SlideErrorBoundary>
       ) : (
-        <StateScopeProvider>{children}</StateScopeProvider>
+        <StateNamespaceProvider>{children}</StateNamespaceProvider>
       )}
     </SlideViewContext>
   );
