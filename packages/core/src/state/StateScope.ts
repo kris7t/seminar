@@ -11,17 +11,20 @@ function isReference(value: unknown): value is object {
   );
 }
 
+/** Stands for an initial value that hasn't been computed. */
+export const LAZY_INITIAL: unique symbol = Symbol('lazy initial value');
+
 /**
  * Whether two values are certainly different: primitives, arrays, and plain
  * objects are compared by their contents, but other objects and functions may
- * be different objects for the same thing, e.g., media streams.
+ * be different objects for the same thing.
  */
 function differs(
   a: unknown,
   b: unknown,
   ancestors = new Set<object>(),
 ): boolean {
-  if (Object.is(a, b)) return false;
+  if (Object.is(a, b) || a === LAZY_INITIAL || b === LAZY_INITIAL) return false;
   if (!isReference(a) || !isReference(b)) return true;
   const isPlain = (value: object) =>
     Array.isArray(value) || isPlainObject(value);

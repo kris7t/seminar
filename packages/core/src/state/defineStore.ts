@@ -33,8 +33,7 @@ export interface SlideStoreOptions<T, Key, Action> extends DeckStoreOptions<
   /**
    * Keeps the values of one visit to the slide, e.g., for mirroring, like
    * `useSlideState` with `transient: true`. Transient values start over on
-   * each visit, don't mark the slide as changed, and are kept when the slide
-   * is reset. Defaults to `false`.
+   * each visit, and don't mark the slide as changed. Defaults to `false`.
    */
   transient?: boolean | undefined;
 }
@@ -98,8 +97,8 @@ function define(
  * its recaps share it, e.g., the slide shown to the audience and its
  * thumbnail in the overview. Each slide has a value for each key.
  *
- * The values are kept when the slide is left. Reset slide, or a function from
- * `useResetSlideState`, resets them, unless they are transient.
+ * The values are kept when the slide is left, unless they are transient. Reset
+ * slide, or a function from `useResetSlideState`, resets them.
  */
 export function defineSlideStore<
   T,

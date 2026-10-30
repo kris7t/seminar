@@ -50,8 +50,8 @@ export interface DeckState {
   /** Whether the non-transient state of each slide was changed since its reset. */
   stateChanged: readonly boolean[];
   /**
-   * Resets the non-transient state of a slide, which recaps share, and goes
-   * to its first step.
+   * Resets the state of a slide, which recaps share, including transient
+   * state, and goes to its first step.
    */
   resetSlide: (slideIndex: number) => void;
   /**

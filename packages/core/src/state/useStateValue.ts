@@ -6,7 +6,7 @@ import {
   type Dispatch,
 } from 'react';
 
-import { SlideViewContext } from '../view/SlideViewContext.ts';
+import { DEFAULT_VIEW, SlideViewContext } from '../view/SlideViewContext.ts';
 import type { StateOwner, StateStore } from './StateStore.ts';
 import { useStateStores } from './StateStoresContext.ts';
 
@@ -18,7 +18,7 @@ export type StateLocation = 'deck' | 'slide' | 'visit';
 
 /**
  * Returns a function that selects from the value, but only again if the value
- * changes, so that a new selection of the same value doesn't render again.
+ * changes, since a new selection of the same value could render again forever.
  */
 function selector<T, Selected>(
   getValue: () => T,
@@ -28,14 +28,7 @@ function selector<T, Selected>(
   return () => {
     const value = getValue();
     if (last === undefined || !Object.is(last.value, value)) {
-      const selected = select(value);
-      last = {
-        value,
-        selected:
-          last !== undefined && Object.is(last.selected, selected)
-            ? last.selected
-            : selected,
-      };
+      last = { value, selected: select(value) };
     }
     return last.selected;
   };
@@ -44,7 +37,12 @@ function selector<T, Selected>(
 /** Returns the store and the owner of the values of the enclosing view. */
 function useStateOwner(location: StateLocation): [StateStore, StateOwner] {
   const stores = useStateStores();
-  const { index, stateIndex } = use(SlideViewContext);
+  const view = use(SlideViewContext);
+  const { index, stateIndex } = view;
+  if (location !== 'deck' && view === DEFAULT_VIEW)
+    throw new Error(
+      'Slide state requires a slide. Use a deck store outside of slides.',
+    );
   switch (location) {
     case 'deck':
       return [stores.deck, 'deck'];
@@ -102,11 +100,13 @@ export function useStateValue<T, Action, Selected>(
 
 /**
  * Returns a function that resets the state of the slide of the enclosing view,
- * which its recaps share.
+ * which its recaps share, and of the current visit to it.
  */
 export function useResetState(): () => void {
+  const [visitStore, visitOwner] = useStateOwner('visit');
   const [store, owner] = useStateOwner('slide');
   return useCallback(() => {
+    visitStore.reset(visitOwner);
     store.reset(owner);
-  }, [store, owner]);
+  }, [visitStore, visitOwner, store, owner]);
 }

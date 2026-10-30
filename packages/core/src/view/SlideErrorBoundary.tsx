@@ -215,10 +215,9 @@ export function SlideErrorBoundary({
     if (deck === undefined) {
       reset();
     } else {
-      stores?.visit.reset(view.index);
       deck.resetSlide(view.index);
     }
-  }, [deck, stores, view.index, reset]);
+  }, [deck, view.index, reset]);
   return (
     <Boundary
       resets={resets}

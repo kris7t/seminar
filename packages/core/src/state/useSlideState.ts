@@ -2,13 +2,13 @@ import {
   use,
   useEffect,
   useId,
-  useState,
+  useMemo,
   type Dispatch,
   type SetStateAction,
 } from 'react';
 
 import { applyAction } from './defineStore.ts';
-import { StateScope, StateScopeContext } from './StateScope.ts';
+import { LAZY_INITIAL, StateScope, StateScopeContext } from './StateScope.ts';
 import { useResetState, useStateValue } from './useStateValue.ts';
 
 export interface SlideStateOptions {
@@ -26,13 +26,13 @@ export interface SlideStateOptions {
   /**
    * Shares internal state, e.g., for mirroring, without a state marker or
    * reset button on the slide. Transient values start over on each visit,
-   * aren't marked as changed, and are kept when the current slide is reset.
-   * Reset deck clears them along with all other slide state. Defaults to `false`.
+   * and aren't marked as changed. Resets clear them, like other state. Defaults
+   * to `false`.
    */
   transient?: boolean | undefined;
 }
 
-/** Scope of state outside of the views of a deck. */
+/** Scope of state outside of the views of a deck, where it can't be used. */
 const DETACHED_SCOPE = new StateScope('detached');
 
 /** Family of the values of {@link useSlideState}. */
@@ -49,9 +49,7 @@ function identity<T>(value: T): T {
  * state is kept when the slide is rendered again later; transient state
  * lasts for one visit.
  *
- * The state may be of any type, including objects that only exist while the
- * presentation runs, like a media stream that one view produces for the
- * others.
+ * The state may be of any type.
  */
 export function useSlideState<T>(
   initial: T | (() => T),
@@ -64,21 +62,25 @@ export function useSlideState<T>(
     key === undefined
       ? `${scope.path}#${String(scope.indexOf(instanceId))}`
       : `${scope.path}/${key}`;
-  const [initialValue] = useState(() => {
-    const value =
-      typeof initial === 'function' ? (initial as () => T)() : initial;
-    return () => value;
-  });
-  useEffect(
+  // Runs only when the state has no value, like the initial value of a store,
+  // so after a reset, too. Another key is another state, with its initial value.
+  const { getInitial, comparable } = useMemo(
     () =>
-      viewScope?.claims.claim(stateKey, instanceId, initialValue(), transient),
-    [viewScope, stateKey, instanceId, initialValue, transient],
+      typeof initial === 'function'
+        ? { getInitial: initial as () => T, comparable: LAZY_INITIAL }
+        : { getInitial: () => initial, comparable: initial },
+    // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
+    [stateKey],
+  );
+  useEffect(
+    () => viewScope?.claims.claim(stateKey, instanceId, comparable, transient),
+    [viewScope, stateKey, instanceId, comparable, transient],
   );
   return useStateValue(
     transient ? 'visit' : 'slide',
     SLIDE_STATE,
     stateKey,
-    initialValue,
+    getInitial,
     applyAction<T>,
     identity<T>,
   );
@@ -86,9 +88,9 @@ export function useSlideState<T>(
 
 /**
  * Returns a function that resets the state of the enclosing slide, e.g., for
- * a reset button, so that every non-transient {@link useSlideState} of the
- * slide starts over from its initial value, and the slide is no longer
- * marked as changed. Transient values and the steps of the slide are kept.
+ * a reset button, so that every {@link useSlideState} and slide store of the
+ * slide starts over from its initial value, including transient state, and
+ * the slide is no longer marked as changed. It stays on its step.
  */
 export function useResetSlideState(): () => void {
   return useResetState();

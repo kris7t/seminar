@@ -57,7 +57,8 @@ export interface SlideView {
   stateIndex?: number | undefined;
 }
 
-const DEFAULT_VIEW: SlideView = {
+/** The view outside of slides. */
+export const DEFAULT_VIEW: SlideView = {
   index: 0,
   kind: 'audience',
   interactive: true,

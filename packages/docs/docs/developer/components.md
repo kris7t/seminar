@@ -30,25 +30,25 @@ export function Counter() {
 
 Every view of the slide shows the same count, and it's kept when the
 presenter comes back to the slide, or shows it again in a recap.
-`useResetSlideState` resets every non-transient state of the slide to its
-initial value.
+`useResetSlideState` resets every state and slide store of the slide to its
+initial value, including transient state, and stays on the current step.
 
 States are told apart by the order in which the components of the slide
 first render. Pass a `key`, e.g., `useSlideState(0, { key: 'count' })`, for
 components that mount later, e.g., when a tab is selected. `SlideStateNamespace`
 gives the states inside it a namespace of their own, e.g., to render a component
-with a fixed key several times on a slide. Components mounted at the same time
+with a fixed key several times on a slide. It doesn't apply to stores, whose
+definitions identify them already. Components mounted at the same time
 need different keys or namespaces: they share their state otherwise, which logs
 a warning. It throws if their initial values differ, if one of them is
 transient, or if two namespaces have the same id. Initial values that aren't
-plain data, e.g., media streams, can't be compared, so they only warn.
+plain data can't be compared, so they only warn.
 
 This makes `useSlideState` a drop-in replacement for `useState` in simple
 components inside a `Deck`, which it requires, like stores. Components that mount conditionally, or that share state with
 other components, should define a [store](#stores) instead.
 
-The state can be any value, including objects that only exist while the deck
-runs, like a media stream that one view creates for the others.
+The state can be any value.
 
 For internal values used only to mirror a component between views, pass
 `transient: true`:
@@ -63,8 +63,8 @@ Transient state is shared between views for the current visit and starts
 over when the presenter returns to the slide. Steps, the overview, and
 opening or closing the presenter view keep the current visit's values.
 Transient state doesn't add a state marker or reset button to the slide,
-and updating it doesn't mark the slide or deck as changed. Reset slide
-leaves it alone; Reset deck clears it.
+and updating it doesn't mark the slide or deck as changed. Resets clear it,
+like other state.
 
 ## Stores
 
@@ -127,6 +127,10 @@ When a module changes in the dev server of `@seminar/vite-plugin`, its stores
 keep their values, unless their variables are renamed, or their `initial`
 functions change, so that editing the initial value shows it.
 
+`useSlideState` keeps its values instead, even if its initial value changes,
+and without keys, adding a state above others can give them each other's values.
+Prefer stores for state that you keep editing.
+
 Values of slide stores are kept like those of `useSlideState`, and pass
 `transient: true` to `defineSlideStore` for transient values. Reset slide
 resets the slide stores of the slide, and Reset deck in the menu resets
@@ -140,11 +144,6 @@ A slide that throws an error while rendering shows the error in its place,
 while the rest of the deck keeps working. The audience window leaves out the
 stack trace. The overview shows an icon for the slide, and printing leaves it
 out.
-
-The button below the error is like Reset slide in the menu: it resets the state
-of the slide, goes to its first step, and renders it again in every view. The
-slide is also rendered again when the presenter comes back to it, or when its
-code changes in the dev server.
 
 If a slide fails after its code changed in the dev server, its state is reset
 by itself, since it may no longer fit the code, while it stays on its step, and

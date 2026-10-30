@@ -149,6 +149,41 @@ describe('the id of a store', () => {
   });
 });
 
+describe('outside of a slide', () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  function renderOutside(hook: () => unknown) {
+    function Component() {
+      hook();
+      return null;
+    }
+    render(
+      <StateStoresContext value={createStateStores()}>
+        <Component />
+      </StateStoresContext>,
+    );
+  }
+
+  it.each([
+    ['slide stores', () => useStore(count)],
+    ['transient stores', () => useStore(transientCount)],
+    ['useSlideState', () => useSlideState(0)],
+    ['useResetSlideState', () => useResetSlideState()],
+  ])('rejects %s, which belong to a slide', (_, hook) => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect(() => {
+      renderOutside(hook);
+    }).toThrow('Slide state requires a slide');
+  });
+
+  it('allows deck stores', () => {
+    renderOutside(() => useStore(poll));
+  });
+});
+
 describe('outside of a Deck', () => {
   afterEach(() => {
     cleanup();
@@ -234,7 +269,7 @@ describe('useStore', () => {
     expect(screen.getByRole('button', { name: 'Transient: 0' })).toBeDefined();
   });
 
-  it('resets slide stores with the state of the slide', async () => {
+  it('resets slide stores with the state of the slide, even transient ones', async () => {
     const user = userEvent.setup();
     function Reset() {
       const reset = useResetSlideState();
@@ -257,7 +292,7 @@ describe('useStore', () => {
     await user.click(screen.getByRole('button', { name: 'Transient: 0' }));
     await user.click(screen.getByRole('button', { name: 'Reset' }));
     expect(screen.getByRole('button', { name: 'Kept: 0' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Transient: 1' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Transient: 0' })).toBeDefined();
   });
 
   it('shares deck stores between slides by key', async () => {

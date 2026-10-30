@@ -166,7 +166,7 @@ describe('useSlideState', () => {
     expect(screen.getByText('Changed')).toBeDefined();
     await user.click(screen.getByRole('button', { name: 'Reset' }));
     expect(screen.getByRole('button', { name: 'A: 0' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Mirror: 1' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Mirror: 0' })).toBeDefined();
     expect(screen.getByText('Unchanged')).toBeDefined();
     // The steps are kept.
     expect(window.location.hash).toBe('#slide=1&step=1');
@@ -178,6 +178,7 @@ describe('useSlideState', () => {
       <Deck>
         <Slide title="First">
           <Counter name="A" />
+          <Counter name="Mirror" transient />
           <Step>Later</Step>
         </Slide>
       </Deck>,
@@ -195,10 +196,12 @@ describe('useSlideState', () => {
     expect((await resetItem()).getAttribute('aria-disabled')).toBeNull();
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: 'A: 0' }));
+    await user.click(screen.getByRole('button', { name: 'Mirror: 0' }));
     await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=1');
     await user.click(await resetItem());
     expect(screen.getByRole('button', { name: 'A: 0' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Mirror: 0' })).toBeDefined();
     expect(window.location.hash).toBe('#slide=1');
   });
 
@@ -297,6 +300,94 @@ describe('useSlideState', () => {
     expect(image).toContain('right: 1');
     expect(image).toContain('late: 1');
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  describe('with a lazy initial value', () => {
+    function renderViews(children: ReactNode) {
+      return render(
+        <StateStoresContext value={createStateStores()}>
+          <SlideViewProvider
+            view={{ index: 0, kind: 'audience', interactive: true }}
+          >
+            {children}
+          </SlideViewProvider>
+          <SlideViewProvider
+            view={{ index: 0, kind: 'preview', interactive: false }}
+          >
+            {children}
+          </SlideViewProvider>
+        </StateStoresContext>,
+      );
+    }
+
+    it('computes it once for all views, and again after a reset', async () => {
+      const user = userEvent.setup();
+      const initial = vi.fn(() => ({}));
+      const seen: unknown[] = [];
+      function Lazy() {
+        const [value] = useSlideState(initial);
+        const reset = useResetSlideState();
+        seen.push(value);
+        return (
+          <button type="button" onClick={reset}>
+            Reset
+          </button>
+        );
+      }
+      renderViews(<Lazy />);
+      expect(initial).toHaveBeenCalledOnce();
+      const before = seen.at(-1);
+      const [button] = screen.getAllByRole('button', { name: 'Reset' });
+      await user.click(button ?? document.body);
+      expect(initial).toHaveBeenCalledTimes(2);
+      expect(seen.at(-1)).not.toBe(before);
+    });
+
+    it('only warns if another component has the same key', () => {
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      function Same({ initial }: { initial: number | (() => number) }) {
+        useSlideState(initial, { key: 'same' });
+        return null;
+      }
+      renderViews(
+        <>
+          <Same initial={1} />
+          <Same initial={() => 2} />
+        </>,
+      );
+      expect(warn).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('uses the initial value of another key when the key changes', async () => {
+    const user = userEvent.setup();
+    function Keyed() {
+      const [key, setKey] = useState('a');
+      const [value] = useSlideState(`initial of ${key}`, { key });
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            setKey('b');
+          }}
+        >
+          {value}
+        </button>
+      );
+    }
+    render(
+      <StateStoresContext value={createStateStores()}>
+        <SlideViewProvider
+          view={{ index: 0, kind: 'audience', interactive: true }}
+        >
+          <Keyed />
+        </SlideViewProvider>
+      </StateStoresContext>,
+    );
+    await user.click(screen.getByRole('button', { name: 'initial of a' }));
+    expect(screen.getByRole('button', { name: 'initial of b' })).toBeDefined();
   });
 
   describe('with the same state in several components', () => {

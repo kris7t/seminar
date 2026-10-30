@@ -417,9 +417,14 @@ function InteractiveDeck({
       // because of its step, so on the same slide, the step can't wait for a
       // fade, which has nothing to fade to anyway.
       goTo(index, 'start', { transition: index !== slideIndex });
-      state.reset(recapOf[index] ?? index);
+      const owner = recapOf[index] ?? index;
+      visitState.reset(index);
+      // The current slide may be a recap of the same slide.
+      if ((recapOf[slideIndex] ?? slideIndex) === owner)
+        visitState.reset(slideIndex);
+      state.reset(owner);
     },
-    [state, recapOf, goTo, slideIndex],
+    [state, visitState, recapOf, goTo, slideIndex],
   );
   const deckChanged = changedStates.size > 0;
   const toc = useMemo(
