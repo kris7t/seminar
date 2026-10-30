@@ -2,7 +2,22 @@ import { use, useEffect, type JSX, type ReactNode } from 'react';
 
 import { SharedWorkContext } from '../shared/SharedWorkContext.ts';
 import { StateScopeProvider } from '../state/SlideStateNamespace.tsx';
-import { SlideViewContext, type SlideView } from './SlideViewContext.ts';
+import { SlideErrorBoundary } from './SlideErrorBoundary.tsx';
+import {
+  SlideViewContext,
+  type SlideView,
+  type SlideViewKind,
+} from './SlideViewContext.ts';
+
+/**
+ * The views that people look at. Other views leave out a slide that fails to
+ * render, or let the code that renders them handle the error.
+ */
+const SHOWN_KINDS: ReadonlySet<SlideViewKind> = new Set([
+  'audience',
+  'presenter',
+  'preview',
+]);
 
 export interface SlideViewProviderProps {
   view: SlideView;
@@ -25,7 +40,13 @@ export function SlideViewProvider({
   );
   return (
     <SlideViewContext value={view}>
-      <StateScopeProvider>{children}</StateScopeProvider>
+      {SHOWN_KINDS.has(view.kind) ? (
+        <SlideErrorBoundary>
+          <StateScopeProvider>{children}</StateScopeProvider>
+        </SlideErrorBoundary>
+      ) : (
+        <StateScopeProvider>{children}</StateScopeProvider>
+      )}
     </SlideViewContext>
   );
 }

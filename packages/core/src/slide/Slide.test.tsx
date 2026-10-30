@@ -78,7 +78,8 @@ describe('Slide', () => {
 
   it('rejects unknown masters', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    expect(() => renderSlide(<Slide master="missing" />)).toThrow(
+    renderSlide(<Slide master="missing" />);
+    expect(screen.getByRole('alert').textContent).toContain(
       'Unknown slide master: missing',
     );
   });

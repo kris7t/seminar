@@ -356,40 +356,40 @@ describe('useSlideState', () => {
 
     it('throws for the same key of transient and other state', () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      expect(() =>
-        renderView(
-          <>
-            <Value initial={1} />
-            <Value initial={1} transient />
-          </>,
-        ),
-      ).toThrow('both transient and non-transient');
+      renderView(
+        <>
+          <Value initial={1} />
+          <Value initial={1} transient />
+        </>,
+      );
+      expect(screen.getByRole('alert').textContent).toContain(
+        'both transient and non-transient',
+      );
     });
 
     it('throws for namespaces with the same id, rather than for their state', () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const warn = silenceWarnings();
-      expect(() =>
-        renderView(
-          <>
-            <SlideStateNamespace id="a">
-              <Value initial={1} stateKey={null} />
-            </SlideStateNamespace>
-            <SlideStateNamespace id="a">
-              <Value initial={2} stateKey={null} />
-            </SlideStateNamespace>
-          </>,
-        ),
-      ).toThrow('"/a"');
+      renderView(
+        <>
+          <SlideStateNamespace id="a">
+            <Value initial={1} stateKey={null} />
+          </SlideStateNamespace>
+          <SlideStateNamespace id="a">
+            <Value initial={2} stateKey={null} />
+          </SlideStateNamespace>
+        </>,
+      );
+      expect(screen.getByRole('alert').textContent).toContain('"/a"');
       expect(warn).not.toHaveBeenCalled();
-      expect(() =>
-        renderView(
-          <>
-            <SlideStateNamespace id="a" />
-            <SlideStateNamespace id="a" />
-          </>,
-        ),
-      ).toThrow('"/a"');
+      cleanup();
+      renderView(
+        <>
+          <SlideStateNamespace id="a" />
+          <SlideStateNamespace id="a" />
+        </>,
+      );
+      expect(screen.getByRole('alert').textContent).toContain('"/a"');
     });
 
     it('allows the same id in other namespaces', () => {
@@ -432,14 +432,15 @@ describe('useSlideState', () => {
       'throws with different initial values (%j, %j, transient: %j)',
       (a, b, transient) => {
         vi.spyOn(console, 'error').mockImplementation(() => undefined);
-        expect(() =>
-          renderView(
-            <>
-              <Value initial={a} />
-              <Value initial={b} transient={transient} />
-            </>,
-          ),
-        ).toThrow('different initial values');
+        renderView(
+          <>
+            <Value initial={a} />
+            <Value initial={b} transient={transient} />
+          </>,
+        );
+        expect(screen.getByRole('alert').textContent).toContain(
+          'different initial values',
+        );
       },
     );
 

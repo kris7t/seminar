@@ -134,6 +134,13 @@ every store and all slide state, including transient values. It also resets
 every slide and recap to the first step of its own range, and shows the
 first non-spare slide (or the first slide if all are spare).
 
+## Errors
+
+A slide that throws an error while rendering shows the error in its place,
+in the audience window, too, while the rest of the deck keeps working. It's
+rendered again when the presenter comes back to it, or when its code changes
+in the dev server. When printing, it is left out instead.
+
 ## Views
 
 `useSlideView` tells which rendering a component is in. Its `kind` is one of:

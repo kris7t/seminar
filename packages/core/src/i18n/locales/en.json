@@ -93,5 +93,6 @@
   "layoutNotes": "Slide with notes",
   "layoutGrid": "Several slides per sheet",
   "slidesPerSheet": "Slides per sheet",
-  "headersAndFooters": "Headers and footers"
+  "headersAndFooters": "Headers and footers",
+  "slideError": "This slide can't be shown"
 }

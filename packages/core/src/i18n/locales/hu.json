@@ -93,5 +93,6 @@
   "layoutNotes": "Dia jegyzetekkel",
   "layoutGrid": "Több dia laponként",
   "slidesPerSheet": "Diák laponként",
-  "headersAndFooters": "Élőfej és élőláb"
+  "headersAndFooters": "Élőfej és élőláb",
+  "slideError": "Ez a dia nem jeleníthető meg"
 }

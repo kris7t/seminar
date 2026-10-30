@@ -93,5 +93,6 @@
   "layoutNotes": "Diapositive avec notes",
   "layoutGrid": "Plusieurs diapositives par feuille",
   "slidesPerSheet": "Diapositives par feuille",
-  "headersAndFooters": "En-têtes et pieds de page"
+  "headersAndFooters": "En-têtes et pieds de page",
+  "slideError": "Cette diapositive ne peut pas être affichée"
 }

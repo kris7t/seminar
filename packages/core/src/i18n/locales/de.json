@@ -93,5 +93,6 @@
   "layoutNotes": "Folie mit Notizen",
   "layoutGrid": "Mehrere Folien pro Blatt",
   "slidesPerSheet": "Folien pro Blatt",
-  "headersAndFooters": "Kopf- und Fußzeilen"
+  "headersAndFooters": "Kopf- und Fußzeilen",
+  "slideError": "Diese Folie kann nicht angezeigt werden"
 }
