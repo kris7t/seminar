@@ -7,6 +7,8 @@ export interface TitleBar {
   /** Distance of the area from the right edge of the window. */
   readonly right: number;
   readonly height: number;
+  /** Width of the window, which the title bar spans. */
+  readonly width: number;
 }
 
 /**
@@ -46,12 +48,14 @@ function getTitleBar(): TitleBar | undefined {
     left: area.left,
     right: window.innerWidth - area.right,
     height: area.height,
+    width: window.innerWidth,
   };
   // The same object while the area is the same, as React expects.
   if (
     snapshot?.left !== titleBar.left ||
     snapshot.right !== titleBar.right ||
-    snapshot.height !== titleBar.height
+    snapshot.height !== titleBar.height ||
+    snapshot.width !== titleBar.width
   ) {
     snapshot = titleBar;
   }

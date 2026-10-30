@@ -854,7 +854,9 @@ function InteractiveDeck({
         // sidebar.
         <PresenterToolbar
           {...toolbarProps}
-          width={presenterAreaSize.width + (showSidebar ? SIDEBAR_WIDTH : 0)}
+          // Unlike the presenter view, doesn't change with the sidebar, so it
+          // doesn't have to be measured again.
+          width={titleBar.width}
           titleBar={{ area: titleBar, color: titleBarColor }}
         />
       ) : (
