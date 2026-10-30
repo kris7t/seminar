@@ -44,7 +44,7 @@ transient, or if two namespaces have the same id. Initial values that aren't
 plain data, e.g., media streams, can't be compared, so they only warn.
 
 This makes `useSlideState` a drop-in replacement for `useState` in simple
-components. Components that mount conditionally, or that share state with
+components inside a `Deck`, which it requires, like stores. Components that mount conditionally, or that share state with
 other components, should define a [store](#stores) instead.
 
 The state can be any value, including objects that only exist while the deck

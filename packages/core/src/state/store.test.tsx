@@ -21,7 +21,7 @@ import {
   type StoreDefinition,
 } from './defineStore.ts';
 import { createStateStores, StateStoresContext } from './StateStoresContext.ts';
-import { useResetSlideState } from './useSlideState.ts';
+import { useResetSlideState, useSlideState } from './useSlideState.ts';
 import { useStore } from './useStore.ts';
 
 const count = defineSlideStore({ initial: () => 0 });
@@ -145,6 +145,28 @@ describe('the id of a store', () => {
   it('is not needed to tell apart stores', () => {
     expect(defineSlideStore({ initial }).family).not.toBe(
       defineSlideStore({ initial }).family,
+    );
+  });
+});
+
+describe('outside of a Deck', () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ['useStore', () => useStore(count)],
+    ['useSlideState', () => useSlideState(0)],
+    ['useResetSlideState', () => useResetSlideState()],
+  ])('%s throws', (_, hook) => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    function Component() {
+      hook();
+      return null;
+    }
+    expect(() => render(<Component />)).toThrow(
+      'Slide and deck state require a Deck',
     );
   });
 });

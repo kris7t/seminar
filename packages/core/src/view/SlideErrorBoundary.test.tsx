@@ -103,7 +103,11 @@ describe('SlideErrorBoundary', () => {
 
   it('shows the error again if the slide still fails after a reset', async () => {
     const user = userEvent.setup();
-    render(renderView({}, <Broken />));
+    render(
+      <StateStoresContext value={createStateStores()}>
+        {renderView({}, <Broken />)}
+      </StateStoresContext>,
+    );
     await user.click(screen.getByRole('button', { name: 'Reset slide' }));
     expect(screen.getByRole('alert').textContent).toContain('Slide is broken');
     broken = false;
@@ -127,6 +131,12 @@ describe('SlideErrorBoundary', () => {
       stores.slides.reset(1);
     });
     expect(screen.getByText('Slide is fixed')).toBeDefined();
+  });
+
+  it('has nothing to reset outside of a deck', () => {
+    render(renderView({}, <Broken />));
+    expect(screen.getByRole('alert').textContent).toContain('Slide is broken');
+    expect(screen.queryByRole('button', { name: 'Reset slide' })).toBeNull();
   });
 
   it('hides the stack trace in the audience window', () => {

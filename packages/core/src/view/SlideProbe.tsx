@@ -1,7 +1,6 @@
 import {
   Component,
   Suspense,
-  use,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -13,7 +12,10 @@ import {
 import { createPortal } from 'react-dom';
 
 import { StateStore } from '../state/StateStore.ts';
-import { StateStoresContext } from '../state/StateStoresContext.ts';
+import {
+  StateStoresContext,
+  useStateStores,
+} from '../state/StateStoresContext.ts';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SlideViewProvider } from './SlideViewProvider.tsx';
@@ -66,7 +68,7 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
   );
   // State of its own, so that the probe doesn't set up the state of the
   // slides, but it reads the state of the deck and records what it reads.
-  const stores = use(StateStoresContext);
+  const stores = useStateStores();
   const [slideState] = useState(() => new StateStore());
   const [visitState] = useState(() => new StateStore());
   const probeStores = useMemo(

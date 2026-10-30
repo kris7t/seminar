@@ -52,6 +52,11 @@ function isFirstFailureAfterHotUpdate(
   return true;
 }
 
+/** Without a deck, there is no state to reset. */
+function subscribeToNothing(): () => void {
+  return () => undefined;
+}
+
 /** Shows what went wrong in place of a slide. */
 function SlideError({
   error,
@@ -189,15 +194,20 @@ export function SlideErrorBoundary({
   const stores = use(StateStoresContext);
   const deck = use(DeckContext);
   const owner = deck?.recapOf[view.index] ?? view.index;
-  const resets = useSyncExternalStore(stores.slides.subscribeResets, () =>
-    stores.slides.getResets(owner),
+  const resets = useSyncExternalStore(
+    stores?.slides.subscribeResets ?? subscribeToNothing,
+    () => stores?.slides.getResets(owner) ?? 0,
   );
   const reset = useCallback(() => {
-    stores.visit.reset(view.index);
-    stores.slides.reset(owner);
+    stores?.visit.reset(view.index);
+    stores?.slides.reset(owner);
   }, [stores, owner, view.index]);
   const onCatch = useCallback(() => {
-    if (isFirstFailureAfterHotUpdate(stores.slides, owner)) reset();
+    if (
+      stores !== undefined &&
+      isFirstFailureAfterHotUpdate(stores.slides, owner)
+    )
+      reset();
   }, [stores, owner, reset]);
   // The step may be what fails, so it goes back to the first step, too. A hot
   // update keeps the step, so that it shows what is being edited.
@@ -205,7 +215,7 @@ export function SlideErrorBoundary({
     if (deck === undefined) {
       reset();
     } else {
-      stores.visit.reset(view.index);
+      stores?.visit.reset(view.index);
       deck.resetSlide(view.index);
     }
   }, [deck, stores, view.index, reset]);
@@ -214,7 +224,7 @@ export function SlideErrorBoundary({
       resets={resets}
       onCatch={onCatch}
       showStack={view.kind !== 'audience' || view.interactive}
-      onReset={view.interactive ? onReset : undefined}
+      onReset={view.interactive && stores !== undefined ? onReset : undefined}
     >
       {children}
     </Boundary>

@@ -1,4 +1,4 @@
-import { createContext, type Context } from 'react';
+import { createContext, use, type Context } from 'react';
 
 import { StateStore, type StateOwner } from './StateStore.ts';
 
@@ -30,9 +30,14 @@ export function createStateStores(): StateStores {
   return { deck: state, slides: state, visit: new StateStore() };
 }
 
-/**
- * The state of the enclosing deck. Outside of a deck, components share stores
- * of their own.
- */
-export const StateStoresContext: Context<StateStores> =
-  createContext(createStateStores());
+/** The state of the enclosing deck. */
+export const StateStoresContext: Context<StateStores | undefined> =
+  createContext<StateStores | undefined>(undefined);
+
+/** Returns the state of the enclosing deck, which state needs to be kept in. */
+export function useStateStores(): StateStores {
+  const stores = use(StateStoresContext);
+  if (stores === undefined)
+    throw new Error('Slide and deck state require a Deck');
+  return stores;
+}

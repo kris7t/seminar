@@ -13,6 +13,7 @@ import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import type { StepStore } from '../steps/StepStore.ts';
 import {
   StateStoresContext,
+  useStateStores,
   type StateStores,
 } from '../state/StateStoresContext.ts';
 import {
@@ -121,7 +122,7 @@ export function PresentedSlides({
 }: PresentedSlidesProps): JSX.Element {
   const steps = use(StepStoreContext);
   const deck = useDeck();
-  const stateStores = use(StateStoresContext);
+  const stateStores = useStateStores();
   const [state, setState] = useState<{
     current: Layer;
     retired?: Layer | undefined;

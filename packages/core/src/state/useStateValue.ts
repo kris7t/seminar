@@ -8,7 +8,7 @@ import {
 
 import { SlideViewContext } from '../view/SlideViewContext.ts';
 import type { StateOwner, StateStore } from './StateStore.ts';
-import { StateStoresContext } from './StateStoresContext.ts';
+import { useStateStores } from './StateStoresContext.ts';
 
 /**
  * Who shares a value: every slide of the deck, every view of a slide and its
@@ -43,7 +43,7 @@ function selector<T, Selected>(
 
 /** Returns the store and the owner of the values of the enclosing view. */
 function useStateOwner(location: StateLocation): [StateStore, StateOwner] {
-  const stores = use(StateStoresContext);
+  const stores = useStateStores();
   const { index, stateIndex } = use(SlideViewContext);
   switch (location) {
     case 'deck':
@@ -72,7 +72,7 @@ export function useStateValue<T, Action, Selected>(
   select: (state: T) => Selected,
 ): [Selected, Dispatch<Action>] {
   const [store, owner] = useStateOwner(location);
-  const { recordUse } = use(StateStoresContext);
+  const { recordUse } = useStateStores();
   const { index } = use(SlideViewContext);
   if (location !== 'visit') recordUse?.(index, owner, family, key);
   const getValue = useCallback(
