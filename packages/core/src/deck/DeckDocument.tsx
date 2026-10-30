@@ -187,6 +187,7 @@ export function DocumentDeck({
     hasSteps: none,
     hasState: none,
     stateChanged: none,
+    transientStateChanged: false,
     resetSlide: noop,
     deckChanged: false,
     resetDeck: noop,

@@ -20,14 +20,14 @@ import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
 
 function Counter({
   name,
-  stateKey,
+  stateId,
   transient = false,
 }: {
   name: string;
-  stateKey?: string;
+  stateId?: string;
   transient?: boolean;
 }) {
-  const [count, setCount] = useSlideState(0, { key: stateKey, transient });
+  const [count, setCount] = useSlideState(0, { id: stateId, transient });
   return (
     <button
       type="button"
@@ -87,16 +87,28 @@ describe('useSlideState', () => {
       target: screen.getByRole('heading', { name: 'First' }),
     });
     const menu = within(await screen.findByRole('menu'));
+    // The presenter can still clear them, once they have changed.
     expect(
       menu
         .getByRole('menuitem', { name: 'Reset slide' })
         .getAttribute('aria-disabled'),
-    ).toBe('true');
+    ).toBeNull();
     expect(
       menu
         .getByRole('menuitem', { name: 'Reset deck' })
         .getAttribute('aria-disabled'),
     ).toBeNull();
+    await user.click(menu.getByRole('menuitem', { name: 'Reset slide' }));
+    expect(screen.getByRole('button', { name: 'Mirror: 0' })).toBeDefined();
+    await user.pointer({
+      keys: '[MouseRight]',
+      target: screen.getByRole('heading', { name: 'First' }),
+    });
+    expect(
+      within(await screen.findByRole('menu'))
+        .getByRole('menuitem', { name: 'Reset slide' })
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
     await user.keyboard('{Escape}');
     await waitFor(() => {
       expect(screen.queryByRole('menu')).toBeNull();
@@ -258,12 +270,12 @@ describe('useSlideState', () => {
     expect(screen.getByText('a: 1')).toBeDefined();
   });
 
-  it('identifies state by keys and namespaces', async () => {
+  it('identifies state by ids and namespaces', async () => {
     const user = userEvent.setup();
     function Toggle() {
       const [shown, setShown] = useState(false);
       return shown ? (
-        <Counter name="late" stateKey="late" />
+        <Counter name="late" stateId="late" />
       ) : (
         <button
           type="button"
@@ -343,12 +355,12 @@ describe('useSlideState', () => {
       expect(seen.at(-1)).not.toBe(before);
     });
 
-    it('only warns if another component has the same key', () => {
+    it('only warns if another component has the same id', () => {
       const warn = vi
         .spyOn(console, 'warn')
         .mockImplementation(() => undefined);
       function Same({ initial }: { initial: number | (() => number) }) {
-        useSlideState(initial, { key: 'same' });
+        useSlideState(initial, { id: 'same' });
         return null;
       }
       renderViews(
@@ -361,16 +373,16 @@ describe('useSlideState', () => {
     });
   });
 
-  it('uses the initial value of another key when the key changes', async () => {
+  it('uses the initial value of another id when the id changes', async () => {
     const user = userEvent.setup();
     function Keyed() {
-      const [key, setKey] = useState('a');
-      const [value] = useSlideState(`initial of ${key}`, { key });
+      const [id, setId] = useState('a');
+      const [value] = useSlideState(`initial of ${id}`, { id });
       return (
         <button
           type="button"
           onClick={() => {
-            setKey('b');
+            setId('b');
           }}
         >
           {value}
@@ -394,14 +406,14 @@ describe('useSlideState', () => {
     function Value({
       initial,
       transient = false,
-      stateKey = 'same',
+      stateId = 'same',
     }: {
       initial: unknown;
       transient?: boolean;
-      stateKey?: string | null;
+      stateId?: string | null;
     }) {
       const [value] = useSlideState(initial, {
-        key: stateKey ?? undefined,
+        id: stateId ?? undefined,
         transient,
       });
       return <output>{JSON.stringify(value)}</output>;
@@ -433,19 +445,19 @@ describe('useSlideState', () => {
       expect(warn.mock.calls[0]?.[0]).toContain('"/same"');
     });
 
-    it('tells apart components without keys by their order', () => {
+    it('tells apart components without ids by their order', () => {
       const warn = silenceWarnings();
       renderView(
         <>
-          <Value initial={[]} stateKey={null} />
-          <Value initial={[1]} stateKey={null} />
-          <Value initial={[]} stateKey={null} transient />
+          <Value initial={[]} stateId={null} />
+          <Value initial={[1]} stateId={null} />
+          <Value initial={[]} stateId={null} transient />
         </>,
       );
       expect(warn).not.toHaveBeenCalled();
     });
 
-    it('throws for the same key of transient and other state', () => {
+    it('throws for the same id of transient and other state', () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
       renderView(
         <>
@@ -464,10 +476,10 @@ describe('useSlideState', () => {
       renderView(
         <>
           <SlideStateNamespace id="a">
-            <Value initial={1} stateKey={null} />
+            <Value initial={1} stateId={null} />
           </SlideStateNamespace>
           <SlideStateNamespace id="a">
-            <Value initial={2} stateKey={null} />
+            <Value initial={2} stateId={null} />
           </SlideStateNamespace>
         </>,
       );
@@ -503,10 +515,10 @@ describe('useSlideState', () => {
         <>
           <Value initial={new Date(0)} />
           <Value initial={new Date(1)} />
-          <Value stateKey="nested" initial={[new Date(0), 1]} />
-          <Value stateKey="nested" initial={[new Date(1), 1]} />
-          <Value stateKey="function" initial={makeFunction} />
-          <Value stateKey="function" initial={makeFunction} />
+          <Value stateId="nested" initial={[new Date(0), 1]} />
+          <Value stateId="nested" initial={[new Date(1), 1]} />
+          <Value stateId="function" initial={makeFunction} />
+          <Value stateId="function" initial={makeFunction} />
         </>,
       );
       expect(warn).toHaveBeenCalledTimes(3);
@@ -535,7 +547,7 @@ describe('useSlideState', () => {
       },
     );
 
-    it('allows the same key in other views and namespaces, and after unmounting', async () => {
+    it('allows the same id in other views and namespaces, and after unmounting', async () => {
       const user = userEvent.setup();
       const warn = silenceWarnings();
       function Tabs() {
@@ -579,7 +591,7 @@ describe('useSlideState', () => {
     });
   });
 
-  it('warns about components without keys that mount later', async () => {
+  it('warns about components without ids that mount later', async () => {
     const user = userEvent.setup();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     function Toggle() {
@@ -607,7 +619,7 @@ describe('useSlideState', () => {
     await user.click(screen.getByText('Show'));
     await waitFor(() => {
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining('without a key'),
+        expect.stringContaining('without an id'),
       );
     });
   });

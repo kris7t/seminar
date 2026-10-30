@@ -411,6 +411,10 @@ function InteractiveDeck({
       ),
     [slides, recapOf, probed, stateChanged],
   );
+  const transientStateChanged = useSyncExternalStore(
+    visitState.subscribeChanged,
+    visitState.getChanged,
+  ).has(slideIndex);
   const resetSlide = useCallback(
     (index: number) => {
       // The slide renders again when its state is reset, and it may have failed
@@ -617,6 +621,7 @@ function InteractiveDeck({
       hasSteps,
       hasState,
       stateChanged,
+      transientStateChanged,
       resetSlide,
       deckChanged,
       resetDeck,
@@ -655,6 +660,7 @@ function InteractiveDeck({
       hasSteps,
       hasState,
       stateChanged,
+      transientStateChanged,
       resetSlide,
       deckChanged,
       resetDeck,

@@ -15,14 +15,14 @@ export interface SlideStateOptions {
   /**
    * Identifies the state within the slide (or the enclosing
    * {@link SlideStateNamespace}). Components that are mounted at the same time
-   * need different keys.
+   * need different ids.
    *
-   * Without a key, the state is identified by the order in which the
+   * Without an id, the state is identified by the order in which the
    * components of the slide first render, which is the same in every view of
-   * the slide as long as the component mounts along with the slide. Pass a key
+   * the slide as long as the component mounts along with the slide. Pass an id
    * if the component mounts later, e.g., when a tab is selected.
    */
-  key?: string | undefined;
+  id?: string | undefined;
   /**
    * Shares internal state, e.g., for mirroring, without a state marker or
    * reset button on the slide. Transient values start over on each visit,
@@ -53,33 +53,33 @@ function identity<T>(value: T): T {
  */
 export function useSlideState<T>(
   initial: T | (() => T),
-  { key, transient = false }: SlideStateOptions = {},
+  { id, transient = false }: SlideStateOptions = {},
 ): [T, Dispatch<SetStateAction<T>>] {
   const viewScope = use(StateScopeContext);
   const scope = viewScope ?? DETACHED_SCOPE;
   const instanceId = useId();
-  const stateKey =
-    key === undefined
+  const stateId =
+    id === undefined
       ? `${scope.path}#${String(scope.indexOf(instanceId))}`
-      : `${scope.path}/${key}`;
+      : `${scope.path}/${id}`;
   // Runs only when the state has no value, like the initial value of a store,
-  // so after a reset, too. Another key is another state, with its initial value.
+  // so after a reset, too. Another id is another state, with its initial value.
   const { getInitial, comparable } = useMemo(
     () =>
       typeof initial === 'function'
         ? { getInitial: initial as () => T, comparable: LAZY_INITIAL }
         : { getInitial: () => initial, comparable: initial },
     // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
-    [stateKey],
+    [stateId],
   );
   useEffect(
-    () => viewScope?.claims.claim(stateKey, instanceId, comparable, transient),
-    [viewScope, stateKey, instanceId, comparable, transient],
+    () => viewScope?.claims.claim(stateId, instanceId, comparable, transient),
+    [viewScope, stateId, instanceId, comparable, transient],
   );
   return useStateValue(
     transient ? 'visit' : 'slide',
     SLIDE_STATE,
-    stateKey,
+    stateId,
     getInitial,
     applyAction<T>,
     identity<T>,

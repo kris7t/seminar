@@ -76,18 +76,18 @@ export class StateClaims {
     const others = [...claims.values()];
     if (others.some((other) => other.transient !== transient)) {
       throw new Error(
-        `Several components on the same slide use the state "${id}" as both transient and non-transient state. Give them different keys.`,
+        `Several components on the same slide use the state "${id}" as both transient and non-transient state. Give them different ids.`,
       );
     }
     if (others.some((other) => differs(other.initial, initial))) {
       throw new Error(
-        `Several components on the same slide use the state "${id}" with different initial values. Give them different keys or namespaces, or use a store.`,
+        `Several components on the same slide use the state "${id}" with different initial values. Give them different ids or namespaces, or use a store.`,
       );
     }
     if (others.length > 0 && !this.#warned.has(id)) {
       this.#warned.add(id);
       console.warn(
-        `Several components on the same slide use the state "${id}", so they share it. Give them different keys or namespaces if they shouldn't, or use a store if they should.`,
+        `Several components on the same slide use the state "${id}", so they share it. Give them different ids or namespaces if they shouldn't, or use a store if they should.`,
       );
     }
     claims.set(instance, { initial, transient });
@@ -117,7 +117,7 @@ export class StateClaims {
 
 /**
  * Identifies the state of the components in a view of a slide (or a part of
- * it, see {@link SlideStateNamespace}) without explicit keys: each instance
+ * it, see {@link SlideStateNamespace}) without explicit ids: each instance
  * gets the next index when it first renders in the scope.
  */
 export class StateScope {
@@ -154,7 +154,7 @@ export class StateScope {
       this.#indices.set(instance, index);
       if (this.#committed) {
         console.warn(
-          'useSlideState was called without a key in a component that mounted after its slide. Its state may differ between the views of the slide, so pass it a key.',
+          'useSlideState was called without an id in a component that mounted after its slide. Its state may differ between the views of the slide, so pass it an id.',
         );
       }
     }

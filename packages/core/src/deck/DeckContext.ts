@@ -49,6 +49,8 @@ export interface DeckState {
   hasState: readonly boolean[];
   /** Whether the non-transient state of each slide was changed since its reset. */
   stateChanged: readonly boolean[];
+  /** Whether the transient state of the current slide was changed in this visit. */
+  transientStateChanged: boolean;
   /**
    * Resets the state of a slide, which recaps share, including transient
    * state, and goes to its first step.

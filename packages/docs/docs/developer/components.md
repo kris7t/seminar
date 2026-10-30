@@ -28,18 +28,18 @@ comes back to the slide, or shows it again in a recap.
 `useSlideState` needs to be inside a slide of a `Deck`. It suits simple
 components. For anything more, define a [store](#stores).
 
-### Keys
+### Ids
 
 States are told apart by the order in which the components of a slide first
-render. A component that mounts later, e.g., when a tab is selected, needs a
-key:
+render. A component that mounts later, e.g., when a tab is selected, needs an
+id:
 
 ```tsx
-const [count, setCount] = useSlideState(0, { key: 'count' });
+const [count, setCount] = useSlideState(0, { id: 'count' });
 ```
 
-Never use the same key twice on a slide, because the components would overwrite
-each other's state. If a component with a key appears several times, wrap each
+Never use the same id twice on a slide, because the components would overwrite
+each other's state. If a component with an id appears several times, wrap each
 one in a namespace with its own id:
 
 ```tsx
@@ -119,7 +119,7 @@ const answers = defineDeckStore({
 const [answer, setAnswer] = useStore(answers, { key: 'favorite-color' });
 ```
 
-Unlike the keys of `useSlideState`, these can safely be reused: every component
+Unlike the ids of `useSlideState`, keys can safely be reused: every component
 that uses the same key shares the same value. Namespaces don't affect them.
 
 Plain objects and arrays work as keys, and are compared by their contents.
@@ -164,7 +164,7 @@ Stores keep their values when their module changes in the dev server of
 `@seminar/vite-plugin`. A store starts over if its `initial` function changes,
 so that you see the new initial value, or if its variable is renamed.
 
-`useSlideState` always keeps its values. Without keys, adding a state above
+`useSlideState` always keeps its values. Without ids, adding a state above
 others can also move their values to the wrong component. Prefer stores for
 state that you keep editing.
 
