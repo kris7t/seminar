@@ -100,6 +100,34 @@ describe('captureThumbnail', () => {
     expect(clone?.querySelector('use')?.getAttribute('href')).toBe('#glyph');
   });
 
+  it('lets the targets of use elements inherit from where they are used', async () => {
+    vi.mocked(toPng).mockResolvedValueOnce('image');
+    const frame = document.createElement('div');
+    frame.innerHTML =
+      '<svg><defs><g id="glyphs"><path id="plain" /><path id="own" style="fill:rgb(1, 2, 3)" /></g><path id="unused" /></defs><g id="group" style="fill:rgb(4, 5, 6)"><use href="#glyphs" /><use xlink:href="#plain" /></g></svg>';
+    document.body.append(frame);
+    await captureThumbnail(frame);
+    const [clone] = vi.mocked(toPng).mock.calls.at(-1) ?? [];
+    const rule = (id: string): string => {
+      const name = clone
+        ?.querySelector(`#${id}`)
+        ?.getAttribute('data-seminar-thumbnail-style');
+      const rules = clone?.querySelector('style')?.textContent ?? '';
+      return (
+        rules
+          .split(`[data-seminar-thumbnail-style="${name ?? ''}"]{`)[1]
+          ?.split('}')[0] ?? ''
+      );
+    };
+    expect(rule('plain')).not.toContain('all:initial');
+    expect(rule('plain')).not.toContain('fill:');
+    // Styles of the target itself still apply, and other elements stay frozen.
+    expect(rule('own')).not.toContain('all:initial');
+    expect(rule('own')).toContain('fill:rgb(1, 2, 3)');
+    expect(rule('unused')).toContain('all:initial');
+    expect(rule('group')).toContain('fill:rgb(4, 5, 6)');
+  });
+
   it('yields while cloning a large visible subtree', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     try {

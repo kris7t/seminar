@@ -58,6 +58,37 @@ function styleText(
   return declarations.join('');
 }
 
+/**
+ * Keeps only what the targets of `<use>` elements set themselves. Their copies
+ * inherit from the `<use>` elements instead of their parents, so MathJax glyphs
+ * in `<defs>` take their colors from where they are used. An initial value or
+ * one copied from the parent would override that.
+ */
+function referencedStyleText(
+  style: CSSStyleDeclaration,
+  parentStyle: CSSStyleDeclaration,
+  initial: Map<string, string | null>,
+): string {
+  const declarations = [];
+  for (const property of style) {
+    if (property.startsWith('--') || initial.get(property) === null) continue;
+    const value = style.getPropertyValue(property);
+    if (value !== parentStyle.getPropertyValue(property)) {
+      declarations.push(`${property}:${value};`);
+    }
+  }
+  return declarations.join('');
+}
+
+function findUseTargets(frame: HTMLElement): Set<string> {
+  const targets = new Set<string>();
+  for (const use of frame.querySelectorAll('use')) {
+    const href = use.getAttribute('href') ?? use.getAttribute('xlink:href');
+    if (href?.startsWith('#')) targets.add(href.slice(1));
+  }
+  return targets;
+}
+
 async function yieldToBrowser(signal: AbortSignal | undefined): Promise<void> {
   await new Promise<void>((resolve) => {
     setTimeout(resolve, 0);
@@ -73,8 +104,9 @@ async function freezeSlide(
   await yieldToBrowser(signal);
   const initial = initialStyles();
   const clone = frame.cloneNode(false) as HTMLElement;
-  const pending: { source: Element; copy: Element }[] = [
-    { source: frame, copy: clone },
+  const useTargets = findUseTargets(frame);
+  const pending: { source: Element; copy: Element; inUseTarget: boolean }[] = [
+    { source: frame, copy: clone, inUseTarget: false },
   ];
   const selects: [HTMLSelectElement, HTMLSelectElement][] = [];
   const snapshot = ++nextSnapshot;
@@ -107,7 +139,12 @@ async function freezeSlide(
       copy.remove();
       continue;
     }
-    const declarations = styleText(style, initial);
+    const inUseTarget = entry.inUseTarget || useTargets.has(source.id);
+    const parent = source === frame ? null : source.parentElement;
+    const declarations =
+      inUseTarget && parent !== null
+        ? referencedStyleText(style, getComputedStyle(parent), initial)
+        : styleText(style, initial);
     if (style.fontFamily) fonts.add(style.fontFamily);
     if (declarations.includes('url(')) {
       // The rasterizer embeds images referenced by inline backgrounds and masks.
@@ -182,7 +219,7 @@ async function freezeSlide(
       const childCopy = child.cloneNode(false);
       copy.append(childCopy);
       if (child instanceof Element && childCopy instanceof Element)
-        pending.push({ source: child, copy: childCopy });
+        pending.push({ source: child, copy: childCopy, inUseTarget });
     }
   }
   for (const [source, copy] of selects)
