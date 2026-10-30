@@ -368,10 +368,10 @@ an update wait, too, run it with the function that `useSlideUpdate()`
 returns:
 
 ```tsx
-import { useSlideUpdate } from '@seminar/core';
+import { useSlideState, useSlideUpdate } from '@seminar/core';
 
 export function Reveal() {
-  const [shown, setShown] = useState(false);
+  const [shown, setShown] = useSlideState(false);
   const updateSlide = useSlideUpdate();
   return shown ? (
     <Plot src="data.csv" />
