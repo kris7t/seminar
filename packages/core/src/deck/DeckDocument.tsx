@@ -22,13 +22,10 @@ import { DocumentSlideContext } from '../masters/DocumentMasters.tsx';
 import { getSlideNotes } from '../notes/Notes.tsx';
 import { Slide, type SlideProps } from '../slide/Slide.tsx';
 import { SharedWorkProvider } from '../shared/SharedWorkProvider.tsx';
-import { DeckStateContext } from '../state/DeckStateContext.ts';
-import { DeckStateStore } from '../state/DeckStateStore.ts';
 import {
-  SlideStateContext,
-  TransientSlideStateContext,
-} from '../state/SlideStateContext.ts';
-import { SlideStateStore } from '../state/SlideStateStore.ts';
+  createStateStores,
+  StateStoresContext,
+} from '../state/StateStoresContext.ts';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { defaultSlideTheme } from '../theme/createSlideTheme.ts';
@@ -162,8 +159,7 @@ export function DocumentDeck({
   );
   const slideIds = slides.map((slide) => getProp(slide, 'id'));
   const slideLangs = slides.map((slide) => getProp(slide, 'lang') ?? lang);
-  const [deckState] = useState(() => new DeckStateStore());
-  const [slideState] = useState(() => new SlideStateStore());
+  const [stateStores] = useState(createStateStores);
   const stepStores = useMemo(
     () => slides.map(() => new StepStore()),
     // A store for each slide.
@@ -228,93 +224,87 @@ export function DocumentDeck({
       >
         <DeckContext value={deck}>
           <SeminarOptionsContext value={options}>
-            <DeckStateContext value={deckState}>
-              <SlideStateContext value={slideState}>
-                <TransientSlideStateContext value={slideState}>
-                  <SharedWorkProvider>
-                    {slides.map((slide, index) => {
-                      const original = recapOf[index];
-                      const notes =
-                        original === undefined
-                          ? getSlideNotes(slide)
-                          : undefined;
-                      // Only if the language of the slide is known.
-                      const labelLang =
-                        slideLangs[index] === undefined ||
-                        locale.lang === slideLangs[index]
-                          ? undefined
-                          : locale.lang;
-                      const store = stepStores[index] ?? new StepStore();
-                      const href = formatLocation(
-                        { slideIndex: index, step: [] },
-                        slideIds,
-                      );
-                      return (
-                        // Slides are positional, see `Deck`.
-                        // eslint-disable-next-line @eslint-react/no-array-index-key
-                        <StepStoreContext key={index} value={store}>
-                          <SlideViewProvider
-                            view={{
-                              index,
-                              kind: 'document',
-                              interactive: false,
+            <StateStoresContext value={stateStores}>
+              <SharedWorkProvider>
+                {slides.map((slide, index) => {
+                  const original = recapOf[index];
+                  const notes =
+                    original === undefined ? getSlideNotes(slide) : undefined;
+                  // Only if the language of the slide is known.
+                  const labelLang =
+                    slideLangs[index] === undefined ||
+                    locale.lang === slideLangs[index]
+                      ? undefined
+                      : locale.lang;
+                  const store = stepStores[index] ?? new StepStore();
+                  const href = formatLocation(
+                    { slideIndex: index, step: [] },
+                    slideIds,
+                  );
+                  return (
+                    // Slides are positional, see `Deck`.
+                    // eslint-disable-next-line @eslint-react/no-array-index-key
+                    <StepStoreContext key={index} value={store}>
+                      <SlideViewProvider
+                        view={{
+                          index,
+                          kind: 'document',
+                          interactive: false,
+                        }}
+                      >
+                        {/* Without a label, which would make every slide
+                                a landmark. */}
+                        <section
+                          // Marked, unlike other sections, e.g., for the
+                          // colophon of the page.
+                          data-seminar-slide=""
+                          lang={
+                            slideLangs[index] === lang
+                              ? undefined
+                              : slideLangs[index]
+                          }
+                        >
+                          <DocumentSlideContext
+                            value={{
+                              anchor: slideIds[index] ?? href.slice(1),
+                              href,
+                              untitled: t('slide', { number: index + 1 }),
+                              linkLabel: t('linkToSlide'),
+                              labelLang,
                             }}
                           >
-                            {/* Without a label, which would make every slide
-                                a landmark. */}
-                            <section
-                              // Marked, unlike other sections, e.g., for the
-                              // colophon of the page.
-                              data-seminar-slide=""
-                              lang={
-                                slideLangs[index] === lang
-                                  ? undefined
-                                  : slideLangs[index]
-                              }
-                            >
-                              <DocumentSlideContext
-                                value={{
-                                  anchor: slideIds[index] ?? href.slice(1),
-                                  href,
-                                  untitled: t('slide', { number: index + 1 }),
-                                  linkLabel: t('linkToSlide'),
-                                  labelLang,
-                                }}
-                              >
-                                {original === undefined ||
-                                !isValidElement<SlideProps>(slide) ? (
-                                  slide
-                                ) : (
-                                  <DocumentRecap
-                                    slide={slide.props}
-                                    href={formatLocation(
-                                      { slideIndex: original, step: [] },
-                                      slideIds,
-                                    )}
-                                    untitled={t('slide', {
-                                      number: original + 1,
-                                    })}
-                                    label={t('recapOf')}
-                                    labelLang={labelLang}
-                                  />
+                            {original === undefined ||
+                            !isValidElement<SlideProps>(slide) ? (
+                              slide
+                            ) : (
+                              <DocumentRecap
+                                slide={slide.props}
+                                href={formatLocation(
+                                  { slideIndex: original, step: [] },
+                                  slideIds,
                                 )}
-                              </DocumentSlideContext>
-                              {notes !== undefined && (
-                                <DocumentNotes
-                                  notes={notes}
-                                  label={t('presenterNotes')}
-                                  labelLang={labelLang}
-                                />
-                              )}
-                            </section>
-                          </SlideViewProvider>
-                        </StepStoreContext>
-                      );
-                    })}
-                  </SharedWorkProvider>
-                </TransientSlideStateContext>
-              </SlideStateContext>
-            </DeckStateContext>
+                                untitled={t('slide', {
+                                  number: original + 1,
+                                })}
+                                label={t('recapOf')}
+                                labelLang={labelLang}
+                              />
+                            )}
+                          </DocumentSlideContext>
+                          {notes !== undefined && (
+                            <DocumentNotes
+                              notes={notes}
+                              label={t('presenterNotes')}
+                              labelLang={labelLang}
+                            />
+                          )}
+                        </section>
+                      </SlideViewProvider>
+                    </StepStoreContext>
+                  );
+                })}
+              </SharedWorkProvider>
+            </StateStoresContext>
           </SeminarOptionsContext>
         </DeckContext>
       </UiLanguageContext>

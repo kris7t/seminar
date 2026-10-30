@@ -1,6 +1,7 @@
 import {
   Component,
   Suspense,
+  use,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -11,11 +12,8 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import {
-  SlideStateContext,
-  TransientSlideStateContext,
-} from '../state/SlideStateContext.ts';
-import { SlideStateStore } from '../state/SlideStateStore.ts';
+import { StateStore } from '../state/StateStore.ts';
+import { StateStoresContext } from '../state/StateStoresContext.ts';
 import { StepStore } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SlideViewProvider } from './SlideViewProvider.tsx';
@@ -66,8 +64,15 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
   const [container] = useState(
     () => document.implementation.createHTMLDocument('').body,
   );
-  // State of its own, so that the probe doesn't set up the state of the slides.
-  const [slideState] = useState(() => new SlideStateStore());
+  // State of its own, so that the probe doesn't set up the state of the
+  // slides, but it reads the state of the deck and records what it reads.
+  const stores = use(StateStoresContext);
+  const [slideState] = useState(() => new StateStore());
+  const [visitState] = useState(() => new StateStore());
+  const probeStores = useMemo(
+    () => ({ ...stores, slides: slideState, visit: visitState }),
+    [stores, slideState, visitState],
+  );
   const framesRef = useRef<(HTMLDivElement | null)[]>([]);
   const probes = useMemo(
     () => slides.map((slide) => ({ slide, store: new StepStore() })),
@@ -90,31 +95,29 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
     );
   }, [probes, slideState, onProbe]);
   return createPortal(
-    <SlideStateContext value={slideState}>
-      <TransientSlideStateContext value={slideState}>
-        {probes.map(({ slide, store }, index) => (
-          // Slides are positional, see `Deck`.
-          // eslint-disable-next-line @eslint-react/no-array-index-key
-          <ProbeBoundary key={index}>
-            <Suspense fallback={null}>
-              <StepStoreContext value={store}>
-                <SlideViewProvider
-                  view={{ index, kind: 'probe', interactive: false }}
+    <StateStoresContext value={probeStores}>
+      {probes.map(({ slide, store }, index) => (
+        // Slides are positional, see `Deck`.
+        // eslint-disable-next-line @eslint-react/no-array-index-key
+        <ProbeBoundary key={index}>
+          <Suspense fallback={null}>
+            <StepStoreContext value={store}>
+              <SlideViewProvider
+                view={{ index, kind: 'probe', interactive: false }}
+              >
+                <div
+                  ref={(element) => {
+                    framesRef.current[index] = element;
+                  }}
                 >
-                  <div
-                    ref={(element) => {
-                      framesRef.current[index] = element;
-                    }}
-                  >
-                    {slide}
-                  </div>
-                </SlideViewProvider>
-              </StepStoreContext>
-            </Suspense>
-          </ProbeBoundary>
-        ))}
-      </TransientSlideStateContext>
-    </SlideStateContext>,
+                  {slide}
+                </div>
+              </SlideViewProvider>
+            </StepStoreContext>
+          </Suspense>
+        </ProbeBoundary>
+      ))}
+    </StateStoresContext>,
     container,
   );
 }

@@ -99,17 +99,11 @@ import { GoToSlideDialog } from '../menu/GoToSlideDialog.tsx';
 import { darkUiTheme, uiTheme } from '../menu/uiTheme.ts';
 import { UiThemeProvider } from '../menu/UiThemeProvider.tsx';
 import { useDeckNavigation } from './useDeckNavigation.ts';
+import { StateStore } from '../state/StateStore.ts';
 import {
-  SlideStateContext,
-  TransientSlideStateContext,
-} from '../state/SlideStateContext.ts';
-import { DeckStateContext } from '../state/DeckStateContext.ts';
-import {
-  DeckStateUsageContext,
-  SlideStateUsageContext,
-} from '../state/StateUsageContext.ts';
-import { DeckStateStore } from '../state/DeckStateStore.ts';
-import { SlideStateStore } from '../state/SlideStateStore.ts';
+  StateStoresContext,
+  type StateStores,
+} from '../state/StateStoresContext.ts';
 import { SharedWorkProvider } from '../shared/SharedWorkProvider.tsx';
 import { StepPositionStore } from '../steps/StepPositionStore.ts';
 import { StepPositionStoreContext } from '../steps/StepPositionStoreContext.ts';
@@ -324,13 +318,9 @@ function InteractiveDeck({
     [slides, lang],
   );
   const spares = useSpares(slides.map(isSpare));
-  const [slideState] = useState(() => new SlideStateStore());
-  const [deckState] = useState(() => new DeckStateStore());
+  const [state] = useState(() => new StateStore());
   const [stepPositions] = useState(() => new StepPositionStore());
-  useEffect(
-    () => thumbnails.observe(deckState, slideState),
-    [thumbnails, deckState, slideState],
-  );
+  useEffect(() => thumbnails.observe(state), [thumbnails, state]);
   const [transitions] = useState(() => new SlideTransitions());
   const stepFade = useCallback(
     (index: number) =>
@@ -360,16 +350,25 @@ function InteractiveDeck({
     previousSlide,
     firstStep,
     lastStep,
-  } = useDeckNavigation(slideIds, aliases, spares, slideState, stepPositions, {
+  } = useDeckNavigation(slideIds, aliases, spares, state, stepPositions, {
     transitions,
     stepFade,
     slideFade,
   });
-  const transientState = useMemo(
-    () => new SlideStateStore(),
+  const visitState = useMemo(
+    () => new StateStore(),
     // Each visit starts fresh; retained frames keep the previous store.
     // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
     [slideIndex],
+  );
+  const stateStores = useMemo<StateStores>(
+    () => ({
+      deck: state,
+      slides: state,
+      visit: visitState,
+      recordUse: thumbnails.recordStateUse,
+    }),
+    [state, visitState, thumbnails],
   );
   const { probed, probe } = useSlideProbe(slides);
   useEffect(() => {
@@ -396,8 +395,8 @@ function InteractiveDeck({
   );
   // Recaps share the state of the slide they recap, even in the probe.
   const changedStates = useSyncExternalStore(
-    slideState.subscribeChanged,
-    slideState.getChanged,
+    state.subscribeChanged,
+    state.getChanged,
   );
   const stateChanged = useMemo(
     () => slides.map((_, index) => changedStates.has(recapOf[index] ?? index)),
@@ -414,16 +413,12 @@ function InteractiveDeck({
   );
   const resetSlide = useCallback(
     (index: number) => {
-      slideState.reset(recapOf[index] ?? index);
+      state.reset(recapOf[index] ?? index);
       goTo(index);
     },
-    [slideState, recapOf, goTo],
+    [state, recapOf, goTo],
   );
-  const deckStateChanged = useSyncExternalStore(
-    deckState.subscribeChanged,
-    deckState.getChanged,
-  );
-  const deckChanged = deckStateChanged || changedStates.size > 0;
+  const deckChanged = changedStates.size > 0;
   const toc = useMemo(
     () =>
       resolveToc(tocEntries ?? [], slides, slideIds, {
@@ -449,9 +444,8 @@ function InteractiveDeck({
   const resetDeck = useCallback(() => {
     // Apply pending navigation before clearing the positions it may write.
     transitions.skip();
-    deckState.reset();
-    slideState.resetAll();
-    transientState.resetAll();
+    state.resetAll();
+    visitState.resetAll();
     stepPositions.resetAll();
     for (let index = 0; index < slideCount; index += 1)
       thumbnails.invalidate(index);
@@ -459,9 +453,8 @@ function InteractiveDeck({
     goTo(firstSlideIndex, 'start', { transition: false });
   }, [
     transitions,
-    deckState,
-    slideState,
-    transientState,
+    state,
+    visitState,
     stepPositions,
     slideCount,
     thumbnails,
@@ -907,8 +900,8 @@ function InteractiveDeck({
         <DeckContext value={deck}>
           <SeminarOptionsContext value={options}>
             <SlideTransitionsContext value={transitions}>
-              <DeckStateContext value={deckState}>
-                <SlideStateContext value={slideState}>
+              <StateStoresContext value={stateStores}>
+                <StepPositionStoreContext value={stepPositions}>
                   <StepStoreContext value={stepStore}>
                     <Box
                       sx={{
@@ -1322,8 +1315,8 @@ function InteractiveDeck({
                       />
                     </ThemeProvider>
                   </StepStoreContext>
-                </SlideStateContext>
-              </DeckStateContext>
+                </StepPositionStoreContext>
+              </StateStoresContext>
             </SlideTransitionsContext>
           </SeminarOptionsContext>
         </DeckContext>
@@ -1331,20 +1324,10 @@ function InteractiveDeck({
     </ThemeProvider>
   );
   return (
-    <DeckStateUsageContext value={thumbnails.recordDeckStateUse}>
-      <SlideStateUsageContext value={thumbnails.recordSlideStateUse}>
-        <SharedWorkProvider>
-          <TransientSlideStateContext value={transientState}>
-            <StepPositionStoreContext value={stepPositions}>
-              <PointerMirroringContext
-                value={presenting && pointerMode === 'mirror'}
-              >
-                {content}
-              </PointerMirroringContext>
-            </StepPositionStoreContext>
-          </TransientSlideStateContext>
-        </SharedWorkProvider>
-      </SlideStateUsageContext>
-    </DeckStateUsageContext>
+    <SharedWorkProvider>
+      <PointerMirroringContext value={presenting && pointerMode === 'mirror'}>
+        {content}
+      </PointerMirroringContext>
+    </SharedWorkProvider>
   );
 }

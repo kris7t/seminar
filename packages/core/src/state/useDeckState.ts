@@ -1,14 +1,9 @@
-import {
-  use,
-  useCallback,
-  useSyncExternalStore,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 
-import { DeckStateContext } from './DeckStateContext.ts';
-import { DeckStateUsageContext } from './StateUsageContext.ts';
-import { SlideViewContext } from '../view/SlideViewContext.ts';
+import { useStateValue } from './useStateValue.ts';
+
+/** Family of the values of {@link useDeckState}. */
+const DECK_STATE = {};
 
 /**
  * Like `useState`, but the state belongs to the deck, so every slide that
@@ -22,29 +17,5 @@ import { SlideViewContext } from '../view/SlideViewContext.ts';
 export function useDeckState<T>(
   key: string,
 ): [T | undefined, Dispatch<SetStateAction<T | undefined>>] {
-  const store = use(DeckStateContext);
-  const recordUse = use(DeckStateUsageContext);
-  const view = use(SlideViewContext);
-  recordUse?.(view.index, key);
-  const getValue = useCallback(
-    () => store.get(key) as T | undefined,
-    [store, key],
-  );
-  const subscribe = useCallback(
-    (listener: () => void) => store.subscribe(key, listener),
-    [store, key],
-  );
-  const value = useSyncExternalStore(subscribe, getValue, getValue);
-  const setValue = useCallback<Dispatch<SetStateAction<T | undefined>>>(
-    (action) => {
-      store.set(
-        key,
-        typeof action === 'function'
-          ? (action as (previous: T | undefined) => T | undefined)(getValue())
-          : action,
-      );
-    },
-    [store, key, getValue],
-  );
-  return [value, setValue];
+  return useStateValue<T | undefined>('deck', DECK_STATE, key);
 }

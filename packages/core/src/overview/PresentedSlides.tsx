@@ -11,8 +11,10 @@ import {
 import { DeckContext, useDeck, type DeckState } from '../deck/DeckContext.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import type { StepStore } from '../steps/StepStore.ts';
-import { TransientSlideStateContext } from '../state/SlideStateContext.ts';
-import type { SlideStateStore } from '../state/SlideStateStore.ts';
+import {
+  StateStoresContext,
+  type StateStores,
+} from '../state/StateStoresContext.ts';
 import {
   SelectionFrame,
   type SelectionFrameProps,
@@ -32,7 +34,7 @@ interface Layer {
   steps: StepStore;
   deck: DeckState;
   cache: ThumbnailCache;
-  transientState: SlideStateStore | undefined;
+  stateStores: StateStores;
 }
 
 interface PresentedSlidesProps {
@@ -99,9 +101,9 @@ function PresentedLayer({
             current={current}
             onCaptured={done}
           />
-          <TransientSlideStateContext value={layer.transientState}>
+          <StateStoresContext value={layer.stateStores}>
             <SlideViewProvider view={view}>{layer.slide}</SlideViewProvider>
-          </TransientSlideStateContext>
+          </StateStoresContext>
         </StepStoreContext>
       </DeckContext>
     </SelectionFrame>
@@ -119,13 +121,13 @@ export function PresentedSlides({
 }: PresentedSlidesProps): JSX.Element {
   const steps = use(StepStoreContext);
   const deck = useDeck();
-  const transientState = use(TransientSlideStateContext);
+  const stateStores = use(StateStoresContext);
   const [state, setState] = useState<{
     current: Layer;
     retired?: Layer | undefined;
     nextKey: number;
   }>(() => ({
-    current: { key: 0, view, slide, steps, deck, cache, transientState },
+    current: { key: 0, view, slide, steps, deck, cache, stateStores },
     nextKey: 1,
   }));
   if (state.current.view.index !== view.index) {
@@ -137,7 +139,7 @@ export function PresentedSlides({
         steps,
         deck,
         cache,
-        transientState,
+        stateStores,
       },
       retired: state.current,
       nextKey: state.nextKey + 1,
@@ -148,7 +150,7 @@ export function PresentedSlides({
     state.current.steps !== steps ||
     state.current.deck !== deck ||
     state.current.cache !== cache ||
-    state.current.transientState !== transientState
+    state.current.stateStores !== stateStores
   ) {
     setState({
       ...state,
@@ -159,7 +161,7 @@ export function PresentedSlides({
         steps,
         deck,
         cache,
-        transientState,
+        stateStores,
       },
       ...(state.current.cache !== cache ? { retired: undefined } : {}),
     });

@@ -10,7 +10,7 @@ import {
 } from 'react';
 
 import type { SlideTransitions } from '../transitions/SlideTransitions.ts';
-import type { SlideStateStore } from '../state/SlideStateStore.ts';
+import type { StateStore } from '../state/StateStore.ts';
 import type { StepPositionStore } from '../steps/StepPositionStore.ts';
 import type { StepTarget } from '../steps/StepPosition.ts';
 import { StepStore, type StepPath } from '../steps/StepStore.ts';
@@ -177,7 +177,7 @@ export function useDeckNavigation(
   slideIds: readonly (string | undefined)[],
   aliases: ReadonlyMap<string, number>,
   spares: readonly boolean[],
-  slideState: SlideStateStore,
+  slideState: StateStore,
   stepPositions: StepPositionStore,
   fades?: DeckTransitions,
 ): DeckNavigation {

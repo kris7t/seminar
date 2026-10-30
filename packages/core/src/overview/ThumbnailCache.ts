@@ -1,6 +1,5 @@
-import type { DeckStateStore } from '../state/DeckStateStore.ts';
 import { KeyedListeners } from '../state/Listeners.ts';
-import type { SlideStateStore } from '../state/SlideStateStore.ts';
+import type { StateOwner, StateStore } from '../state/StateStore.ts';
 import { captureThumbnail } from './captureThumbnail.ts';
 import { slideBackground } from '../view/slideBackground.ts';
 
@@ -16,8 +15,7 @@ export class ThumbnailCache {
   readonly #versions = new Map<number, number>();
   readonly #snapshots = new Map<number, Map<string, string>>();
   readonly #selected = new Map<number, ThumbnailState>();
-  readonly #deckStateUsers = new Map<string, Set<number>>();
-  readonly #slideStateUsers = new Map<number, Set<number>>();
+  readonly #stateUsers = new Map<object, Map<string, Set<number>>>();
   readonly #invalidations = new Map<number, symbol>();
   readonly #invalidationListeners = new KeyedListeners<number>();
   #queueVersion = 0;
@@ -69,44 +67,37 @@ export class ThumbnailCache {
     return this.#visible.has(index);
   }
 
-  /** Records the deck-state keys that a slide reads in any of its views. */
-  recordDeckStateUse = (index: number, key: string): void => {
-    let users = this.#deckStateUsers.get(key);
-    if (users === undefined) {
-      users = new Set();
-      this.#deckStateUsers.set(key, users);
+  /** Records the state that a slide reads in any of its views, including recaps. */
+  recordStateUse = (
+    index: number,
+    owner: StateOwner,
+    family: object,
+    key: string,
+  ): void => {
+    let keys = this.#stateUsers.get(family);
+    if (keys === undefined) {
+      keys = new Map();
+      this.#stateUsers.set(family, keys);
     }
-    users.add(index);
-  };
-
-  /** Records shared slide state, including dependencies of recaps. */
-  recordSlideStateUse = (index: number, stateIndex: number): void => {
-    let users = this.#slideStateUsers.get(stateIndex);
+    const id = stateId(owner, key);
+    let users = keys.get(id);
     if (users === undefined) {
       users = new Set();
-      this.#slideStateUsers.set(stateIndex, users);
+      keys.set(id, users);
     }
     users.add(index);
   };
 
   /** Keeps dependency tracking alive after the slide views unmount. */
-  observe(deck: DeckStateStore, slides: SlideStateStore): () => void {
-    const invalidate = <K>(keys: readonly K[], users: Map<K, Set<number>>) => {
+  observe(state: StateStore): () => void {
+    return state.subscribeChanges((changes) => {
       const affected = new Set(
-        keys.flatMap((key) => [...(users.get(key) ?? [])]),
+        changes.flatMap(({ owner, family, key }) => [
+          ...(this.#stateUsers.get(family)?.get(stateId(owner, key)) ?? []),
+        ]),
       );
       for (const index of affected) this.invalidate(index);
-    };
-    const unsubscribeDeck = deck.subscribeState((keys) => {
-      invalidate(keys, this.#deckStateUsers);
     });
-    const unsubscribeSlides = slides.subscribeState((indices) => {
-      invalidate(indices, this.#slideStateUsers);
-    });
-    return () => {
-      unsubscribeDeck();
-      unsubscribeSlides();
-    };
   }
 
   /** Changes when state invalidation queues thumbnails for rendering again. */
@@ -281,4 +272,8 @@ export class ThumbnailCache {
   #notify(): void {
     for (const listener of this.#listeners) listener();
   }
+}
+
+function stateId(owner: StateOwner, key: string): string {
+  return `${String(owner)}\u0000${key}`;
 }

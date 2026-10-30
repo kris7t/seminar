@@ -1,11 +1,10 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
-import { DeckStateStore } from './DeckStateStore.ts';
 import { useDeckState } from './useDeckState.ts';
 import { useSlideState } from './useSlideState.ts';
 
@@ -36,51 +35,6 @@ function Counter() {
     </button>
   );
 }
-
-describe('DeckStateStore', () => {
-  it('reports changed keys and batches resets without notifying for unchanged values', () => {
-    const store = new DeckStateStore();
-    const listener = vi.fn();
-    const unsubscribe = store.subscribeState(listener);
-    store.set('a', 1);
-    store.set('a', 1);
-    store.set('unset', undefined);
-    store.set('a', 2);
-    store.set('b', 3);
-    store.reset();
-    store.reset();
-    expect(listener.mock.calls).toEqual([
-      [['a']],
-      [['a']],
-      [['b']],
-      [['a', 'b']],
-    ]);
-    unsubscribe();
-    store.set('a', 4);
-    expect(listener).toHaveBeenCalledTimes(4);
-  });
-
-  it('stores values by key, and is changed while it has any', () => {
-    const store = new DeckStateStore();
-    const listener = vi.fn();
-    const changed = vi.fn();
-    store.subscribe('a', listener);
-    store.subscribeChanged(changed);
-    expect(store.get('a')).toBeUndefined();
-    store.set('a', 1);
-    store.set('a', 1);
-    expect(store.get('a')).toBe(1);
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(store.getChanged()).toBe(true);
-    store.set('a', undefined);
-    expect(store.getChanged()).toBe(false);
-    expect(changed).toHaveBeenCalledTimes(2);
-    store.set('b', 2);
-    store.reset();
-    expect(store.get('b')).toBeUndefined();
-    expect(store.getChanged()).toBe(false);
-  });
-});
 
 describe('useDeckState', () => {
   beforeEach(() => {

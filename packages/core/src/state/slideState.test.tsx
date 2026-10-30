@@ -14,9 +14,8 @@ import { useDeck } from '../deck/DeckContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
 import { SlideStateScope } from './SlideStateScope.tsx';
-import { SlideStateStore } from './SlideStateStore.ts';
 import { useResetSlideState, useSlideState } from './useSlideState.ts';
-import { SlideStateContext } from './SlideStateContext.ts';
+import { createStateStores, StateStoresContext } from './StateStoresContext.ts';
 import { SlideViewProvider } from '../view/SlideViewProvider.tsx';
 
 function Counter({
@@ -42,197 +41,6 @@ function Counter({
 }
 
 const overview = () => screen.getByRole('region', { name: 'Slide overview' });
-
-describe('SlideStateStore', () => {
-  it('notifies transient state changes without marking the slide or invalidating snapshots', () => {
-    const store = new SlideStateStore();
-    const changed = vi.fn();
-    const invalidated = vi.fn();
-    store.subscribeState(invalidated);
-    const listener = vi.fn();
-    store.subscribeChanged(changed);
-    store.subscribe(0, 'mirror', listener);
-    store.getOrInit(0, 'mirror', () => 0, true);
-    expect(store.hasState(0)).toBe(false);
-    store.set(0, 'mirror', 1);
-    expect(listener).toHaveBeenCalledOnce();
-    expect(changed).not.toHaveBeenCalled();
-    expect(store.getChanged().size).toBe(0);
-    store.set(0, 'mirror', 1);
-    store.reset(0);
-    expect(store.get(0, 'mirror')).toBe(1);
-    expect(listener).toHaveBeenCalledOnce();
-    expect(invalidated).not.toHaveBeenCalled();
-  });
-
-  it('resets regular state while retaining transient values', () => {
-    const store = new SlideStateStore();
-    store.getOrInit(0, 'mirror', () => 0, true);
-    store.getOrInit(1, 'mirror', () => 0, true);
-    store.set(0, 'mirror', 1);
-    store.set(1, 'mirror', 2);
-    store.set(0, 'answer', 3);
-    store.set(1, 'answer', 4);
-    expect(store.hasState(0)).toBe(true);
-    store.reset(0);
-    expect(store.get(0, 'answer')).toBeUndefined();
-    expect(store.get(0, 'mirror')).toBe(1);
-    expect(store.hasState(0)).toBe(false);
-    expect([...store.getChanged()]).toEqual([1]);
-    store.reset(1);
-    expect(store.get(1, 'answer')).toBeUndefined();
-    expect(store.get(1, 'mirror')).toBe(2);
-    expect(store.hasState(1)).toBe(false);
-    expect(store.getChanged().size).toBe(0);
-  });
-
-  it('clears all slide state on a full reset', () => {
-    const store = new SlideStateStore();
-    store.getOrInit(0, 'answer', () => 0);
-    store.getOrInit(0, 'mirror', () => 0, true);
-    store.set(0, 'answer', 1);
-    store.set(0, 'mirror', 2);
-    const value = vi.fn();
-    const mirror = vi.fn();
-    const invalidated = vi.fn();
-    store.subscribe(0, 'answer', value);
-    store.subscribe(0, 'mirror', mirror);
-    store.subscribeState(invalidated);
-    store.resetAll();
-    expect(store.get(0, 'answer')).toBeUndefined();
-    expect(store.get(0, 'mirror')).toBeUndefined();
-    expect(store.getChanged().size).toBe(0);
-    expect(value).toHaveBeenCalledOnce();
-    expect(mirror).toHaveBeenCalledOnce();
-    expect(invalidated.mock.calls).toEqual([[[0]]]);
-    store.resetAll();
-    expect(value).toHaveBeenCalledOnce();
-    expect(invalidated).toHaveBeenCalledOnce();
-  });
-
-  it('moves transient state with its slide and removes its metadata with removed slides', () => {
-    const store = new SlideStateStore();
-    const invalidated = vi.fn();
-    store.subscribeState(invalidated);
-    store.getOrInit(0, 'mirror', () => 'removed', true);
-    store.getOrInit(1, 'mirror', () => 'moved', true);
-    store.move([undefined, 2]);
-    expect(store.has(0, 'mirror')).toBe(false);
-    expect(store.has(1, 'mirror')).toBe(false);
-    expect(store.get(2, 'mirror')).toBe('moved');
-    expect(store.hasState(2)).toBe(false);
-    expect(invalidated).not.toHaveBeenCalled();
-    store.reset(2);
-    expect(store.get(2, 'mirror')).toBe('moved');
-    store.getOrInit(0, 'mirror', () => 'regular');
-    expect(store.hasState(0)).toBe(true);
-    store.set(0, 'mirror', 'changed');
-    expect([...store.getChanged()]).toEqual([0]);
-  });
-
-  it('preserves transient metadata when equal values move without invalidating snapshots', () => {
-    const store = new SlideStateStore();
-    const invalidated = vi.fn();
-    store.subscribeState(invalidated);
-    store.getOrInit(0, 'value', () => 1, true);
-    store.getOrInit(1, 'value', () => 1);
-    store.move([1, 0]);
-    expect(invalidated).not.toHaveBeenCalled();
-    expect(store.hasState(0)).toBe(true);
-    expect(store.hasState(1)).toBe(false);
-    store.reset(0);
-    store.reset(1);
-    expect(store.has(0, 'value')).toBe(false);
-    expect(store.get(1, 'value')).toBe(1);
-  });
-
-  it('reports changed slides without counting initialization or unchanged writes', () => {
-    const store = new SlideStateStore();
-    const listener = vi.fn();
-    const unsubscribe = store.subscribeState(listener);
-    store.getOrInit(0, 'a', () => 1);
-    expect(listener).not.toHaveBeenCalled();
-    store.set(0, 'a', 2);
-    store.set(0, 'a', 2);
-    store.set(0, 'a', 3);
-    store.reset(0);
-    store.reset(0);
-    store.getOrInit(0, 'a', () => 1);
-    store.getOrInit(1, 'a', () => 1);
-    store.resetAll();
-    store.resetAll();
-    expect(listener.mock.calls).toEqual([[[0]], [[0]], [[0]], [[0, 1]]]);
-    unsubscribe();
-    store.set(0, 'a', 4);
-    expect(listener).toHaveBeenCalledTimes(4);
-  });
-
-  it('reports only slides whose values change when moving state', () => {
-    const store = new SlideStateStore();
-    store.set(0, 'a', 'first');
-    store.set(1, 'a', 'second');
-    const listener = vi.fn();
-    store.subscribeState(listener);
-    store.move([0, 1]);
-    expect(listener).not.toHaveBeenCalled();
-    store.move([undefined, 2]);
-    expect(listener).toHaveBeenCalledOnce();
-    expect(listener.mock.calls[0]?.[0]).toEqual([0, 1, 2]);
-  });
-
-  it('stores values by slide and key', () => {
-    const store = new SlideStateStore();
-    const listener = vi.fn();
-    store.subscribe(0, 'a', listener);
-    expect(store.getOrInit(0, 'a', () => 1)).toBe(1);
-    expect(store.getOrInit(0, 'a', () => 2)).toBe(1);
-    expect(listener).not.toHaveBeenCalled();
-    store.set(0, 'a', 3);
-    store.set(1, 'a', 4);
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(store.get(0, 'a')).toBe(3);
-    expect(store.get(1, 'a')).toBe(4);
-  });
-
-  it('tracks and resets changed state', () => {
-    const store = new SlideStateStore();
-    const changed = vi.fn();
-    store.subscribeChanged(changed);
-    store.getOrInit(0, 'a', () => 1);
-    // Only initialized.
-    expect(store.hasState(0)).toBe(true);
-    expect(store.hasState(1)).toBe(false);
-    expect(store.getChanged().size).toBe(0);
-    store.set(0, 'a', 2);
-    const snapshot = store.getChanged();
-    expect([...snapshot]).toEqual([0]);
-    store.set(0, 'a', 3);
-    expect(store.getChanged()).toBe(snapshot);
-    expect(changed).toHaveBeenCalledOnce();
-    const listener = vi.fn();
-    store.subscribe(0, 'a', listener);
-    store.reset(0);
-    expect(listener).toHaveBeenCalledOnce();
-    expect(store.getChanged().size).toBe(0);
-    expect(store.hasState(0)).toBe(false);
-    expect(store.getOrInit(0, 'a', () => 1)).toBe(1);
-  });
-
-  it('moves the state of slides to other indices', () => {
-    const store = new SlideStateStore();
-    store.set(0, 'a', 'first');
-    store.set(1, 'a', 'second');
-    const listener = vi.fn();
-    store.subscribe(2, 'a', listener);
-    // A slide was added before the second one, and the first was removed.
-    store.move([undefined, 2]);
-    expect(store.has(0, 'a')).toBe(false);
-    expect(store.has(1, 'a')).toBe(false);
-    expect(store.get(2, 'a')).toBe('second');
-    expect([...store.getChanged()]).toEqual([2]);
-    expect(listener).toHaveBeenCalled();
-  });
-});
 
 describe('useSlideState', () => {
   beforeEach(() => {
@@ -399,7 +207,7 @@ describe('useSlideState', () => {
     async (transient) => {
       const user = userEvent.setup();
       render(
-        <SlideStateContext value={new SlideStateStore()}>
+        <StateStoresContext value={createStateStores()}>
           <div data-testid="presented">
             <SlideViewProvider
               view={{ index: 0, kind: 'audience', interactive: true }}
@@ -416,7 +224,7 @@ describe('useSlideState', () => {
               <Counter name="b" transient={transient} />
             </SlideViewProvider>
           </div>
-        </SlideStateContext>,
+        </StateStoresContext>,
       );
       const presented = within(screen.getByTestId('presented'));
       await user.click(presented.getByText('b: 0'));

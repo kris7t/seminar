@@ -1,20 +1,13 @@
 import {
   use,
-  useCallback,
   useId,
   useState,
-  useSyncExternalStore,
   type Dispatch,
   type SetStateAction,
 } from 'react';
 
-import { SlideStateUsageContext } from './StateUsageContext.ts';
-import { useSlideView } from '../view/SlideViewContext.ts';
-import {
-  SlideStateContext,
-  TransientSlideStateContext,
-} from './SlideStateContext.ts';
 import { StateScope, StateScopeContext } from './StateScope.ts';
+import { useResetState, useStateValue } from './useStateValue.ts';
 
 export interface SlideStateOptions {
   /**
@@ -39,6 +32,9 @@ export interface SlideStateOptions {
 /** Scope of state outside of the views of a deck. */
 const DETACHED_SCOPE = new StateScope('detached');
 
+/** Family of the values of {@link useSlideState}. */
+const SLIDE_STATE = {};
+
 /**
  * Like `useState`, but the state belongs to the slide instead of the
  * component, so it is shared by every view of the slide, e.g., by the slide
@@ -54,44 +50,23 @@ export function useSlideState<T>(
   initial: T | (() => T),
   { key, transient = false }: SlideStateOptions = {},
 ): [T, Dispatch<SetStateAction<T>>] {
-  const persistentStore = use(SlideStateContext);
-  const store =
-    (transient ? use(TransientSlideStateContext) : undefined) ??
-    persistentStore;
-  const { index: viewIndex, stateIndex } = useSlideView();
-  // Recaps share persistent state, but each visit has its own transient values.
-  const index = transient ? viewIndex : (stateIndex ?? viewIndex);
-  const recordUse = use(SlideStateUsageContext);
-  if (!transient) recordUse?.(viewIndex, index);
   const scope = use(StateScopeContext) ?? DETACHED_SCOPE;
   const instanceId = useId();
   const stateKey =
     key === undefined
       ? `${scope.path}#${String(scope.indexOf(instanceId))}`
       : `${scope.path}/${key}`;
-  const [initialValue] = useState(initial);
-  const getValue = useCallback(
-    () => store.getOrInit(index, stateKey, () => initialValue, transient) as T,
-    [store, index, stateKey, initialValue, transient],
+  const [initialValue] = useState(() => {
+    const value =
+      typeof initial === 'function' ? (initial as () => T)() : initial;
+    return () => value;
+  });
+  return useStateValue(
+    transient ? 'visit' : 'slide',
+    SLIDE_STATE,
+    stateKey,
+    initialValue,
   );
-  const subscribe = useCallback(
-    (listener: () => void) => store.subscribe(index, stateKey, listener),
-    [store, index, stateKey],
-  );
-  const value = useSyncExternalStore(subscribe, getValue, getValue);
-  const setValue = useCallback<Dispatch<SetStateAction<T>>>(
-    (action) => {
-      store.set(
-        index,
-        stateKey,
-        typeof action === 'function'
-          ? (action as (previous: T) => T)(getValue())
-          : action,
-      );
-    },
-    [store, index, stateKey, getValue],
-  );
-  return [value, setValue];
 }
 
 /**
@@ -101,11 +76,5 @@ export function useSlideState<T>(
  * marked as changed. Transient values and the steps of the slide are kept.
  */
 export function useResetSlideState(): () => void {
-  const store = use(SlideStateContext);
-  const { index: viewIndex, stateIndex } = useSlideView();
-  // Recaps share the state of the slide they recap.
-  const index = stateIndex ?? viewIndex;
-  return useCallback(() => {
-    store.reset(index);
-  }, [store, index]);
+  return useResetState();
 }
