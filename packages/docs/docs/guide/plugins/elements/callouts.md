@@ -56,10 +56,11 @@ to a step.
 A callout with `for` belongs to the step of the element it points at, e.g.,
 an image with `{#arch step}`, or the step around the element, and appears in
 a step nested in it. Likewise, a callout in the text appears in a step nested
-in the step of its text. As usual,
-`in=…` nests it in another group, `with=…` chooses when in that step it's shown,
-`group=…` places it otherwise, and a behavior like `only` shows it only during its
-step.
+in the step of its text. As usual, `in=…` nests it in another group, `with=…`
+chooses when in that step it's shown, `group=…` places it otherwise, and a
+behavior like `only` shows it only during its step. So `with=self` doesn't take
+a callout with `for` out of the step it belongs to, while `in=…` and `after=…`
+do.
 
 `with=previous` shows a callout together with the one before it:
 

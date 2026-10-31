@@ -39,13 +39,16 @@ later elements.
 - `with=parent` makes it part of what encloses it, rather than a step, so it
   has no look of its own, and steps inside it are nested directly in what
   encloses it. A behavior doesn't apply here. `step=false` means the same.
+  Content after it, including `with=previous` and `with=content`, is part of
+  what encloses it, too, until the next step.
 
 Without a behavior of its own, a step placed like this is part of the step it's
 shown with, and looks like it. A behavior like `:step{reveal with=previous}` gives
 it its own look. If there is no step to join, `with=previous`, `with=content`, and
 `with=initial` make a step that is shown up front, unlike content without `:step`.
 It's a real step: it takes the default of the slide, and steps inside it end at the
-next step on its level:
+next step on its level. A level has only one step 0, so a later `with=initial` is
+part of it, even if it's an overlay like a callout:
 
 ```mdx
 - :step{initial} Shown up front:callout[Goes away with the next item]
@@ -131,7 +134,14 @@ slide:
 ```
 
 Here, both pros are shown in the first step, and both cons in the second
-one. The group is placed at its least nested element, or its first one.
+one.
+
+The first element of a group decides where it's placed and how it looks. The
+group is nested wherever that element is, so an element outside of a step can
+join a group inside it, and then also goes away with it. Other elements look
+like the first one, unless they have a behavior of their own. With `with=parent`,
+the first element makes the group a name for what encloses it, rather than a
+step.
 
 A step with a name, like `:step{#parse}`, is in the group of the same name,
 unless it has a `group`. The address can refer to steps by their group,
@@ -263,9 +273,10 @@ skipped steps can still be chosen from the step tree.
 ## Splitting into pages
 
 A slide with steps becomes as few pages as possible when it's split into
-pages, e.g., for [printing](../presenting.md#printing), so that everything shown at some step is on some
-page. A page shows the slide at a step, and a step becomes a page just before
-something is hidden, collapsed, or covered, and at the end of the slide:
+pages, e.g., for [printing](../presenting.md#printing), so that everything
+shown at some step is on some page. A page shows the slide at a step, and a
+step becomes a page just before something is hidden, collapsed, or covered,
+and at the end of the slide:
 
 - Steps that stay shown, like `reveal`, make a single page of the last step.
 - `only`, `swap`, and `expand` make a page of each step before it goes away.
@@ -299,9 +310,10 @@ Content that floats over other content, like
 [callouts](../plugins/elements/callouts.md), is an overlay. The content it
 may cover also gets a page before overlays first cover it, e.g., a figure
 before the callouts pointing at it. Content shown along with an overlay
-doesn't, since the overlay likely doesn't cover it. `:step{overlay}` makes a step an overlay,
-and `overlay=false` makes a callout an ordinary step. The step tree marks
-overlays, too.
+doesn't, since the overlay likely doesn't cover it. `:step{overlay}` makes a
+step an overlay, and `overlay=false` makes a callout an ordinary step. Content
+that isn't a step, like a callout with `with=parent`, doesn't count. The step
+tree marks overlays, too.
 
 `split` on a slide sets the mode of its steps, e.g., `{split=none}` for a
 single page of the last step. It can also list the steps to make pages of,

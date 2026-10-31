@@ -94,11 +94,11 @@ export interface CalloutProps extends Omit<
    * What the callout points at: an element, the name of an element on the
    * slide, e.g., `arch` for an image with `{#arch}` in MDX, or nothing, to
    * place it on the slide with `at`. It points at the middle of the top or
-   * bottom edge of the element, or at `at` in its box. Unless `in`, `with`,
-   * `group`, or `after` is set, the callout is a step nested in the step of
-   * the element, or the step enclosing it, if any, and `with="self"` places
-   * it where it is instead. The callout itself takes no room where it's
-   * rendered.
+   * bottom edge of the element, or at `at` in its box. Unless `in` or `after`
+   * is set, or it joins a group with other elements, the callout is a step
+   * nested in the step of the element, or the step enclosing it, if any, and
+   * `with` only chooses when it's shown in that step. The callout itself takes
+   * no room where it's rendered.
    */
   anchor?: Element | string | undefined;
   /**

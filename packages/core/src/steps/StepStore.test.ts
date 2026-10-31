@@ -107,4 +107,94 @@ describe('StepStore', () => {
     addStep(store, 'C');
     expect(summarize(store.getTree())).toEqual(['1 A', '2 B', '3 C']);
   });
+
+  describe('placing steps around content that is not a step', () => {
+    const JOINS = {
+      placement: 'next',
+      defaultPlacement: 'content',
+      joins: true,
+      stepless: true,
+    } as const;
+
+    it('nests a group in the step around its first element', () => {
+      const store = new StepStore();
+      const a = addStep(store, 'A');
+      addStep(store, 'G1', { inside: a, group: 'g' });
+      addStep(store, 'B');
+      addStep(store, 'G2', { group: 'g' });
+      expect(summarize(store.getTree())).toEqual(['1 A', '  1.1 G1 G2', '2 B']);
+    });
+
+    it('places a group at its first element in content', () => {
+      const store = new StepStore();
+      const text = addStep(store, 'Text', JOINS);
+      addStep(store, 'G1', { inside: text, group: 'g' });
+      addStep(store, 'B');
+      addStep(store, 'G2', { group: 'g' });
+      expect(summarize(store.getTree())).toEqual(['1 G1 G2', '2 B']);
+    });
+
+    it('labels a step with the content inside it', () => {
+      const store = new StepStore();
+      const a = addStep(store, '', {});
+      addStep(store, 'Text', { ...JOINS, inside: a });
+      expect(summarize(store.getTree())).toEqual(['1 Text']);
+    });
+
+    it('labels a step without the content of the steps inside it', () => {
+      const store = new StepStore();
+      const a = addStep(store, 'A');
+      addStep(store, 'B', { inside: a });
+      addStep(store, 'Part of B', { ...JOINS, inside: a });
+      expect(summarize(store.getTree())).toEqual([
+        '1 A',
+        '  1.1 B · Part of B',
+      ]);
+    });
+
+    it.each(['previous', 'content'] as const)(
+      'joins what encloses content with %s after with="parent"',
+      (placement) => {
+        const store = new StepStore();
+        addStep(store, 'A');
+        addStep(store, 'B', { placement: 'parent', joins: true });
+        addStep(store, 'C', { placement, joins: true });
+        addStep(store, 'D');
+        expect(summarize(store.getTree())).toEqual(['1 A', '2 D']);
+      },
+    );
+
+    it.each(['previous', 'content'] as const)(
+      'makes a step 0 with %s after with="parent" for a look of its own',
+      (placement) => {
+        const store = new StepStore();
+        addStep(store, 'A');
+        addStep(store, 'B', { placement: 'parent', joins: true });
+        addStep(store, 'C', { placement });
+        expect(summarize(store.getTree())).toEqual(['0 C', '1 A']);
+      },
+    );
+
+    it('joins the step before an overlay with="parent"', () => {
+      const store = new StepStore();
+      addStep(store, 'A');
+      addStep(store, 'B', { placement: 'parent', joins: true, overlay: true });
+      addStep(store, 'C', JOINS);
+      expect(summarize(store.getTree())).toEqual(['1 A · C']);
+    });
+
+    it('makes a group with="parent" a name for what encloses it', () => {
+      const store = new StepStore();
+      const a = addStep(store, 'A');
+      addStep(store, 'B', {
+        inside: a,
+        group: 'g',
+        placement: 'parent',
+        joins: true,
+      });
+      addStep(store, 'C', { inside: a, group: 'g' });
+      addStep(store, 'D', { parent: 'g' });
+      expect(summarize(store.getTree())).toEqual(['1 ABC', '  1.1 D']);
+    });
+  });
 });

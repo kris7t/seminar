@@ -101,9 +101,9 @@ Everything stays visible here, and only the highlight follows the steps.
 and `in`, and also `split`, `defaultSplit`, and `overlay`. Splitting a slide
 into pages only knows how steppers look from their `appearances`, so a
 component whose content changes in its steps otherwise should pass
-`defaultSplit: 'each'`, like `<Steps>`, to get a page of each step. A handle returned by `useStep` can also be passed to the `with` of
-other steps, which then share its stepper, e.g., to reveal items of two
-lists in parallel.
+`defaultSplit: 'each'`, like `<Steps>`, to get a page of each step. A handle
+returned by `useStep` can also be passed to the `with` of other steps, which
+then share its stepper, e.g., to reveal items of two lists in parallel.
 
 ## Animations
 

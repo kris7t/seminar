@@ -244,6 +244,124 @@ describe('step behaviors', () => {
       );
       expect(warn).not.toHaveBeenCalled();
     });
+
+    it('looks like what encloses it, whatever behavior it has', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step>
+              A
+              <Step>
+                B
+                <Step with="parent" only>
+                  written
+                </Step>
+                <Step step={false} defaults={{ behavior: 'scoped' }}>
+                  default
+                </Step>
+              </Step>
+              <Step>C</Step>
+            </Step>
+            <Step>D</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+      expect(stateOf('written')).toBe('past shown');
+      expect(stateOf('default')).toBe('past shown');
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('written')).toBe('distantPast shown');
+      expect(stateOf('default')).toBe('distantPast shown');
+    });
+
+    it('keeps the behavior of elements of a group with="parent"', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step>
+              A
+              <Step group="g" with="parent">
+                B
+              </Step>
+              <Step group="g">C</Step>
+              <Step group="g" only>
+                D
+              </Step>
+            </Step>
+            <Step>E</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('C')).toBe('current shown');
+      expect(stateOf('D')).toBe('current shown');
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('C')).toBe('past shown');
+      expect(stateOf('D')).toBe('past hidden');
+    });
+  });
+
+  describe('of groups', () => {
+    it('comes from the element creating the group', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide steps="dim">
+            <Step group="g">A</Step>
+            <Step group="g" only>
+              B
+            </Step>
+            <Step group="h" only>
+              C
+            </Step>
+            <Step group="h">D</Step>
+            <Step>E</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+      expect(appearanceOf(screen.getByText('A'))).toBe('dimmed');
+      expect(appearanceOf(screen.getByText('B'))).toBe('hidden');
+      expect(appearanceOf(screen.getByText('C'))).toBe('hidden');
+      expect(appearanceOf(screen.getByText('D'))).toBe('hidden');
+    });
+
+    it('lets a default behavior apply to the element alone', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step>
+              A<Step group="g">B</Step>
+              <Step group="g" defaults={{ behavior: 'scoped' }}>
+                C
+              </Step>
+            </Step>
+            <Step>D</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+      expect(appearanceOf(screen.getByText('B'))).toBe('shown');
+      expect(appearanceOf(screen.getByText('C'))).toBe('hidden');
+    });
+
+    it('does not show elements up front like the steps creating it', () => {
+      render(
+        <Deck>
+          <Slide>
+            <Steps count={1} group="g">
+              A
+            </Steps>
+            <Step group="g">B</Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(appearanceOf(screen.getByText('B'))).toBe('hidden');
+    });
   });
 
   describe('of steps without one of their own', () => {

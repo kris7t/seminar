@@ -834,7 +834,7 @@ describe('steps', () => {
       expect(window.location.hash).toBe('#slide=1&step=b');
     });
 
-    it('places nested elements of a group at the outer level', async () => {
+    it('nests a group wherever it is first found', async () => {
       const user = userEvent.setup();
       render(
         <Deck>
@@ -857,10 +857,10 @@ describe('steps', () => {
       await user.keyboard('{ArrowRight}');
       expect(shownItems()).toEqual(['*x']);
       await user.keyboard('{ArrowRight}');
-      expect(shownItems()).toEqual(['x', '*a1', '*a2']);
+      expect(shownItems()).toEqual(['*x', '*a1', '*a2']);
       expect(window.location.hash).toBe('#slide=1&step=a');
       await user.keyboard('{ArrowRight}');
-      expect(shownItems()).toEqual(['x', '*a1', '*a1.1', '*a2']);
+      expect(shownItems()).toEqual(['*x', '*a1', '*a1.1', '*a2']);
       expect(window.location.hash).toBe('#slide=1&step=a.1');
     });
 

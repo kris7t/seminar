@@ -420,8 +420,10 @@ export function Step(inProps: StepProps): JSX.Element {
   const defaultWith = defaultPlace?.with;
   const defaultJoins =
     ownBehavior === undefined ? defaultPlace?.joins : undefined;
+  // What isn't a step always looks like what encloses it.
   const hasOwnLook =
-    ownBehavior !== undefined || defaults?.behavior !== undefined;
+    explicitWith !== 'parent' &&
+    (ownBehavior !== undefined || defaults?.behavior !== undefined);
   // Without a look of its own, a step is part of the step it's placed with.
   const joins =
     explicitWith === 'parent' ||

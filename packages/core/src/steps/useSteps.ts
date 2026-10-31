@@ -75,15 +75,16 @@ export interface StepHandle extends StepState {
  * - `'previous'` shows its first step together with the previous step on the
  *   same level, whatever that is, e.g., to show two callouts at once. If there
  *   is none, it works like `'initial'`.
- * - `'content'` shows its first step together with the content on the same
- *   level so far, i.e., with the latest step that isn't an overlay. If there is
- *   none, it works like `'initial'`.
- * - `'initial'` shows its first step as soon as the enclosing step (or the slide)
- *   is shown, as step 0 of the level, which has no state of its own. It stays
- *   current until the first step on the same level is shown. This allows using the same component for
- *   content that is visible up front and content revealed in steps.
+ * - `'content'` works like `'previous'`, but skips overlays, so it shows its
+ *   first step together with the content on the same level so far.
+ * - `'initial'` shows its first step as soon as the enclosing step (or the
+ *   slide) is shown, as step 0 of the level, which has no state of its own. It
+ *   stays current until the first step on the same level is shown. This allows
+ *   using the same component for content that is visible up front and content
+ *   revealed in steps.
  * - `'parent'` is part of what encloses the stepper, rather than a step, and
- *   content after it follows it. It's shown as soon as the level is shown.
+ *   so is whatever `'previous'` or `'content'` refers to it after it. A group
+ *   placed like this is just a name for what encloses it.
  * - A {@link StepHandle}, e.g., created up front with {@link useStep} or
  *   {@link useSteps}, shares that stepper instead of creating a new one: the
  *   elements are attached to it and follow its state. This allows revealing
@@ -103,12 +104,10 @@ export interface UseStepsOptions {
    * a {@link StepHandle} passed to `with`, but without creating the handle up
    * front.
    *
-   * The stepper is placed at the least nested element of the group (the
-   * first one in document order if there are several), according to the
-   * `count` and `with` of that element. Thus, an element nested inside
-   * another step can join a group of the enclosing level, but it is only shown
-   * once both the group and the enclosing step are shown. Ignored if `with` is
-   * a handle.
+   * The stepper is placed at the first element of the group in document order,
+   * according to the `count` and `with` of that element, and nested wherever
+   * that element is. Elements without a look of their own look like it. Ignored
+   * if `with` is a handle.
    */
   group?: string | undefined;
   /**
@@ -158,8 +157,8 @@ export interface UseStepsOptions {
    */
   appearances?: RankedAppearances | undefined;
   /**
-   * Whether `appearances` were chosen for this stepper, rather than being what
-   * it looks like if there is nothing else to look like. Defaults to `true`.
+   * Whether the element keeps its `appearances` if it isn't the first element
+   * of the stepper, rather than looking like that one. Defaults to `true`.
    */
   ownLook?: boolean | undefined;
   /**

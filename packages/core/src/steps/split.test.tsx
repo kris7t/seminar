@@ -320,4 +320,34 @@ describe('splitting slides into pages', () => {
       ),
     ).toEqual(['Start of the slide', 'A', 'B [page]', 'C [page]']);
   });
+
+  it('asks for pages in the turn of what encloses content without a step', () => {
+    expect(
+      splitOf(
+        <>
+          <Step step={false} split="last">
+            Up front
+          </Step>
+          <Step>A</Step>
+          <Step>B</Step>
+        </>,
+      ),
+    ).toEqual(['Start of the slide', 'A', 'B [page]']);
+  });
+
+  it('does not treat content without a step as covering what encloses it', () => {
+    expect(
+      splitOf(
+        <>
+          <Step>
+            A
+            <Step step={false} overlay>
+              Inert
+            </Step>
+          </Step>
+          <Step>B</Step>
+        </>,
+      ),
+    ).toEqual(['Start of the slide', 'AInert', 'B [page]']);
+  });
 });
