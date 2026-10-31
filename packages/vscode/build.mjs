@@ -1,9 +1,10 @@
 // Bundles the extension and its language server, since VSIX packages don't
 // include `node_modules`.
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import mermaid from '@shikijs/langs/mermaid';
 import { build } from 'esbuild';
 
-import { renderDeckGrammar } from './src/grammar.ts';
+import { renderDeckGrammar, renderMermaidGrammar } from './src/grammar.ts';
 
 await copyFile(
   new URL('../../LICENSE', import.meta.url),
@@ -19,6 +20,10 @@ await writeFile(
       'utf8',
     ),
   ),
+);
+await writeFile(
+  new URL('./dist/deck.mermaid.tmLanguage.json', import.meta.url),
+  JSON.stringify(renderMermaidGrammar(mermaid[0])),
 );
 
 await build({

@@ -1,0 +1,46 @@
+{
+  "scopeName": "source.seminar-deck.steps",
+  "injectionSelector": "L:source.seminar-deck meta.embedded.block.mermaid",
+  "patterns": [
+    {
+      "match": "^\\s*(%%)\\s*(step)(?:(\\[)([^\\]]*)(\\]))?(?:\\s+(.*))?$",
+      "captures": {
+        "1": {
+          "name": "string.other.begin.directive.seminar"
+        },
+        "2": {
+          "name": "entity.name.tag.directive.seminar"
+        },
+        "3": {
+          "name": "punctuation.definition.label.begin.seminar"
+        },
+        "4": {
+          "patterns": [
+            {
+              "match": "->",
+              "name": "keyword.operator.step-item.seminar"
+            },
+            {
+              "match": ",",
+              "name": "punctuation.separator.step-item.seminar"
+            },
+            {
+              "match": "[^\\s,]+?(?=->|,|\\s|$)",
+              "name": "variable.other.step-item.seminar"
+            }
+          ]
+        },
+        "5": {
+          "name": "punctuation.definition.label.end.seminar"
+        },
+        "6": {
+          "patterns": [
+            {
+              "include": "source.seminar-deck.injection#code-fence-props"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

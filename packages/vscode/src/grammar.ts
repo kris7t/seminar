@@ -34,3 +34,21 @@ export function renderDeckGrammar(mdxGrammar: string): string {
   }
   return rendered;
 }
+
+/**
+ * Extracts the grammar of the diagrams in Mermaid code blocks from the grammar
+ * of Shiki, which otherwise adds these code blocks to Markdown files.
+ */
+export function renderMermaidGrammar(mermaid: {
+  repository: Record<string, unknown>;
+}): object {
+  const { mermaid: diagrams } = mermaid.repository;
+  if (diagrams === undefined) {
+    throw new Error('The grammar of Mermaid has no diagrams to highlight.');
+  }
+  return {
+    scopeName: `${DECK_SCOPE}.mermaid`,
+    patterns: [{ include: '#mermaid' }],
+    repository: { mermaid: diagrams },
+  };
+}

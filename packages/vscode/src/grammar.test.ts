@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 
+import mermaid from '@shikijs/langs/mermaid';
 import * as oniguruma from 'vscode-oniguruma';
 import {
   INITIAL,
@@ -10,7 +11,11 @@ import {
 } from 'vscode-textmate';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { DECK_SCOPE, renderDeckGrammar } from './grammar.ts';
+import {
+  DECK_SCOPE,
+  renderDeckGrammar,
+  renderMermaidGrammar,
+} from './grammar.ts';
 
 const syntaxes = new URL('../syntaxes/', import.meta.url);
 const MDX_GRAMMAR = readFileSync(
@@ -39,6 +44,7 @@ const TSX = JSON.stringify({
 const FILES: Record<string, string> = {
   'source.seminar-deck.injection': 'deck.injection.tmLanguage.json',
   'source.seminar-deck.heading': 'deck.heading.tmLanguage.json',
+  'source.seminar-deck.steps': 'deck.steps.tmLanguage.json',
 };
 
 let grammar: IGrammar;
@@ -64,6 +70,14 @@ beforeAll(async () => {
           parseRawGrammar(renderDeckGrammar(MDX_GRAMMAR), 'deck.tmLanguage'),
         );
       }
+      if (scope === `${DECK_SCOPE}.mermaid`) {
+        return Promise.resolve(
+          parseRawGrammar(
+            JSON.stringify(renderMermaidGrammar(mermaid[0] as never)),
+            'mermaid.json',
+          ),
+        );
+      }
       if (scope === 'source.tsx') {
         return Promise.resolve(parseRawGrammar(TSX, 'tsx.json'));
       }
@@ -77,7 +91,11 @@ beforeAll(async () => {
     },
     getInjections: (scope) =>
       scope === 'source.seminar-deck'
-        ? ['source.seminar-deck.injection', 'source.seminar-deck.heading']
+        ? [
+            'source.seminar-deck.injection',
+            'source.seminar-deck.heading',
+            'source.seminar-deck.steps',
+          ]
         : undefined,
   });
   const loaded = await registry.loadGrammar('source.seminar-deck');
@@ -96,7 +114,9 @@ function tokenize(text: string): [string, string][] {
     state = ruleStack;
     for (const { startIndex, endIndex, scopes } of lineTokens) {
       const scope = scopes
-        .filter((name) => /\.seminar$|\.tex$|\.latex$/.test(name))
+        .filter((name) =>
+          /\.seminar$|\.tex$|\.latex$|^keyword\.control\.mermaid$/.test(name),
+        )
         .at(-1);
       if (scope !== undefined) {
         tokens.push([line.slice(startIndex, endIndex), scope]);
@@ -226,7 +246,7 @@ describe('the grammar of decks', () => {
 
   it.each(['```', '~~~'])('highlights the props of code in %s', (fence) => {
     expect(
-      tokenize(`${fence}mermaid #fib .wide step group=impl {1-3|a} "a #b"
+      tokenize(`${fence}text #fib .wide step group=impl {1-3|a} "a #b"
 #not .props
 ${fence}`),
     ).toEqual([
@@ -237,6 +257,63 @@ ${fence}`),
       ['=', 'punctuation.separator.key-value.seminar'],
       ['impl', 'string.unquoted.attribute-value.seminar'],
     ]);
+  });
+
+  it('highlights Mermaid diagrams', () => {
+    expect(tokenize('```mermaid\nflowchart LR\n```')).toContainEqual([
+      'flowchart',
+      'keyword.control.mermaid',
+    ]);
+    expect(tokenize('~~~Mermaid #id\nsequenceDiagram\n~~~')).toEqual(
+      expect.arrayContaining([
+        ['#id', 'entity.other.attribute-name.id.seminar'],
+        ['sequenceDiagram', 'keyword.control.mermaid'],
+      ]),
+    );
+  });
+
+  it('highlights steps in Mermaid diagrams', () => {
+    const lines = tokenize(`\`\`\`mermaid
+flowchart LR
+  %% step group=emit
+  %% step[c, a->c] only
+\`\`\``);
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        ['%%', 'string.other.begin.directive.seminar'],
+        ['step', 'entity.name.tag.directive.seminar'],
+        ['group', 'entity.other.attribute-name.seminar'],
+        ['[', 'punctuation.definition.label.begin.seminar'],
+        ['c', 'variable.other.step-item.seminar'],
+        ['a', 'variable.other.step-item.seminar'],
+        ['->', 'keyword.operator.step-item.seminar'],
+        ['only', 'entity.other.attribute-name.seminar'],
+      ]),
+    );
+  });
+
+  it('highlights steps in diagrams it does not know', () => {
+    expect(tokenize('```mermaid\nwardley\n%% step\n```')).toEqual([
+      ['%%', 'string.other.begin.directive.seminar'],
+      ['step', 'entity.name.tag.directive.seminar'],
+    ]);
+  });
+
+  it('leaves other comments in Mermaid diagrams alone', () => {
+    expect(
+      tokenize('```mermaid\nflowchart LR\n%% stepper\n%% a step\n```').filter(
+        ([, scope]) => scope.endsWith('.seminar'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('continues with Markdown after Mermaid diagrams', () => {
+    expect(tokenize('```mermaid\nflowchart LR\n```\n\n:step')).toEqual(
+      expect.arrayContaining([['step', 'entity.name.tag.directive.seminar']]),
+    );
+    expect(tokenize('```mermaid\nwardley\n```\n\n:step')).toEqual(
+      expect.arrayContaining([['step', 'entity.name.tag.directive.seminar']]),
+    );
   });
 
   it('leaves words that are not props alone after code fences', () => {

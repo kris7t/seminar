@@ -111,6 +111,17 @@
         "injectTo": [
           "source.seminar-deck"
         ]
+      },
+      {
+        "scopeName": "source.seminar-deck.steps",
+        "path": "./syntaxes/deck.steps.tmLanguage.json",
+        "injectTo": [
+          "source.seminar-deck"
+        ]
+      },
+      {
+        "scopeName": "source.seminar-deck.mermaid",
+        "path": "./dist/deck.mermaid.tmLanguage.json"
       }
     ]
   },
@@ -122,6 +133,7 @@
   "devDependencies": {
     "@mdx-js/language-service": "0.7.4",
     "@seminar/mdx": "0.2.1",
+    "@shikijs/langs": "^4.5.0",
     "@types/vscode": "~1.100.0",
     "@volar/language-server": "~2.4.0",
     "@volar/vscode": "~2.4.0",

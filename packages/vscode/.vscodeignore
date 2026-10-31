@@ -2,6 +2,7 @@
 !dist/*.cjs
 !assets/**
 !dist/*.tmLanguage
+!dist/*.tmLanguage.json
 !syntaxes/*.json
 !syntaxes/LICENSE.source.mdx.txt
 !language-configuration.json

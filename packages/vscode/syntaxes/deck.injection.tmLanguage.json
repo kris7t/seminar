@@ -3,6 +3,9 @@
   "injectionSelector": "L:source.seminar-deck -markup.code -markup.raw -meta.embedded -string -comment",
   "patterns": [
     {
+      "include": "#code-fence-mermaid"
+    },
+    {
       "include": "#math-flow"
     },
     {
@@ -247,6 +250,37 @@
               ]
             }
           }
+        }
+      ]
+    },
+    "code-fence-mermaid": {
+      "begin": "(?:^|\\G)[\\t ]*(`{3,}|~{3,})[\\t ]*((?i:mermaid))(?:[\\t ]+([^\\n\\r`]+))?[\\t ]*$",
+      "beginCaptures": {
+        "1": {
+          "name": "string.other.begin.code.fenced.mdx"
+        },
+        "2": {
+          "name": "entity.name.function.mdx"
+        },
+        "3": {
+          "patterns": [
+            {
+              "include": "#code-fence-props"
+            }
+          ]
+        }
+      },
+      "end": "(?:^|\\G)[\\t ]*(\\1)[\\t ]*$",
+      "endCaptures": {
+        "1": {
+          "name": "string.other.end.code.fenced.mdx"
+        }
+      },
+      "name": "markup.code.mermaid.mdx",
+      "contentName": "meta.embedded.block.mermaid",
+      "patterns": [
+        {
+          "include": "source.seminar-deck.mermaid"
         }
       ]
     }
