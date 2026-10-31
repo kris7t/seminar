@@ -81,6 +81,19 @@ tree.
 A paragraph or image in a list item is shown with its item, and one with
 `:step` is a nested step of the item.
 
+Steps in content without `:step` are nested in the step that content is shown
+with, so they end along with it. Content shown up front counts as an initial
+step of its own, so the steps in it end at the first step after it:
+
+```mdx
+- Shown up front
+  - :step{expand} Collapsed again by the next item
+- :step Shown in the second step
+```
+
+The address shows them with a 0, e.g., `step=0.1`, or `step=1.0.1` for the
+initial content of step 1.
+
 ## Groups
 
 Steps with the same `group` are shown together, wherever they are on the

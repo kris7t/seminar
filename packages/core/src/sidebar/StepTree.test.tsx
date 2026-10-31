@@ -2,6 +2,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { ListItem } from '../content/ListItem.tsx';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
@@ -71,6 +72,67 @@ describe('StepTree', () => {
       'Figure (2/2)',
       'Step 4 [page]',
     ]);
+  });
+
+  it('indents steps nested in step 0 below the step that encloses it', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First">
+          <ul>
+            <ListItem>
+              Up front<Step>Initial</Step>
+            </ListItem>
+            <ListItem step>
+              Second
+              <ul>
+                <ListItem>
+                  <Step>Inner initial</Step>
+                </ListItem>
+                <ListItem step>Inner</ListItem>
+              </ul>
+            </ListItem>
+          </ul>
+        </Slide>
+      </Deck>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Steps' });
+    const indents = () =>
+      within(nav)
+        .getAllByRole('button')
+        .map((button) => getComputedStyle(button).paddingLeft);
+    const [start, nested] = indents();
+    expect(entries()).toEqual([
+      '*Start of the slide',
+      'Initial',
+      'Second',
+      'Inner initial',
+      'Inner [page]',
+    ]);
+    expect(indents()).toEqual([
+      start,
+      nested,
+      start,
+      expect.not.stringMatching(
+        new RegExp(`^(${String(start)}|${String(nested)})$`),
+      ),
+      nested,
+    ]);
+    // The start of the slide encloses the steps nested in step 0.
+    const startButton = screen.getByRole('button', {
+      name: 'Start of the slide',
+    });
+    const weight = () =>
+      getComputedStyle(
+        startButton.querySelector('.MuiListItemText-primary') ?? startButton,
+      ).fontWeight;
+    const closed = weight();
+    await user.keyboard('{ArrowRight}');
+    expect(entries()[1]).toBe('*Initial');
+    expect(weight()).not.toBe(closed);
+    await user.keyboard('{ArrowRight}');
+    expect(entries()[2]).toBe('*Second');
+    expect(weight()).toBe(closed);
   });
 
   it('labels steps with their titles, which are not tooltips', () => {

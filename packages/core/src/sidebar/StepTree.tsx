@@ -13,9 +13,9 @@ import type { StepPath, StepStore, StepTreeEntry } from '../steps/StepStore.ts';
 type EntryPhase = 'past' | 'open' | 'current' | 'future';
 
 function phaseOf(path: StepPath, current: StepPath): EntryPhase {
-  // The start of the slide doesn't enclose the steps of the slide.
-  if (path.length === 0) {
-    return current.length === 0 ? 'current' : 'past';
+  // The start of the slide only encloses the steps nested in step 0.
+  if (path.length === 0 && (current[0] ?? 0) !== 0) {
+    return 'past';
   }
   for (let depth = 0; depth < path.length; depth += 1) {
     const step = path[depth] ?? 0;
@@ -32,7 +32,6 @@ interface EntryProps {
   label: string;
   /** The text to show if the label is empty. */
   fallback: string;
-  level: number;
   current: StepPath;
   store: StepStore;
   /** The language of the labels, which are taken from the slide. */
@@ -47,7 +46,6 @@ function Entry({
   path,
   label,
   fallback,
-  level,
   current,
   store,
   lang,
@@ -66,7 +64,8 @@ function Entry({
       onClick={() => {
         store.reset(path);
       }}
-      sx={{ pl: 2 + level * 2 }}
+      // Steps nested in step 0 are indented below the step that encloses it.
+      sx={{ pl: 2 + Math.max(path.length - 1, 0) * 2 }}
     >
       <ListItemText
         // Placeholders are in the language of the user interface.
@@ -97,7 +96,6 @@ function Entry({
 
 function renderEntries(
   entries: readonly StepTreeEntry[],
-  level: number,
   current: StepPath,
   store: StepStore,
   t: Translate,
@@ -110,14 +108,13 @@ function renderEntries(
       path={path}
       label={label}
       fallback={t('step', { number: path.at(-1) ?? 0 })}
-      level={level}
       current={current}
       store={store}
       lang={lang}
       page={pages.has(path.join('.'))}
       overlay={overlay}
     />,
-    ...renderEntries(children, level + 1, current, store, t, lang, pages),
+    ...renderEntries(children, current, store, t, lang, pages),
   ]);
 }
 
@@ -130,7 +127,8 @@ export interface StepTreeProps {
  * The steps of the current slide as a tree, labeled with the text they show,
  * which highlights the current step, and goes to a step when clicked.
  *
- * The first entry goes to the beginning of the slide, before any of its steps.
+ * The first entry goes to the beginning of the slide, before any of its steps,
+ * with the steps nested in the initial content of the slide below it.
  * Steps outside the range of the slide (see `StepRange`), which going through
  * the slide skips, are struck through. Icons mark the steps that become pages
  * when the slide is split into pages, and the steps that may cover other
@@ -176,14 +174,13 @@ export function StepTree({ store }: StepTreeProps): JSX.Element {
         path={[]}
         label=""
         fallback={t('startOfSlide')}
-        level={0}
         current={current}
         store={store}
         lang={lang}
         page={pages.has('')}
         overlay={false}
       />
-      {renderEntries(tree, 0, current, store, t, lang, pages)}
+      {renderEntries(tree, current, store, t, lang, pages)}
     </List>
   );
 }

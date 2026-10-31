@@ -257,7 +257,7 @@ describe('steps', () => {
     expect(shownItems()).toEqual(['a', 'b', 'c', '*d', '*e']);
   });
 
-  it('nests steps in inert items in the parent of the item', async () => {
+  it('nests steps in inert items in the step the item is shown with', async () => {
     const user = userEvent.setup();
     render(
       <Deck>
@@ -278,12 +278,93 @@ describe('steps', () => {
       </Deck>,
     );
     await user.keyboard('{ArrowRight}');
-    expect(shownItems()).toEqual(['*a', '*b', '*b.p']);
-    // The step in the inert item is a step of the slide, as if the item
-    // wasn't a step, and the paragraph after it is shown with it.
+    expect(shownItems()).toEqual(['*a', '*b', '*b.p', '*after']);
+    // The step in the inert item is nested in the step of the item, which the
+    // paragraph after the item is shown with, too.
     await user.keyboard('{ArrowRight}');
-    expect(window.location.hash).toBe('#slide=1&step=2');
-    expect(shownItems()).toEqual(['a', 'b', 'b.p', '*b.more', '*after']);
+    expect(window.location.hash).toBe('#slide=1&step=1.1');
+    expect(shownItems()).toEqual(['*a', '*b', '*b.p', '*b.more', '*after']);
+  });
+
+  it('nests steps in initial inert content in step 0', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <ul>
+            <ListItem data-name="a">
+              a<Step data-name="a.more">more</Step>
+            </ListItem>
+            <ListItem step data-name="b">
+              b
+            </ListItem>
+          </ul>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=0.1');
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    await user.keyboard('{ArrowLeft}');
+    expect(window.location.hash).toBe('#slide=1&step=0.1');
+  });
+
+  it('does not add levels for inert content in inert content', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <ul>
+            <ListItem>
+              <ul>
+                <ListItem>
+                  <Paragraph>
+                    a<Step>more</Step>
+                  </Paragraph>
+                </ListItem>
+              </ul>
+            </ListItem>
+            <ListItem step>b</ListItem>
+          </ul>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=0.1');
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=1');
+  });
+
+  it('nests steps in the initial inert content of a step', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Step>
+            a
+            <ul>
+              <ListItem>
+                <Paragraph>
+                  b<Step>more</Step>
+                </Paragraph>
+              </ListItem>
+            </ul>
+            <Paragraph step>c</Paragraph>
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    const hashes = [];
+    for (let index = 0; index < 3; index += 1) {
+      await user.keyboard('{ArrowRight}');
+      hashes.push(window.location.hash);
+    }
+    expect(hashes).toEqual([
+      '#slide=1&step=1',
+      '#slide=1&step=1.0.1',
+      '#slide=1&step=1.1',
+    ]);
   });
 
   it('shows the steps of a group together', async () => {

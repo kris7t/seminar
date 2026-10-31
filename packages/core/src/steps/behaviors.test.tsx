@@ -3,6 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { ThemeProvider } from '@mui/material';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { ListItem } from '../content/ListItem.tsx';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
@@ -251,6 +252,38 @@ describe('step behaviors', () => {
         'past dimmed',
         'distantPast hidden',
       ]);
+    });
+
+    it('treats steps in inert content like steps in the step it is shown with', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide title="Inert">
+            <ul>
+              <ListItem>
+                Up front<Step behavior="expand">Initial</Step>
+              </ListItem>
+              <ListItem step>
+                Second<Step behavior="expand">Nested</Step>
+              </ListItem>
+              <ListItem step>Third</ListItem>
+            </ul>
+            <Step behavior="expand">Sibling</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('Initial')).toBe('current shown');
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('Initial')).toBe('distantPast collapsed');
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('Nested')).toBe('current shown');
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('Nested')).toBe('distantPast collapsed');
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('Sibling')).toBe('current shown');
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('Sibling')).toBe('current shown');
     });
 
     it('hides scoped steps once the step they are nested in is past', async () => {

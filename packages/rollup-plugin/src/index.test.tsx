@@ -95,7 +95,7 @@ describe('.deck.mdx', () => {
     ).toHaveProperty('dataset.plugin', 'callout');
     expect(screen.getByText('Inline callout').tagName).toBe('SPAN');
     await user.click(screen.getByText('Uses the default theme'));
-    expect(window.location.hash).toBe('#plain-deck&step=1');
+    expect(window.location.hash).toBe('#plain-deck&step=0.1');
   });
 
   it('passes custom behavior shorthands from directives to steps', () => {

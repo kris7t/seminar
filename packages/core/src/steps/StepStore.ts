@@ -800,8 +800,8 @@ export class StepStore {
    * Returns the steps of the slide as a tree, where the steps on each level
    * are followed by the steps nested in them. Steps nested in step 0 of a
    * level, which is shown along with the level, come before the other steps of
-   * the level. The result is stable while the steppers don't change, but it
-   * doesn't follow changes of their text.
+   * the level, and keep the 0 in their paths. The result is stable while the
+   * steppers don't change, but it doesn't follow changes of their text.
    */
   getTree = (): readonly StepTreeEntry[] => {
     this.#tree ??= this.#computeTree([]);
@@ -988,9 +988,10 @@ export class StepStore {
     }
     const parents = new Map<StepNode, StepNode | undefined>();
     // Steppers that are inert by default, e.g., paragraphs without steps of
-    // their own, don't nest the steppers inside them, which are nested in the
-    // parent of the inert stepper instead, as if it wasn't there.
-    const isTransparent = (node: StepNode): boolean => {
+    // their own, are part of the step they are shown with, so other inert
+    // steppers inside them are part of that step, too, rather than adding a
+    // level to it.
+    const isInert = (node: StepNode): boolean => {
       const options = anchors.get(node)?.options;
       return (
         node.elements.size === 1 && options?.defaultPlacement !== undefined
@@ -1022,7 +1023,8 @@ export class StepStore {
         result !== undefined &&
         result !== node &&
         !visiting.has(result) &&
-        isTransparent(result)
+        isInert(node) &&
+        isInert(result)
       ) {
         result = findParent(result);
       }
