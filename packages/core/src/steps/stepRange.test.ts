@@ -44,6 +44,15 @@ describe('step ranges', () => {
     expect(parseStepBound('')).toBeUndefined();
   });
 
+  it('stands for the steps nested in step 0, too, unless it ends with .0', () => {
+    expect(parseStepBound('0')).toMatchObject({ path: [0], nested: true });
+    expect(parseStepBound('0.0')).toMatchObject({
+      path: [0, 0],
+      nested: false,
+    });
+    expect(parseStepBound('a.0')).toMatchObject({ path: [0], nested: false });
+  });
+
   it('compares paths in the order of going through the slide', () => {
     expect(compareStepPaths([1], [1, 0])).toBe(0);
     expect(compareStepPaths([1], [1, 1])).toBeLessThan(0);

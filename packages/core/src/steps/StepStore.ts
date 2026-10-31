@@ -46,7 +46,7 @@ export type StepPath = readonly number[];
  * Where the presentation is relative to a stepper:
  *
  * - `'distantFuture'`: like `'future'`, but the step the stepper is nested in
- *   (in the DOM or with `in`), or one enclosing that, isn't shown yet either.
+ *   in the tree of steps, or one enclosing that, isn't shown yet either.
  * - `'future'`: the stepper isn't shown yet.
  * - `'current'`: the current step of the slide is one of the steps of the
  *   stepper.
@@ -79,10 +79,10 @@ export interface StepStatus extends StepPlace {
    */
   inherited: RankedAppearance;
   /**
-   * How the step that the stepper is part of looks, instead of the stepper
-   * itself, if it joined a step that has a look of its own.
+   * How the stepper looks as a whole, which is how elements without a look of
+   * their own look, or `undefined` before it is placed.
    */
-  joined?: RankedAppearance | undefined;
+  look?: RankedAppearance | undefined;
 }
 
 /**
@@ -137,6 +137,11 @@ export interface StepOptions {
   title?: string | undefined;
   /** How the stepper looks in each phase. Shown in all phases by default. */
   appearances?: RankedAppearances | undefined;
+  /**
+   * Whether `appearances` were chosen for this element, rather than being what
+   * the stepper looks like if there is nothing else to look like.
+   */
+  ownLook?: boolean | undefined;
   /**
    * How long the slide fades when the turn of the stepper starts or ends,
    * which applies along with those of the other elements of the stepper.
@@ -200,10 +205,10 @@ interface Layout {
   anchors: Map<StepNode, Anchor>;
   /** The stepper each stepper is nested in, if any. */
   parents: Map<StepNode, StepNode | undefined>;
-  /** The step that each stepper that isn't a step is part of, if any. */
+  /** The step that each joining stepper is part of, if any. */
   owners: Map<StepNode, StepNode>;
-  /** The steppers that aren't steps, but content shown along with them. */
-  plain: Set<StepNode>;
+  /** The steppers that aren't steps, but part of a step or of what encloses them. */
+  joining: Set<StepNode>;
   placements: Map<StepNode, Placement>;
   /**
    * Number of the last step on each level, keyed by {@link levelKey}.
@@ -493,7 +498,7 @@ export class StepStore {
       cached?.stepIndex === status.stepIndex &&
       cached.phase === status.phase &&
       cached.inherited === status.inherited &&
-      cached.joined === status.joined
+      cached.look === status.look
     ) {
       return cached;
     }
@@ -732,8 +737,15 @@ export class StepStore {
     const isTurn = ({ phase }: StepPlace) =>
       phase === 'current' || phase === 'open';
     const fades = [...this.#nodes].flatMap((node) => {
-      const before = this.#computePlace(node, from);
-      const after = this.#computePlace(node, target);
+      // Without a step to be part of, its turn is that of what encloses it.
+      const { owners, parents, joining } = this.#getLayout();
+      const turnNode =
+        joining.has(node) && !owners.has(node) ? parents.get(node) : node;
+      if (turnNode === undefined) {
+        return [];
+      }
+      const before = this.#computePlace(turnNode, from);
+      const after = this.#computePlace(turnNode, target);
       const moved = before.stepIndex !== after.stepIndex;
       const sides = [
         ...(isTurn(before) && (!isTurn(after) || moved)
@@ -832,7 +844,7 @@ export class StepStore {
   };
 
   #computeTree(level: StepPath): StepTreeEntry[] {
-    const { anchors, placements, levelSizes, owners, plain } =
+    const { anchors, placements, levelSizes, owners, joining } =
       this.#getLayout();
     const key = levelKey(level);
     const size = levelSizes.get(key);
@@ -854,8 +866,8 @@ export class StepStore {
         ([node, { first, last }]) =>
           first <= step &&
           step <= last &&
-          // Content up front without a step isn't part of any entry.
-          (!plain.has(node) || owners.has(node)),
+          // Joining steppers without a step aren't part of any entry.
+          (!joining.has(node) || owners.has(node)),
       );
       const path = [...level, step];
       const children = this.#computeTree(path);
@@ -1058,7 +1070,7 @@ export class StepStore {
     }
     const parents = new Map<StepNode, StepNode | undefined>();
     const owners = new Map<StepNode, StepNode>();
-    const plain = new Set<StepNode>();
+    const joining = new Set<StepNode>();
     const placements = new Map<StepNode, Placement>();
     const levelSizes = new Map<string, number>();
     // The latest stepper that is a step on each level.
@@ -1068,7 +1080,7 @@ export class StepStore {
     // The latest step at step 0 of each level.
     const initialSteps = new Map<string, StepNode>();
     // Enclosing steppers are placed before the steppers nested in them, since
-    // plain content decides which level the steppers inside it are on.
+    // joining steppers decide which level the steppers inside them are on.
     const place = (node: StepNode) => {
       const options = anchors.get(node)?.options;
       if (options === undefined || placements.has(node)) {
@@ -1080,7 +1092,7 @@ export class StepStore {
         : options.placement;
       const around = enclosing.get(node);
       const parentNode =
-        around !== undefined && plain.has(around)
+        around !== undefined && joining.has(around)
           ? (owners.get(around) ?? parents.get(around))
           : around;
       parents.set(node, parentNode);
@@ -1101,7 +1113,7 @@ export class StepStore {
               : undefined;
       const lastOf = (step: StepNode | undefined) =>
         step === undefined ? 0 : (placements.get(step)?.last ?? 0);
-      const isPlain =
+      const isJoining =
         single &&
         options.joins === true &&
         (target !== undefined ||
@@ -1115,15 +1127,15 @@ export class StepStore {
       } else {
         first = lastOf(target);
       }
-      const last = first + options.count - 1;
+      const last = isJoining ? first : first + options.count - 1;
       placements.set(node, { level, first, last });
       levelSizes.set(key, Math.max(size, last));
-      if (isPlain) {
-        plain.add(node);
+      if (isJoining) {
+        joining.add(node);
         if (target !== undefined) {
           owners.set(node, target);
         }
-        // Content after this one is part of the same step as this one.
+        // Joining steppers after this one are part of the same step as this one.
         if (placement === 'parent') {
           contentSteps.delete(key);
         } else if (target !== undefined && !this.#isOverlay(target)) {
@@ -1150,7 +1162,7 @@ export class StepStore {
     for (const node of ordered) {
       place(node);
     }
-    return { anchors, parents, owners, plain, placements, levelSizes };
+    return { anchors, parents, owners, joining, placements, levelSizes };
   }
 
   /**
@@ -1246,7 +1258,7 @@ export class StepStore {
       node === undefined ? undefined : this.#getLayout().placements.get(node);
     return placement === undefined
       ? undefined
-      : trimPath([...placement.level, placement.first]);
+      : [...placement.level, placement.first];
   }
 
   /**
@@ -1336,20 +1348,48 @@ export class StepStore {
   }
 
   #computeStatus(node: StepNode): StepStatus {
-    const place = this.#computePlace(node);
-    const parent = this.#getLayout().parents.get(node);
-    const owner = this.#lookOwner(node);
+    const { owners, parents, placements, joining } = this.#getLayout();
+    const parent = parents.get(node);
+    const inherited =
+      parent === undefined
+        ? SHOWN
+        : this.#computeAppearance(parent, new Set([node]));
+    if (!placements.has(node)) {
+      return { ...this.#computePlace(node), inherited };
+    }
+    const look = this.#computeAppearance(node, new Set());
+    if (!joining.has(node) || owners.has(node)) {
+      return { ...this.#computePlace(node), inherited, look };
+    }
+    // Without a step to be part of, it's part of what encloses it, if anything.
     return {
-      ...place,
-      inherited:
-        parent === undefined
-          ? SHOWN
-          : this.#computeAppearance(parent, new Set([node])),
-      joined:
-        owner === undefined
-          ? undefined
-          : this.#computeAppearance(owner, new Set([node])),
+      ...(parent === undefined
+        ? { stepIndex: 0, phase: 'current' as const }
+        : this.#computePlace(parent)),
+      inherited,
+      look,
     };
+  }
+
+  /**
+   * Returns how `node` looks as a whole, i.e., the look chosen by the first of
+   * its elements that chose one, or else what its least nested element would
+   * look like.
+   */
+  #appearancesOf(node: StepNode): RankedAppearances | undefined {
+    const { anchors } = this.#getLayout();
+    const chosen = [...node.elements]
+      .filter(
+        ([, { ownLook, appearances }]) =>
+          ownLook === true && appearances !== undefined,
+      )
+      .sort(([x], [y]) => compareDocumentOrder(x, y))[0];
+    return (
+      chosen?.[1].appearances ??
+      anchors.get(node)?.options.appearances ??
+      [...node.elements.values()].find(({ appearances }) => appearances)
+        ?.appearances
+    );
   }
 
   /**
@@ -1357,10 +1397,9 @@ export class StepStore {
    * has a look. Steps whose content changes instead, like `Steps`, have none.
    */
   #lookOwner(node: StepNode): StepNode | undefined {
-    const { anchors, owners } = this.#getLayout();
-    const owner = owners.get(node);
+    const owner = this.#getLayout().owners.get(node);
     const appearances =
-      owner === undefined ? undefined : anchors.get(owner)?.options.appearances;
+      owner === undefined ? undefined : this.#appearancesOf(owner);
     return appearances === undefined || appearances === ALWAYS_SHOWN
       ? undefined
       : owner;
@@ -1384,9 +1423,13 @@ export class StepStore {
     if (owner !== undefined) {
       return this.#computeAppearance(owner, visited, path);
     }
-    const { anchors, parents } = this.#getLayout();
+    const { owners, parents, joining } = this.#getLayout();
     const { phase } = this.#computePlace(node, path);
-    const own = anchors.get(node)?.options.appearances?.[phase] ?? SHOWN;
+    // Without a step to be part of, it looks like what encloses it.
+    const own =
+      joining.has(node) && !owners.has(node)
+        ? SHOWN
+        : (this.#appearancesOf(node)?.[phase] ?? SHOWN);
     const parent = parents.get(node);
     return parent === undefined
       ? own
@@ -1404,7 +1447,8 @@ export class StepStore {
    * mode take that of the stepper `node` is nested in, or of the slide.
    */
   #splitModeOf(node: StepNode, visited: Set<StepNode>): SplitMode {
-    const parent = this.#getLayout().parents.get(node);
+    const { owners, parents } = this.#getLayout();
+    const parent = owners.get(node) ?? parents.get(node);
     let inherited: SplitMode | undefined;
     const getInherited = () => {
       inherited ??=
@@ -1426,19 +1470,51 @@ export class StepStore {
     const states = this.#positionsInRange();
     const { anchors } = this.#getLayout();
     const nodes = [...anchors.keys()];
-    const isLegible = (node: StepNode, path: StepPath) =>
-      this.#computeAppearance(node, new Set(), path).rank <= this.#legibleRank;
+    const { parents } = this.#getLayout();
+    const isLegible = (
+      node: StepNode,
+      path: StepPath,
+      look?: RankedAppearances,
+    ) => {
+      const parent = parents.get(node);
+      const appearance =
+        look === undefined
+          ? this.#computeAppearance(node, new Set(), path)
+          : moreHidden(
+              look[this.#computePlace(node, path).phase],
+              parent === undefined
+                ? SHOWN
+                : this.#computeAppearance(parent, new Set([node]), path),
+            );
+      return appearance.rank <= this.#legibleRank;
+    };
     const legibleStates = (
       node: StepNode,
       when: (place: StepPlace) => boolean = () => true,
+      look?: RankedAppearances,
     ) =>
       new Set(
         states.flatMap((path, index) =>
-          when(this.#computePlace(node, path)) && isLegible(node, path)
+          when(this.#computePlace(node, path)) && isLegible(node, path, look)
             ? [index]
             : [],
         ),
       );
+    // Elements with a look of their own need a page in that look, too.
+    const looksOf = (node: StepNode): (RankedAppearances | undefined)[] => {
+      const whole = this.#appearancesOf(node);
+      const own = new Set<RankedAppearances>();
+      for (const { appearances, ownLook } of node.elements.values()) {
+        if (
+          ownLook === true &&
+          appearances !== undefined &&
+          appearances !== whole
+        ) {
+          own.add(appearances);
+        }
+      }
+      return [undefined, ...own];
+    };
     const overlays = nodes.filter((node) => this.#isOverlay(node));
     const covered = new Set(
       states.flatMap((path, index) =>
@@ -1461,7 +1537,7 @@ export class StepStore {
     for (const node of nodes) {
       const mode = this.#splitModeOf(node, new Set());
       const count = anchors.get(node)?.options.count ?? 1;
-      const nodeUnits =
+      const nodeUnits = looksOf(node).flatMap((look) =>
         mode === 'none'
           ? []
           : mode === 'each'
@@ -1471,9 +1547,11 @@ export class StepStore {
                   node,
                   ({ stepIndex }) =>
                     Math.min(stepIndex, count - 1) === index - 1,
+                  look,
                 ),
               )
-            : [legibleStates(node)];
+            : [legibleStates(node, undefined, look)],
+      );
       const overlay = this.#isOverlay(node);
       for (const unit of nodeUnits) {
         units.push(overlay ? unit : uncoveredOf(unit));

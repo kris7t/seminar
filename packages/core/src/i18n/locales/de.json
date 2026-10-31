@@ -34,6 +34,7 @@
   "pointsAt": "Zu dem, worauf dies zeigt",
   "untitled": "Ohne Titel",
   "startOfSlide": "Anfang der Folie",
+  "startOfStep": "Anfang des Schritts",
   "step": "Schritt {{number}}",
   "goToRecappedSlide": "Zur ursprünglichen Folie",
   "goToFirstRecap": "Zur ersten Wiederholung",

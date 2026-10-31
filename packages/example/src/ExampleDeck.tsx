@@ -1,12 +1,5 @@
 import { Box, Link, Stack, Typography } from '@mui/material';
-import {
-  Deck,
-  Slide,
-  Step,
-  Together,
-  Steps,
-  type TocEntry,
-} from '@seminar/core';
+import { Deck, Slide, Step, Steps, type TocEntry } from '@seminar/core';
 import type { JSX } from 'react';
 
 import { ClosingMaster, theme } from './theme.tsx';
@@ -58,10 +51,10 @@ export function ExampleDeck(): JSX.Element {
               <Step component="li">to any depth</Step>
             </ul>
           </Step>
-          <Together>
-            <Step component="li">Several items</Step>
-            <Step component="li">can appear at once</Step>
-          </Together>
+          <Step component="li">Several items</Step>
+          <Step component="li" with="previous">
+            can appear at once
+          </Step>
           <Step component="li" with="previous">
             together with the previous step
           </Step>

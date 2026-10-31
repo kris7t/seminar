@@ -50,7 +50,8 @@ Trees are easy to transform.
 ## Steps
 
 A callout is a step of its own, with the `scoped` behavior: it stays until
-the step it belongs to is past.
+the step it belongs to is past, or for the rest of the slide if it doesn't belong
+to a step.
 
 A callout with `for` belongs to the step of the element it points at, e.g.,
 an image with `{#arch step}`, or the step around the element, and appears in

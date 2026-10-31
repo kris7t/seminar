@@ -14,6 +14,8 @@ import {
   type StepDefaults,
 } from './Step.tsx';
 import { rankAppearances, type StepAppearances } from './stepAppearance.ts';
+import { Steps } from './Steps.tsx';
+import { useStep } from './useSteps.ts';
 
 /**
  * Returns how `element` looks, including what it inherits from the elements
@@ -63,7 +65,7 @@ describe('step behaviors', () => {
     cleanup();
   });
 
-  describe('of plain content', () => {
+  describe('of joining steps', () => {
     it('looks like the step it is part of', async () => {
       const user = userEvent.setup();
       render(
@@ -287,6 +289,80 @@ describe('step behaviors', () => {
       expect(window.location.hash).toBe('#slide=1&step=1');
       expect(appearanceOf(screen.getByText('One'))).toBe('collapsed');
       expect(appearanceOf(screen.getByText('B'))).toBe('hidden');
+    });
+
+    it('looks like the rest of its group or stepper', async () => {
+      const user = userEvent.setup();
+      function Linked() {
+        const handle = useStep();
+        return (
+          <>
+            <Step only with={handle}>
+              Handle only
+            </Step>
+            <Step with={handle}>Handle plain</Step>
+          </>
+        );
+      }
+      render(
+        <Deck>
+          <Slide>
+            <Step group="a" only>
+              Group only
+            </Step>
+            <Step group="a">Group plain</Step>
+            <Linked />
+            <Step>End</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+      expect(appearanceOf(screen.getByText('Group only'))).toBe('hidden');
+      expect(appearanceOf(screen.getByText('Group plain'))).toBe('hidden');
+      expect(appearanceOf(screen.getByText('Handle only'))).toBe('hidden');
+      expect(appearanceOf(screen.getByText('Handle plain'))).toBe('hidden');
+    });
+
+    it('takes the default of the slide if what it joins has no look', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide steps="dim">
+            <Steps count={2}>Figure</Steps>
+            <Paragraph>After</Paragraph>
+            <Step>End</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('After'))).toBe('hidden');
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('After'))).toBe('shown');
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('After'))).toBe('dimmed');
+      expect(appearanceOf(screen.getByText('Figure'))).toBe('shown');
+    });
+
+    it('stays in the step it joins with what it configures', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step>A</Step>
+            <Paragraph split="none">B</Paragraph>
+            <Paragraph overlay>C</Paragraph>
+            <Paragraph fade={400}>D</Paragraph>
+            <Paragraph>E</Paragraph>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=1');
+      for (const text of ['A', 'B', 'C', 'D', 'E']) {
+        expect(appearanceOf(screen.getByText(text))).toBe('shown');
+      }
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=1');
     });
 
     it('joins an earlier initial step', async () => {

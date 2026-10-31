@@ -22,7 +22,6 @@ import {
   StepAppearanceContext,
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepStore.ts';
-import { TogetherContext } from './TogetherContext.ts';
 import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
 import { useSteps, type StepState, type StepWith } from './useSteps.ts';
 
@@ -35,8 +34,11 @@ export interface StepsProps extends Omit<
    * {@link StepHandle}, whose number of steps is used instead.
    */
   count?: number | undefined;
-  /** See {@link StepWith}. */
-  with?: StepWith | undefined;
+  /**
+   * See {@link StepWith}, except for `'parent'`, which isn't a step, while this
+   * takes several.
+   */
+  with?: Exclude<StepWith, 'parent'> | undefined;
   /** See the `group` option of {@link useSteps}. */
   group?: string | undefined;
   /** See the `in` option of {@link useSteps}. */
@@ -66,8 +68,8 @@ export interface StepsProps extends Omit<
 export type StepsClassKey =
   'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
 
-export const stepsClasses: Record<StepsClassKey, string> =
-  generateUtilityClasses('SeminarSteps', [
+export const stepsClasses: Record<StepsClassKey, string> = {
+  ...generateUtilityClasses('SeminarSteps', [
     'root',
     'distantFuture',
     'future',
@@ -78,7 +80,10 @@ export const stepsClasses: Record<StepsClassKey, string> =
     'hidden',
     'dimmed',
     'collapsed',
-  ]);
+  ]),
+  // MUI would use its global `Mui-open` state class for this.
+  open: 'SeminarSteps-open',
+};
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -165,9 +170,7 @@ export function Steps(inProps: StepsProps): JSX.Element {
       {...other}
     >
       <StepAppearanceContext value={appearance}>
-        <TogetherContext value={undefined}>
-          {typeof children === 'function' ? children(step) : children}
-        </TogetherContext>
+        {typeof children === 'function' ? children(step) : children}
       </StepAppearanceContext>
     </StepsRoot>
   );

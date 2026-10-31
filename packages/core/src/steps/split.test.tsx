@@ -8,6 +8,7 @@ import { Slide, type SlideProps } from '../slide/Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
 import { Step } from './Step.tsx';
 import { Steps } from './Steps.tsx';
+import { useStep } from './useSteps.ts';
 
 const MARKS: Record<string, string> = {
   'Exported as a page': 'page',
@@ -272,6 +273,37 @@ describe('splitting slides into pages', () => {
       'Text [page]',
       'Note [with parent] [overlay]',
       'More',
+      'End [page]',
+    ]);
+  });
+
+  it('makes pages of elements of a group or stepper with their own look', () => {
+    function Linked() {
+      const handle = useStep();
+      return (
+        <>
+          <Step with={handle}>Plain</Step>
+          <Step only with={handle}>
+            Only
+          </Step>
+        </>
+      );
+    }
+    expect(
+      splitOf(
+        <>
+          <Step group="a">A</Step>
+          <Step only group="a">
+            B
+          </Step>
+          <Linked />
+          <Step>End</Step>
+        </>,
+      ),
+    ).toEqual([
+      'Start of the slide',
+      'A B [page]',
+      'Plain Only [page]',
       'End [page]',
     ]);
   });

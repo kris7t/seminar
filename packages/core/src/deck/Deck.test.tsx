@@ -6,7 +6,6 @@ import { Deck } from './Deck.tsx';
 import { useSeminarOptions } from './SeminarOptionsContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
-import { Together } from '../steps/Together.tsx';
 
 function renderDeck() {
   return render(
@@ -337,11 +336,9 @@ describe('Deck', () => {
       <Deck>
         <Slide title="Steps">
           <Step>a</Step>
-          <Together>
-            <Step>b</Step>
-            <Step>c</Step>
-            <Step>d</Step>
-          </Together>
+          <Step>b</Step>
+          <Step with="previous">c</Step>
+          <Step with="previous">d</Step>
         </Slide>
       </Deck>,
     );
@@ -353,11 +350,9 @@ describe('Deck', () => {
           <Step>added</Step>
           <Step>a</Step>
           <Step>c</Step>
-          <Together>
-            <Step>b</Step>
-            <Step>d</Step>
-            <Step>edited</Step>
-          </Together>
+          <Step>b</Step>
+          <Step with="previous">d</Step>
+          <Step with="previous">edited</Step>
         </Slide>
       </Deck>,
     );

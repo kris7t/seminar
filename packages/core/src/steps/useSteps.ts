@@ -1,6 +1,7 @@
 import {
   use,
   useCallback,
+  useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -42,10 +43,10 @@ export interface StepState {
    */
   inherited: RankedAppearance;
   /**
-   * How the step that the stepper is part of looks, if it joined a step, which
-   * it should look like instead of following its own phases.
+   * How the stepper looks as a whole, or `undefined` before it is placed, which
+   * elements without a look of their own should look like.
    */
-  joined?: RankedAppearance | undefined;
+  look?: RankedAppearance | undefined;
 }
 
 export interface StepHandle extends StepState {
@@ -57,6 +58,12 @@ export interface StepHandle extends StepState {
    * to reveal several list items at once.
    */
   ref: RefCallback<Element>;
+  /** Attaches `element` to the stepper, with a look of its own, if given. */
+  attach: (
+    element: Element,
+    appearances: RankedAppearances | undefined,
+    ownLook: boolean,
+  ) => () => void;
 }
 
 /**
@@ -72,8 +79,8 @@ export interface StepHandle extends StepState {
  *   level so far, i.e., with the latest step that isn't an overlay. If there is
  *   none, it works like `'initial'`.
  * - `'initial'` shows its first step as soon as the enclosing step (or the slide)
- *   is shown, without creating a new step. It stays current until the first
- *   step on the same level is shown. This allows using the same component for
+ *   is shown, as step 0 of the level, which has no state of its own. It stays
+ *   current until the first step on the same level is shown. This allows using the same component for
  *   content that is visible up front and content revealed in steps.
  * - `'parent'` is part of what encloses the stepper, rather than a step, and
  *   content after it follows it. It's shown as soon as the level is shown.
@@ -151,6 +158,11 @@ export interface UseStepsOptions {
    */
   appearances?: RankedAppearances | undefined;
   /**
+   * Whether `appearances` were chosen for this stepper, rather than being what
+   * it looks like if there is nothing else to look like. Defaults to `true`.
+   */
+  ownLook?: boolean | undefined;
+  /**
    * How long the slide fades when the turn of the stepper starts or ends
    * (see the `fade` of `Step`). Ignored if `with` is a handle.
    */
@@ -209,6 +221,7 @@ export function useSteps(
     after,
     title,
     appearances,
+    ownLook = true,
     fades: fadeProps,
     split: splitProp,
     defaultSplit,
@@ -239,6 +252,14 @@ export function useSteps(
     [splitKey, defaultSplitKey],
   );
   const store = use(StepStoreContext);
+  const manyParts = withStep === 'parent' && count > 1;
+  useEffect(() => {
+    if (manyParts) {
+      console.warn(
+        "Ignoring the `count` of a stepper with `with: 'parent'`, which isn't a step.",
+      );
+    }
+  }, [manyParts]);
   const [ownNode] = useState(() => new StepNode());
   const node = group === undefined ? ownNode : store.getGroup(group);
   // Hooks can't be called conditionally, so we still create a node if we're
@@ -246,25 +267,28 @@ export function useSteps(
   const linked = typeof withStep === 'object';
   const placement =
     linked || withStep === 'self' ? 'next' : (withStep ?? 'next');
-  const ref = useCallback<RefCallback<Element>>(
-    (element) =>
-      element === null
-        ? undefined
-        : store.attach(node, element, {
-            count,
-            placement,
-            defaultPlacement: defaultJoins ?? defaultWith,
-            joins,
-            stepless: defaultJoins !== undefined,
-            parent,
-            defaultParent: defaultIn,
-            after,
-            title,
-            appearances,
-            fades,
-            split,
-            overlay,
-          }),
+  const attach = useCallback(
+    (
+      element: Element,
+      elementAppearances: RankedAppearances | undefined,
+      elementOwnLook: boolean,
+    ) =>
+      store.attach(node, element, {
+        count,
+        placement,
+        defaultPlacement: defaultJoins ?? defaultWith,
+        joins,
+        stepless: defaultJoins !== undefined,
+        parent,
+        defaultParent: defaultIn,
+        after,
+        title,
+        appearances: elementAppearances,
+        ownLook: elementOwnLook,
+        fades,
+        split,
+        overlay,
+      }),
     [
       store,
       node,
@@ -277,14 +301,21 @@ export function useSteps(
       defaultIn,
       after,
       title,
-      appearances,
       fades,
       split,
       overlay,
     ],
   );
+  const linkedAttach = linked ? withStep.attach : attach;
+  const ref = useCallback<RefCallback<Element>>(
+    (element) =>
+      element === null
+        ? undefined
+        : linkedAttach(element, appearances, ownLook),
+    [linkedAttach, appearances, ownLook],
+  );
   const getStatus = linked ? getUnlinkedStatus : () => store.getStatus(node);
-  const { stepIndex, phase, inherited, joined } = useSyncExternalStore(
+  const { stepIndex, phase, inherited, look } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,
     getStatus,
     getStatus,
@@ -293,17 +324,24 @@ export function useSteps(
   const ownStep = useMemo(
     () => ({
       ref,
+      attach,
       stepCount: count,
       stepIndex: clampedIndex,
       phase,
       isActive: phase !== 'future' && phase !== 'distantFuture',
       isCurrent: phase === 'current' || phase === 'open',
       inherited,
-      joined,
+      look,
     }),
-    [ref, count, clampedIndex, phase, inherited, joined],
+    [ref, attach, count, clampedIndex, phase, inherited, look],
   );
-  return linked ? withStep : ownStep;
+  const linkedStep = useMemo(
+    () =>
+      // Only elements with a look need to tell the stepper about it.
+      linked && appearances !== undefined ? { ...withStep, ref } : undefined,
+    [linked, withStep, ref, appearances],
+  );
+  return linkedStep ?? (linked ? withStep : ownStep);
 }
 
 /** Creates a stepper with a single step. See {@link useSteps}. */

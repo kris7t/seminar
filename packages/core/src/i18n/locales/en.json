@@ -34,6 +34,7 @@
   "pointsAt": "Go to what this points at",
   "untitled": "Untitled",
   "startOfSlide": "Start of the slide",
+  "startOfStep": "Start of the step",
   "step": "Step {{number}}",
   "goToRecappedSlide": "Go to recapped slide",
   "goToFirstRecap": "Go to first recap",

@@ -8,7 +8,6 @@ import { Slide } from '../slide/Slide.tsx';
 import { Step, stepClasses } from './Step.tsx';
 import { ListItem } from '../content/ListItem.tsx';
 import { Paragraph } from '../content/Paragraph.tsx';
-import { Together } from './Together.tsx';
 import { Steps } from './Steps.tsx';
 import { useStep, useSteps, type StepWith } from './useSteps.ts';
 
@@ -300,7 +299,7 @@ describe('steps', () => {
         </>,
         1,
       );
-      expect(states).toEqual([['*a'], ['*callout', 'a']]);
+      expect(states).toEqual([['*a'], ['*callout', '*a']]);
     });
 
     it('follows overlays that are ordinary steps', async () => {
@@ -360,7 +359,7 @@ describe('steps', () => {
       expect(shownItems()).toEqual(['*a', '*', '*b']);
       await user.keyboard('{ArrowRight}');
       expect(window.location.hash).toBe('#slide=1&step=0.1');
-      expect(shownItems()).toEqual(['*a', '', '*more', '*b']);
+      expect(shownItems()).toEqual(['*a', '*', '*more', '*b']);
     });
 
     it('leaves overlays that are shown with the previous step together', async () => {
@@ -379,7 +378,7 @@ describe('steps', () => {
       );
       expect(states).toEqual([
         ['*a', '*b'],
-        ['a', '*x', '*y', 'b'],
+        ['*a', '*x', '*y', '*b'],
       ]);
     });
 
@@ -399,7 +398,7 @@ describe('steps', () => {
     });
   });
 
-  it('nests steps in plain items in the step the item is part of', async () => {
+  it('nests steps in joining items in the step the item is part of', async () => {
     const user = userEvent.setup();
     render(
       <Deck>
@@ -423,10 +422,10 @@ describe('steps', () => {
     expect(shownItems()).toEqual(['*a', '*b', '*b.p', '*after']);
     await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=1.1');
-    expect(shownItems()).toEqual(['*a', '*b', 'b.p', '*b.more', '*after']);
+    expect(shownItems()).toEqual(['*a', '*b', '*b.p', '*b.more', '*after']);
   });
 
-  it('numbers steps in plain content without a step as steps of the slide', async () => {
+  it('numbers steps in joining steps without a step as steps of the slide', async () => {
     const user = userEvent.setup();
     render(
       <Deck>
@@ -449,7 +448,7 @@ describe('steps', () => {
     expect(window.location.hash).toBe('#slide=1&step=1');
   });
 
-  it('shows plain content with the latest step on its level, wherever it is', async () => {
+  it('shows joining steps with the latest step on their level, wherever they are', async () => {
     const user = userEvent.setup();
     render(
       <Deck>
@@ -466,7 +465,7 @@ describe('steps', () => {
     );
     expect(shownItems()).toEqual(['*a']);
     await user.keyboard('{ArrowRight}');
-    expect(shownItems()).toEqual(['a', '*b', '*c']);
+    expect(shownItems()).toEqual(['*a', '*b', '*c']);
   });
 
   it('creates a step by default only with with, not joins', async () => {
@@ -488,10 +487,10 @@ describe('steps', () => {
     expect(shownItems()).toEqual(['*joins']);
     await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=1');
-    expect(shownItems()).toEqual(['joins', '*in joins', '*with']);
+    expect(shownItems()).toEqual(['*joins', '*in joins', '*with']);
     await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=1.1');
-    expect(shownItems()).toEqual(['joins', '*in joins', '*with', '*in with']);
+    expect(shownItems()).toEqual(['*joins', '*in joins', '*with', '*in with']);
   });
 
   it.each([[false], ['false' as const]])(
@@ -544,7 +543,86 @@ describe('steps', () => {
     await user.keyboard('{ArrowRight}');
     // The step inside it is a step of the slide, not nested in the initial one.
     expect(window.location.hash).toBe('#slide=1&step=1');
-    expect(shownItems()).toEqual(['first', 'stays', 'too', '*inside']);
+    expect(shownItems()).toEqual(['first', '*stays', '*too', '*inside']);
+  });
+
+  it('follows a group where it is placed, not at its later elements', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Step group="a" data-name="a1">
+            a1
+          </Step>
+          <Step group="b" data-name="b1">
+            b1
+          </Step>
+          <Step group="a" data-name="a2">
+            a2
+          </Step>
+          <Paragraph data-name="p">p</Paragraph>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(shownItems()).toEqual(['*a1', '*a2']);
+    await user.keyboard('{ArrowRight}');
+    expect(shownItems()).toEqual(['a1', '*b1', 'a2', '*p']);
+  });
+
+  it('shows content after Steps at their last step, unless they are an overlay', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Step data-name="a">a</Step>
+          <Steps count={2} overlay>
+            overlay
+          </Steps>
+          <Paragraph data-name="with a">with a</Paragraph>
+          <Steps count={2}>figure</Steps>
+          <Paragraph data-name="with figure">with figure</Paragraph>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(shownItems()).toEqual(['*a', '*with a']);
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=4');
+    expect(shownItems()).toEqual(['a', 'with a']);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=5');
+    expect(shownItems()).toEqual(['a', 'with a', '*with figure']);
+  });
+
+  it('goes to steps relative to a group at step 0', () => {
+    window.history.replaceState(null, '', '#slide=1&step=a.1');
+    render(
+      <Deck>
+        <Slide>
+          <Step group="a" initial data-name="a">
+            a<Step data-name="nested">nested</Step>
+          </Step>
+          <Step data-name="b">b</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(shownItems()).toEqual(['*a', '*nested']);
+  });
+
+  it('uses its own class for the open phase', () => {
+    window.history.replaceState(null, '', '#slide=1&step=1.1');
+    render(
+      <Deck>
+        <Slide>
+          <Step data-name="a">
+            a<Step>b</Step>
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(stepClasses.open).toBe('SeminarStep-open');
+    expect(screen.getByText('a').classList).toContain('SeminarStep-open');
   });
 
   it('shows the steps of a group together', async () => {
@@ -556,19 +634,17 @@ describe('steps', () => {
             <Step component="li" data-name="a">
               a
             </Step>
-            <Together>
-              <Step component="li" data-name="b">
-                b
-              </Step>
-              <Step component="li" data-name="c">
-                c
-                <ul>
-                  <Step component="li" data-name="c.1">
-                    c.1
-                  </Step>
-                </ul>
-              </Step>
-            </Together>
+            <Step component="li" data-name="b">
+              b
+            </Step>
+            <Step component="li" with="previous" data-name="c">
+              c
+              <ul>
+                <Step component="li" data-name="c.1">
+                  c.1
+                </Step>
+              </ul>
+            </Step>
           </ul>
         </Slide>
       </Deck>,
@@ -651,14 +727,12 @@ describe('steps', () => {
             <Step component="li" data-name="b1" with={first}>
               b1
             </Step>
-            <Together with={second}>
-              <Step component="li" data-name="b2">
-                b2
-              </Step>
-              <Step component="li" data-name="b3">
-                b3
-              </Step>
-            </Together>
+            <Step component="li" data-name="b2" with={second}>
+              b2
+            </Step>
+            <Step component="li" data-name="b3" with={second}>
+              b3
+            </Step>
           </ol>
           <Step data-name="last">last</Step>
         </>

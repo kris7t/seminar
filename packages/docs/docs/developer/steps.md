@@ -41,7 +41,7 @@ export function Note({ tone, ...stepProps }: NoteProps) {
 Without placement props, a `Step` starts a new step. Components choose what they
 do by default with `defaults`:
 
-- `JOINS_CONTENT` (`{ joins: 'content' }`) makes the component plain content,
+- `JOINS_CONTENT` (`{ joins: 'content' }`) makes the component a joining step,
   like paragraphs, list items, images, and columns: it's part of the latest step
   on its level that isn't an overlay, or shown up front if there is none. It looks
   like that step, and steps inside it are nested in that step. `with`, `step`,
@@ -187,8 +187,3 @@ The `Pipeline` component of the example deck shows all of this. Its stages
 light up with the list items, and fade with the slide. Its marker moves from
 stage to stage by itself, as slowly as the steps fade. Before the last
 stage, it holds the change with `useTransitionHold` to pause for a moment.
-
-## Showing several steps together
-
-`<Together>` shows the `Step`s directly inside it in a single step, without
-rendering an element, e.g., to reveal several list items at once.

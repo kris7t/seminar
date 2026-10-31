@@ -155,6 +155,23 @@ describe('StepTree', () => {
     expect(weightOf('Inner')).not.toBe('500');
   });
 
+  it('labels initial steps without text as the start of their step', () => {
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First">
+          <Step>
+            Outer
+            <Step with="initial">
+              <Step>Nested</Step>
+            </Step>
+            <Step>Later</Step>
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(entries()).toContain('Start of the step [with parent]');
+  });
+
   it('labels steps with their titles, which are not tooltips', () => {
     render(
       <Deck defaultShowSteps>

@@ -38,7 +38,6 @@ import { StepBehaviorContext } from './StepBehaviorContext.ts';
 import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
 import type { FadeProps } from '../transitions/fades.ts';
 import { SlideViewContext } from '../view/SlideViewContext.ts';
-import { TogetherContext } from './TogetherContext.ts';
 import { useStep, type StepState, type StepWith } from './useSteps.ts';
 
 interface DocumentStepProps extends HTMLAttributes<HTMLElement> {
@@ -158,8 +157,7 @@ export interface StepProps
     StepBehaviorShorthands,
     FadeProps {
   /**
-   * See {@link StepWith}. Ignored directly inside a {@link Together}, which
-   * determines the step instead.
+   * See {@link StepWith}.
    */
   with?: StepWith | undefined;
   /**
@@ -287,9 +285,8 @@ export const JOINS_CONTENT: StepDefaults = { joins: 'content' };
 export type StepClassKey =
   'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
 
-export const stepClasses: Record<StepClassKey, string> = generateUtilityClasses(
-  'SeminarStep',
-  [
+export const stepClasses: Record<StepClassKey, string> = {
+  ...generateUtilityClasses('SeminarStep', [
     'root',
     'distantFuture',
     'future',
@@ -300,8 +297,10 @@ export const stepClasses: Record<StepClassKey, string> = generateUtilityClasses(
     'hidden',
     'dimmed',
     'collapsed',
-  ],
-);
+  ]),
+  // MUI would use its global `Mui-open` state class for this.
+  open: 'SeminarStep-open',
+};
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -377,7 +376,6 @@ export function Step(inProps: StepProps): JSX.Element {
   const theme = useTheme();
   const slideBehavior = use(StepBehaviorContext);
   const enclosing = use(StepAppearanceContext);
-  const together = use(TogetherContext);
   const {
     component = 'div',
     with: withStep,
@@ -418,36 +416,21 @@ export function Step(inProps: StepProps): JSX.Element {
   const placed = parent !== undefined || after !== undefined;
   // Placing it otherwise replaces the default of its place.
   const defaultPlace =
-    together === undefined && explicitWith === undefined && !placed
-      ? defaults
-      : undefined;
+    explicitWith === undefined && !placed ? defaults : undefined;
   const defaultWith = defaultPlace?.with;
-  // A behavior asks for a step, so it replaces a default of not being one.
   const defaultJoins =
     ownBehavior === undefined ? defaultPlace?.joins : undefined;
-  const isPart = explicitWith === 'parent' || defaultJoins !== undefined;
+  const hasOwnLook =
+    ownBehavior !== undefined || defaults?.behavior !== undefined;
   // Without a look of its own, a step is part of the step it's placed with.
   const joins =
-    together === undefined &&
-    (isPart ||
-      (ownBehavior === undefined &&
-        defaults?.behavior === undefined &&
-        (defaultWith !== undefined ||
-          explicitWith === 'previous' ||
-          explicitWith === 'content' ||
-          explicitWith === 'initial')));
-  // The behavior of the slide takes precedence over the default of the theme,
-  // but only applies to steps. What encloses `with="parent"` decides its look.
-  const behavior =
-    explicitWith === 'parent'
-      ? 'reveal'
-      : (ownBehavior ??
-        (isPart
-          ? 'reveal'
-          : (defaults?.behavior ??
-            slideBehavior ??
-            themeBehavior ??
-            'reveal')));
+    explicitWith === 'parent' ||
+    defaultJoins !== undefined ||
+    (!hasOwnLook &&
+      (defaultWith !== undefined ||
+        explicitWith === 'previous' ||
+        explicitWith === 'content' ||
+        explicitWith === 'initial'));
   const ignoredBehavior = explicitWith === 'parent' ? ownBehavior : undefined;
   useEffect(() => {
     if (ignoredBehavior !== undefined) {
@@ -456,30 +439,42 @@ export function Step(inProps: StepProps): JSX.Element {
       );
     }
   }, [ignoredBehavior]);
+  // The behavior of the slide takes precedence over the default of the theme.
+  // The store decides whether this is a step that needs it.
+  const behavior =
+    ownBehavior ??
+    defaults?.behavior ??
+    slideBehavior ??
+    themeBehavior ??
+    'reveal';
   const appearances = rankAppearances(theme, appearancesOf(theme, behavior));
   const step = useStep({
-    with: together ?? explicitWith,
+    with: explicitWith,
     group,
     in: parent,
-    defaultIn: together === undefined && !placed ? defaults?.in : undefined,
+    defaultIn: placed ? undefined : defaults?.in,
     defaultWith,
     defaultJoins,
     joins,
     after,
     title,
     appearances,
+    ownLook: hasOwnLook,
     fades: { cut, fade, fadeIn, fadeOut, fadeBefore, fadeAfter },
     split,
     defaultSplit: defaults?.split,
     overlay: parseOverlay(overlay) ?? parseOverlay(defaults?.overlay),
   });
-  const { phase, inherited, joined } = step;
+  const { phase, inherited, look } = step;
   const elementId = useSlideElementId(id ?? '');
   const elementRef = useSlideElementRef(id ?? '');
   const ref = useForkRef(step.ref, id === undefined ? null : elementRef);
   // Elements inside a step already look like it, e.g., hidden or dimmed.
   const appearance = moreHidden(
-    moreHidden(joined ?? appearances[phase], inherited),
+    moreHidden(
+      (hasOwnLook ? undefined : look) ?? appearances[phase],
+      inherited,
+    ),
     enclosing,
   );
   const content = typeof children === 'function' ? children(step) : children;
@@ -513,8 +508,7 @@ export function Step(inProps: StepProps): JSX.Element {
       {...other}
     >
       <StepAppearanceContext value={appearance}>
-        {/* Steps nested inside this one don't join the enclosing Together. */}
-        <TogetherContext value={undefined}>{content}</TogetherContext>
+        {content}
       </StepAppearanceContext>
     </StepRoot>
   );

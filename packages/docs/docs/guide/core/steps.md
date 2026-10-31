@@ -26,13 +26,14 @@ shown up front if there is none. It appears and goes with that step, and looks
 like it, whatever its behavior. This holds for list items, paragraphs, images,
 and also elements like columns. So `:step` marks where a new step begins, and
 everything after it follows along until the next `:step`, except for steps
-nested in it, which come after it.
+nested in it, which come after it. A group counts where it's placed, not at its
+later elements.
 
 `with` chooses when a step is shown:
 
 - `with=previous` shows it with the step right before it, whatever that is.
 - `with=content` shows it with the latest step that shows content, not an
-  overlay like a callout, which is what plain content does.
+  overlay like a callout, which is what content without `:step` does.
 - `with=initial`, or just `initial`, shows it as soon as what encloses it is
   shown, even after other steps.
 - `with=parent` makes it part of what encloses it, rather than a step, so it
@@ -52,6 +53,11 @@ next step on its level:
 - :step{with=parent} This stays
 - :step The next item
 ```
+
+Attributes that configure a step, like `split`, `overlay`, and `fade`, don't make
+one. On content that is part of a step, they apply along with those of the step,
+as for the elements of a group: `![Results](./results.png){split=none}` needs no
+page of its own, while the step it's part of still does.
 
 Images take `step` and the other attributes of `:step` in their attributes,
 e.g., `![Results](./results.png){step}`. Other elements take them the same
@@ -309,7 +315,6 @@ range of the slide become pages.
 JSX on a slide can use the components of `@seminar/core`:
 
 - `<Step>` takes the same props as `:step`, e.g., `<Step group="parse" only>`.
-- `<Together>` shows the `<Step>`s directly inside it in a single step.
 - `<Steps count={3}>` takes several steps, and passes the current one to a
   function as its children, e.g., to highlight parts of a figure one after
   another. Since its content may change in each step, it makes a page of each

@@ -9,7 +9,8 @@ import type { StepPath } from './StepStore.ts';
  * then 2. A bound without a trailing `.0` stands for the step and the steps
  * nested in it, while a trailing `.0` stands for the step alone, before the
  * steps nested in it, e.g., `after=1` starts at 2, but `after=1.0` at 1.1, and
- * `to=1` ends at 1.9, but `to=1.0` at 1.
+ * `to=1` ends at 1.9, but `to=1.0` at 1. Likewise, `to=0` ends with the steps
+ * nested in step 0, but `to=0.0` before them.
  *
  * If no step is in the range, e.g., because it starts after the last step, the
  * last step is shown instead.
@@ -60,7 +61,9 @@ export function parseStepBound(bound: string): StepBound | undefined {
     return undefined;
   }
   const path = segments.map((segment) => Number.parseInt(segment, 10));
-  return { group, path, nested: path.at(-1) !== 0 };
+  // A path of only `0` is step 0, without a trailing `.0` to single it out.
+  const trailingZero = path.at(-1) === 0 && bound.includes('.');
+  return { group, path, nested: !trailingZero };
 }
 
 /** Parses the bounds of `range`, leaving out invalid ones. */

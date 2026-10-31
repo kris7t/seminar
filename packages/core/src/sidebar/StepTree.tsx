@@ -120,7 +120,11 @@ function renderEntries(
       key={path.join('.')}
       path={path}
       label={label}
-      fallback={t('step', { number: path.at(-1) ?? 0 })}
+      fallback={
+        path.at(-1) === 0
+          ? t('startOfStep')
+          : t('step', { number: path.at(-1) ?? 0 })
+      }
       level={level}
       current={current}
       store={store}

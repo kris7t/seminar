@@ -149,7 +149,6 @@ export {
 } from './content/Image.tsx';
 export { ListItem, type ListItemProps } from './content/ListItem.tsx';
 export { Paragraph, type ParagraphProps } from './content/Paragraph.tsx';
-export { Together, type TogetherProps } from './steps/Together.tsx';
 export {
   Steps,
   stepsClasses,
