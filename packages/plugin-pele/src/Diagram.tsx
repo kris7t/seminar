@@ -10,7 +10,7 @@ import {
   useSlideElementRegistry,
   useSlideView,
   useStepAppearance,
-  WITH_PREVIOUS,
+  WITH_CONTENT,
   type ComponentTheme,
   type RankedAppearance,
   type StepProps,
@@ -586,7 +586,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
     return (
       <Step
         component="pre"
-        defaultAttachment={WITH_PREVIOUS}
+        defaultAttachment={WITH_CONTENT}
         className={className}
         style={style}
         data-lang="mermaid"
@@ -600,7 +600,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
   return (
     <DiagramRoot
       component="div"
-      defaultAttachment={WITH_PREVIOUS}
+      defaultAttachment={WITH_CONTENT}
       className={
         className === undefined
           ? diagramClasses.root

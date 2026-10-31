@@ -25,7 +25,7 @@ Components that should take part in steps wrap their root in a `Step`, and
 pass on the step props they get, e.g., from `:::name{step group=parse}`:
 
 ```tsx
-import { Step, WITH_PREVIOUS, type StepProps } from '@seminar/core';
+import { Step, WITH_CONTENT, type StepProps } from '@seminar/core';
 
 interface NoteProps extends Omit<StepProps, 'defaultAttachment'> {
   tone?: string | undefined;
@@ -33,7 +33,7 @@ interface NoteProps extends Omit<StepProps, 'defaultAttachment'> {
 
 export function Note({ tone, ...stepProps }: NoteProps) {
   return (
-    <Step defaultAttachment={WITH_PREVIOUS} data-tone={tone} {...stepProps} />
+    <Step defaultAttachment={WITH_CONTENT} data-tone={tone} {...stepProps} />
   );
 }
 ```
@@ -45,8 +45,9 @@ they go by default with `defaultAttachment`, which applies unless the user
 places them with `with`, `step`, `in`, `after`, or a group with other
 elements:
 
-- `WITH_PREVIOUS` (`{ with: 'previous' }`) shows the component with the step
-  before it, like paragraphs, list items, images, and columns. Such
+- `WITH_CONTENT` (`{ with: 'content' }`) shows the component with the content
+  before it, i.e., the latest step that isn't an overlay, like paragraphs, list
+  items, images, and columns. Such
   components are part of that step, so steps inside them are nested in it, or
   in the initial content of the slide or step if there is no step before them,
   while other such components inside them don't add a level. `step` in the

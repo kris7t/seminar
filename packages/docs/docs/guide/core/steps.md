@@ -27,7 +27,10 @@ elements like columns. So `:step` marks where a new step begins, and
 everything after it follows along until the next `:step`.
 
 `:step{with=initial}` shows something up front, even after other steps, and
-`:step{with=previous}` explicitly with the step before it.
+doesn't change which step the content after it follows. Content follows the
+latest step that shows content, not an overlay like a callout, which
+`:step{with=content}` also says explicitly. `:step{with=previous}` shows
+something with the step right before it, whatever that is.
 
 Images take `step` and the other attributes of `:step` in their attributes,
 e.g., `![Results](./results.png){step}`. Other elements take them the same

@@ -4,7 +4,7 @@ import type { JSX, ReactNode } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../theme/classNames.ts';
-import { Step, WITH_PREVIOUS, type StepProps } from '../steps/Step.tsx';
+import { Step, WITH_CONTENT, type StepProps } from '../steps/Step.tsx';
 
 /** Props of an {@link Image}. */
 export interface ImageProps extends Omit<
@@ -133,7 +133,7 @@ export function Image(inProps: ImageProps): JSX.Element {
   return (
     <ImageRoot
       component={figure ? 'figure' : block ? 'div' : 'span'}
-      defaultAttachment={WITH_PREVIOUS}
+      defaultAttachment={WITH_CONTENT}
       className={classNames(imageClasses.root, className)}
       ownerState={ownerState}
       {...stepProps}

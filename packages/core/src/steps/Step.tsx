@@ -187,9 +187,9 @@ export interface StepProps
    * with `with`, `step`, `in`, or `after`, or joins a group with other
    * steps. Wrapper components can use this to choose their usual place:
    *
-   * - `{ with: 'previous' }` or `{ with: 'initial' }` makes the step inert
-   *   by default, e.g., list items, which are shown with the previous step
-   *   unless they set a step behavior, e.g., `only`, as well.
+   * - `{ with: 'content' }` or `{ with: 'initial' }` makes the step inert
+   *   by default, e.g., list items, which are shown with the content before
+   *   them unless they set a step behavior, e.g., `only`, as well.
    * - `{ in: group }` nests the step in a group or in the step of an
    *   element, e.g., callouts in the step of the element they point at.
    *
@@ -243,13 +243,13 @@ export interface StepProps
 
 /** How a step is attached to the steps by default, see `Step`. */
 export type StepAttachment =
-  { with: 'previous' | 'initial' } | { in: string | Element };
+  { with: 'content' | 'initial' } | { in: string | Element };
 
 /**
- * Attaches a step to the previous step by default, e.g., for content shown
+ * Attaches a step to the content before it by default, e.g., for content shown
  * in order with the steps around it, like paragraphs.
  */
-export const WITH_PREVIOUS: StepAttachment = { with: 'previous' };
+export const WITH_CONTENT: StepAttachment = { with: 'content' };
 
 /** Attaches a step to the initial step by default, i.e., shows it up front. */
 export const WITH_INITIAL: StepAttachment = { with: 'initial' };

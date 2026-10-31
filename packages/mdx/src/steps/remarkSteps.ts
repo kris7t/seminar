@@ -19,6 +19,7 @@ export const STEP_PROPERTY = 'dataSeminarStep';
 const WITH_VALUES: ReadonlySet<string> = new Set([
   'self',
   'previous',
+  'content',
   'initial',
 ]);
 
@@ -34,7 +35,7 @@ export function getWith(
   const withValue = attributes.get('with');
   if (withValue !== undefined && !WITH_VALUES.has(withValue)) {
     file.message(
-      `Expected \`with=self\`, \`with=previous\`, or \`with=initial\` on \`:step\`, got \`with=${withValue}\``,
+      `Expected \`with=self\`, \`with=previous\`, \`with=content\`, or \`with=initial\` on \`:step\`, got \`with=${withValue}\``,
     );
     return 'previous';
   }

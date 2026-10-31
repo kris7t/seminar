@@ -121,11 +121,12 @@ Then that.
   it('turns other paragraphs with :step into steps', async () => {
     expect(
       await content(
-        'Up front\n\n:step Later\n\nWith it :step{with=previous .a}',
+        'Up front\n\n:step Later\n\nWith it :step{with=previous .a}\n\nAlso :step{with=content}',
       ),
     ).toEqual([
       '<Paragraph>Up front</Paragraph><Paragraph step=true>Later</Paragraph>' +
-        '<Paragraph step=true with="previous" className="a">With it</Paragraph>',
+        '<Paragraph step=true with="previous" className="a">With it</Paragraph>' +
+        '<Paragraph step=true with="content">Also</Paragraph>',
     ]);
   });
 
@@ -171,7 +172,7 @@ Then that.
     });
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining(
-        'Expected `with=self`, `with=previous`, or `with=initial`',
+        'Expected `with=self`, `with=previous`, `with=content`, or `with=initial`',
       ),
       expect.stringContaining("Ignoring `:step`, which isn't allowed here"),
     ]);

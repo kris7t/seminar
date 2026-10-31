@@ -6,7 +6,7 @@ import {
 } from '@mui/material/styles';
 import {
   Step,
-  WITH_PREVIOUS,
+  WITH_CONTENT,
   useSlideView,
   type ComponentTheme,
   type StepProps,
@@ -121,7 +121,7 @@ export function Column(inProps: ColumnProps): JSX.Element {
   const { kind } = useSlideView();
   return (
     <ColumnRoot
-      defaultAttachment={WITH_PREVIOUS}
+      defaultAttachment={WITH_CONTENT}
       className={`${columnClasses.root}${className === undefined ? '' : ` ${className}`}`}
       ownerState={ownerState}
       {...stepProps}

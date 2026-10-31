@@ -132,7 +132,7 @@ export {
   Step,
   stepClasses,
   WITH_INITIAL,
-  WITH_PREVIOUS,
+  WITH_CONTENT,
   type StepClassKey,
   type StepAttachment,
   type StepProps,

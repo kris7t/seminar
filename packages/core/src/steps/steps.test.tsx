@@ -257,6 +257,144 @@ describe('steps', () => {
     expect(shownItems()).toEqual(['a', 'b', 'c', '*d', '*e']);
   });
 
+  describe('content placement', () => {
+    /** Goes through the slide, returning the shown elements in each state. */
+    async function walk(ui: ReactNode, count: number) {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>{ui}</Slide>
+        </Deck>,
+      );
+      const states = [shownItems()];
+      for (let index = 0; index < count; index += 1) {
+        await user.keyboard('{ArrowRight}');
+        states.push(shownItems());
+      }
+      return states;
+    }
+
+    it('follows the content before overlays', async () => {
+      const states = await walk(
+        <>
+          <Paragraph step data-name="a">
+            a
+          </Paragraph>
+          <Step overlay data-name="callout">
+            callout
+          </Step>
+          <Paragraph data-name="b">b</Paragraph>
+        </>,
+        2,
+      );
+      expect(states).toEqual([[], ['*a', '*b'], ['a', '*callout', 'b']]);
+    });
+
+    it('is shown up front if only overlays are before it', async () => {
+      const states = await walk(
+        <>
+          <Step overlay data-name="callout">
+            callout
+          </Step>
+          <Paragraph data-name="a">a</Paragraph>
+        </>,
+        1,
+      );
+      expect(states).toEqual([['*a'], ['*callout', 'a']]);
+    });
+
+    it('follows overlays that are ordinary steps', async () => {
+      const states = await walk(
+        <>
+          <Step overlay={false} data-name="callout">
+            callout
+          </Step>
+          <Paragraph data-name="a">a</Paragraph>
+        </>,
+        1,
+      );
+      expect(states).toEqual([[], ['*callout', '*a']]);
+    });
+
+    it('does not follow steps shown up front', async () => {
+      const states = await walk(
+        <>
+          <Paragraph step data-name="a">
+            a
+          </Paragraph>
+          <Step with="initial" data-name="up front">
+            up front
+          </Step>
+          <Paragraph data-name="b">b</Paragraph>
+        </>,
+        1,
+      );
+      expect(states).toEqual([['*up front'], ['*a', 'up front', '*b']]);
+    });
+
+    it('is the same explicitly as by default', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <ul>
+              <Step component="li" with="content" data-name="a">
+                <Paragraph>
+                  a<Step data-name="more">more</Step>
+                </Paragraph>
+              </Step>
+            </ul>
+            <Step overlay data-name="callout">
+              callout
+            </Step>
+            <Step with="content" data-name="b">
+              b
+            </Step>
+          </Slide>
+        </Deck>,
+      );
+      // The paragraph in the item doesn't add a level for the step in it.
+      expect(shownItems()).toEqual(['*a', '*', '*b']);
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=0.1');
+    });
+
+    it('leaves overlays that are shown with the previous step together', async () => {
+      const states = await walk(
+        <>
+          <Paragraph data-name="a">a</Paragraph>
+          <Step overlay data-name="x">
+            x
+          </Step>
+          <Step overlay with="previous" data-name="y">
+            y
+          </Step>
+          <Paragraph data-name="b">b</Paragraph>
+        </>,
+        1,
+      );
+      expect(states).toEqual([
+        ['*a', '*b'],
+        ['a', '*x', '*y', 'b'],
+      ]);
+    });
+
+    it('joins an overlay with the previous step explicitly', async () => {
+      const states = await walk(
+        <>
+          <Step overlay data-name="x">
+            x
+          </Step>
+          <Step with="previous" data-name="a">
+            a
+          </Step>
+        </>,
+        1,
+      );
+      expect(states).toEqual([[], ['*x', '*a']]);
+    });
+  });
+
   it('nests steps in inert items in the step the item is shown with', async () => {
     const user = userEvent.setup();
     render(

@@ -91,7 +91,8 @@ function convertChildren(parent: {
  * step (see {@link remarkSteps}):
  *
  * - `:step` starts a new step with the item.
- * - `with=previous` or `with=initial` set the `with` prop instead.
+ * - `with=previous`, `with=content`, or `with=initial` set the `with` prop
+ *   instead.
  * - `group=name` shares a step with the other items and steps of the group
  *   `name` on the slide (see the `group` prop of `Step`). The first item of
  *   the group starts a new step, unless it has a `with` attribute, which

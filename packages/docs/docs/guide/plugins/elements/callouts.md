@@ -60,6 +60,16 @@ usual,
 `in=…` nests it in another group, `with=…` or `group=…` places it otherwise,
 and a behavior like `only` shows it only during its step.
 
+`with=previous` shows a callout together with the one before it:
+
+```mdx
+::callout[The parser]{for=arch}
+::callout[The renderer]{for=arch with=previous}
+```
+
+Content after a callout is shown with the content before the callout, not with
+the callout.
+
 ```mdx
 - :step{group=parse} Parsing turns Markdown into a syntax tree
 - :step{group=render} Rendering turns the tree into React elements

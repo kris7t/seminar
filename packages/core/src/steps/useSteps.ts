@@ -61,8 +61,12 @@ export interface StepHandle extends StepState {
  *   the default. Setting it explicitly also places a `Step` where it is,
  *   rather than by its `defaultAttachment`.
  * - `'previous'` shows its first step together with the previous stepper on
- *   the same level. If there is no previous stepper on the level, it works
- *   like `'initial'`.
+ *   the same level, whatever that is, e.g., to show two callouts at once. If
+ *   there is no previous stepper on the level, it works like `'initial'`.
+ * - `'content'` shows its first step together with the content on the same
+ *   level so far, i.e., with the latest step that isn't an overlay, without
+ *   a step of its own and without adding a level to the steps inside it. If
+ *   there is no such step on the level, it works like `'initial'`.
  * - `'initial'` shows its first step as soon as the enclosing step (or the slide)
  *   is shown, without creating a new step. It stays current until the first
  *   step on the same level is shown. This allows using the same component for
@@ -74,7 +78,7 @@ export interface StepHandle extends StepState {
  *
  * By default, a stepper starts with a new step after the previous one.
  */
-export type StepWith = 'self' | 'previous' | 'initial' | StepHandle;
+export type StepWith = 'self' | 'previous' | 'content' | 'initial' | StepHandle;
 
 export interface UseStepsOptions {
   /** See {@link StepWith}. */
@@ -110,7 +114,7 @@ export interface UseStepsOptions {
    * Like `with`, but only if the stepper doesn't join a group with other
    * elements.
    */
-  defaultWith?: 'previous' | 'initial' | undefined;
+  defaultWith?: 'content' | 'initial' | undefined;
   /**
    * Name of the group to place this stepper right after, nested in the same
    * stepper as the group, before the steppers that follow the group in

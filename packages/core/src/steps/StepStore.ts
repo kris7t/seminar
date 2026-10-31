@@ -85,9 +85,11 @@ export interface StepStatus extends StepPlace {
  * - `'next'`: after the previous step.
  * - `'previous'`: together with the previous stepper on the same level (in
  *   document order), or like `'initial'` if there is none.
+ * - `'content'`: together with the latest step on the same level that isn't an
+ *   overlay, or like `'initial'` if there is none.
  * - `'initial'`: at step 0, i.e., shown as soon as the level is shown.
  */
-export type StepPlacement = 'next' | 'previous' | 'initial';
+export type StepPlacement = 'next' | 'previous' | 'content' | 'initial';
 
 export interface StepOptions {
   /** Number of consecutive steps taken by the stepper. */
@@ -987,14 +989,15 @@ export class StepStore {
       }
     }
     const parents = new Map<StepNode, StepNode | undefined>();
-    // Steppers that are inert by default, e.g., paragraphs without steps of
-    // their own, are part of the step they are shown with, so other inert
-    // steppers inside them are part of that step, too, rather than adding a
-    // level to it.
+    // Inert steppers, e.g., paragraphs without steps of their own, are part of
+    // the step they are shown with, so other inert steppers inside them are
+    // part of that step, too, rather than adding a level to it.
     const isInert = (node: StepNode): boolean => {
       const options = anchors.get(node)?.options;
       return (
-        node.elements.size === 1 && options?.defaultPlacement !== undefined
+        node.elements.size === 1 &&
+        (options?.defaultPlacement !== undefined ||
+          options?.placement === 'content')
       );
     };
     const visiting = new Set<StepNode>();
@@ -1067,6 +1070,8 @@ export class StepStore {
     const levelSizes = new Map<string, number>();
     // Number of the last step of the previous stepper on each level.
     const previousSteps = new Map<string, number>();
+    // Number of the latest step that isn't an overlay on each level.
+    const contentSteps = new Map<string, number>();
     for (const [node, { options }] of placementOrder) {
       const { count } = options;
       const placement =
@@ -1086,6 +1091,8 @@ export class StepStore {
       } else if (placement === 'previous') {
         // Without a previous stepper, there is nothing to join but step 0.
         first = previous ?? 0;
+      } else if (placement === 'content') {
+        first = contentSteps.get(key) ?? 0;
       } else {
         first = size + 1;
       }
@@ -1093,6 +1100,9 @@ export class StepStore {
       placements.set(node, { level, first, last });
       levelSizes.set(key, Math.max(size, last));
       previousSteps.set(key, last);
+      if (!this.#isOverlay(node)) {
+        contentSteps.set(key, Math.max(contentSteps.get(key) ?? 0, last));
+      }
     }
     return { anchors, parents, placements, levelSizes };
   }
