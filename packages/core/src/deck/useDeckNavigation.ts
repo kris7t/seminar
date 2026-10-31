@@ -13,7 +13,8 @@ import type { SlideTransitions } from '../transitions/SlideTransitions.ts';
 import type { StateStore } from '../state/StateStore.ts';
 import type { StepPositionStore } from '../steps/StepPositionStore.ts';
 import type { StepTarget } from '../steps/StepPosition.ts';
-import { StepStore, type StepPath } from '../steps/StepStore.ts';
+import type { StepPath } from '../steps/StepNode.ts';
+import { StepStore } from '../steps/StepStore.ts';
 import { compareStepPaths } from '../steps/stepRange.ts';
 import {
   formatLocation,

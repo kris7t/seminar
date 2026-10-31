@@ -7,7 +7,7 @@ import {
   parseStepRange,
   type StepRange,
 } from './stepRange.ts';
-import type { StepPath } from './StepStore.ts';
+import type { StepPath } from './StepNode.ts';
 
 /** The steps of a slide with steps 1 and 2, where 1 has the substeps 1.1-1.2. */
 const POSITIONS: StepPath[] = [[], [1], [1, 1], [1, 2], [2]];

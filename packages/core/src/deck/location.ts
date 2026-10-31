@@ -1,4 +1,4 @@
-import type { StepPath } from '../steps/StepStore.ts';
+import type { StepPath } from '../steps/StepNode.ts';
 
 /** A location in a deck that can be stored in the location hash. */
 export interface DeckLocation {

@@ -1,4 +1,4 @@
-import type { StepPath } from './StepStore.ts';
+import type { StepPath } from './StepNode.ts';
 
 /**
  * Restricts the steps that going through a slide shows. Each bound is a step

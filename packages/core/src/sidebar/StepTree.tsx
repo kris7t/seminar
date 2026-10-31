@@ -8,7 +8,8 @@ import { WithParentIcon } from '../icons/WithParentIcon.tsx';
 import type { Translate } from '../i18n/messages.ts';
 import { useT } from '../i18n/UiLanguageContext.ts';
 import { scrollIntoView } from './Sidebar.tsx';
-import type { StepPath, StepStore, StepTreeEntry } from '../steps/StepStore.ts';
+import type { StepPath } from '../steps/StepNode.ts';
+import type { StepStore, StepTreeEntry } from '../steps/StepStore.ts';
 
 /** Where a step is relative to the current one. */
 type EntryPhase = 'past' | 'open' | 'current' | 'shownWith' | 'future';

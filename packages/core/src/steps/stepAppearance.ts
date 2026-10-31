@@ -2,7 +2,7 @@ import { generateUtilityClass } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import { createContext, use, type Context } from 'react';
 
-import type { StepPhase } from './StepStore.ts';
+import type { StepPhase } from './StepNode.ts';
 
 /**
  * Further appearances of steps. Add them by module augmentation, e.g.,

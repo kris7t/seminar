@@ -1,5 +1,6 @@
 import { compareStepPaths } from '../steps/stepRange.ts';
-import type { StepPath, StepStore } from '../steps/StepStore.ts';
+import type { StepPath } from '../steps/StepNode.ts';
+import type { StepStore } from '../steps/StepStore.ts';
 
 /** A page of a slide to print. */
 export interface PlannedPage {

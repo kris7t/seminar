@@ -33,7 +33,7 @@ import {
   type BuiltInStepBehavior,
   type StepAppearances,
 } from './stepAppearance.ts';
-import type { StepPhase } from './StepStore.ts';
+import type { StepPhase } from './StepNode.ts';
 import { StepBehaviorContext } from './StepBehaviorContext.ts';
 import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
 import type { FadeProps } from '../transitions/fades.ts';

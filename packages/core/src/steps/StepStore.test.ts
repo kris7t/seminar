@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  StepNode,
-  StepStore,
-  type StepOptions,
-  type StepTreeEntry,
-} from './StepStore.ts';
+import { StepNode, type StepOptions } from './StepNode.ts';
+import { StepStore, type StepTreeEntry } from './StepStore.ts';
 
 /** Summarizes a tree of steps as `path label` lines, indented by level. */
 function summarize(entries: readonly StepTreeEntry[], indent = ''): string[] {

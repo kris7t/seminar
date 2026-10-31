@@ -155,7 +155,7 @@ export {
   type StepsClassKey,
   type StepsProps,
 } from './steps/Steps.tsx';
-export type { StepPath, StepPhase } from './steps/StepStore.ts';
+export type { StepPath, StepPhase } from './steps/StepNode.ts';
 export type { StepRange } from './steps/stepRange.ts';
 export type { DeckMetadata } from './deck/DeckMetadata.ts';
 export type { ScreenArea, SeminarHost } from './host/SeminarHost.ts';

@@ -21,7 +21,7 @@ import {
   moreHidden,
   StepAppearanceContext,
 } from './stepAppearance.ts';
-import type { StepPhase } from './StepStore.ts';
+import type { StepPhase } from './StepNode.ts';
 import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
 import { useSteps, type StepState, type StepWith } from './useSteps.ts';
 

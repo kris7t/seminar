@@ -1,5 +1,5 @@
 import { Listeners } from '../state/Listeners.ts';
-import type { StepPath } from './StepStore.ts';
+import type { StepPath } from './StepNode.ts';
 
 /** The requested position in the steps of a slide. */
 export interface StepTarget {
