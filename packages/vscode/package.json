@@ -1,7 +1,7 @@
 {
   "name": "seminar-vscode",
   "displayName": "Seminar",
-  "description": "Language support for Seminar decks: syntax highlighting and IntelliSense for .deck.mdx files",
+  "description": "Language support for Seminar decks: syntax highlighting and IntelliSense for .deck.mdx files, and buttons to present and preview them",
   "version": "0.2.1",
   "private": true,
   "publisher": "kris7t",
@@ -32,11 +32,72 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
-      "description": "The language server may load TypeScript from the workspace."
+      "description": "The language server may load TypeScript from the workspace, and presenting a deck runs its project."
     },
     "virtualWorkspaces": false
   },
   "contributes": {
+    "commands": [
+      {
+        "command": "seminar.present",
+        "title": "Present Deck",
+        "category": "Seminar",
+        "icon": "$(play)"
+      },
+      {
+        "command": "seminar.preview",
+        "title": "Preview Deck",
+        "category": "Seminar",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "seminar.present",
+          "when": "editorLangId == seminar-deck && resourceScheme == file"
+        },
+        {
+          "command": "seminar.preview",
+          "when": "editorLangId == seminar-deck && resourceScheme == file"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "seminar.preview",
+          "when": "resourceLangId == seminar-deck && resourceScheme == file",
+          "group": "navigation@1"
+        },
+        {
+          "command": "seminar.present",
+          "when": "resourceLangId == seminar-deck && resourceScheme == file",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "taskDefinitions": [
+      {
+        "type": "seminar",
+        "required": [
+          "command",
+          "deck"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "present",
+              "preview"
+            ],
+            "description": "The command of seminar to run."
+          },
+          "deck": {
+            "type": "string",
+            "description": "The path of the deck."
+          }
+        }
+      }
+    ],
     "languages": [
       {
         "id": "seminar-deck",

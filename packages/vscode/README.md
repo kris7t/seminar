@@ -11,6 +11,10 @@ Language support for the `.deck.mdx` files of
   actual syntax errors are reported where they are.
 - Provides hover, go to definition, completion, and rename in the JavaScript
   of decks, and the outline of their headings.
+- Presents and previews the open deck with the buttons in the title bar of its
+  editor, or the `Seminar: Present Deck` and `Seminar: Preview Deck` commands.
+  They run `seminar` in a task, so `@seminar/cli` has to be installed in the
+  project of the deck, and Node has to be on the `PATH`.
 
 ## Installing
 
