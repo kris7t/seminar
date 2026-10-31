@@ -8,13 +8,18 @@ import {
   type StepRange,
 } from './stepRange.ts';
 import {
-  ALWAYS_SHOWN,
   BUILT_IN_APPEARANCE_RANKS,
   moreHidden,
-  SHOWN,
   type RankedAppearance,
   type RankedAppearances,
 } from './stepAppearance.ts';
+import {
+  compareDocumentOrder,
+  isOverlay,
+  StepLayout,
+  type StepPlace,
+  type StepRegistry,
+} from './StepLayout.ts';
 import {
   parseSlideSplit,
   planSplit,
@@ -22,22 +27,7 @@ import {
   type SlideSplitProp,
   type SplitMode,
 } from './stepSplit.ts';
-import {
-  StepNode,
-  type StepOptions,
-  type StepPath,
-  type StepPhase,
-} from './StepNode.ts';
-
-/** Where a stepper is in the steps of its level. */
-interface StepPlace {
-  /**
-   * Zero-based index of the current step of the stepper, `-1` if the stepper
-   * is not yet active, or `Infinity` if it is past.
-   */
-  stepIndex: number;
-  phase: StepPhase;
-}
+import { StepNode, type StepOptions, type StepPath } from './StepNode.ts';
 
 /** State of a stepper as stored in a {@link StepStore}. */
 export interface StepStatus extends StepPlace {
@@ -66,70 +56,6 @@ export interface StepTreeEntry {
   overlay: boolean;
   /** The steps nested in the step. */
   children: readonly StepTreeEntry[];
-}
-
-interface Placement {
-  /** Path of the step containing the level of this stepper. */
-  level: StepPath;
-  /** Number of the first step of this stepper on its level. */
-  first: number;
-  /** Number of the last step of this stepper on its level. */
-  last: number;
-}
-
-/** The element that determines the placement and the look of a stepper. */
-interface Anchor {
-  element: Element;
-  options: StepOptions;
-}
-
-interface Layout {
-  anchors: Map<StepNode, Anchor>;
-  /** The stepper each stepper is nested in, if any. */
-  parents: Map<StepNode, StepNode | undefined>;
-  /** The step that each joining stepper is part of, if any. */
-  owners: Map<StepNode, StepNode>;
-  /** The steppers that aren't steps, but part of a step or of what encloses them. */
-  joining: Set<StepNode>;
-  placements: Map<StepNode, Placement>;
-  /**
-   * Number of the last step on each level, keyed by {@link levelKey}.
-   * Levels with only step 0 have size 0.
-   */
-  levelSizes: Map<string, number>;
-}
-
-const FUTURE: StepPlace = { stepIndex: -1, phase: 'future' };
-
-const PAST: StepPlace = {
-  stepIndex: Number.POSITIVE_INFINITY,
-  phase: 'past',
-};
-
-const DISTANT_FUTURE: StepPlace = { stepIndex: -1, phase: 'distantFuture' };
-
-const DISTANT_PAST: StepPlace = {
-  stepIndex: Number.POSITIVE_INFINITY,
-  phase: 'distantPast',
-};
-
-/** The place of steppers that are part of the slide itself, not of any step. */
-const SLIDE: StepPlace = { stepIndex: 0, phase: 'current' };
-
-/** Stands for what encloses a level, which steppers can be part of, too. */
-const PARENT = Symbol('parent');
-
-function levelKey(level: StepPath): string {
-  return level.join('.');
-}
-
-function compareDocumentOrder(a: Element, b: Element): number {
-  if (a === b) {
-    return 0;
-  }
-  return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
-    ? -1
-    : 1;
 }
 
 function trimPath(path: number[]): number[] {
@@ -165,44 +91,6 @@ function textOf(element: Element, skip: (element: Element) => boolean): string {
     visit(child);
   }
   return parts.join('').replaceAll(/\s+/g, ' ').trim();
-}
-
-/**
- * Orders steppers, given in document order, keeping that order, except that
- * steppers placed after another one come right after it, before the steppers
- * that follow it in document order, and in document order among each other.
- *
- * @param predecessors The stepper each stepper is placed after, if any, which
- *   mustn't form cycles.
- * @returns The position of each stepper in the order.
- */
-function orderSteppers(
-  sorted: readonly (readonly [StepNode, Anchor])[],
-  predecessors: Map<StepNode, StepNode>,
-): Map<StepNode, number> {
-  const successors = new Map<StepNode, StepNode[]>();
-  for (const [node] of sorted) {
-    const predecessor = predecessors.get(node);
-    if (predecessor !== undefined) {
-      successors.set(predecessor, [
-        ...(successors.get(predecessor) ?? []),
-        node,
-      ]);
-    }
-  }
-  const order = new Map<StepNode, number>();
-  const visit = (node: StepNode) => {
-    order.set(node, order.size);
-    for (const successor of successors.get(node) ?? []) {
-      visit(successor);
-    }
-  };
-  for (const [node] of sorted) {
-    if (!predecessors.has(node)) {
-      visit(node);
-    }
-  }
-  return order;
 }
 
 function pathsEqual(a: StepPath, b: StepPath): boolean {
@@ -244,21 +132,24 @@ function overlapOf(a: readonly string[], b: readonly string[]): number {
  */
 export class StepStore {
   readonly #nodes = new Set<StepNode>();
-  readonly #owners = new Map<Element, StepNode>();
+  readonly #steppers = new Map<Element, StepNode>();
   readonly #listeners = new Set<() => void>();
   readonly #groups = new Map<string, StepNode>();
-  /** Elements in the steps of groups that they aren't inside of. */
   readonly #elementGroups = new Map<Element, string>();
+  readonly #registry: StepRegistry = {
+    nodes: this.#nodes,
+    groups: this.#groups,
+    steppers: this.#steppers,
+    elementGroups: this.#elementGroups,
+  };
   readonly #statuses = new WeakMap<StepNode, StepStatus>();
   readonly #position: StepPosition;
   #unsubscribePosition: (() => void) | undefined;
-  #layout: Layout | undefined;
+  #layout: StepLayout | undefined;
   #range: StepRange | undefined;
   #bounds: StepBounds = {};
-  /** The paths of the steps of the slide in order, while the layout lasts. */
-  #positionsCache: StepPath[] | undefined;
   /** The paths of the steps in the range, while the layout and range last. */
-  #rangeCache: StepPath[] | undefined;
+  #rangeCache: readonly StepPath[] | undefined;
   #tree: readonly StepTreeEntry[] | undefined;
   #split: SlideSplitProp | undefined;
   #slideSplit: SlideSplit | undefined;
@@ -297,13 +188,13 @@ export class StepStore {
    */
   attach(node: StepNode, element: Element, options: StepOptions): () => void {
     node.elements.set(element, options);
-    this.#owners.set(element, node);
+    this.#steppers.set(element, node);
     this.#nodes.add(node);
     this.#invalidateLayout();
     return () => {
       node.elements.delete(element);
-      if (this.#owners.get(element) === node) {
-        this.#owners.delete(element);
+      if (this.#steppers.get(element) === node) {
+        this.#steppers.delete(element);
       }
       if (node.elements.size === 0) {
         this.#nodes.delete(node);
@@ -474,34 +365,18 @@ export class StepStore {
       if (group === undefined) {
         return relative;
       }
-      const groupPath = this.#groupPath(group);
+      const groupPath = this.#getLayout().groupPath(group);
       return groupPath === undefined ? undefined : [...groupPath, ...relative];
     });
-  }
-
-  /** Returns the paths of the steps of the slide in order, starting with []. */
-  #positions(): StepPath[] {
-    if (this.#positionsCache === undefined) {
-      const positions: StepPath[] = [[]];
-      for (
-        let position = this.#findNext([]);
-        position !== undefined;
-        position = this.#findNext(position)
-      ) {
-        positions.push(position);
-      }
-      this.#positionsCache = positions;
-    }
-    return this.#positionsCache;
   }
 
   /**
    * Returns the paths of the steps in the range of the slide in order, or the
    * last step if none of them is.
    */
-  #positionsInRange(): StepPath[] {
+  #positionsInRange(): readonly StepPath[] {
     if (this.#rangeCache === undefined) {
-      const positions = this.#positions();
+      const positions = this.#getLayout().positions();
       const last = positions.at(-1) ?? [];
       const inRange =
         this.#range?.fromLast === true
@@ -556,7 +431,7 @@ export class StepStore {
       }
     } else if (
       target.fallback === undefined &&
-      this.#groupPath(target.group) !== undefined
+      this.#getLayout().groupPath(target.group) !== undefined
     ) {
       this.#position.set({
         ...target,
@@ -623,9 +498,10 @@ export class StepStore {
     const forward = order > 0;
     const isTurn = ({ phase }: StepPlace) =>
       phase === 'current' || phase === 'open';
-    const fades = [...this.#nodes].flatMap((node) => {
-      const before = this.#computePlace(node, from);
-      const after = this.#computePlace(node, target);
+    const layout = this.#getLayout();
+    const fades = layout.steppers.flatMap((node) => {
+      const before = layout.placeOf(node, from);
+      const after = layout.placeOf(node, target);
       const moved = before.stepIndex !== after.stepIndex;
       const sides = [
         ...(isTurn(before) && (!isTurn(after) || moved)
@@ -645,30 +521,12 @@ export class StepStore {
   }
 
   #findNextInRange(): StepPath | undefined {
-    let position = this.#findNext(this.getPath());
+    const layout = this.#getLayout();
+    let position = layout.nextOf(this.getPath());
     while (position !== undefined && !this.isInRange(position)) {
-      position = this.#findNext(position);
+      position = layout.nextOf(position);
     }
     return position;
-  }
-
-  /** Finds the step after `from`, regardless of the range. */
-  #findNext(from: StepPath): StepPath | undefined {
-    const { levelSizes } = this.#getLayout();
-    // Levels nested in step 0 are shown along with their enclosing level, so
-    // we have to look for the next step in them first.
-    const path = [...from];
-    while (levelSizes.has(levelKey([...path, 0]))) {
-      path.push(0);
-    }
-    for (let depth = path.length; depth >= 0; depth -= 1) {
-      const level = path.slice(0, depth);
-      const position = path[depth] ?? 0;
-      if (position < (levelSizes.get(levelKey(level)) ?? 0)) {
-        return [...level, position + 1];
-      }
-    }
-    return undefined;
   }
 
   /**
@@ -724,22 +582,12 @@ export class StepStore {
   };
 
   #computeTree(level: StepPath): StepTreeEntry[] {
-    const { anchors, placements, levelSizes, owners, joining } =
-      this.#getLayout();
-    const key = levelKey(level);
-    const size = levelSizes.get(key);
+    const layout = this.#getLayout();
+    const size = layout.sizeOf(level);
     if (size === undefined) {
       return [];
     }
-    // Steppers on this level in document order.
-    const steppers = [...anchors]
-      .sort(([, x], [, y]) => compareDocumentOrder(x.element, y.element))
-      .flatMap(([node]) => {
-        const placement = placements.get(node);
-        return placement !== undefined && levelKey(placement.level) === key
-          ? [[node, placement] as const]
-          : [];
-      });
+    const steppers = layout.steppersOn(level);
     const entries: StepTreeEntry[] = [];
     for (let step = 0; step <= size; step += 1) {
       const shown = steppers.filter(
@@ -747,7 +595,7 @@ export class StepStore {
           first <= step &&
           step <= last &&
           // Joining steppers without a step aren't part of any entry.
-          (!joining.has(node) || owners.has(node)),
+          !layout.isStepless(node),
       );
       const path = [...level, step];
       const children = this.#computeTree(path);
@@ -760,9 +608,8 @@ export class StepStore {
         continue;
       }
       const labels = shown
-        .map(([node, { first, last }]) => {
-          const text =
-            anchors.get(node)?.options.title?.trim() ?? this.#textOf(node);
+        .map(([node, { anchor, first, last }]) => {
+          const text = anchor.options.title?.trim() ?? this.#textOf(node);
           return last > first && text !== ''
             ? `${text} (${String(step - first + 1)}/${String(last - first + 1)})`
             : text;
@@ -771,7 +618,7 @@ export class StepStore {
       entries.push({
         path,
         label: labels.join(' · '),
-        overlay: shown.some(([node]) => this.#isOverlay(node)),
+        overlay: shown.some(([node]) => isOverlay(node)),
         children,
       });
     }
@@ -792,10 +639,11 @@ export class StepStore {
     if (step === undefined || step === 0) {
       return undefined;
     }
-    const key = levelKey(path.slice(0, -1));
     const texts: string[] = [];
-    for (const [node, { level, first, last }] of this.#getLayout().placements) {
-      if (levelKey(level) !== key || step < first || step > last) {
+    for (const [node, { first, last }] of this.#getLayout().steppersOn(
+      path.slice(0, -1),
+    )) {
+      if (step < first || step > last) {
         continue;
       }
       for (const element of node.elements.keys()) {
@@ -819,7 +667,7 @@ export class StepStore {
     if (own !== undefined && overlapOf(own, texts) === 1) {
       return path;
     }
-    const positions = this.#positions();
+    const positions = this.#getLayout().positions();
     const index = positions.findIndex(
       (position) => compareStepPaths(position, path) >= 0,
     );
@@ -862,19 +710,16 @@ export class StepStore {
    * is part of what encloses it.
    */
   #showsOtherStep(node: StepNode, element: Element): boolean {
-    const owner = this.#owners.get(element);
-    return owner !== undefined && owner !== node && !this.#isStepless(owner);
-  }
-
-  /** Whether `node` isn't a step, and isn't part of one on its own level. */
-  #isStepless(node: StepNode): boolean {
-    const { joining, owners } = this.#getLayout();
-    return joining.has(node) && !owners.has(node);
+    const owner = this.#steppers.get(element);
+    return (
+      owner !== undefined &&
+      owner !== node &&
+      !this.#getLayout().isStepless(owner)
+    );
   }
 
   #invalidateLayout() {
     this.#layout = undefined;
-    this.#positionsCache = undefined;
     this.#rangeCache = undefined;
     this.#tree = undefined;
     this.#splitCache = undefined;
@@ -888,241 +733,9 @@ export class StepStore {
     }
   }
 
-  #getLayout(): Layout {
-    this.#layout ??= this.#computeLayout();
+  #getLayout(): StepLayout {
+    this.#layout ??= new StepLayout(this.#registry);
     return this.#layout;
-  }
-
-  #computeLayout(): Layout {
-    const anchors = new Map<StepNode, Anchor>();
-    for (const node of this.#nodes) {
-      const anchor = this.#findAnchor(node);
-      if (anchor !== undefined && anchor.options.count >= 1) {
-        anchors.set(node, anchor);
-      }
-    }
-    // The steppers to place each stepper right after, if any.
-    const predecessors = new Map<StepNode, StepNode>();
-    const sorted = [...anchors].sort(([, x], [, y]) =>
-      compareDocumentOrder(x.element, y.element),
-    );
-    for (const [node, { options }] of sorted) {
-      const predecessor = this.#findGroup(options.after, node, anchors);
-      if (predecessor !== undefined) {
-        predecessors.set(node, predecessor);
-      }
-    }
-    // Steppers may be placed after each other in a cycle, which we break at
-    // the first one in document order, which is placed by its elements.
-    for (const [node] of sorted) {
-      const chain = new Set<StepNode>();
-      let current: StepNode | undefined = node;
-      while (current !== undefined && !chain.has(current)) {
-        chain.add(current);
-        current = predecessors.get(current);
-      }
-      if (current === node) {
-        predecessors.delete(node);
-      }
-    }
-    const enclosing = new Map<StepNode, StepNode | undefined>();
-    const findEnclosing = (node: StepNode): StepNode | undefined => {
-      if (enclosing.has(node)) {
-        return enclosing.get(node);
-      }
-      const anchor = anchors.get(node);
-      if (anchor === undefined) {
-        return undefined;
-      }
-      const predecessor = predecessors.get(node);
-      const parentOption =
-        anchor.options.parent ??
-        (node.elements.size === 1 ? anchor.options.defaultParent : undefined);
-      const parent =
-        predecessor === undefined
-          ? typeof parentOption === 'object'
-            ? this.#findParent(node, parentOption, anchors, true)
-            : (this.#findGroup(parentOption, node, anchors) ??
-              this.#findParent(node, anchor.element, anchors))
-          : findEnclosing(predecessor);
-      // A stepper placed after one nested in it ends up in itself.
-      const result = parent === node ? undefined : parent;
-      enclosing.set(node, result);
-      return result;
-    };
-    const order = orderSteppers(sorted, predecessors);
-    const ordered = sorted
-      .map(([node]) => node)
-      .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
-    const nested = new Map<StepNode | undefined, StepNode[]>();
-    for (const node of ordered) {
-      const parent = findEnclosing(node);
-      nested.set(parent, [...(nested.get(parent) ?? []), node]);
-    }
-    const parents = new Map<StepNode, StepNode | undefined>();
-    const owners = new Map<StepNode, StepNode>();
-    const joining = new Set<StepNode>();
-    const placements = new Map<StepNode, Placement>();
-    const levelSizes = new Map<string, number>();
-    // What the latest stepper on each level is, or is part of.
-    const previousSteps = new Map<string, StepNode | typeof PARENT>();
-    // Likewise, without the steppers that are overlays.
-    const contentSteps = new Map<string, StepNode | typeof PARENT>();
-    // The latest step at step 0 of each level.
-    const initialSteps = new Map<string, StepNode>();
-    // Enclosing steppers are placed before the steppers nested in them, since
-    // joining steppers decide which level the steppers inside them are on.
-    const place = (node: StepNode) => {
-      const options = anchors.get(node)?.options;
-      if (options === undefined || placements.has(node)) {
-        return;
-      }
-      const single = node.elements.size === 1;
-      const placement = single
-        ? (options.defaultPlacement ?? options.placement)
-        : options.placement;
-      const around = enclosing.get(node);
-      const parentNode =
-        around !== undefined && joining.has(around)
-          ? (owners.get(around) ?? parents.get(around))
-          : around;
-      parents.set(node, parentNode);
-      const parent =
-        parentNode === undefined ? undefined : placements.get(parentNode);
-      const level = parent === undefined ? [] : [...parent.level, parent.last];
-      const key = levelKey(level);
-      const size = levelSizes.get(key) ?? 0;
-      const target =
-        placement === 'previous'
-          ? previousSteps.get(key)
-          : placement === 'content'
-            ? contentSteps.get(key)
-            : placement === 'initial'
-              ? initialSteps.get(key)
-              : placement === 'parent'
-                ? PARENT
-                : undefined;
-      const owner = target === PARENT ? undefined : target;
-      const isJoining =
-        placement === 'parent' ||
-        (single &&
-          options.joins === true &&
-          (target !== undefined || options.stepless === true));
-      let first: number;
-      if (placement === 'next') {
-        first = size + 1;
-      } else if (placement === 'initial' || placement === 'parent') {
-        first = 0;
-      } else {
-        first = owner === undefined ? 0 : (placements.get(owner)?.last ?? 0);
-      }
-      const last = isJoining ? first : first + options.count - 1;
-      placements.set(node, { level, first, last });
-      levelSizes.set(key, Math.max(size, last));
-      if (isJoining) {
-        joining.add(node);
-        if (owner !== undefined) {
-          owners.set(node, owner);
-        }
-      } else if (first === 0) {
-        initialSteps.set(key, node);
-      }
-      // Without anything to join, it's not something later steppers can join.
-      const latest = isJoining ? target : node;
-      if (latest !== undefined) {
-        previousSteps.set(key, latest);
-        if (!this.#isOverlay(latest === PARENT ? node : latest)) {
-          contentSteps.set(key, latest);
-        }
-      }
-      for (const child of nested.get(node) ?? []) {
-        place(child);
-      }
-    };
-    for (const node of nested.get(undefined) ?? []) {
-      place(node);
-    }
-    // Groups may nest in each other in a cycle, which we break by treating the
-    // first stepper in it as top-level.
-    for (const node of ordered) {
-      place(node);
-    }
-    return { anchors, parents, owners, joining, placements, levelSizes };
-  }
-
-  /**
-   * Returns the element that determines the placement and the look of `node`:
-   * its first one in document order. Thus, a group is nested wherever it's
-   * first found, along with its other elements.
-   */
-  #findAnchor(node: StepNode): Anchor | undefined {
-    let anchor: Anchor | undefined;
-    for (const [element, options] of node.elements) {
-      if (
-        anchor === undefined ||
-        compareDocumentOrder(element, anchor.element) < 0
-      ) {
-        anchor = { element, options };
-      }
-    }
-    return anchor;
-  }
-
-  /** Returns the stepper of the group `name` if it is placed, except `node`. */
-  #findGroup(
-    name: string | undefined,
-    node: StepNode,
-    anchors: Map<StepNode, Anchor>,
-  ): StepNode | undefined {
-    const group = name === undefined ? undefined : this.#groups.get(name);
-    return group !== undefined && group !== node && anchors.has(group)
-      ? group
-      : undefined;
-  }
-
-  /**
-   * Finds the closest stepper enclosing `element` of `node`, or that
-   * `element` is an element of, if `inclusive`, including the steppers of the
-   * groups that elements are added to (see {@link addToGroup}).
-   */
-  #findParent(
-    node: StepNode,
-    element: Element,
-    anchors: Map<StepNode, Anchor>,
-    inclusive = false,
-  ): StepNode | undefined {
-    for (
-      let ancestor = inclusive ? element : element.parentElement;
-      ancestor !== null;
-      ancestor = ancestor.parentElement
-    ) {
-      const group = this.#findGroup(
-        this.#elementGroups.get(ancestor),
-        node,
-        anchors,
-      );
-      if (group !== undefined) {
-        return group;
-      }
-      const owner = this.#owners.get(ancestor);
-      if (owner !== undefined && owner !== node && anchors.has(owner)) {
-        return owner;
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * Returns the path of the first step of the group `name`, or `undefined` if
-   * the slide has no such group.
-   */
-  #groupPath(name: string): StepPath | undefined {
-    const node = this.#groups.get(name);
-    const placement =
-      node === undefined ? undefined : this.#getLayout().placements.get(node);
-    return placement === undefined
-      ? undefined
-      : [...placement.level, placement.first];
   }
 
   /**
@@ -1134,17 +747,11 @@ export class StepStore {
    * @returns The name of the group, if any, and the rest of the path.
    */
   describePath(path: StepPath): { group?: string; path: StepPath } {
-    const { anchors } = this.#getLayout();
-    const groups = [...this.#groups]
-      .flatMap(([name, node]) => {
-        const anchor = anchors.get(node);
-        return anchor === undefined ? [] : [{ name, anchor }];
-      })
-      .sort((a, b) => compareDocumentOrder(a.anchor.element, b.anchor.element));
+    const layout = this.#getLayout();
     let best: { group?: string; path: StepPath } = { path };
     let bestLength = 0;
-    for (const { name } of groups) {
-      const groupPath = this.#groupPath(name) ?? [];
+    for (const name of layout.groupNames()) {
+      const groupPath = layout.groupPath(name) ?? [];
       if (
         groupPath.length > bestLength &&
         groupPath.length <= path.length &&
@@ -1158,7 +765,7 @@ export class StepStore {
   }
 
   #resolvePath(): StepPath {
-    const { levelSizes } = this.#getLayout();
+    const layout = this.#getLayout();
     const {
       path: relative,
       group,
@@ -1167,7 +774,7 @@ export class StepStore {
       toEnd,
       inRange,
     } = this.#position.get();
-    const groupPath = group === undefined ? [] : this.#groupPath(group);
+    const groupPath = group === undefined ? [] : layout.groupPath(group);
     let target =
       groupPath === undefined ? fallback : [...groupPath, ...relative];
     // Steps without their group are found by their texts instead.
@@ -1179,7 +786,7 @@ export class StepStore {
     }
     const path: number[] = [];
     for (const position of target) {
-      const size = levelSizes.get(levelKey(path)) ?? 0;
+      const size = layout.sizeOf(path) ?? 0;
       if (!Number.isInteger(position) || position < 0 || position > size) {
         break;
       }
@@ -1189,7 +796,7 @@ export class StepStore {
       // Go to the last step of each nested level, including the levels nested
       // in step 0 if there are no other steps.
       for (;;) {
-        const size = levelSizes.get(levelKey(path));
+        const size = layout.sizeOf(path);
         if (size === undefined) {
           break;
         }
@@ -1212,75 +819,13 @@ export class StepStore {
   }
 
   #computeStatus(node: StepNode): StepStatus {
-    const { parents, placements } = this.#getLayout();
-    const parent = parents.get(node);
-    const inherited =
-      parent === undefined
-        ? SHOWN
-        : this.#computeAppearance(parent, new Set([node]));
-    const place = this.#computePlace(node);
-    return placements.has(node)
-      ? { ...place, inherited, look: this.#computeAppearance(node, new Set()) }
-      : { ...place, inherited };
-  }
-
-  /**
-   * Returns how `node` looks as a whole, which elements without a look of their
-   * own take on: like its first element in document order that has a look,
-   * apart from elements that are always shown, like `Steps`, if there are others.
-   */
-  #appearancesOf(node: StepNode): RankedAppearances | undefined {
-    const looks = [...node.elements]
-      .sort(([x], [y]) => compareDocumentOrder(x, y))
-      .flatMap(([, { appearances }]) => appearances ?? []);
-    return looks.find((look) => look !== ALWAYS_SHOWN) ?? looks[0];
-  }
-
-  /**
-   * Returns the step whose look `node` takes on, if it's part of a step that
-   * has a look. Steps whose content changes instead, like `Steps`, have none.
-   */
-  #lookOwner(node: StepNode): StepNode | undefined {
-    const owner = this.#getLayout().owners.get(node);
-    const appearances =
-      owner === undefined ? undefined : this.#appearancesOf(owner);
-    return appearances === undefined || appearances === ALWAYS_SHOWN
-      ? undefined
-      : owner;
-  }
-
-  /**
-   * Returns how `node` looks, at least as hidden as the steppers it is nested
-   * in, whether in the DOM or explicitly, or like the step it is part of.
-   */
-  #computeAppearance(
-    node: StepNode,
-    visited: Set<StepNode>,
-    path = this.getPath(),
-  ): RankedAppearance {
-    if (visited.has(node)) {
-      // Groups may nest in each other in a cycle.
-      return SHOWN;
-    }
-    visited.add(node);
-    const owner = this.#lookOwner(node);
-    if (owner !== undefined) {
-      return this.#computeAppearance(owner, visited, path);
-    }
-    const { phase } = this.#computePlace(node, path);
-    // Without a step to be part of, it looks like what encloses it.
-    const own = this.#isStepless(node)
-      ? SHOWN
-      : (this.#appearancesOf(node)?.[phase] ?? SHOWN);
-    const parent = this.#getLayout().parents.get(node);
-    return parent === undefined
-      ? own
-      : moreHidden(own, this.#computeAppearance(parent, visited, path));
-  }
-
-  /** Whether an element of `node` is an overlay. */
-  #isOverlay(node: StepNode): boolean {
-    return [...node.elements.values()].some(({ overlay }) => overlay === true);
+    const layout = this.#getLayout();
+    const path = this.getPath();
+    const place = layout.placeOf(node, path);
+    const inherited = layout.inheritedOf(node, path);
+    return layout.stepOf(node) === undefined
+      ? { ...place, inherited }
+      : { ...place, inherited, look: layout.lookOf(node, path) };
   }
 
   /**
@@ -1289,8 +834,8 @@ export class StepStore {
    * mode take that of the stepper `node` is nested in, or of the slide.
    */
   #splitModeOf(node: StepNode, visited: Set<StepNode>): SplitMode {
-    const { owners, parents } = this.#getLayout();
-    const parent = owners.get(node) ?? parents.get(node);
+    const step = this.#getLayout().stepOf(node);
+    const parent = step?.owner ?? step?.parent;
     let inherited: SplitMode | undefined;
     const getInherited = () => {
       inherited ??=
@@ -1310,23 +855,19 @@ export class StepStore {
 
   #computeSplitPaths(): readonly StepPath[] {
     const states = this.#positionsInRange();
-    const { anchors } = this.#getLayout();
-    const nodes = [...anchors.keys()];
-    const { parents } = this.#getLayout();
+    const layout = this.#getLayout();
+    const nodes = layout.steppers;
     const isLegible = (
       node: StepNode,
       path: StepPath,
       look?: RankedAppearances,
     ) => {
-      const parent = parents.get(node);
       const appearance =
         look === undefined
-          ? this.#computeAppearance(node, new Set(), path)
+          ? layout.lookOf(node, path)
           : moreHidden(
-              look[this.#computePlace(node, path).phase],
-              parent === undefined
-                ? SHOWN
-                : this.#computeAppearance(parent, new Set([node]), path),
+              look[layout.placeOf(node, path).phase],
+              layout.inheritedOf(node, path),
             );
       return appearance.rank <= this.#legibleRank;
     };
@@ -1337,14 +878,14 @@ export class StepStore {
     ) =>
       new Set(
         states.flatMap((path, index) =>
-          when(this.#computePlace(node, path)) && isLegible(node, path, look)
+          when(layout.placeOf(node, path)) && isLegible(node, path, look)
             ? [index]
             : [],
         ),
       );
     // Elements with a look of their own need a page in that look, too.
     const looksOf = (node: StepNode): (RankedAppearances | undefined)[] => {
-      const whole = this.#appearancesOf(node);
+      const whole = layout.appearancesOf(node);
       const own = new Set<RankedAppearances>();
       for (const { appearances, ownLook } of node.elements.values()) {
         if (
@@ -1359,7 +900,7 @@ export class StepStore {
     };
     // What isn't a step is part of what encloses it, which isn't an overlay.
     const overlays = nodes.filter(
-      (node) => this.#isOverlay(node) && !this.#isStepless(node),
+      (node) => isOverlay(node) && !layout.isStepless(node),
     );
     const covered = new Set(
       states.flatMap((path, index) =>
@@ -1381,7 +922,7 @@ export class StepStore {
     const forced: number[] = [];
     for (const node of nodes) {
       const mode = this.#splitModeOf(node, new Set());
-      const count = anchors.get(node)?.options.count ?? 1;
+      const count = layout.stepOf(node)?.anchor.options.count ?? 1;
       const nodeUnits = looksOf(node).flatMap((look) =>
         mode === 'none'
           ? []
@@ -1397,12 +938,12 @@ export class StepStore {
               )
             : [legibleStates(node, undefined, look)],
       );
-      const overlay = this.#isOverlay(node);
+      const overlay = isOverlay(node);
       for (const unit of nodeUnits) {
         units.push(overlay ? unit : uncoveredOf(unit));
       }
       const turn = states.flatMap((path, index) => {
-        const { phase } = this.#computePlace(node, path);
+        const { phase } = layout.placeOf(node, path);
         return phase === 'current' || phase === 'open' ? [index] : [];
       });
       const first = turn[0];
@@ -1426,7 +967,8 @@ export class StepStore {
       }
     }
     for (const { group, path } of this.#slideSplit?.pages ?? []) {
-      const groupPath = group === undefined ? [] : this.#groupPath(group);
+      const groupPath =
+        group === undefined ? [] : this.#getLayout().groupPath(group);
       if (groupPath === undefined) {
         continue;
       }
@@ -1441,42 +983,5 @@ export class StepStore {
     return planSplit(states.length, units, forced).map(
       (index) => states[index] ?? [],
     );
-  }
-
-  /**
-   * Returns where `path` is relative to `node`, which is what encloses it if
-   * it isn't a step, or the slide itself.
-   */
-  #computePlace(node: StepNode, path = this.getPath()): StepPlace {
-    const { parents, placements } = this.#getLayout();
-    if (this.#isStepless(node)) {
-      const parent = parents.get(node);
-      return parent === undefined ? SLIDE : this.#computePlace(parent, path);
-    }
-    const placement = placements.get(node);
-    if (placement === undefined) {
-      return FUTURE;
-    }
-    const { level, first, last } = placement;
-    for (const [depth, step] of level.entries()) {
-      const position = path[depth] ?? 0;
-      if (position !== step) {
-        // The enclosing step is either already done or not yet shown.
-        return position > step ? DISTANT_PAST : DISTANT_FUTURE;
-      }
-    }
-    const position = path[level.length] ?? 0;
-    if (position < first) {
-      return FUTURE;
-    }
-    if (position > last) {
-      return PAST;
-    }
-    // Step 0 of the nested level is shown along with the stepper.
-    const nested = path.slice(level.length + 1).some((step) => step > 0);
-    return {
-      stepIndex: position - first,
-      phase: nested ? 'open' : 'current',
-    };
   }
 }
