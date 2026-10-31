@@ -6,7 +6,7 @@ import {
 } from '@mui/material/styles';
 import {
   Step,
-  WITH_CONTENT,
+  JOINS_CONTENT,
   useSlideView,
   type ComponentTheme,
   type StepProps,
@@ -19,7 +19,7 @@ import { cssLength } from './Columns.tsx';
 /** Props of a {@link Column}. */
 export interface ColumnProps extends Omit<
   StepProps,
-  'component' | 'defaultAttachment' | 'children'
+  'component' | 'defaults' | 'children'
 > {
   /**
    * Title shown centered above the column, e.g., the label of a
@@ -121,7 +121,7 @@ export function Column(inProps: ColumnProps): JSX.Element {
   const { kind } = useSlideView();
   return (
     <ColumnRoot
-      defaultAttachment={WITH_CONTENT}
+      defaults={JOINS_CONTENT}
       className={`${columnClasses.root}${className === undefined ? '' : ` ${className}`}`}
       ownerState={ownerState}
       {...stepProps}

@@ -1,4 +1,10 @@
-import { List, ListItemButton, ListItemText, Typography } from '@mui/material';
+import {
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Typography,
+} from '@mui/material';
 import { useMemo, useSyncExternalStore, type JSX } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
@@ -13,9 +19,12 @@ import type { StepPath, StepStore, StepTreeEntry } from '../steps/StepStore.ts';
 type EntryPhase = 'past' | 'open' | 'current' | 'future';
 
 function phaseOf(path: StepPath, current: StepPath): EntryPhase {
-  // The start of the slide doesn't enclose the steps of the slide.
+  // The start of the slide only encloses the steps nested in step 0.
   if (path.length === 0) {
-    return current.length === 0 ? 'current' : 'past';
+    if (current.length === 0) {
+      return 'current';
+    }
+    return current[0] === 0 ? 'open' : 'past';
   }
   for (let depth = 0; depth < path.length; depth += 1) {
     const step = path[depth] ?? 0;
@@ -58,16 +67,8 @@ function Entry({
   // Going through the slide skips steps outside its range, but they can still
   // be chosen here.
   const skipped = !store.isInRange(path);
-  return (
-    <ListItemButton
-      selected={phase === 'current'}
-      aria-current={phase === 'current' ? 'step' : undefined}
-      ref={phase === 'current' ? scrollIntoView : undefined}
-      onClick={() => {
-        store.reset(path);
-      }}
-      sx={{ pl: 2 + level * 2 }}
-    >
+  const content = (
+    <>
       <ListItemText
         // Placeholders are in the language of the user interface.
         lang={label === '' ? undefined : lang}
@@ -91,6 +92,23 @@ function Entry({
       </ListItemText>
       {overlay && <OverlayIcon sx={{ ml: 1, color: 'text.secondary' }} />}
       {page && <SplitPageIcon sx={{ ml: 1, color: 'text.secondary' }} />}
+    </>
+  );
+  // Step 0 of a step is shown along with it, so there is nothing to go to.
+  if (path.length > 0 && path.at(-1) === 0) {
+    return <ListItem sx={{ pl: 2 + level * 2 }}>{content}</ListItem>;
+  }
+  return (
+    <ListItemButton
+      selected={phase === 'current'}
+      aria-current={phase === 'current' ? 'step' : undefined}
+      ref={phase === 'current' ? scrollIntoView : undefined}
+      onClick={() => {
+        store.reset(path);
+      }}
+      sx={{ pl: 2 + level * 2 }}
+    >
+      {content}
     </ListItemButton>
   );
 }
@@ -130,7 +148,10 @@ export interface StepTreeProps {
  * The steps of the current slide as a tree, labeled with the text they show,
  * which highlights the current step, and goes to a step when clicked.
  *
- * The first entry goes to the beginning of the slide, before any of its steps.
+ * The first entry goes to the beginning of the slide, before any of its steps,
+ * and shows the steps at step 0 of the slide, if there are any. Steps at step 0
+ * of other steps are shown along with them, so they can't be chosen on their
+ * own.
  * Steps outside the range of the slide (see `StepRange`), which going through
  * the slide skips, are struck through. Icons mark the steps that become pages
  * when the slide is split into pages, and the steps that may cover other
@@ -151,6 +172,8 @@ export function StepTree({ store }: StepTreeProps): JSX.Element {
     () => new Set(splitPaths.map((path) => path.join('.'))),
     [splitPaths],
   );
+  const [first] = tree;
+  const start = first?.path.length === 1 && first.path[0] === 0 ? first : null;
   if (tree.length === 0) {
     return (
       <Typography
@@ -174,16 +197,26 @@ export function StepTree({ store }: StepTreeProps): JSX.Element {
     >
       <Entry
         path={[]}
-        label=""
+        label={start?.label ?? ''}
         fallback={t('startOfSlide')}
         level={0}
         current={current}
         store={store}
         lang={lang}
         page={pages.has('')}
-        overlay={false}
+        overlay={start?.overlay ?? false}
       />
-      {renderEntries(tree, 0, current, store, t, lang, pages)}
+      {start !== null &&
+        renderEntries(start.children, 1, current, store, t, lang, pages)}
+      {renderEntries(
+        start === null ? tree : tree.slice(1),
+        0,
+        current,
+        store,
+        t,
+        lang,
+        pages,
+      )}
     </List>
   );
 }

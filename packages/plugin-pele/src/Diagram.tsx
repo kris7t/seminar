@@ -10,7 +10,7 @@ import {
   useSlideElementRegistry,
   useSlideView,
   useStepAppearance,
-  WITH_CONTENT,
+  JOINS_CONTENT,
   type ComponentTheme,
   type RankedAppearance,
   type StepProps,
@@ -59,7 +59,7 @@ export interface DiagramFormula {
 /** Props of a {@link Diagram}. */
 export interface DiagramProps extends Omit<
   StepProps,
-  'component' | 'defaultAttachment' | 'children'
+  'component' | 'defaults' | 'children'
 > {
   /** The Mermaid source of the diagram. */
   source: string;
@@ -586,7 +586,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
     return (
       <Step
         component="pre"
-        defaultAttachment={WITH_CONTENT}
+        defaults={JOINS_CONTENT}
         className={className}
         style={style}
         data-lang="mermaid"
@@ -600,7 +600,7 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
   return (
     <DiagramRoot
       component="div"
-      defaultAttachment={WITH_CONTENT}
+      defaults={JOINS_CONTENT}
       className={
         className === undefined
           ? diagramClasses.root

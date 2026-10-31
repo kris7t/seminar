@@ -316,7 +316,7 @@ describe('steps', () => {
       expect(states).toEqual([[], ['*callout', '*a']]);
     });
 
-    it('does not follow steps shown up front', async () => {
+    it('follows steps shown up front', async () => {
       const states = await walk(
         <>
           <Paragraph step data-name="a">
@@ -329,10 +329,13 @@ describe('steps', () => {
         </>,
         1,
       );
-      expect(states).toEqual([['*up front'], ['*a', 'up front', '*b']]);
+      expect(states).toEqual([
+        ['*up front', '*b'],
+        ['*a', 'up front', 'b'],
+      ]);
     });
 
-    it('is the same explicitly as by default', async () => {
+    it('creates step 0 if written and there is nothing to join', async () => {
       const user = userEvent.setup();
       render(
         <Deck>
@@ -353,10 +356,11 @@ describe('steps', () => {
           </Slide>
         </Deck>,
       );
-      expect(shownItems()).toEqual(['*a', '*']);
+      // The second one joins the first one, skipping the overlay.
+      expect(shownItems()).toEqual(['*a', '*', '*b']);
       await user.keyboard('{ArrowRight}');
-      expect(window.location.hash).toBe('#slide=1&step=1');
-      expect(shownItems()).toEqual(['a', '', '*more', '*b']);
+      expect(window.location.hash).toBe('#slide=1&step=0.1');
+      expect(shownItems()).toEqual(['*a', '', '*more', '*b']);
     });
 
     it('leaves overlays that are shown with the previous step together', async () => {
@@ -395,7 +399,7 @@ describe('steps', () => {
     });
   });
 
-  it('nests steps in inert items in the parent of the item', async () => {
+  it('nests steps in plain items in the step the item is part of', async () => {
     const user = userEvent.setup();
     render(
       <Deck>
@@ -416,12 +420,131 @@ describe('steps', () => {
       </Deck>,
     );
     await user.keyboard('{ArrowRight}');
-    expect(shownItems()).toEqual(['*a', '*b', '*b.p']);
-    // The step in the inert item is a step of the slide, as if the item
-    // wasn't a step, and the paragraph after it is shown with it.
+    expect(shownItems()).toEqual(['*a', '*b', '*b.p', '*after']);
     await user.keyboard('{ArrowRight}');
-    expect(window.location.hash).toBe('#slide=1&step=2');
-    expect(shownItems()).toEqual(['a', 'b', 'b.p', '*b.more', '*after']);
+    expect(window.location.hash).toBe('#slide=1&step=1.1');
+    expect(shownItems()).toEqual(['*a', '*b', 'b.p', '*b.more', '*after']);
+  });
+
+  it('numbers steps in plain content without a step as steps of the slide', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <ul>
+            <ListItem>
+              <ul>
+                <ListItem>
+                  <ul>
+                    <ListItem step>deep</ListItem>
+                  </ul>
+                </ListItem>
+              </ul>
+            </ListItem>
+          </ul>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=1');
+  });
+
+  it('shows plain content with the latest step on its level, wherever it is', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Paragraph data-name="a">a</Paragraph>
+          <Paragraph step data-name="b">
+            b
+          </Paragraph>
+          <div>
+            <Paragraph data-name="c">c</Paragraph>
+          </div>
+        </Slide>
+      </Deck>,
+    );
+    expect(shownItems()).toEqual(['*a']);
+    await user.keyboard('{ArrowRight}');
+    expect(shownItems()).toEqual(['a', '*b', '*c']);
+  });
+
+  it('creates a step by default only with with, not joins', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Step defaults={{ joins: 'content' }} data-name="joins">
+            joins <Step data-name="in joins">inside</Step>
+          </Step>
+          <Step defaults={{ with: 'content' }} data-name="with">
+            with <Step data-name="in with">inside</Step>
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    // The first one is part of nothing, so the step inside it is a step of the
+    // slide, which the second one joins.
+    expect(shownItems()).toEqual(['*joins']);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    expect(shownItems()).toEqual(['joins', '*in joins', '*with']);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=1.1');
+    expect(shownItems()).toEqual(['joins', '*in joins', '*with', '*in with']);
+  });
+
+  it.each([[false], ['false' as const]])(
+    'treats step=%j like with="parent", unless with is set',
+    async (step) => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step with="initial" data-name="first">
+              first
+            </Step>
+            <Step step={step} data-name="not a step">
+              not a step <Step data-name="inside">inside</Step>
+            </Step>
+            <Step step={step} with="self" data-name="own">
+              own
+            </Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(shownItems()).toEqual(['*first', '*not a step']);
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=1');
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=2');
+      expect(shownItems()).toContain('*own');
+    },
+  );
+
+  it('places with="parent" with what encloses it', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Step with="initial" data-name="first">
+            first
+          </Step>
+          <Paragraph with="parent" data-name="stays">
+            stays
+          </Paragraph>
+          <Paragraph data-name="too">
+            too <Step data-name="inside">inside</Step>
+          </Paragraph>
+          <Step data-name="next">next</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(shownItems()).toEqual(['*first', '*stays', '*too']);
+    await user.keyboard('{ArrowRight}');
+    // The step inside it is a step of the slide, not nested in the initial one.
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    expect(shownItems()).toEqual(['first', 'stays', 'too', '*inside']);
   });
 
   it('shows the steps of a group together', async () => {

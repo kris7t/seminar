@@ -26,6 +26,7 @@ import {
   useUiLanguage,
   type SlidePoint,
   type StepProps,
+  type StepOwnDefaults,
   type StepState,
 } from '@seminar/core';
 import { useState, type JSX, type ReactNode } from 'react';
@@ -77,7 +78,7 @@ export type CalloutAlign =
 /** Props of a speech bubble callout, which behaves like a step. */
 export interface CalloutProps extends Omit<
   StepProps,
-  'children' | 'color' | 'defaultBehavior'
+  'children' | 'color' | 'defaults'
 > {
   /**
    * Width of the rounded body in logical slide pixels. Without it, the body
@@ -437,6 +438,9 @@ function initialGeometry(ownerState: CalloutOwnerState): CalloutGeometry {
   return fromAnchorOrigin(geometry, anchorX, anchorY, originX, originY);
 }
 
+// Callouts float over the content around them, as long as their step lasts.
+const OWN_DEFAULTS: StepOwnDefaults = { behavior: 'scoped', overlay: true };
+
 /**
  * A speech bubble anchored to its position in the text. Its body and stem are
  * drawn as an SVG path and placed in the logical coordinate space of the
@@ -593,8 +597,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         <Step
           component={block ? 'aside' : 'small'}
           role={block ? undefined : 'note'}
-          defaultBehavior="scoped"
-          defaultOverlay
+          defaults={OWN_DEFAULTS}
           className={className}
           {...stepProps}
         >
@@ -655,15 +658,14 @@ export function Callout(inProps: CalloutProps): JSX.Element {
       >
         <CalloutRoot
           component={element}
-          defaultBehavior="scoped"
-          // Callouts float over the content around them.
-          defaultOverlay
+          // Callouts are nested in the step of the element they point at.
+          defaults={
+            targetElement === undefined
+              ? OWN_DEFAULTS
+              : { ...OWN_DEFAULTS, in: targetElement }
+          }
           className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
           ownerState={ownerState}
-          // Callouts are nested in the step of the element they point at.
-          defaultAttachment={
-            targetElement === undefined ? undefined : { in: targetElement }
-          }
           {...stepProps}
         >
           {stepChildren}

@@ -21,16 +21,37 @@ step, until the slide is done and the next slide comes.
 :step This paragraph is shown in the third step.
 ```
 
-Content without `:step` is shown with the step before it, or up front if
-there is none. This holds for list items, paragraphs, images, and also
-elements like columns. So `:step` marks where a new step begins, and
-everything after it follows along until the next `:step`.
+Content without `:step` is part of the latest step before it on its level, or
+shown up front if there is none. It appears and goes with that step, and looks
+like it, whatever its behavior. This holds for list items, paragraphs, images,
+and also elements like columns. So `:step` marks where a new step begins, and
+everything after it follows along until the next `:step`, except for steps
+nested in it, which come after it.
 
-`:step{with=initial}` shows something up front, even after other steps, and
-doesn't change which step the content after it follows. Content follows the
-latest step that shows content, not an overlay like a callout, which
-`:step{with=content}` also says explicitly. `:step{with=previous}` shows
-something with the step right before it, whatever that is.
+`with` chooses when a step is shown:
+
+- `with=previous` shows it with the step right before it, whatever that is.
+- `with=content` shows it with the latest step that shows content, not an
+  overlay like a callout, which is what plain content does.
+- `with=initial` shows it as soon as what encloses it is shown, even after other
+  steps.
+- `with=parent` makes it part of what encloses it, rather than a step, so it
+  has no look of its own, and steps inside it are nested directly in what
+  encloses it. A behavior doesn't apply here. `step=false` means the same.
+
+Without a behavior of its own, a step placed like this is part of the step it's
+shown with, and looks like it. A behavior like `:step{reveal with=previous}` gives
+it its own look. If there is no step to join, `with=previous`, `with=content`, and
+`with=initial` make a step that is shown up front, unlike content without `:step`.
+It's a real step: it takes the default of the slide, and steps inside it end at the
+next step on its level:
+
+```mdx
+- :step{with=initial} Shown up front:callout[Goes away with the next item]
+- This goes with it, too
+- :step{with=parent} This stays
+- :step The next item
+```
 
 Images take `step` and the other attributes of `:step` in their attributes,
 e.g., `![Results](./results.png){step}`. Other elements take them the same
@@ -81,8 +102,13 @@ The step tree (Shift+T) shows how the steps of the current slide nest, and
 the address shows the current step, e.g., `#parsing&step=1.2` for Syntax
 tree.
 
-A paragraph or image in a list item is shown with its item, and one with
-`:step` is a nested step of the item.
+A paragraph or image in a list item is part of its item, and one with `:step`
+is a nested step of the item. Steps in content without `:step` are nested in the
+step that content is part of, or are steps of the slide if there is none.
+
+Steps nested in a step shown up front have a 0 in the address, e.g., `step=0.1`,
+or `step=1.0.1` for a step shown as soon as step 1. The step tree shows them
+below the step they are nested in, which is the first entry for the slide.
 
 ## Groups
 
@@ -187,8 +213,8 @@ steps, e.g., to dim past steps, so that the audience follows the current one:
 - :step{focus} and this one dimmed before and after
 ```
 
-Content shown with a step looks like it. Themes can change how behaviors look
-and add new ones.
+Content without a step of its own takes no default behavior, and looks like the
+step it is part of. Themes can change how behaviors look and add new ones.
 
 ## Fades
 

@@ -3,7 +3,7 @@ import { styled, useThemeProps } from '@mui/material/styles';
 import {
   Step,
   useSlideView,
-  WITH_CONTENT,
+  JOINS_CONTENT,
   type ComponentTheme,
   type StepProps,
 } from '@seminar/core';
@@ -12,7 +12,7 @@ import type { JSX, ReactNode } from 'react';
 /** Props of a {@link Code} block. */
 export interface CodeProps extends Omit<
   StepProps,
-  'component' | 'defaultAttachment' | 'children'
+  'component' | 'defaults' | 'children'
 > {
   /** Language of the code, e.g., `ts`. */
   lang?: string | undefined;
@@ -84,7 +84,7 @@ export function Code(inProps: CodeProps): JSX.Element {
     return (
       <Step
         component="pre"
-        defaultAttachment={WITH_CONTENT}
+        defaults={JOINS_CONTENT}
         className={className}
         data-lang={lang}
         {...stepProps}
@@ -96,7 +96,7 @@ export function Code(inProps: CodeProps): JSX.Element {
   return (
     <CodeRoot
       component="div"
-      defaultAttachment={WITH_CONTENT}
+      defaults={JOINS_CONTENT}
       className={
         className === undefined
           ? codeClasses.root

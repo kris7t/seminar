@@ -46,7 +46,7 @@ A good slide component follows these rules:
   Make updates on click wait, too, with `useSlideUpdate`. See
   [Waiting until the slide is ready](components.md#waiting-until-the-slide-is-ready).
 - **Use `Step` for steps.** Wrap the component in a `Step`, and set where it
-  goes with `defaultAttachment`. Then `:step` attributes work on it.
+  goes with `defaults`. Then `:step` attributes work on it.
 - **Accept strings for props that a directive may set.** Directive
   attributes are always strings, and a bare flag is an empty string.
 - **Make it themeable.** Read props with `useThemeProps`, and build its

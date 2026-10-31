@@ -10,6 +10,7 @@ import {
 import {
   createElement,
   use,
+  useEffect,
   type ElementType,
   type HTMLAttributes,
   type JSX,
@@ -179,23 +180,16 @@ export interface StepProps
   after?: string | undefined;
   /**
    * Shows the step with a step of its own, like `with="self"`, e.g., `step`
-   * in a directive. Ignored if `with` is set.
+   * in a directive, or makes it not a step if `false`, like `with="parent"`,
+   * e.g., `step=false` in a directive. Ignored if `with` is set.
    */
-  step?: boolean | '' | undefined;
+  step?: boolean | '' | 'false' | undefined;
   /**
-   * How the step is attached to the steps by default, unless it's placed
-   * with `with`, `step`, `in`, or `after`, or joins a group with other
-   * steps. Wrapper components can use this to choose their usual place:
-   *
-   * - `{ with: 'content' }` or `{ with: 'initial' }` makes the step inert
-   *   by default, e.g., list items, which are shown with the content before
-   *   them unless they set a step behavior, e.g., `only`, as well.
-   * - `{ in: group }` nests the step in a group or in the step of an
-   *   element, e.g., callouts in the step of the element they point at.
-   *
-   * Steps creating a group, e.g., with an `id`, still use their default.
+   * What the step does unless the user says otherwise (see
+   * {@link StepDefaults}), which wrapper components can use to choose their
+   * usual place and look.
    */
-  defaultAttachment?: StepAttachment | undefined;
+  defaults?: StepDefaults | undefined;
   /**
    * Title of the step in the tree of steps, instead of its text. Unlike the
    * HTML attribute, it isn't shown as a tooltip.
@@ -203,56 +197,86 @@ export interface StepProps
   title?: string | undefined;
   /**
    * How the step behaves across its phases. Defaults to a shorthand like
-   * `only` (see {@link StepBehaviorShorthands}), then to `defaultBehavior`,
-   * the `steps` of the slide, the `defaultProps` of the theme, and finally
+   * `only` (see {@link StepBehaviorShorthands}), then to `defaults`, the
+   * `steps` of the slide, the `defaultProps` of the theme, and finally
    * `'reveal'`.
    */
   behavior?: StepBehavior | undefined;
   /**
-   * Behavior to use when neither `behavior` nor a behavior shorthand is set.
-   * Wrapper components can use this to choose their usual behavior while
-   * still supporting built-in and theme-defined shorthands. Takes precedence
-   * over the default of the slide and theme.
-   */
-  defaultBehavior?: StepBehavior | undefined;
-  /**
    * How the step asks for pages when the slide is split into pages, e.g., for
-   * a PDF (see {@link SplitProp}). Its mode defaults to `defaultSplit`, then to
+   * a PDF (see {@link SplitProp}). Its mode defaults to `defaults`, then to
    * the mode of the step it is nested in, and then to the `split` of the
    * slide.
    */
   split?: SplitProp | undefined;
   /**
-   * What `split` leaves out. Wrapper components can use this to choose how
-   * they ask for pages.
-   */
-  defaultSplit?: SplitProp | undefined;
-  /**
    * Whether the step may cover other content, which then also needs a page
-   * without it when the slide is split into pages. Defaults to
-   * `defaultOverlay`, which wrapper components can use, e.g., callouts.
+   * without it when the slide is split into pages. Defaults to `defaults`.
    */
   overlay?: OverlayProp | undefined;
-  /** Whether the step is an overlay unless `overlay` says otherwise. */
-  defaultOverlay?: OverlayProp | undefined;
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   children?: ReactNode | ((state: StepState) => ReactNode);
   sx?: SxProps<Theme>;
 }
 
-/** How a step is attached to the steps by default, see `Step`. */
-export type StepAttachment =
-  { with: 'content' | 'initial' } | { in: string | Element };
+/** A step that a step without a place of its own can be shown with. */
+export type StepPlace = 'previous' | 'content' | 'initial';
+
+/** What a step does by default if it is a step, see {@link StepDefaults}. */
+export interface StepOwnDefaults {
+  /**
+   * The behavior unless a behavior or a shorthand is set, which takes precedence
+   * over the default of the slide and theme.
+   */
+  behavior?: StepBehavior | undefined;
+  /** What `split` leaves out. */
+  split?: SplitProp | undefined;
+  /** Whether the step is an overlay unless `overlay` says otherwise. */
+  overlay?: OverlayProp | undefined;
+}
 
 /**
- * Attaches a step to the content before it by default, e.g., for content shown
- * in order with the steps around it, like paragraphs.
+ * What a `Step` does unless the user says otherwise:
+ *
+ * - `{ joins: 'content' }` isn't a step: it's part of the step it refers to,
+ *   and looks like it, or is shown up front if there is none, e.g., list items.
+ *   `with`, `step`, `in`, `after`, a step behavior, e.g., `only`, or a group
+ *   with other steps replaces it with a step.
+ * - `{ with: 'content' }`, like `with="content"`, is also part of that step, but
+ *   creates a step if there is none. `with`, `step`, `in`, or `after` replaces it.
+ * - `{ in: group }` nests the step in a group or in the step of an element,
+ *   e.g., callouts in the step of the element they point at. `in` or `after`
+ *   replaces it.
+ *
+ * Steps creating a group, e.g., with an `id`, still use their default.
  */
-export const WITH_CONTENT: StepAttachment = { with: 'content' };
+export type StepDefaults =
+  | {
+      joins: StepPlace;
+      with?: never;
+      in?: never;
+      behavior?: never;
+      split?: never;
+      overlay?: never;
+    }
+  | (StepOwnDefaults & {
+      joins?: never;
+      with?: StepPlace | undefined;
+      in?: never;
+    })
+  | (StepOwnDefaults & {
+      joins?: never;
+      with?: never;
+      in: string | Element;
+    });
 
-/** Attaches a step to the initial step by default, i.e., shows it up front. */
-export const WITH_INITIAL: StepAttachment = { with: 'initial' };
+/**
+ * Makes a step part of the content before it by default, rather than a step of
+ * its own, or shows it up front if there is none, e.g., for content shown in
+ * order with the steps around it, like paragraphs.
+ */
+export const JOINS_CONTENT: StepDefaults = { joins: 'content' };
 
 export type StepClassKey =
   'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
@@ -347,6 +371,7 @@ export function Step(inProps: StepProps): JSX.Element {
   const theme = useTheme();
   const slideBehavior = use(StepBehaviorContext);
   const enclosing = use(StepAppearanceContext);
+  const together = use(TogetherContext);
   const {
     component = 'div',
     with: withStep,
@@ -355,14 +380,11 @@ export function Step(inProps: StepProps): JSX.Element {
     in: parent,
     after,
     step: ownStep,
-    defaultAttachment,
+    defaults,
     title,
     behavior: themeBehavior,
-    defaultBehavior,
     split,
-    defaultSplit,
     overlay,
-    defaultOverlay,
     cut,
     fade,
     fadeIn,
@@ -376,59 +398,79 @@ export function Step(inProps: StepProps): JSX.Element {
   } = props;
   const view = use(SlideViewContext);
   const [shorthand, other] = splitShorthands(theme, rest);
-  // The behavior of the slide takes precedence over the default of the theme.
-  const behavior =
-    inProps.behavior ??
-    shorthand ??
-    defaultBehavior ??
-    slideBehavior ??
-    themeBehavior ??
-    'reveal';
-  const appearances = rankAppearances(theme, appearancesOf(theme, behavior));
-  const together = use(TogetherContext);
+  const ownBehavior = inProps.behavior ?? shorthand;
   const explicitWith =
-    withStep ?? (ownStep === true || ownStep === '' ? 'self' : undefined);
-  // Steps placed explicitly aren't attached by default. Joining a group with
-  // other steps is left to the store, which knows the group.
-  const attachment =
-    together !== undefined ||
-    explicitWith !== undefined ||
-    parent !== undefined ||
-    after !== undefined
-      ? undefined
-      : defaultAttachment;
-  // Inert steps become steps of their own with a behavior of their own.
-  const defaultWith =
-    attachment !== undefined &&
-    'with' in attachment &&
-    inProps.behavior === undefined &&
-    shorthand === undefined
-      ? attachment.with
+    withStep ??
+    (ownStep === true || ownStep === ''
+      ? 'self'
+      : ownStep === false || ownStep === 'false'
+        ? 'parent'
+        : undefined);
+  const placed = parent !== undefined || after !== undefined;
+  // Placing it otherwise replaces the default of its place.
+  const defaultPlace =
+    together === undefined && explicitWith === undefined && !placed
+      ? defaults
       : undefined;
+  const defaultWith = defaultPlace?.with;
+  // A behavior asks for a step, so it replaces a default of not being one.
+  const defaultJoins =
+    ownBehavior === undefined ? defaultPlace?.joins : undefined;
+  const isPart = explicitWith === 'parent' || defaultJoins !== undefined;
+  // Without a look of its own, a step is part of the step it's placed with.
+  const joins =
+    together === undefined &&
+    (isPart ||
+      (ownBehavior === undefined &&
+        defaults?.behavior === undefined &&
+        (defaultWith !== undefined ||
+          withStep === 'previous' ||
+          withStep === 'content' ||
+          withStep === 'initial')));
+  // The behavior of the slide takes precedence over the default of the theme,
+  // but only applies to steps. What encloses `with="parent"` decides its look.
+  const behavior =
+    explicitWith === 'parent'
+      ? 'reveal'
+      : (ownBehavior ??
+        (isPart
+          ? 'reveal'
+          : (defaults?.behavior ??
+            slideBehavior ??
+            themeBehavior ??
+            'reveal')));
+  const ignoredBehavior = explicitWith === 'parent' ? ownBehavior : undefined;
+  useEffect(() => {
+    if (ignoredBehavior !== undefined) {
+      console.warn(
+        `Ignoring the behavior \`${ignoredBehavior}\` of content with \`with="parent"\` or \`step={false}\`, which isn't a step.`,
+      );
+    }
+  }, [ignoredBehavior]);
+  const appearances = rankAppearances(theme, appearancesOf(theme, behavior));
   const step = useStep({
     with: together ?? explicitWith,
     group,
     in: parent,
-    defaultIn:
-      attachment !== undefined && 'in' in attachment
-        ? attachment.in
-        : undefined,
+    defaultIn: together === undefined && !placed ? defaults?.in : undefined,
     defaultWith,
+    defaultJoins,
+    joins,
     after,
     title,
     appearances,
     fades: { cut, fade, fadeIn, fadeOut, fadeBefore, fadeAfter },
     split,
-    defaultSplit,
-    overlay: parseOverlay(overlay) ?? parseOverlay(defaultOverlay),
+    defaultSplit: defaults?.split,
+    overlay: parseOverlay(overlay) ?? parseOverlay(defaults?.overlay),
   });
-  const { phase, inherited } = step;
+  const { phase, inherited, joined } = step;
   const elementId = useSlideElementId(id ?? '');
   const elementRef = useSlideElementRef(id ?? '');
   const ref = useForkRef(step.ref, id === undefined ? null : elementRef);
   // Elements inside a step already look like it, e.g., hidden or dimmed.
   const appearance = moreHidden(
-    moreHidden(appearances[phase], inherited),
+    moreHidden(joined ?? appearances[phase], inherited),
     enclosing,
   );
   const content = typeof children === 'function' ? children(step) : children;

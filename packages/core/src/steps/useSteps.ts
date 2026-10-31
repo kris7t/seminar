@@ -41,6 +41,11 @@ export interface StepState {
    * should look at least as hidden as.
    */
   inherited: RankedAppearance;
+  /**
+   * How the step that the stepper is part of looks, if it joined a step, which
+   * it should look like instead of following its own phases.
+   */
+  joined?: RankedAppearance | undefined;
 }
 
 export interface StepHandle extends StepState {
@@ -58,19 +63,20 @@ export interface StepHandle extends StepState {
  * How a stepper is linked to other steps:
  *
  * - `'self'` starts with a step of its own after the previous one, which is
- *   the default. Setting it explicitly also places a `Step` where it is,
- *   rather than by its `defaultAttachment`.
- * - `'previous'` shows its first step together with the previous stepper on
- *   the same level, whatever that is, e.g., to show two callouts at once. If
- *   there is no previous stepper on the level, it works like `'initial'`.
+ *   the default. Setting it explicitly also replaces the `with` or `joins` of
+ *   the `defaults` of a `Step`, which stays nested by their `in`.
+ * - `'previous'` shows its first step together with the previous step on the
+ *   same level, whatever that is, e.g., to show two callouts at once. If there
+ *   is none, it works like `'initial'`.
  * - `'content'` shows its first step together with the content on the same
- *   level so far, i.e., with the latest step that isn't an overlay, without
- *   a step of its own and without adding a level to the steps inside it. If
- *   there is no such step on the level, it works like `'initial'`.
+ *   level so far, i.e., with the latest step that isn't an overlay. If there is
+ *   none, it works like `'initial'`.
  * - `'initial'` shows its first step as soon as the enclosing step (or the slide)
  *   is shown, without creating a new step. It stays current until the first
  *   step on the same level is shown. This allows using the same component for
  *   content that is visible up front and content revealed in steps.
+ * - `'parent'` is part of what encloses the stepper, rather than a step, and
+ *   content after it follows it. It's shown as soon as the level is shown.
  * - A {@link StepHandle}, e.g., created up front with {@link useStep} or
  *   {@link useSteps}, shares that stepper instead of creating a new one: the
  *   elements are attached to it and follow its state. This allows revealing
@@ -78,7 +84,8 @@ export interface StepHandle extends StepState {
  *
  * By default, a stepper starts with a new step after the previous one.
  */
-export type StepWith = 'self' | 'previous' | 'content' | 'initial' | StepHandle;
+export type StepWith =
+  'self' | 'previous' | 'content' | 'initial' | 'parent' | StepHandle;
 
 export interface UseStepsOptions {
   /** See {@link StepWith}. */
@@ -114,7 +121,18 @@ export interface UseStepsOptions {
    * Like `with`, but only if the stepper doesn't join a group with other
    * elements.
    */
-  defaultWith?: 'content' | 'initial' | undefined;
+  defaultWith?: 'previous' | 'content' | 'initial' | undefined;
+  /**
+   * Like `defaultWith`, but part of that step, without creating a step if there
+   * is none.
+   */
+  defaultJoins?: 'previous' | 'content' | 'initial' | undefined;
+  /**
+   * Whether the stepper has no look of its own, and thus is part of the step
+   * that `with` refers to, if any, rather than a step of its own. Always the
+   * case for `with: 'parent'` and `defaultJoins`.
+   */
+  joins?: boolean | undefined;
   /**
    * Name of the group to place this stepper right after, nested in the same
    * stepper as the group, before the steppers that follow the group in
@@ -186,6 +204,8 @@ export function useSteps(
     in: parent,
     defaultIn,
     defaultWith,
+    defaultJoins,
+    joins = withStep === 'parent' || defaultJoins !== undefined,
     after,
     title,
     appearances,
@@ -233,7 +253,9 @@ export function useSteps(
         : store.attach(node, element, {
             count,
             placement,
-            defaultPlacement: defaultWith,
+            defaultPlacement: defaultJoins ?? defaultWith,
+            joins,
+            stepless: defaultJoins !== undefined,
             parent,
             defaultParent: defaultIn,
             after,
@@ -249,6 +271,8 @@ export function useSteps(
       count,
       placement,
       defaultWith,
+      defaultJoins,
+      joins,
       parent,
       defaultIn,
       after,
@@ -260,7 +284,7 @@ export function useSteps(
     ],
   );
   const getStatus = linked ? getUnlinkedStatus : () => store.getStatus(node);
-  const { stepIndex, phase, inherited } = useSyncExternalStore(
+  const { stepIndex, phase, inherited, joined } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,
     getStatus,
     getStatus,
@@ -275,8 +299,9 @@ export function useSteps(
       isActive: phase !== 'future' && phase !== 'distantFuture',
       isCurrent: phase === 'current' || phase === 'open',
       inherited,
+      joined,
     }),
-    [ref, count, clampedIndex, phase, inherited],
+    [ref, count, clampedIndex, phase, inherited, joined],
   );
   return linked ? withStep : ownStep;
 }

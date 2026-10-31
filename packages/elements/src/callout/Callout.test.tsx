@@ -245,14 +245,100 @@ describe('Callout', () => {
           stepClasses.past,
         ].includes(name),
       );
-    // Nested in the step of the figure, which is still to come.
+    // Nested in the step of the figure, which is still to come, whenever they
+    // are shown in it.
     expect(phase('nested')).toBe(stepClasses.distantFuture);
+    expect(phase('placed')).toBe(stepClasses.distantFuture);
+    expect(phase('own')).toBe(stepClasses.distantFuture);
+    await user.keyboard('{ArrowRight}');
+    expect(phase('nested')).toBe(stepClasses.future);
     expect(phase('placed')).toBe(stepClasses.current);
-    // With a step of its own, before the figure.
-    expect(phase('own')).toBe(stepClasses.future);
-    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
+    await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=figure.1');
     expect(phase('nested')).toBe(stepClasses.current);
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=figure.2');
+    expect(phase('own')).toBe(stepClasses.current);
+  });
+
+  it.each([
+    ['step={false}', { step: false }],
+    ['with="parent"', { with: 'parent' }],
+  ] as const)(
+    'is part of the step of the element with %s, without its behavior',
+    async (_name, props) => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide title="Callout">
+            <Step id="figure">Figure</Step>
+            <Callout anchor="figure" data-testid="callout" {...props}>
+              Note
+            </Callout>
+            <Step>Next</Step>
+          </Slide>
+        </Deck>,
+      );
+      const isShown = () =>
+        screen.getByTestId('callout').closest(`.${stepClasses.hidden}`) ===
+        null;
+      expect(isShown()).toBe(false);
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=figure');
+      expect(isShown()).toBe(true);
+      // Without `scoped`, which callouts have by default, it isn't hidden.
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=2');
+      expect(isShown()).toBe(true);
+    },
+  );
+
+  it('stays in the step of the element with a behavior', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="Callout">
+          <Step id="figure">Figure</Step>
+          <Callout anchor="figure" only data-testid="callout">
+            Note
+          </Callout>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=figure.1');
+    expect(
+      screen.getByTestId('callout').classList.contains(stepClasses.current),
+    ).toBe(true);
+  });
+
+  it('stays in the step of the element with another one shown together', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide title="Callout">
+          <Step id="figure">Figure</Step>
+          <Callout anchor="figure" data-testid="first">
+            First
+          </Callout>
+          <Callout anchor="figure" with="previous" data-testid="second">
+            Second
+          </Callout>
+          <Step>Next</Step>
+        </Slide>
+      </Deck>,
+    );
+    const isShown = (testId: string) =>
+      screen.getByTestId(testId).closest(`.${stepClasses.hidden}`) === null;
+    await user.keyboard('{ArrowRight}');
+    expect(isShown('first')).toBe(false);
+    expect(isShown('second')).toBe(false);
+    await user.keyboard('{ArrowRight}');
+    expect(isShown('first')).toBe(true);
+    expect(isShown('second')).toBe(true);
+    await user.keyboard('{ArrowRight}');
+    expect(isShown('first')).toBe(false);
+    expect(isShown('second')).toBe(false);
   });
 
   it('covers other content when the slide is split into pages', () => {

@@ -73,6 +73,47 @@ describe('StepTree', () => {
     ]);
   });
 
+  it('shows the initial steps of the slide in its first entry', () => {
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First">
+          <Step with="initial">
+            Up front<Step>Nested</Step>
+          </Step>
+          <Step>Later</Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(entries()).toEqual(['*Up front', 'Nested', 'Later [page]']);
+  });
+
+  it('shows initial steps of other steps without going to them', () => {
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First">
+          <Step>
+            Outer
+            <Step with="initial">
+              Inner<Step>Nested</Step>
+            </Step>
+            <Step>Later</Step>
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(entries()).toEqual([
+      '*Start of the slide',
+      'Outer',
+      'Nested',
+      'Later [page]',
+    ]);
+    expect(
+      within(screen.getByRole('navigation', { name: 'Steps' })).getByText(
+        'Inner',
+      ).tagName,
+    ).not.toBe('BUTTON');
+  });
+
   it('labels steps with their titles, which are not tooltips', () => {
     render(
       <Deck defaultShowSteps>

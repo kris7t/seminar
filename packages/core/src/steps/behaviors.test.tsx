@@ -1,12 +1,18 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { ThemeProvider } from '@mui/material';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Paragraph } from '../content/Paragraph.tsx';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
-import { Step, stepClasses, type StepBehavior } from './Step.tsx';
+import {
+  Step,
+  stepClasses,
+  type StepBehavior,
+  type StepDefaults,
+} from './Step.tsx';
 import { rankAppearances, type StepAppearances } from './stepAppearance.ts';
 
 /**
@@ -55,6 +61,288 @@ describe('step behaviors', () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  describe('of plain content', () => {
+    it('looks like the step it is part of', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step swap>A</Step>
+            <Paragraph>With A</Paragraph>
+            <Step>B</Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(appearanceOf(screen.getByText('With A'))).toBe('collapsed');
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('With A'))).toBe('shown');
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('With A'))).toBe('collapsed');
+    });
+
+    it('follows the latest step of those shown together', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step swap>A</Step>
+            <Step dim with="previous">
+              B
+            </Step>
+            <Paragraph>C</Paragraph>
+            <Step>D</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect(appearanceOf(screen.getByText('A'))).toBe('collapsed');
+      expect(appearanceOf(screen.getByText('B'))).toBe('dimmed');
+      expect(appearanceOf(screen.getByText('C'))).toBe('dimmed');
+    });
+
+    it('ignores the behavior of the slide without a step', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide steps="dim">
+            <Paragraph>Intro</Paragraph>
+            <Step>
+              A<Paragraph>Detail</Paragraph>
+              <Step>A1</Step>
+            </Step>
+            <Paragraph>With A</Paragraph>
+            <Step>B</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=1.1');
+      expect(appearanceOf(screen.getByText('Intro'))).toBe('shown');
+      expect(appearanceOf(screen.getByText('Detail'))).toBe('shown');
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('Intro'))).toBe('shown');
+      expect(appearanceOf(screen.getByText('Detail'))).toBe('dimmed');
+      expect(appearanceOf(screen.getByText('With A'))).toBe('dimmed');
+    });
+
+    it('becomes a new step if it names a behavior', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Paragraph only>A</Paragraph>
+            <Paragraph only>B</Paragraph>
+          </Slide>
+        </Deck>,
+      );
+      expect(appearanceOf(screen.getByText('A'))).toBe('hidden');
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=1');
+      expect(appearanceOf(screen.getByText('A'))).toBe('shown');
+      expect(appearanceOf(screen.getByText('B'))).toBe('hidden');
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=2');
+      expect(appearanceOf(screen.getByText('A'))).toBe('hidden');
+      expect(appearanceOf(screen.getByText('B'))).toBe('shown');
+    });
+
+    it('keeps the place of a default with if it names a behavior', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step>A</Step>
+            <Step defaults={{ with: 'content' }} only>
+              B
+            </Step>
+            <Step>C</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('B'))).toBe('shown');
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=2');
+      expect(appearanceOf(screen.getByText('B'))).toBe('hidden');
+      expect(appearanceOf(screen.getByText('A'))).toBe('shown');
+    });
+  });
+
+  describe('of content that is not a step', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it.each([
+      ['with="parent"', { with: 'parent', only: true }],
+      ['step={false}', { step: false, behavior: 'only' }],
+    ] as const)('warns about a behavior with %s', (_name, props) => {
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      render(
+        <Deck>
+          <Slide>
+            <Step {...props}>A</Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Ignoring the behavior `only`'),
+      );
+      expect(appearanceOf(screen.getByText('A'))).toBe('shown');
+    });
+
+    it('warns about a behavior of the theme', () => {
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const theme = createSlideTheme({
+        stepBehaviors: { ghost: { past: 'dimmed' } },
+      } as never);
+      render(
+        <ThemeProvider theme={theme}>
+          <Deck>
+            <Slide>
+              <Step with="parent" {...{ ghost: true }}>
+                A
+              </Step>
+            </Slide>
+          </Deck>
+        </ThemeProvider>,
+      );
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Ignoring the behavior `ghost`'),
+      );
+    });
+
+    it('has no default behavior with a default of joins', () => {
+      // @ts-expect-error -- Content that isn't a step has no behavior.
+      const defaults: StepDefaults = { joins: 'content', behavior: 'only' };
+      expect(defaults.joins).toBe('content');
+    });
+
+    it('does not warn about a default behavior', () => {
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      render(
+        <Deck>
+          <Slide>
+            <Step with="parent" defaults={{ behavior: 'only' }}>
+              A
+            </Step>
+            <Step step={false} defaults={{ behavior: 'only' }}>
+              B
+            </Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(warn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('of steps without one of their own', () => {
+    it('joins the step it is placed with', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step swap>A</Step>
+            <Step with="previous">Joined</Step>
+            <Step reveal with="previous">
+              Own
+            </Step>
+            <Step>B</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect(appearanceOf(screen.getByText('Joined'))).toBe('collapsed');
+      expect(appearanceOf(screen.getByText('Own'))).toBe('shown');
+    });
+
+    it('joins an earlier initial step', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step swap with="initial">
+              One
+            </Step>
+            <Step>A</Step>
+            <Step with="initial">Two</Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(appearanceOf(screen.getByText('Two'))).toBe('shown');
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('Two'))).toBe('collapsed');
+    });
+
+    it('creates step 0 if there is no initial step to join', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide steps="dim">
+            <Step with="previous">
+              First
+              <Step scoped>Inside</Step>
+            </Step>
+            <Step>Next</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=0.1');
+      expect(appearanceOf(screen.getByText('Inside'))).toBe('shown');
+      expect(appearanceOf(screen.getByText('First'))).toBe('shown');
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('Inside'))).toBe('hidden');
+      expect(appearanceOf(screen.getByText('First'))).toBe('dimmed');
+    });
+
+    it('takes the default of the slide if it creates step 0', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide steps="dim">
+            <Paragraph with="content">Written</Paragraph>
+            <Paragraph>Plain</Paragraph>
+            <Step>Next</Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}');
+      expect(appearanceOf(screen.getByText('Written'))).toBe('dimmed');
+      expect(appearanceOf(screen.getByText('Plain'))).toBe('dimmed');
+    });
+
+    it('is open while steps nested in step 0 of it are shown', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step>
+              Outer
+              <Step with="initial">
+                Inner<Step>Nested</Step>
+              </Step>
+              <Step>Later</Step>
+            </Step>
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=1.0.1');
+      expect(stateOf('Outer')).toBe('open shown');
+      expect(stateOf('Inner')).toBe('open shown');
+      await user.keyboard('{ArrowRight}');
+      expect(stateOf('Outer')).toBe('open shown');
+      expect(stateOf('Inner')).toBe('past shown');
+    });
   });
 
   it('tells the phases apart', async () => {
@@ -493,11 +781,11 @@ describe('step behaviors', () => {
     render(
       <Deck theme={theme}>
         <Slide title="Steps" steps="preview">
-          <Step defaultBehavior="only">A</Step>
-          <Step defaultBehavior="only" {...ghost}>
+          <Step defaults={{ behavior: 'only' }}>A</Step>
+          <Step defaults={{ behavior: 'only' }} {...ghost}>
             B
           </Step>
-          <Step defaultBehavior="only" behavior="dim">
+          <Step defaults={{ behavior: 'only' }} behavior="dim">
             C
           </Step>
         </Slide>

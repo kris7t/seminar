@@ -76,12 +76,7 @@ describe('splitting slides into pages', () => {
           <Step>D</Step>
         </>,
       ),
-    ).toEqual([
-      'Start of the slide [page]',
-      'A [page]',
-      'C [page]',
-      'D [page]',
-    ]);
+    ).toEqual(['B [page]', 'A [page]', 'C [page]', 'D [page]']);
   });
 
   it('makes a page of nested steps before their step is past', () => {

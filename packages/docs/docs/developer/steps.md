@@ -25,44 +25,42 @@ Components that should take part in steps wrap their root in a `Step`, and
 pass on the step props they get, e.g., from `:::name{step group=parse}`:
 
 ```tsx
-import { Step, WITH_CONTENT, type StepProps } from '@seminar/core';
+import { Step, JOINS_CONTENT, type StepProps } from '@seminar/core';
 
-interface NoteProps extends Omit<StepProps, 'defaultAttachment'> {
+interface NoteProps extends Omit<StepProps, 'defaults'> {
   tone?: string | undefined;
 }
 
 export function Note({ tone, ...stepProps }: NoteProps) {
-  return (
-    <Step defaultAttachment={WITH_CONTENT} data-tone={tone} {...stepProps} />
-  );
+  return <Step defaults={JOINS_CONTENT} data-tone={tone} {...stepProps} />;
 }
 ```
 
 ## Default placement
 
-Without placement props, a `Step` starts a new step. Components choose where
-they go by default with `defaultAttachment`, which applies unless the user
-places them with `with`, `step`, `in`, `after`, or a group with other
-elements:
+Without placement props, a `Step` starts a new step. Components choose what they
+do by default with `defaults`:
 
-- `WITH_CONTENT` (`{ with: 'content' }`) shows the component with the content
-  before it, i.e., the latest step that isn't an overlay, like paragraphs, list
-  items, images, and columns. Such
-  components are transparent for nesting: steps inside them are nested as if
-  the component wasn't there. `step` in the props gives it a step of its own.
-- `WITH_INITIAL` (`{ with: 'initial' }`) shows it up front.
-- `{ in: element }` or `{ in: 'name' }` nests it in the step of an element,
-  or of a group, like callouts pointing at an element.
+- `JOINS_CONTENT` (`{ joins: 'content' }`) makes the component plain content,
+  like paragraphs, list items, images, and columns: it's part of the latest step
+  on its level that isn't an overlay, or shown up front if there is none. It looks
+  like that step, and steps inside it are nested in that step. `with`, `step`,
+  `in`, `after`, a behavior, or a group with other elements give it a step instead.
+- `{ with: 'content' }`, or `'previous'` or `'initial'`, works like the same `with`
+  from the user: it's also part of that step, but creates a step if there is none.
+  `joins` takes the same values.
+- `{ in: element }` or `{ in: 'name' }` nests it in the step of an element or of a
+  group, like callouts pointing at an element, unless the user sets `in` or `after`.
 
-`defaultBehavior` sets the behavior of the component unless a behavior
-shorthand like `only` or `behavior` is given, e.g., `scoped` for callouts. It
-takes precedence over the default of the slide and the theme.
+Defaults other than `joins` can also set what the component does as a step, unless
+the user says otherwise:
 
-`defaultSplit` and `defaultOverlay` set how the component asks for pages when
-the slide is split into pages (see
-[Splitting into pages](../guide/core/steps.md#splitting-into-pages)), unless
-`split` or `overlay` is given, e.g., `defaultOverlay` for callouts, which
-float over other content.
+- `behavior` sets its behavior, e.g., `scoped` for callouts. It takes precedence
+  over the default of the slide and the theme.
+- `split` and `overlay` set how it asks for pages when the slide is split into
+  pages (see
+  [Splitting into pages](../guide/core/steps.md#splitting-into-pages)), e.g.,
+  `overlay` for callouts, which float over other content.
 
 Prefer these defaults over setting `with` or `behavior` directly, so that
 users can still override them with attributes.

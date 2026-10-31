@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
 
-import { Step, WITH_CONTENT, type StepProps } from '../steps/Step.tsx';
+import { Step, JOINS_CONTENT, type StepProps } from '../steps/Step.tsx';
 
 /** Props of a {@link ListItem}. */
-export type ListItemProps = Omit<StepProps, 'component' | 'defaultAttachment'>;
+export type ListItemProps = Omit<StepProps, 'component' | 'defaults'>;
 
 /**
  * An item of a list, which is shown with the previous step, unless it's a
@@ -12,5 +12,5 @@ export type ListItemProps = Omit<StepProps, 'component' | 'defaultAttachment'>;
  * Markdown lists like this, with the props of their `:step` directive.
  */
 export function ListItem(props: ListItemProps): JSX.Element {
-  return <Step component="li" defaultAttachment={WITH_CONTENT} {...props} />;
+  return <Step component="li" defaults={JOINS_CONTENT} {...props} />;
 }

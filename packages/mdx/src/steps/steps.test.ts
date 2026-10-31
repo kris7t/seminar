@@ -172,9 +172,18 @@ Then that.
     });
     expect(file.messages.map(String)).toEqual([
       expect.stringContaining(
-        'Expected `with=self`, `with=previous`, `with=content`, or `with=initial`',
+        'Expected `with=self`, `with=previous`, `with=content`, `with=initial`, or `with=parent`',
       ),
       expect.stringContaining("Ignoring `:step`, which isn't allowed here"),
+    ]);
+  });
+
+  it('passes step=false to the step', async () => {
+    expect(
+      await content('- :step{step=false} A\n\nB :step{step=false}'),
+    ).toEqual([
+      '<ul>\n<ListItem step="false">A</ListItem>\n</ul>' +
+        '<Paragraph step="false">B</Paragraph>',
     ]);
   });
 

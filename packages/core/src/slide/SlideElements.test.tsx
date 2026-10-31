@@ -249,34 +249,22 @@ describe('SlideElement', () => {
     expect(isCurrent('pointer')).toBe(true);
   });
 
-  it('nests steps in their default only if they are not placed', async () => {
+  it('nests steps in their default unless they are nested elsewhere', async () => {
     const user = userEvent.setup();
     render(
       <Deck>
         <Slide>
-          <Step data-testid="default" defaultAttachment={{ in: 'figure' }}>
+          <Step data-testid="default" defaults={{ in: 'figure' }}>
             Default
           </Step>
-          <Step
-            id="named"
-            data-testid="named"
-            defaultAttachment={{ in: 'figure' }}
-          >
+          <Step id="named" data-testid="named" defaults={{ in: 'figure' }}>
             Named
           </Step>
-          <Step
-            data-testid="self"
-            with="self"
-            defaultAttachment={{ in: 'figure' }}
-          >
+          <Step data-testid="self" with="self" defaults={{ in: 'figure' }}>
             Next
           </Step>
           <Step group="figure">Figure</Step>
-          <Step
-            data-testid="joined"
-            group="figure"
-            defaultAttachment={{ in: 'other' }}
-          >
+          <Step data-testid="joined" group="figure" defaults={{ in: 'other' }}>
             Joined
           </Step>
         </Slide>
@@ -284,9 +272,6 @@ describe('SlideElement', () => {
     );
     const isCurrent = (testId: string) =>
       screen.getByTestId(testId).classList.contains(stepClasses.current);
-    await user.keyboard('{ArrowRight}');
-    // The step with `with="self"` comes first, where it is.
-    expect(isCurrent('self')).toBe(true);
     await user.keyboard('{ArrowRight}');
     expect(window.location.hash).toBe('#slide=1&step=figure');
     // Joining a group places the step in the group.
@@ -305,11 +290,7 @@ describe('SlideElement', () => {
     render(
       <Deck>
         <Slide>
-          <Step
-            data-testid="fresh"
-            group="fresh"
-            defaultAttachment={{ in: 'figure' }}
-          >
+          <Step data-testid="fresh" group="fresh" defaults={{ in: 'figure' }}>
             Fresh
           </Step>
           <Step group="figure">Figure</Step>
