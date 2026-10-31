@@ -1,0 +1,270 @@
+import { readFileSync } from 'node:fs';
+
+import * as oniguruma from 'vscode-oniguruma';
+import {
+  INITIAL,
+  parseRawGrammar,
+  Registry,
+  type IGrammar,
+  type StateStack,
+} from 'vscode-textmate';
+import { beforeAll, describe, expect, it } from 'vitest';
+
+const syntaxes = new URL('../syntaxes/', import.meta.url);
+
+/** Stands in for the grammar of TeX that comes with the editor. */
+const TEX = JSON.stringify({
+  scopeName: 'text.tex',
+  patterns: [],
+  repository: {
+    'math-content': {
+      patterns: [{ match: '\\\\[A-Za-z]+', name: 'constant.math.tex' }],
+    },
+  },
+});
+
+/** Stands in for the grammar of JSX, which expressions and JSX include. */
+const TSX = JSON.stringify({
+  scopeName: 'source.tsx',
+  patterns: [],
+  repository: { expression: { patterns: [] } },
+});
+
+const FILES: Record<string, string> = {
+  'source.seminar-deck': 'deck.tmLanguage',
+  'source.seminar-deck.injection': 'deck.injection.tmLanguage.json',
+  'source.seminar-deck.heading': 'deck.heading.tmLanguage.json',
+};
+
+let grammar: IGrammar;
+
+beforeAll(async () => {
+  const wasm = readFileSync(
+    new URL(import.meta.resolve('vscode-oniguruma/release/onig.wasm')),
+  );
+  await oniguruma.loadWASM(
+    wasm.buffer.slice(wasm.byteOffset, wasm.byteOffset + wasm.byteLength),
+  );
+  const registry = new Registry({
+    onigLib: Promise.resolve({
+      createOnigScanner: (patterns) => new oniguruma.OnigScanner(patterns),
+      createOnigString: (text) => new oniguruma.OnigString(text),
+    }),
+    loadGrammar: (scope) => {
+      if (scope === 'text.tex') {
+        return Promise.resolve(parseRawGrammar(TEX, 'tex.json'));
+      }
+      if (scope === 'source.tsx') {
+        return Promise.resolve(parseRawGrammar(TSX, 'tsx.json'));
+      }
+      const file = FILES[scope];
+      if (file === undefined) {
+        return Promise.resolve(null);
+      }
+      return Promise.resolve(
+        parseRawGrammar(readFileSync(new URL(file, syntaxes), 'utf8'), file),
+      );
+    },
+    getInjections: (scope) =>
+      scope === 'source.seminar-deck'
+        ? ['source.seminar-deck.injection', 'source.seminar-deck.heading']
+        : undefined,
+  });
+  const loaded = await registry.loadGrammar('source.seminar-deck');
+  if (loaded === null) {
+    throw new Error('The grammar of decks is missing.');
+  }
+  grammar = loaded;
+});
+
+/** Returns the text and scopes of the tokens with any `.seminar` scope or TeX. */
+function tokenize(text: string): [string, string][] {
+  const tokens: [string, string][] = [];
+  let state: StateStack = INITIAL;
+  for (const line of text.split('\n')) {
+    const { tokens: lineTokens, ruleStack } = grammar.tokenizeLine(line, state);
+    state = ruleStack;
+    for (const { startIndex, endIndex, scopes } of lineTokens) {
+      const scope = scopes
+        .filter((name) => /\.seminar$|\.tex$|\.latex$/.test(name))
+        .at(-1);
+      if (scope !== undefined) {
+        tokens.push([line.slice(startIndex, endIndex), scope]);
+      }
+    }
+  }
+  return tokens;
+}
+
+describe('the grammar of decks', () => {
+  it('highlights text directives with labels and attributes', () => {
+    expect(tokenize('Hi :term[a word]{#id .wide k="v" bare} there')).toEqual([
+      [':', 'string.other.begin.directive.seminar'],
+      ['term', 'entity.name.tag.directive.seminar'],
+      ['[', 'punctuation.definition.label.begin.seminar'],
+      ['a word', 'meta.label.directive.seminar'],
+      [']', 'punctuation.definition.label.end.seminar'],
+      ['{', 'punctuation.definition.attributes.begin.seminar'],
+      ['#id', 'entity.other.attribute-name.id.seminar'],
+      [' ', 'meta.attributes.seminar'],
+      ['.wide', 'entity.other.attribute-name.class.seminar'],
+      [' ', 'meta.attributes.seminar'],
+      ['k', 'entity.other.attribute-name.seminar'],
+      ['=', 'punctuation.separator.key-value.seminar'],
+      ['"v"', 'string.unquoted.attribute-value.seminar'],
+      [' ', 'meta.attributes.seminar'],
+      ['bare', 'entity.other.attribute-name.seminar'],
+      ['}', 'punctuation.definition.attributes.end.seminar'],
+    ]);
+  });
+
+  it('highlights directives with labels or attributes right after words', () => {
+    expect(tokenize('appears:term[x]')).toEqual([
+      [':', 'string.other.begin.directive.seminar'],
+      ['term', 'entity.name.tag.directive.seminar'],
+      ['[', 'punctuation.definition.label.begin.seminar'],
+      ['x', 'meta.label.directive.seminar'],
+      [']', 'punctuation.definition.label.end.seminar'],
+    ]);
+    expect(tokenize('step:term{#id}')).toEqual([
+      [':', 'string.other.begin.directive.seminar'],
+      ['term', 'entity.name.tag.directive.seminar'],
+      ['{', 'punctuation.definition.attributes.begin.seminar'],
+      ['#id', 'entity.other.attribute-name.id.seminar'],
+      ['}', 'punctuation.definition.attributes.end.seminar'],
+    ]);
+  });
+
+  it('highlights leaf and container directives', () => {
+    expect(tokenize(':::notes\nText\n:::\n\n::slide[Title]')).toEqual([
+      [':::', 'string.other.begin.directive.seminar'],
+      ['notes', 'entity.name.tag.directive.seminar'],
+      [':::', 'string.other.end.directive.seminar'],
+      ['::', 'string.other.begin.directive.seminar'],
+      ['slide', 'entity.name.tag.directive.seminar'],
+      ['[', 'punctuation.definition.label.begin.seminar'],
+      ['Title', 'meta.label.directive.seminar'],
+      [']', 'punctuation.definition.label.end.seminar'],
+    ]);
+  });
+
+  it('highlights steps in list items', () => {
+    expect(tokenize('- :step Item')).toEqual([
+      [':', 'string.other.begin.directive.seminar'],
+      ['step', 'entity.name.tag.directive.seminar'],
+    ]);
+  });
+
+  it.each([
+    ['note:this', 'this'],
+    ['10:30', '30'],
+    ['mailto:me', 'me'],
+    ['x:a-b', 'a-b'],
+    ['x:a_b', 'a_b'],
+    ['x:é', 'é'],
+    ['x:1a', '1a'],
+    ['x:a.b', 'a'],
+    ['a:b:c', 'c'],
+    ['(:a)', 'a'],
+    [String.raw`x\\:a`, 'a'],
+  ])('finds the directive in %s like the parser', (text, name) => {
+    expect(
+      tokenize(text).filter(
+        ([, scope]) => scope === 'entity.name.tag.directive.seminar',
+      ),
+    ).toEqual([[name, 'entity.name.tag.directive.seminar']]);
+  });
+
+  it.each([
+    String.raw`note\:this`,
+    'https://example.com',
+    'a::b',
+    'a:::b',
+    'x:step-',
+    'x:step_',
+  ])('finds no directive in %s like the parser', (text) => {
+    expect(tokenize(text)).toEqual([]);
+  });
+
+  it('leaves directives in code alone', () => {
+    expect(tokenize('A `:step` code\n\n```\n:step\n```')).toEqual([]);
+  });
+
+  it('highlights attribute blocks of headings', () => {
+    expect(tokenize('## Title {#id .wide}')).toEqual([
+      ['{', 'punctuation.definition.attributes.begin.seminar'],
+      ['#id', 'entity.other.attribute-name.id.seminar'],
+      [' ', 'meta.attributes.seminar'],
+      ['.wide', 'entity.other.attribute-name.class.seminar'],
+      ['}', 'punctuation.definition.attributes.end.seminar'],
+    ]);
+  });
+
+  it('leaves expressions in headings to MDX', () => {
+    expect(tokenize('## Total {String(count)}')).toEqual([]);
+    expect(tokenize('Text {#id}')).toEqual([]);
+  });
+
+  it('highlights attribute blocks of images only', () => {
+    expect(tokenize('![Alt](./a.svg){#arch width=600}')).toEqual([
+      ['{', 'punctuation.definition.attributes.begin.seminar'],
+      ['#arch', 'entity.other.attribute-name.id.seminar'],
+      [' ', 'meta.attributes.seminar'],
+      ['width', 'entity.other.attribute-name.seminar'],
+      ['=', 'punctuation.separator.key-value.seminar'],
+      ['600', 'string.unquoted.attribute-value.seminar'],
+      ['}', 'punctuation.definition.attributes.end.seminar'],
+    ]);
+    expect(tokenize('(in parentheses){value}')).toEqual([]);
+  });
+
+  it('highlights inline math with TeX', () => {
+    expect(tokenize(String.raw`A $\pi^{2}$ b`)).toEqual([
+      ['$', 'string.other.begin.math.seminar'],
+      ['\\pi', 'constant.math.tex'],
+      ['^{2}', 'meta.embedded.math.seminar'],
+      ['$', 'string.other.end.math.seminar'],
+    ]);
+  });
+
+  it('highlights math blocks with TeX', () => {
+    expect(
+      tokenize(String.raw`$$
+\frac{1}{#x}
+$$`),
+    ).toEqual([
+      ['$$', 'string.other.begin.math.seminar'],
+      ['\\frac', 'constant.math.tex'],
+      ['{1}{#x}', 'meta.embedded.math.seminar'],
+      ['$$', 'string.other.end.math.seminar'],
+    ]);
+  });
+
+  it('highlights environments in math', () => {
+    expect(
+      tokenize(String.raw`$$
+\begin{equation}
+\end{equation}
+$$`),
+    ).toEqual([
+      ['$$', 'string.other.begin.math.seminar'],
+      ['\\', 'punctuation.definition.function.latex'],
+      ['begin', 'support.function.be.latex'],
+      ['{', 'punctuation.definition.arguments.begin.latex'],
+      ['equation', 'variable.parameter.function.latex'],
+      ['}', 'punctuation.definition.arguments.end.latex'],
+      ['\\', 'punctuation.definition.function.latex'],
+      ['end', 'support.function.be.latex'],
+      ['{', 'punctuation.definition.arguments.begin.latex'],
+      ['equation', 'variable.parameter.function.latex'],
+      ['}', 'punctuation.definition.arguments.end.latex'],
+      ['$$', 'string.other.end.math.seminar'],
+    ]);
+  });
+
+  it('leaves dollars that are not math alone', () => {
+    expect(tokenize(String.raw`Costs \$5 and $x with no end`)).toEqual([]);
+    expect(tokenize('A `$x$` code')).toEqual([]);
+    expect(tokenize('{a$b$c}')).toEqual([]);
+  });
+});

@@ -13,6 +13,7 @@
     { "path": "./packages/plugin-pele" },
     { "path": "./packages/plugin-shiki" },
     { "path": "./packages/theme-default" },
-    { "path": "./packages/example" }
+    { "path": "./packages/example" },
+    { "path": "./packages/vscode" }
   ]
 }

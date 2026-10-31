@@ -16,6 +16,8 @@ React presentations. See `README.md` for the features and the syntax of decks.
 - `create`: the `create-seminar` initializer, released with the libraries.
 - `cli`: the `seminar` command, which presents built decks and saves them as
   PDFs in Electron apps, and places windows through the compositor on Wayland.
+- `vscode`: the editor extension, with a language server for decks. It isn't
+  published to npm.
 - `example`: the example deck, also used for trying out changes by hand.
 - `docs`: the Docusaurus site, with guides in `packages/docs/docs/`.
 
@@ -27,6 +29,8 @@ Workspace packages resolve to their TypeScript sources through the
 - `npm run dev`: serve the example deck.
 - `npm run present`: build the command line and the example deck, and
   present it with `seminar present`.
+- `npm run vscode:package`: build `packages/vscode/dist/seminar.vsix`, see
+  its `README.md`.
 - `npm run docs:dev`: serve the documentation site.
 - `npm run docs:build`, `npm run docs:preview`: build and preview the docs.
 - `npm test`, or `npx vitest run <path>` for some of the tests.

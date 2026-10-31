@@ -11,7 +11,10 @@ import { isMap, parseDocument } from 'yaml';
 
 import { isLocal } from '../content/remarkImages.ts';
 import { hasDirective } from '../directives/directives.ts';
-import { rewriteHeadingAttributes } from '../directives/remarkHeadingAttributes.ts';
+import {
+  rewriteHeadingAttributes,
+  sourceOffsets,
+} from '../directives/remarkHeadingAttributes.ts';
 import { getDeckFrontmatter, parseDeck } from './frontmatter.ts';
 import {
   expandSelfIncludes,
@@ -37,28 +40,6 @@ interface MarkdownSource {
   /** Returns where `node` is in `source`, if it's known. */
   range: (node: Node) => { start: number; end: number } | undefined;
   edits: Edit[];
-}
-
-/**
- * Maps offsets in `rewritten`, as `rewriteHeadingAttributes` rewrites
- * `source`, to offsets in `source`. The rewriting only inserts the names of
- * directives before `{`, which they don't contain, so the characters that
- * differ are the inserted ones.
- */
-function offsetMap(
-  source: string,
-  rewritten: string,
-): (offset: number) => number {
-  const offsets = new Int32Array(rewritten.length + 1);
-  let original = 0;
-  for (let offset = 0; offset < rewritten.length; offset += 1) {
-    offsets[offset] = original;
-    if (rewritten[offset] === source[original]) {
-      original += 1;
-    }
-  }
-  offsets[rewritten.length] = original;
-  return (offset) => offsets[offset] ?? source.length;
 }
 
 /**
@@ -301,7 +282,7 @@ function readMarkdownSource(
 ): MarkdownSource & { file: VFile } {
   const { tree, file } = parseDeck(source, deckPath, syntaxPlugins);
   // Positions refer to the rewritten source, see `remarkHeadingAttributes`.
-  const offset = offsetMap(source, rewriteHeadingAttributes(source));
+  const offset = sourceOffsets(source, rewriteHeadingAttributes(source));
   const range = (node: Node) => {
     const start = node.position?.start.offset;
     const end = node.position?.end.offset;

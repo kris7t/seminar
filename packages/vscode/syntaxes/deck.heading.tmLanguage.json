@@ -1,0 +1,26 @@
+{
+  "scopeName": "source.seminar-deck.heading",
+  "injectionSelector": "L:source.seminar-deck markup.heading.atx -meta.embedded",
+  "patterns": [
+    {
+      "begin": "\\{(?=[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\}[ \\t]*#*[ \\t]*$)",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.attributes.begin.seminar"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.attributes.end.seminar"
+        }
+      },
+      "name": "meta.attributes.seminar",
+      "patterns": [
+        {
+          "include": "source.seminar-deck.injection#attribute-words"
+        }
+      ]
+    }
+  ]
+}

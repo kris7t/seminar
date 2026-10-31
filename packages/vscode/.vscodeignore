@@ -1,0 +1,8 @@
+**
+!dist/*.cjs
+!assets/**
+!syntaxes/**
+!language-configuration.json
+!package.json
+!README.md
+!LICENSE

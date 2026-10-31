@@ -1,0 +1,137 @@
+{
+  "name": "seminar-vscode",
+  "displayName": "Seminar",
+  "description": "Language support for Seminar decks: syntax highlighting and IntelliSense for .deck.mdx files",
+  "version": "0.2.1",
+  "private": true,
+  "publisher": "kris7t",
+  "homepage": "https://seminar.run",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kris7t/seminar.git",
+    "directory": "packages/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/kris7t/seminar/issues"
+  },
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "seminar",
+    "mdx",
+    "slides",
+    "presentations"
+  ],
+  "main": "./dist/extension.cjs",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "The language server may load TypeScript from the workspace."
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "seminar-deck",
+        "aliases": [
+          "Seminar Deck"
+        ],
+        "extensions": [
+          ".deck.mdx"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./assets/file-icon-light.svg",
+          "dark": "./assets/file-icon-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "seminar-deck",
+        "scopeName": "source.seminar-deck",
+        "path": "./syntaxes/deck.tmLanguage",
+        "embeddedLanguages": {
+          "meta.embedded.c": "c",
+          "meta.embedded.cpp": "cpp",
+          "meta.embedded.cs": "csharp",
+          "meta.embedded.css": "css",
+          "meta.embedded.diff": "diff",
+          "meta.embedded.go": "go",
+          "meta.embedded.graphql": "graphql",
+          "meta.embedded.html": "html",
+          "meta.embedded.ini": "ini",
+          "meta.embedded.java": "java",
+          "meta.embedded.js": "javascriptreact",
+          "meta.embedded.json": "json",
+          "meta.embedded.kotlin": "kotlin",
+          "meta.embedded.less": "less",
+          "meta.embedded.lua": "lua",
+          "meta.embedded.makefile": "makefile",
+          "meta.embedded.md": "markdown",
+          "meta.embedded.mdx": "mdx",
+          "meta.embedded.objc": "objective-c",
+          "meta.embedded.perl": "perl",
+          "meta.embedded.php": "php",
+          "meta.embedded.python": "python",
+          "meta.embedded.r": "r",
+          "meta.embedded.ruby": "ruby",
+          "meta.embedded.rust": "rust",
+          "meta.embedded.scss": "scss",
+          "meta.embedded.shell": "shellscript",
+          "meta.embedded.sql": "sql",
+          "meta.embedded.svg": "xml",
+          "meta.embedded.swift": "swift",
+          "meta.embedded.toml": "toml",
+          "meta.embedded.ts": "typescriptreact",
+          "meta.embedded.tsx": "typescriptreact",
+          "meta.embedded.vbnet": "vb",
+          "meta.embedded.xml": "xml",
+          "meta.embedded.yaml": "yaml",
+          "meta.embedded.math.seminar": "latex"
+        }
+      },
+      {
+        "scopeName": "source.seminar-deck.injection",
+        "path": "./syntaxes/deck.injection.tmLanguage.json",
+        "injectTo": [
+          "source.seminar-deck"
+        ]
+      },
+      {
+        "scopeName": "source.seminar-deck.heading",
+        "path": "./syntaxes/deck.heading.tmLanguage.json",
+        "injectTo": [
+          "source.seminar-deck"
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "vscode:prepublish": "node build.mjs",
+    "package": "vsce package --no-dependencies --out dist/seminar.vsix"
+  },
+  "devDependencies": {
+    "@mdx-js/language-service": "0.7.4",
+    "@seminar/mdx": "0.2.1",
+    "@types/vscode": "~1.100.0",
+    "@volar/language-server": "~2.4.0",
+    "@volar/vscode": "~2.4.0",
+    "@vscode/vsce": "^4.1.0",
+    "esbuild": "^0.28.2",
+    "remark-math": "^6.0.0",
+    "volar-service-markdown": "0.0.65",
+    "volar-service-typescript": "0.0.65",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2",
+    "vscode-uri": "^3.2.0"
+  }
+}

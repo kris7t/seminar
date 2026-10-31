@@ -1,0 +1,235 @@
+{
+  "scopeName": "source.seminar-deck.injection",
+  "injectionSelector": "L:source.seminar-deck -markup.code -markup.raw -meta.embedded -string -comment",
+  "patterns": [
+    {
+      "include": "#math-flow"
+    },
+    {
+      "include": "#math-text"
+    },
+    {
+      "include": "#directive-closing"
+    },
+    {
+      "include": "#directive-block"
+    },
+    {
+      "include": "#not-directive-text"
+    },
+    {
+      "include": "#directive-text"
+    },
+    {
+      "include": "#image-attributes"
+    }
+  ],
+  "repository": {
+    "math-flow": {
+      "begin": "(?:^|\\G)[\\t ]*(\\${2,})[^\\n\\r$]*$",
+      "beginCaptures": {
+        "1": {
+          "name": "string.other.begin.math.seminar"
+        }
+      },
+      "end": "(?:^|\\G)[\\t ]*(\\1)[\\t ]*$",
+      "endCaptures": {
+        "1": {
+          "name": "string.other.end.math.seminar"
+        }
+      },
+      "contentName": "meta.embedded.math.seminar",
+      "patterns": [
+        {
+          "include": "#math-content"
+        }
+      ]
+    },
+    "math-text": {
+      "begin": "(?<![\\\\$])(\\$+)(?!\\$)(?=.+?(?<!\\$)\\1(?!\\$))",
+      "beginCaptures": {
+        "1": {
+          "name": "string.other.begin.math.seminar"
+        }
+      },
+      "end": "(?<!\\$)(\\1)(?!\\$)",
+      "endCaptures": {
+        "1": {
+          "name": "string.other.end.math.seminar"
+        }
+      },
+      "contentName": "meta.embedded.math.seminar",
+      "patterns": [
+        {
+          "include": "#math-content"
+        }
+      ]
+    },
+    "directive-closing": {
+      "match": "(?:^|\\G)[\\t ]*(:{3,})[\\t ]*$",
+      "captures": {
+        "1": {
+          "name": "string.other.end.directive.seminar"
+        }
+      }
+    },
+    "directive-block": {
+      "begin": "(?:^|\\G)[\\t ]*(:{2,})((?>[^\\s\\p{P}\\p{S}](?:[^\\s\\p{P}\\p{S}]|[-_])*)(?<![-_])(?!:))",
+      "beginCaptures": {
+        "1": {
+          "name": "string.other.begin.directive.seminar"
+        },
+        "2": {
+          "name": "entity.name.tag.directive.seminar"
+        }
+      },
+      "end": "(?!\\[|\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
+      "patterns": [
+        {
+          "include": "#directive-label"
+        },
+        {
+          "include": "#attribute-block"
+        }
+      ]
+    },
+    "directive-text": {
+      "begin": "(?<!:)(:)((?>[^\\s\\p{P}\\p{S}](?:[^\\s\\p{P}\\p{S}]|[-_])*)(?<![-_])(?!:))",
+      "beginCaptures": {
+        "1": {
+          "name": "string.other.begin.directive.seminar"
+        },
+        "2": {
+          "name": "entity.name.tag.directive.seminar"
+        }
+      },
+      "end": "(?!\\[|\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
+      "patterns": [
+        {
+          "include": "#directive-label"
+        },
+        {
+          "include": "#attribute-block"
+        }
+      ]
+    },
+    "directive-label": {
+      "begin": "\\[(?=[^\\n]*\\])",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.label.begin.seminar"
+        }
+      },
+      "end": "\\]",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.label.end.seminar"
+        }
+      },
+      "contentName": "meta.label.directive.seminar",
+      "patterns": [
+        {
+          "include": "source.seminar-deck#markdown-text"
+        }
+      ]
+    },
+    "image-attributes": {
+      "begin": "(!\\[(?:[^\\]\\\\]|\\\\.)*\\](?:\\((?:[^()\\\\]|\\\\.|\\([^()]*\\))*\\)|\\[[^\\]]*\\])?)(?=\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
+      "beginCaptures": {
+        "1": {
+          "patterns": [
+            {
+              "include": "source.seminar-deck#markdown-text"
+            }
+          ]
+        }
+      },
+      "end": "(?<=\\})",
+      "patterns": [
+        {
+          "include": "#attribute-block"
+        }
+      ]
+    },
+    "attribute-block": {
+      "begin": "\\{(?=[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.attributes.begin.seminar"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.attributes.end.seminar"
+        }
+      },
+      "name": "meta.attributes.seminar",
+      "patterns": [
+        {
+          "include": "#attribute-words"
+        }
+      ]
+    },
+    "attribute-words": {
+      "patterns": [
+        {
+          "match": "#[^\\s\"'=#.{}]+",
+          "name": "entity.other.attribute-name.id.seminar"
+        },
+        {
+          "match": "\\.[^\\s\"'=#.{}]+",
+          "name": "entity.other.attribute-name.class.seminar"
+        },
+        {
+          "match": "([A-Za-z_][\\w-]*)(=)(\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+)",
+          "captures": {
+            "1": {
+              "name": "entity.other.attribute-name.seminar"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.seminar"
+            },
+            "3": {
+              "name": "string.unquoted.attribute-value.seminar"
+            }
+          }
+        },
+        {
+          "match": "[A-Za-z_][\\w-]*",
+          "name": "entity.other.attribute-name.seminar"
+        }
+      ]
+    },
+    "not-directive-text": {
+      "match": "(?<!:):(?=[^\\s\\p{P}\\p{S}](?:[^\\s\\p{P}\\p{S}]|[-_])*:)"
+    },
+    "math-content": {
+      "patterns": [
+        {
+          "match": "((\\\\)(?:begin|end))(\\{)([^{}\\n]*)(\\})",
+          "captures": {
+            "1": {
+              "name": "support.function.be.latex"
+            },
+            "2": {
+              "name": "punctuation.definition.function.latex"
+            },
+            "3": {
+              "name": "punctuation.definition.arguments.begin.latex"
+            },
+            "4": {
+              "name": "variable.parameter.function.latex"
+            },
+            "5": {
+              "name": "punctuation.definition.arguments.end.latex"
+            }
+          }
+        },
+        {
+          "include": "text.tex#math-content"
+        }
+      ]
+    }
+  }
+}

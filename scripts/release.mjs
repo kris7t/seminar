@@ -120,7 +120,7 @@ export function checkRelease(tag) {
     }
   }
   const names = new Set(packages.map((pkg) => pkg.name));
-  for (const directory of [...releaseWorkspaces, 'example', 'docs']) {
+  for (const directory of [...releaseWorkspaces, 'example', 'docs', 'vscode']) {
     const pkg = readJson(
       path.join(root, 'packages', directory, 'package.json'),
     );
@@ -141,7 +141,7 @@ function setVersion(version) {
     version = bumpVersion(checkRelease()[0].version, version);
   validateVersion(version);
   const names = new Set(manifests().map((pkg) => pkg.name));
-  for (const directory of [...releaseWorkspaces, 'example', 'docs']) {
+  for (const directory of [...releaseWorkspaces, 'example', 'docs', 'vscode']) {
     const file = path.join(root, 'packages', directory, 'package.json');
     const pkg = readJson(file);
     if (names.has(pkg.name)) pkg.version = version;

@@ -11,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./syntax": {
+      "@seminar/source": "./src/syntax.ts",
+      "types": "./dist/syntax.d.ts",
+      "default": "./dist/syntax.js"
+    },
     "./client": {
       "types": "./client.d.ts"
     }

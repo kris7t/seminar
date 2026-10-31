@@ -103,6 +103,28 @@ export function rewriteHeadingAttributes(source: string): string {
 }
 
 /**
+ * Maps offsets in `rewritten`, as {@link rewriteHeadingAttributes} rewrites
+ * `source`, to offsets in `source`. The rewriting only inserts the names of
+ * directives before `{`, which they don't contain, so the characters that
+ * differ are the inserted ones.
+ */
+export function sourceOffsets(
+  source: string,
+  rewritten: string,
+): (offset: number) => number {
+  const offsets = new Int32Array(rewritten.length + 1);
+  let original = 0;
+  for (let offset = 0; offset < rewritten.length; offset += 1) {
+    offsets[offset] = original;
+    if (rewritten[offset] === source[original]) {
+      original += 1;
+    }
+  }
+  offsets[rewritten.length] = original;
+  return (offset) => offsets[offset] ?? source.length;
+}
+
+/**
  * Lets headings end with an attribute block without the `:slide` directive,
  * e.g., `## Title {#id .section}`, by rewriting the source before it's parsed
  * (see {@link rewriteHeadingAttributes}). MDX would parse the block as an
