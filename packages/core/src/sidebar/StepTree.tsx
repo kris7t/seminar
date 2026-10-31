@@ -13,6 +13,10 @@ import type { StepPath, StepStore, StepTreeEntry } from '../steps/StepStore.ts';
 type EntryPhase = 'past' | 'open' | 'current' | 'future';
 
 function phaseOf(path: StepPath, current: StepPath): EntryPhase {
+  // The start of the slide doesn't enclose the steps of the slide.
+  if (path.length === 0) {
+    return current.length === 0 ? 'current' : 'past';
+  }
   for (let depth = 0; depth < path.length; depth += 1) {
     const step = path[depth] ?? 0;
     const position = current[depth] ?? 0;
@@ -23,23 +27,13 @@ function phaseOf(path: StepPath, current: StepPath): EntryPhase {
   return path.length === current.length ? 'current' : 'open';
 }
 
-/**
- * Returns where the start of the slide or a step at `path` is, which only
- * encloses the steps nested in its step 0.
- */
-function startPhaseOf(path: StepPath, current: StepPath): EntryPhase {
-  const phase = phaseOf(path, current);
-  return phase === 'open' && (current[path.length] ?? 0) !== 0 ? 'past' : phase;
-}
-
 interface EntryProps {
   path: StepPath;
   label: string;
   /** The text to show if the label is empty. */
   fallback: string;
-  phase: EntryPhase;
-  /** How many levels to indent the entry. */
   level: number;
+  current: StepPath;
   store: StepStore;
   /** The language of the labels, which are taken from the slide. */
   lang: string | undefined;
@@ -53,13 +47,14 @@ function Entry({
   path,
   label,
   fallback,
-  phase,
   level,
+  current,
   store,
   lang,
   page,
   overlay,
 }: EntryProps): JSX.Element {
+  const phase = phaseOf(path, current);
   // Going through the slide skips steps outside its range, but they can still
   // be chosen here.
   const skipped = !store.isInRange(path);
@@ -100,15 +95,8 @@ function Entry({
   );
 }
 
-/**
- * Renders the steps nested in `parent`. Steps nested in step 0 are indented
- * below a start entry if they have to be told apart from the other steps, and
- * are like the other steps if there are none. The start of the slide always has
- * an entry, so only steps get one here.
- */
 function renderEntries(
   entries: readonly StepTreeEntry[],
-  parent: StepPath,
   level: number,
   current: StepPath,
   store: StepStore,
@@ -116,66 +104,21 @@ function renderEntries(
   lang: string | undefined,
   pages: ReadonlySet<string>,
 ): JSX.Element[] {
-  if (entries.length === 0) {
-    return [];
-  }
-  const initial = entries.filter(({ path }) => path.length > parent.length + 1);
-  const later = entries.filter(({ path }) => path.length === parent.length + 1);
-  const indent = initial.length > 0 && later.length > 0;
-  // The enclosing step has the current entry instead of its start.
-  const startPhase = startPhaseOf(parent, current);
-  return [
-    ...(indent && parent.length > 0
-      ? [
-          <Entry
-            key={`start:${parent.join('.')}`}
-            path={parent}
-            label=""
-            fallback={t('startOfStep')}
-            phase={startPhase === 'current' ? 'past' : startPhase}
-            level={level}
-            store={store}
-            lang={lang}
-            page={false}
-            overlay={false}
-          />,
-        ]
-      : []),
-    ...renderEntries(
-      initial,
-      [...parent, 0],
-      indent ? level + 1 : level,
-      current,
-      store,
-      t,
-      lang,
-      pages,
-    ),
-    ...later.flatMap(({ path, label, overlay, children }) => [
-      <Entry
-        key={path.join('.')}
-        path={path}
-        label={label}
-        fallback={t('step', { number: path.at(-1) ?? 0 })}
-        phase={phaseOf(path, current)}
-        level={level}
-        store={store}
-        lang={lang}
-        page={pages.has(path.join('.'))}
-        overlay={overlay}
-      />,
-      ...renderEntries(
-        children,
-        path,
-        level + 1,
-        current,
-        store,
-        t,
-        lang,
-        pages,
-      ),
-    ]),
-  ];
+  return entries.flatMap(({ path, label, overlay, children }) => [
+    <Entry
+      key={path.join('.')}
+      path={path}
+      label={label}
+      fallback={t('step', { number: path.at(-1) ?? 0 })}
+      level={level}
+      current={current}
+      store={store}
+      lang={lang}
+      page={pages.has(path.join('.'))}
+      overlay={overlay}
+    />,
+    ...renderEntries(children, level + 1, current, store, t, lang, pages),
+  ]);
 }
 
 export interface StepTreeProps {
@@ -188,8 +131,6 @@ export interface StepTreeProps {
  * which highlights the current step, and goes to a step when clicked.
  *
  * The first entry goes to the beginning of the slide, before any of its steps.
- * Steps nested in the initial content of the slide or a step are indented below
- * a start entry if the slide or step has other steps.
  * Steps outside the range of the slide (see `StepRange`), which going through
  * the slide skips, are struck through. Icons mark the steps that become pages
  * when the slide is split into pages, and the steps that may cover other
@@ -235,14 +176,14 @@ export function StepTree({ store }: StepTreeProps): JSX.Element {
         path={[]}
         label=""
         fallback={t('startOfSlide')}
-        phase={startPhaseOf([], current)}
         level={0}
+        current={current}
         store={store}
         lang={lang}
         page={pages.has('')}
         overlay={false}
       />
-      {renderEntries(tree, [], 0, current, store, t, lang, pages)}
+      {renderEntries(tree, 0, current, store, t, lang, pages)}
     </List>
   );
 }

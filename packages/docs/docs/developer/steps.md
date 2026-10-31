@@ -48,10 +48,8 @@ elements:
 - `WITH_CONTENT` (`{ with: 'content' }`) shows the component with the content
   before it, i.e., the latest step that isn't an overlay, like paragraphs, list
   items, images, and columns. Such
-  components are part of that step, so steps inside them are nested in it, or
-  in the initial content of the slide or step if there is no step before them,
-  while other such components inside them don't add a level. `step` in the
-  props gives it a step of its own.
+  components are transparent for nesting: steps inside them are nested as if
+  the component wasn't there. `step` in the props gives it a step of its own.
 - `WITH_INITIAL` (`{ with: 'initial' }`) shows it up front.
 - `{ in: element }` or `{ in: 'name' }` nests it in the step of an element,
   or of a group, like callouts pointing at an element.
