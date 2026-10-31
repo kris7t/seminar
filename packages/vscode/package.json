@@ -96,6 +96,9 @@
           "meta.embedded.xml": "xml",
           "meta.embedded.yaml": "yaml",
           "meta.embedded.math.seminar": "latex"
+        },
+        "tokenTypes": {
+          "comment.notes.seminar": "other"
         }
       },
       {

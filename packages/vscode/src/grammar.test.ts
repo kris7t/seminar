@@ -190,22 +190,117 @@ describe('the grammar of decks', () => {
   });
 
   it('highlights leaf and container directives', () => {
-    expect(tokenize(':::notes\nText\n:::\n\n::slide[Title]')).toEqual([
+    expect(tokenize(':::notes\nText\n:::\n\n::callout[Title]')).toEqual([
       [':::', 'string.other.begin.directive.seminar'],
-      ['notes', 'entity.name.tag.directive.seminar'],
+      ['notes', 'entity.name.type.notes.seminar'],
+      ['Text', 'comment.notes.seminar'],
       [':::', 'string.other.end.directive.seminar'],
       ['::', 'string.other.begin.directive.seminar'],
-      ['slide', 'entity.name.tag.directive.seminar'],
+      ['callout', 'entity.name.tag.directive.seminar'],
       ['[', 'punctuation.definition.label.begin.seminar'],
       ['Title', 'meta.label.directive.seminar'],
       [']', 'punctuation.definition.label.end.seminar'],
     ]);
   });
 
+  it.each(['::include[./other.deck.mdx]', '::recap[#overview]'])(
+    'highlights %s like imports',
+    (text) => {
+      expect(tokenize(text)[1]).toEqual([
+        text.slice(2, text.indexOf('[')),
+        'keyword.control.import.seminar',
+      ]);
+    },
+  );
+
+  it('highlights the name of ::slide like headings', () => {
+    expect(tokenize('::slide[A title]{#id}')).toEqual([
+      ['::', 'string.other.begin.directive.seminar'],
+      ['slide', 'markup.heading.slide.seminar'],
+      ['[', 'punctuation.definition.label.begin.seminar'],
+      ['A title', 'meta.label.directive.seminar'],
+      [']', 'punctuation.definition.label.end.seminar'],
+      ['{', 'punctuation.definition.attributes.begin.seminar'],
+      ['#id', 'entity.other.attribute-name.id.seminar'],
+      ['}', 'punctuation.definition.attributes.end.seminar'],
+    ]);
+  });
+
+  it('highlights the unstyled text of notes like comments', () => {
+    expect(
+      tokenize(':::notes\nSome text and :step\nText\n:::\n\nAfter'),
+    ).toEqual([
+      [':::', 'string.other.begin.directive.seminar'],
+      ['notes', 'entity.name.type.notes.seminar'],
+      ['Some text and ', 'comment.notes.seminar'],
+      [':', 'string.other.begin.directive.seminar'],
+      ['step', 'entity.name.function.step.seminar'],
+      ['Text', 'comment.notes.seminar'],
+      [':::', 'string.other.end.directive.seminar'],
+    ]);
+  });
+
+  it('closes notes with fences that are long enough', () => {
+    expect(
+      tokenize('::::notes\nText\n:::\nMore\n:::::\n\nAfter').at(-1),
+    ).toEqual([':::::', 'string.other.end.directive.seminar']);
+  });
+
+  it.each([
+    ':include',
+    ':recap',
+    ':notes',
+    '::notes',
+    ':slide',
+    '::slides',
+    ':::slide',
+    ':::recap',
+    '::included',
+  ])('highlights %s like other directives', (text) => {
+    expect(
+      tokenize(text).filter(
+        ([, scope]) => scope === 'entity.name.tag.directive.seminar',
+      ),
+    ).toEqual([[text.replace(/^:+/, ''), 'entity.name.tag.directive.seminar']]);
+  });
+
+  it.each([':step', '::step', ':::step'])('highlights %s as a step', (text) => {
+    expect(tokenize(text)[1]).toEqual([
+      'step',
+      'entity.name.function.step.seminar',
+    ]);
+  });
+
+  it.each([
+    [':::column{step}', 'step'],
+    [':::column{step grow=2}', 'step'],
+    [':callout[x]{.a step}', 'step'],
+    ['![Alt](./a.svg){#id step}', 'step'],
+    ['```ts #id step\n```', 'step'],
+    ['```mermaid step\n```', 'step'],
+  ])('highlights the step in the props of %s', (text, step) => {
+    expect(tokenize(text)).toContainEqual([
+      step,
+      'entity.name.function.step.seminar',
+    ]);
+  });
+
+  it.each([
+    ':::column{#step .step group=step step=1 steps}',
+    '```ts #step .step group=step step=1 steps\n```',
+    '## A heading {step}',
+    '::slide{step}',
+    '::slide[Title]{#id step}',
+  ])('leaves props that are not steps alone in %s', (text) => {
+    expect(tokenize(text).map(([, scope]) => scope)).not.toContain(
+      'entity.name.function.step.seminar',
+    );
+  });
+
   it('highlights steps in list items', () => {
     expect(tokenize('- :step Item')).toEqual([
       [':', 'string.other.begin.directive.seminar'],
-      ['step', 'entity.name.tag.directive.seminar'],
+      ['step', 'entity.name.function.step.seminar'],
     ]);
   });
 
@@ -252,7 +347,7 @@ ${fence}`),
     ).toEqual([
       ['#fib', 'entity.other.attribute-name.id.seminar'],
       ['.wide', 'entity.other.attribute-name.class.seminar'],
-      ['step', 'entity.other.attribute-name.seminar'],
+      ['step', 'entity.name.function.step.seminar'],
       ['group', 'entity.other.attribute-name.seminar'],
       ['=', 'punctuation.separator.key-value.seminar'],
       ['impl', 'string.unquoted.attribute-value.seminar'],
@@ -281,7 +376,7 @@ flowchart LR
     expect(lines).toEqual(
       expect.arrayContaining([
         ['%%', 'string.other.begin.directive.seminar'],
-        ['step', 'entity.name.tag.directive.seminar'],
+        ['step', 'entity.name.function.step.seminar'],
         ['group', 'entity.other.attribute-name.seminar'],
         ['[', 'punctuation.definition.label.begin.seminar'],
         ['c', 'variable.other.step-item.seminar'],
@@ -295,7 +390,7 @@ flowchart LR
   it('highlights steps in diagrams it does not know', () => {
     expect(tokenize('```mermaid\nwardley\n%% step\n```')).toEqual([
       ['%%', 'string.other.begin.directive.seminar'],
-      ['step', 'entity.name.tag.directive.seminar'],
+      ['step', 'entity.name.function.step.seminar'],
     ]);
   });
 
@@ -309,10 +404,10 @@ flowchart LR
 
   it('continues with Markdown after Mermaid diagrams', () => {
     expect(tokenize('```mermaid\nflowchart LR\n```\n\n:step')).toEqual(
-      expect.arrayContaining([['step', 'entity.name.tag.directive.seminar']]),
+      expect.arrayContaining([['step', 'entity.name.function.step.seminar']]),
     );
     expect(tokenize('```mermaid\nwardley\n```\n\n:step')).toEqual(
-      expect.arrayContaining([['step', 'entity.name.tag.directive.seminar']]),
+      expect.arrayContaining([['step', 'entity.name.function.step.seminar']]),
     );
   });
 
