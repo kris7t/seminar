@@ -11,7 +11,7 @@ import { scrollIntoView } from './Sidebar.tsx';
 import type { StepPath, StepStore, StepTreeEntry } from '../steps/StepStore.ts';
 
 /** Where a step is relative to the current one. */
-type EntryPhase = 'past' | 'open' | 'current' | 'future';
+type EntryPhase = 'past' | 'open' | 'current' | 'shownWith' | 'future';
 
 function phaseOf(path: StepPath, current: StepPath): EntryPhase {
   // The start of the slide only encloses the steps nested in step 0.
@@ -28,7 +28,11 @@ function phaseOf(path: StepPath, current: StepPath): EntryPhase {
       return step < position ? 'past' : 'future';
     }
   }
-  return path.length === current.length ? 'current' : 'open';
+  if (current.slice(path.length).some((step) => step > 0)) {
+    return 'open';
+  }
+  // Step 0 of the current step is shown with it, whose entry is the current one.
+  return path.length === current.length ? 'current' : 'shownWith';
 }
 
 interface EntryProps {

@@ -124,6 +124,37 @@ describe('StepTree', () => {
     ]);
   });
 
+  it('emphasizes initial steps of other steps only if a nested step is shown', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First">
+          <Step>
+            Outer
+            <Step with="initial">
+              Inner<Step>Nested</Step>
+            </Step>
+            <Step>Later</Step>
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Steps' });
+    const weightOf = (text: string) =>
+      getComputedStyle(within(nav).getByText(text)).fontWeight;
+    await user.click(within(nav).getByText('Outer'));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    expect(weightOf('Inner')).not.toBe('500');
+    await user.click(within(nav).getByText('Nested'));
+    expect(window.location.hash).toBe('#slide=1&step=1.0.1');
+    expect(weightOf('Outer')).toBe('500');
+    expect(weightOf('Inner')).toBe('500');
+    await user.click(within(nav).getByText('Later'));
+    expect(window.location.hash).toBe('#slide=1&step=1.1');
+    expect(weightOf('Outer')).toBe('500');
+    expect(weightOf('Inner')).not.toBe('500');
+  });
+
   it('labels steps with their titles, which are not tooltips', () => {
     render(
       <Deck defaultShowSteps>
