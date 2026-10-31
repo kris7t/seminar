@@ -18,6 +18,7 @@ import type {
 } from '../compositor/compositor.ts';
 import { GnomeWindows } from '../compositor/gnome/gnome.ts';
 import { KWinWindows } from '../compositor/kwin/kwin.ts';
+import { forwardConsole } from './console.ts';
 import {
   PRELOAD,
   pageUrl,
@@ -258,11 +259,7 @@ function present(compositor: Compositor | undefined): void {
   presenter.on('closed', () => {
     app.quit();
   });
-  webContents.on('console-message', ({ level, message }) => {
-    if (level === 'error' || level === 'warning') {
-      console.log(`${name}: ${message}`);
-    }
-  });
+  forwardConsole(webContents, name);
   webContents.on('will-navigate', (event) => {
     if (!isDeck(event.url)) {
       event.preventDefault();

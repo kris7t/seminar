@@ -11,6 +11,7 @@ import {
   type PdfOutput,
 } from '../job.ts';
 import { addDocumentInfo } from '../pdf/documentInfo.ts';
+import { forwardConsole } from './console.ts';
 import {
   PRELOAD,
   pageUrl,
@@ -43,11 +44,7 @@ async function printDeck(
     webContents.ipc.on('seminar:host', (event) => {
       event.returnValue = { print } satisfies HostOptions;
     });
-    webContents.on('console-message', ({ level, message }) => {
-      if (level === 'error' || level === 'warning') {
-        console.log(`${deck.page}: ${message}`);
-      }
-    });
+    forwardConsole(webContents, deck.page);
     const ready = new Promise<PrintedDocument>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(
