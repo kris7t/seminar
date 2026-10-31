@@ -264,6 +264,31 @@ describe('step behaviors', () => {
       expect(appearanceOf(screen.getByText('Own'))).toBe('shown');
     });
 
+    it('takes initial as a shorthand of with="initial"', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step swap initial>
+              One
+            </Step>
+            <Step step initial>
+              Two
+            </Step>
+            <Step>A</Step>
+            <Step initial={false}>B</Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(appearanceOf(screen.getByText('One'))).toBe('shown');
+      expect(appearanceOf(screen.getByText('Two'))).toBe('shown');
+      expect(appearanceOf(screen.getByText('A'))).toBe('hidden');
+      await user.keyboard('{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=1');
+      expect(appearanceOf(screen.getByText('One'))).toBe('collapsed');
+      expect(appearanceOf(screen.getByText('B'))).toBe('hidden');
+    });
+
     it('joins an earlier initial step', async () => {
       const user = userEvent.setup();
       render(

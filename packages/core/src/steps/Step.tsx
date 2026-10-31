@@ -185,6 +185,12 @@ export interface StepProps
    */
   step?: boolean | '' | 'false' | undefined;
   /**
+   * Shows the step as soon as what encloses it is shown, like
+   * `with="initial"`, e.g., `initial` in a directive. Takes precedence over
+   * `step`, and is ignored if `with` is set.
+   */
+  initial?: boolean | '' | undefined;
+  /**
    * What the step does unless the user says otherwise (see
    * {@link StepDefaults}), which wrapper components can use to choose their
    * usual place and look.
@@ -380,6 +386,7 @@ export function Step(inProps: StepProps): JSX.Element {
     in: parent,
     after,
     step: ownStep,
+    initial,
     defaults,
     title,
     behavior: themeBehavior,
@@ -401,11 +408,13 @@ export function Step(inProps: StepProps): JSX.Element {
   const ownBehavior = inProps.behavior ?? shorthand;
   const explicitWith =
     withStep ??
-    (ownStep === true || ownStep === ''
-      ? 'self'
-      : ownStep === false || ownStep === 'false'
-        ? 'parent'
-        : undefined);
+    (initial === true || initial === ''
+      ? 'initial'
+      : ownStep === true || ownStep === ''
+        ? 'self'
+        : ownStep === false || ownStep === 'false'
+          ? 'parent'
+          : undefined);
   const placed = parent !== undefined || after !== undefined;
   // Placing it otherwise replaces the default of its place.
   const defaultPlace =
@@ -424,9 +433,9 @@ export function Step(inProps: StepProps): JSX.Element {
       (ownBehavior === undefined &&
         defaults?.behavior === undefined &&
         (defaultWith !== undefined ||
-          withStep === 'previous' ||
-          withStep === 'content' ||
-          withStep === 'initial')));
+          explicitWith === 'previous' ||
+          explicitWith === 'content' ||
+          explicitWith === 'initial')));
   // The behavior of the slide takes precedence over the default of the theme,
   // but only applies to steps. What encloses `with="parent"` decides its look.
   const behavior =

@@ -178,6 +178,12 @@ Then that.
     ]);
   });
 
+  it('passes initial to the step', async () => {
+    expect(await content('- :step{initial swap} A')).toEqual([
+      '<ul>\n<ListItem step=true initial="" swap="">A</ListItem>\n</ul>',
+    ]);
+  });
+
   it('passes step=false to the step', async () => {
     expect(
       await content('- :step{step=false} A\n\nB :step{step=false}'),

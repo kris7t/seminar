@@ -33,8 +33,8 @@ nested in it, which come after it.
 - `with=previous` shows it with the step right before it, whatever that is.
 - `with=content` shows it with the latest step that shows content, not an
   overlay like a callout, which is what plain content does.
-- `with=initial` shows it as soon as what encloses it is shown, even after other
-  steps.
+- `with=initial`, or just `initial`, shows it as soon as what encloses it is
+  shown, even after other steps.
 - `with=parent` makes it part of what encloses it, rather than a step, so it
   has no look of its own, and steps inside it are nested directly in what
   encloses it. A behavior doesn't apply here. `step=false` means the same.
@@ -47,7 +47,7 @@ It's a real step: it takes the default of the slide, and steps inside it end at 
 next step on its level:
 
 ```mdx
-- :step{with=initial} Shown up front:callout[Goes away with the next item]
+- :step{initial} Shown up front:callout[Goes away with the next item]
 - This goes with it, too
 - :step{with=parent} This stays
 - :step The next item
@@ -193,14 +193,14 @@ appear. Collapsed steps take no space instead:
   a figure, where each one replaces the one before:
 
 ```mdx
-:step{swap with=initial} ![First draft](./draft-1.svg)
+:step{swap initial} ![First draft](./draft-1.svg)
 
 :step{swap} ![Second draft](./draft-2.svg)
 
 :step{swap} ![Final version](./final.svg)
 ```
 
-`with=initial` shows the first one up front, until the second one replaces
+`initial` shows the first one up front, until the second one replaces
 it. Steps nested in a collapsed step are collapsed with it.
 
 The behavior is a bare word on the step, e.g., `:step{only}`, or
