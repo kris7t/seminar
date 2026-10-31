@@ -27,6 +27,7 @@ function renderDeck(props: { defaultShowToc?: boolean } = {}) {
 const MARKS: Record<string, string> = {
   'Exported as a page': 'page',
   'Covers other content': 'overlay',
+  'Shown with the step around it': 'with parent',
 };
 
 /**
@@ -87,7 +88,8 @@ describe('StepTree', () => {
     expect(entries()).toEqual(['*Up front', 'Nested', 'Later [page]']);
   });
 
-  it('shows initial steps of other steps without going to them', () => {
+  it('goes to the step around initial steps of other steps', async () => {
+    const user = userEvent.setup();
     render(
       <Deck defaultShowSteps>
         <Slide title="First">
@@ -104,14 +106,22 @@ describe('StepTree', () => {
     expect(entries()).toEqual([
       '*Start of the slide',
       'Outer',
+      'Inner [with parent]',
       'Nested',
       'Later [page]',
     ]);
-    expect(
-      within(screen.getByRole('navigation', { name: 'Steps' })).getByText(
-        'Inner',
-      ).tagName,
-    ).not.toBe('BUTTON');
+    const nav = screen.getByRole('navigation', { name: 'Steps' });
+    await user.click(within(nav).getByText('Later'));
+    expect(window.location.hash).toBe('#slide=1&step=1.1');
+    await user.click(within(nav).getByText('Inner'));
+    expect(window.location.hash).toBe('#slide=1&step=1');
+    expect(entries()).toEqual([
+      'Start of the slide',
+      '*Outer',
+      'Inner [with parent]',
+      'Nested',
+      'Later [page]',
+    ]);
   });
 
   it('labels steps with their titles, which are not tooltips', () => {

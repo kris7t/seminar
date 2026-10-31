@@ -1,15 +1,10 @@
-import {
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  Typography,
-} from '@mui/material';
+import { List, ListItemButton, ListItemText, Typography } from '@mui/material';
 import { useMemo, useSyncExternalStore, type JSX } from 'react';
 
 import { useDeck } from '../deck/DeckContext.ts';
 import { OverlayIcon } from '../icons/OverlayIcon.tsx';
 import { SplitPageIcon } from '../icons/SplitPageIcon.tsx';
+import { WithParentIcon } from '../icons/WithParentIcon.tsx';
 import type { Translate } from '../i18n/messages.ts';
 import { useT } from '../i18n/UiLanguageContext.ts';
 import { scrollIntoView } from './Sidebar.tsx';
@@ -67,8 +62,16 @@ function Entry({
   // Going through the slide skips steps outside its range, but they can still
   // be chosen here.
   const skipped = !store.isInRange(path);
-  const content = (
-    <>
+  return (
+    <ListItemButton
+      selected={phase === 'current'}
+      aria-current={phase === 'current' ? 'step' : undefined}
+      ref={phase === 'current' ? scrollIntoView : undefined}
+      onClick={() => {
+        store.reset(path);
+      }}
+      sx={{ pl: 2 + level * 2 }}
+    >
       <ListItemText
         // Placeholders are in the language of the user interface.
         lang={label === '' ? undefined : lang}
@@ -90,25 +93,11 @@ function Entry({
       >
         {label === '' ? fallback : label}
       </ListItemText>
+      {path.at(-1) === 0 && (
+        <WithParentIcon sx={{ ml: 1, color: 'text.secondary' }} />
+      )}
       {overlay && <OverlayIcon sx={{ ml: 1, color: 'text.secondary' }} />}
       {page && <SplitPageIcon sx={{ ml: 1, color: 'text.secondary' }} />}
-    </>
-  );
-  // Step 0 of a step is shown along with it, so there is nothing to go to.
-  if (path.length > 0 && path.at(-1) === 0) {
-    return <ListItem sx={{ pl: 2 + level * 2 }}>{content}</ListItem>;
-  }
-  return (
-    <ListItemButton
-      selected={phase === 'current'}
-      aria-current={phase === 'current' ? 'step' : undefined}
-      ref={phase === 'current' ? scrollIntoView : undefined}
-      onClick={() => {
-        store.reset(path);
-      }}
-      sx={{ pl: 2 + level * 2 }}
-    >
-      {content}
     </ListItemButton>
   );
 }
@@ -150,8 +139,8 @@ export interface StepTreeProps {
  *
  * The first entry goes to the beginning of the slide, before any of its steps,
  * and shows the steps at step 0 of the slide, if there are any. Steps at step 0
- * of other steps are shown along with them, so they can't be chosen on their
- * own.
+ * of other steps are always shown along with them, which an icon marks, so
+ * choosing them goes to the step around them.
  * Steps outside the range of the slide (see `StepRange`), which going through
  * the slide skips, are struck through. Icons mark the steps that become pages
  * when the slide is split into pages, and the steps that may cover other

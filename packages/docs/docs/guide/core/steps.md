@@ -108,7 +108,9 @@ step that content is part of, or are steps of the slide if there is none.
 
 Steps nested in a step shown up front have a 0 in the address, e.g., `step=0.1`,
 or `step=1.0.1` for a step shown as soon as step 1. The step tree shows them
-below the step they are nested in, which is the first entry for the slide.
+below the step they are nested in, which is the first entry for the slide. It
+marks steps that are always shown with the step around them, and choosing them
+goes to that step.
 
 ## Groups
 

@@ -12,6 +12,7 @@ import { Steps } from './Steps.tsx';
 const MARKS: Record<string, string> = {
   'Exported as a page': 'page',
   'Covers other content': 'overlay',
+  'Shown with the step around it': 'with parent',
 };
 
 /**
@@ -269,6 +270,7 @@ describe('splitting slides into pages', () => {
     ).toEqual([
       'Start of the slide [page]',
       'Text [page]',
+      'Note [with parent] [overlay]',
       'More',
       'End [page]',
     ]);
