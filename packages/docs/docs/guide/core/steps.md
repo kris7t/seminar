@@ -93,6 +93,8 @@ step of its own, so the steps in it end at the first step after it:
 
 The address shows them with a 0, e.g., `step=0.1`, or `step=1.0.1` for the
 initial content of step 1.
+The step tree shows them below the start of the slide or step if it has
+other steps, too.
 
 ## Groups
 

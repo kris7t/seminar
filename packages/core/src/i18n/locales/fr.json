@@ -34,6 +34,7 @@
   "pointsAt": "Aller à ce que cela désigne",
   "untitled": "Sans titre",
   "startOfSlide": "Début de la diapositive",
+  "startOfStep": "Début de l'étape",
   "step": "Étape {{number}}",
   "goToRecappedSlide": "Aller à la diapositive d’origine",
   "goToFirstRecap": "Aller au premier rappel",

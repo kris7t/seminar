@@ -52,6 +52,19 @@ function entries(): string[] {
     });
 }
 
+/** Returns {@link entries} with how many levels they are indented. */
+function indentedEntries(): string[] {
+  const nav = screen.getByRole('navigation', { name: 'Steps' });
+  const paddings = within(nav)
+    .getAllByRole('button')
+    .map((button) => Number.parseFloat(getComputedStyle(button).paddingLeft));
+  const labels = entries();
+  return paddings.map(
+    (padding, index) =>
+      `${String((padding - (paddings[0] ?? 0)) / 16)} ${labels[index] ?? ''}`,
+  );
+}
+
 describe('StepTree', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');
@@ -74,7 +87,7 @@ describe('StepTree', () => {
     ]);
   });
 
-  it('indents steps nested in step 0 below the step that encloses it', async () => {
+  it('indents steps nested in step 0 below a start entry if there are other steps', async () => {
     const user = userEvent.setup();
     render(
       <Deck defaultShowSteps>
@@ -96,29 +109,15 @@ describe('StepTree', () => {
         </Slide>
       </Deck>,
     );
-    const nav = screen.getByRole('navigation', { name: 'Steps' });
-    const indents = () =>
-      within(nav)
-        .getAllByRole('button')
-        .map((button) => getComputedStyle(button).paddingLeft);
-    const [start, nested] = indents();
-    expect(entries()).toEqual([
-      '*Start of the slide',
-      'Initial',
-      'Second',
-      'Inner initial',
-      'Inner [page]',
+    expect(indentedEntries()).toEqual([
+      '0 *Start of the slide',
+      '1 Initial',
+      '0 Second',
+      '1 Start of the step',
+      '2 Inner initial',
+      '1 Inner [page]',
     ]);
-    expect(indents()).toEqual([
-      start,
-      nested,
-      start,
-      expect.not.stringMatching(
-        new RegExp(`^(${String(start)}|${String(nested)})$`),
-      ),
-      nested,
-    ]);
-    // The start of the slide encloses the steps nested in step 0.
+    // The start of the slide encloses only the steps nested in step 0.
     const startButton = screen.getByRole('button', {
       name: 'Start of the slide',
     });
@@ -130,9 +129,56 @@ describe('StepTree', () => {
     await user.keyboard('{ArrowRight}');
     expect(entries()[1]).toBe('*Initial');
     expect(weight()).not.toBe(closed);
+    // The step itself is current, rather than its start.
     await user.keyboard('{ArrowRight}');
     expect(entries()[2]).toBe('*Second');
+    expect(entries()[3]).toBe('Start of the step');
     expect(weight()).toBe(closed);
+    await user.keyboard('{ArrowRight}');
+    expect(entries()[4]).toBe('*Inner initial');
+    await user.click(screen.getByRole('button', { name: 'Start of the step' }));
+    expect(entries()[2]).toBe('*Second');
+    expect(window.location.hash).toBe('#slide=1&step=1');
+  });
+
+  it('does not indent steps nested in step 0 further without other steps', () => {
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First">
+          <ul>
+            <ListItem>
+              Up front<Step>Initial</Step>
+            </ListItem>
+          </ul>
+        </Slide>
+      </Deck>,
+    );
+    expect(indentedEntries()).toEqual([
+      '0 *Start of the slide',
+      '0 Initial [page]',
+    ]);
+  });
+
+  it('does not indent steps nested in the initial content of a step further without other steps', () => {
+    render(
+      <Deck defaultShowSteps>
+        <Slide title="First">
+          <Step>
+            Outer
+            <ul>
+              <ListItem>
+                Inner<Step>Nested</Step>
+              </ListItem>
+            </ul>
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    expect(indentedEntries()).toEqual([
+      '0 *Start of the slide',
+      '0 Outer',
+      '1 Nested [page]',
+    ]);
   });
 
   it('labels steps with their titles, which are not tooltips', () => {

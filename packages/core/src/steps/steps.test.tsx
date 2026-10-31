@@ -336,6 +336,27 @@ describe('steps', () => {
     expect(window.location.hash).toBe('#slide=1&step=1');
   });
 
+  it('nests steps in the initial inert content of an initial step', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck>
+        <Slide>
+          <Step with="initial">
+            a
+            <Paragraph>
+              b<Step>more</Step>
+            </Paragraph>
+            <Paragraph step>c</Paragraph>
+          </Step>
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=0.0.1');
+    await user.keyboard('{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=0.1');
+  });
+
   it('nests steps in the initial inert content of a step', async () => {
     const user = userEvent.setup();
     render(
