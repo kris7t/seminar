@@ -230,6 +230,25 @@
           "include": "text.tex#math-content"
         }
       ]
+    },
+    "code-fence-props": {
+      "patterns": [
+        {
+          "match": "\"[^\"]*\"|'[^']*'|\\{[^{}]*\\}"
+        },
+        {
+          "match": "(?<!\\S)((?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))(?!\\S)",
+          "captures": {
+            "1": {
+              "patterns": [
+                {
+                  "include": "#attribute-words"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   }
 }

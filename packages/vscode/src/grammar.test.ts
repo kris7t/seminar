@@ -10,7 +10,13 @@ import {
 } from 'vscode-textmate';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { DECK_SCOPE, renderDeckGrammar } from './grammar.ts';
+
 const syntaxes = new URL('../syntaxes/', import.meta.url);
+const MDX_GRAMMAR = readFileSync(
+  new URL('source.mdx.tmLanguage', syntaxes),
+  'utf8',
+);
 
 /** Stands in for the grammar of TeX that comes with the editor. */
 const TEX = JSON.stringify({
@@ -31,7 +37,6 @@ const TSX = JSON.stringify({
 });
 
 const FILES: Record<string, string> = {
-  'source.seminar-deck': 'deck.tmLanguage',
   'source.seminar-deck.injection': 'deck.injection.tmLanguage.json',
   'source.seminar-deck.heading': 'deck.heading.tmLanguage.json',
 };
@@ -53,6 +58,11 @@ beforeAll(async () => {
     loadGrammar: (scope) => {
       if (scope === 'text.tex') {
         return Promise.resolve(parseRawGrammar(TEX, 'tex.json'));
+      }
+      if (scope === DECK_SCOPE) {
+        return Promise.resolve(
+          parseRawGrammar(renderDeckGrammar(MDX_GRAMMAR), 'deck.tmLanguage'),
+        );
       }
       if (scope === 'source.tsx') {
         return Promise.resolve(parseRawGrammar(TSX, 'tsx.json'));
@@ -95,6 +105,30 @@ function tokenize(text: string): [string, string][] {
   }
   return tokens;
 }
+
+describe('renderDeckGrammar', () => {
+  it('replaces the scope of MDX', () => {
+    const rendered = renderDeckGrammar(MDX_GRAMMAR);
+    expect(rendered).not.toContain('<string>source.mdx</string>');
+    expect(rendered).toContain(`<string>${DECK_SCOPE}</string>`);
+  });
+
+  it('leaves no code fence without props', () => {
+    const rendered = renderDeckGrammar(MDX_GRAMMAR);
+    const fences = rendered.match(
+      /<string>\(\?:\^\|\\G\)\[\\t \]\*\((?:`|~)\{3,\}\)/g,
+    );
+    const props = rendered.match(/#code-fence-props/g);
+    expect(props?.length).toBeGreaterThan(0);
+    expect(props?.length).toBe(fences?.length);
+  });
+
+  it('fails if the grammar has no code fences', () => {
+    expect(() => renderDeckGrammar('<plist></plist>')).toThrow(
+      'no code fences',
+    );
+  });
+});
 
 describe('the grammar of decks', () => {
   it('highlights text directives with labels and attributes', () => {
@@ -188,6 +222,25 @@ describe('the grammar of decks', () => {
 
   it('leaves directives in code alone', () => {
     expect(tokenize('A `:step` code\n\n```\n:step\n```')).toEqual([]);
+  });
+
+  it.each(['```', '~~~'])('highlights the props of code in %s', (fence) => {
+    expect(
+      tokenize(`${fence}mermaid #fib .wide step group=impl {1-3|a} "a #b"
+#not .props
+${fence}`),
+    ).toEqual([
+      ['#fib', 'entity.other.attribute-name.id.seminar'],
+      ['.wide', 'entity.other.attribute-name.class.seminar'],
+      ['step', 'entity.other.attribute-name.seminar'],
+      ['group', 'entity.other.attribute-name.seminar'],
+      ['=', 'punctuation.separator.key-value.seminar'],
+      ['impl', 'string.unquoted.attribute-value.seminar'],
+    ]);
+  });
+
+  it('leaves words that are not props alone after code fences', () => {
+    expect(tokenize('```ts x.y #a.b\n```')).toEqual([]);
   });
 
   it('highlights attribute blocks of headings', () => {

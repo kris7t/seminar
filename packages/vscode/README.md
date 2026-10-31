@@ -41,8 +41,9 @@ the JavaScript of decks.
 
 ## Developing
 
-`syntaxes/deck.tmLanguage` is the
+`syntaxes/source.mdx.tmLanguage` is an unmodified copy of the
 [grammar of MDX](https://github.com/wooorm/markdown-tm-language), used under
-the MIT license in `syntaxes/LICENSE.deck.tmLanguage.txt`, with its scope renamed
-to `source.seminar-deck`. The rest of the syntax is injected by the grammars next
+the MIT license in `syntaxes/LICENSE.source.mdx.txt`. Replace it to update the
+grammar. `renderDeckGrammar` in `src/grammar.ts` turns it into the grammar of decks
+when building. The rest of the syntax is injected by the grammars next
 to it, which include the grammar of TeX that comes with the editor.

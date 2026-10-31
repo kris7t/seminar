@@ -1,11 +1,24 @@
 // Bundles the extension and its language server, since VSIX packages don't
 // include `node_modules`.
-import { copyFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
+
+import { renderDeckGrammar } from './src/grammar.ts';
 
 await copyFile(
   new URL('../../LICENSE', import.meta.url),
   new URL('./LICENSE', import.meta.url),
+);
+
+await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
+await writeFile(
+  new URL('./dist/deck.tmLanguage', import.meta.url),
+  renderDeckGrammar(
+    await readFile(
+      new URL('./syntaxes/source.mdx.tmLanguage', import.meta.url),
+      'utf8',
+    ),
+  ),
 );
 
 await build({

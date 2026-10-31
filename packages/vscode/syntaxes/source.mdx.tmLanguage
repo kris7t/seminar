@@ -6632,7 +6632,7 @@
                 <array>
                   <dict>
                     <key>include</key>
-                    <string>source.seminar-deck</string>
+                    <string>source.mdx</string>
                   </dict>
                 </array>
               </dict>
@@ -6696,7 +6696,7 @@
                 <array>
                   <dict>
                     <key>include</key>
-                    <string>source.seminar-deck</string>
+                    <string>source.mdx</string>
                   </dict>
                 </array>
               </dict>
@@ -9528,7 +9528,7 @@
       </dict>
     </dict>
     <key>scopeName</key>
-    <string>source.seminar-deck</string>
+    <string>source.mdx</string>
     <key>uuid</key>
     <string>fe65e2cd-7c73-4a27-8b5e-5902893626aa</string>
   </dict>

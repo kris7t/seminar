@@ -1,7 +1,9 @@
 **
 !dist/*.cjs
 !assets/**
-!syntaxes/**
+!dist/*.tmLanguage
+!syntaxes/*.json
+!syntaxes/LICENSE.source.mdx.txt
 !language-configuration.json
 !package.json
 !README.md

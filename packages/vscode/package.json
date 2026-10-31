@@ -57,7 +57,7 @@
       {
         "language": "seminar-deck",
         "scopeName": "source.seminar-deck",
-        "path": "./syntaxes/deck.tmLanguage",
+        "path": "./dist/deck.tmLanguage",
         "embeddedLanguages": {
           "meta.embedded.c": "c",
           "meta.embedded.cpp": "cpp",
