@@ -213,10 +213,20 @@ describe('the grammar of decks', () => {
     },
   );
 
+  it('gives the name of ::slide the scopes of the text of headings', () => {
+    const { tokens } = grammar.tokenizeLine('::slide', INITIAL);
+    expect(tokens[1]?.scopes).toEqual(
+      expect.arrayContaining([
+        'markup.heading.slide.seminar',
+        'entity.name.section.slide.seminar',
+      ]),
+    );
+  });
+
   it('highlights the name of ::slide like headings', () => {
     expect(tokenize('::slide[A title]{#id}')).toEqual([
       ['::', 'string.other.begin.directive.seminar'],
-      ['slide', 'markup.heading.slide.seminar'],
+      ['slide', 'entity.name.section.slide.seminar'],
       ['[', 'punctuation.definition.label.begin.seminar'],
       ['A title', 'meta.label.directive.seminar'],
       [']', 'punctuation.definition.label.end.seminar'],

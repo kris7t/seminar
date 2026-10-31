@@ -372,7 +372,7 @@
           "name": "string.other.begin.directive.seminar"
         },
         "2": {
-          "name": "markup.heading.slide.seminar"
+          "name": "markup.heading.slide.seminar entity.name.section.slide.seminar"
         }
       },
       "end": "(?!\\[|\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
