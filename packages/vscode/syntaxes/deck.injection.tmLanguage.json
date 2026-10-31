@@ -21,6 +21,12 @@
       "include": "#directive-slide"
     },
     {
+      "include": "#directive-step"
+    },
+    {
+      "include": "#directive-reuse"
+    },
+    {
       "include": "#directive-block"
     },
     {
@@ -38,16 +44,16 @@
       "begin": "(?:^|\\G)[\\t ]*(\\${2,})[^\\n\\r$]*$",
       "beginCaptures": {
         "1": {
-          "name": "string.other.begin.math.seminar"
+          "name": "string.other.begin.math.seminar seminar.math.delimiter"
         }
       },
       "end": "(?:^|\\G)[\\t ]*(\\1)[\\t ]*$",
       "endCaptures": {
         "1": {
-          "name": "string.other.end.math.seminar"
+          "name": "string.other.end.math.seminar seminar.math.delimiter"
         }
       },
-      "contentName": "meta.embedded.math.seminar",
+      "contentName": "meta.embedded.math.seminar seminar.math.content",
       "patterns": [
         {
           "include": "#math-content"
@@ -58,16 +64,16 @@
       "begin": "(?<![\\\\$])(\\$+)(?!\\$)(?=.+?(?<!\\$)\\1(?!\\$))",
       "beginCaptures": {
         "1": {
-          "name": "string.other.begin.math.seminar"
+          "name": "string.other.begin.math.seminar seminar.math.delimiter"
         }
       },
       "end": "(?<!\\$)(\\1)(?!\\$)",
       "endCaptures": {
         "1": {
-          "name": "string.other.end.math.seminar"
+          "name": "string.other.end.math.seminar seminar.math.delimiter"
         }
       },
-      "contentName": "meta.embedded.math.seminar",
+      "contentName": "meta.embedded.math.seminar seminar.math.content",
       "patterns": [
         {
           "include": "#math-content"
@@ -78,7 +84,7 @@
       "match": "(?:^|\\G)[\\t ]*(:{3,})[\\t ]*$",
       "captures": {
         "1": {
-          "name": "string.other.end.directive.seminar"
+          "name": "string.other.end.directive.seminar seminar.directive.delimiter"
         }
       }
     },
@@ -86,18 +92,10 @@
       "begin": "(?:^|\\G)[\\t ]*(:{2,})((?>[^\\s\\p{P}\\p{S}](?:[^\\s\\p{P}\\p{S}]|[-_])*)(?<![-_])(?!:))",
       "beginCaptures": {
         "1": {
-          "name": "string.other.begin.directive.seminar"
+          "name": "string.other.begin.directive.seminar seminar.directive.delimiter"
         },
         "2": {
-          "name": "entity.name.tag.directive.seminar",
-          "patterns": [
-            {
-              "include": "#directive-reuse"
-            },
-            {
-              "include": "#directive-step"
-            }
-          ]
+          "name": "entity.name.tag.directive.seminar seminar.directive.name"
         }
       },
       "end": "(?!\\[|\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
@@ -114,15 +112,10 @@
       "begin": "(?<!:)(:)((?>[^\\s\\p{P}\\p{S}](?:[^\\s\\p{P}\\p{S}]|[-_])*)(?<![-_])(?!:))",
       "beginCaptures": {
         "1": {
-          "name": "string.other.begin.directive.seminar"
+          "name": "string.other.begin.directive.seminar seminar.directive.delimiter"
         },
         "2": {
-          "name": "entity.name.tag.directive.seminar",
-          "patterns": [
-            {
-              "include": "#directive-step"
-            }
-          ]
+          "name": "entity.name.tag.directive.seminar seminar.directive.name"
         }
       },
       "end": "(?!\\[|\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
@@ -139,16 +132,16 @@
       "begin": "\\[(?=[^\\n]*\\])",
       "beginCaptures": {
         "0": {
-          "name": "punctuation.definition.label.begin.seminar"
+          "name": "punctuation.definition.label.begin.seminar seminar.directive.label.delimiter"
         }
       },
       "end": "\\]",
       "endCaptures": {
         "0": {
-          "name": "punctuation.definition.label.end.seminar"
+          "name": "punctuation.definition.label.end.seminar seminar.directive.label.delimiter"
         }
       },
-      "contentName": "meta.label.directive.seminar",
+      "contentName": "meta.label.directive.seminar seminar.directive.label.text",
       "patterns": [
         {
           "include": "source.seminar-deck#markdown-text"
@@ -177,13 +170,13 @@
       "begin": "\\{(?=[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
       "beginCaptures": {
         "0": {
-          "name": "punctuation.definition.attributes.begin.seminar"
+          "name": "punctuation.definition.attributes.begin.seminar seminar.attribute.delimiter"
         }
       },
       "end": "\\}",
       "endCaptures": {
         "0": {
-          "name": "punctuation.definition.attributes.end.seminar"
+          "name": "punctuation.definition.attributes.end.seminar seminar.attribute.delimiter"
         }
       },
       "name": "meta.attributes.seminar",
@@ -200,29 +193,29 @@
       "patterns": [
         {
           "match": "#[^\\s\"'=#.{}]+",
-          "name": "entity.other.attribute-name.id.seminar"
+          "name": "entity.other.attribute-name.id.seminar seminar.attribute.id"
         },
         {
           "match": "\\.[^\\s\"'=#.{}]+",
-          "name": "entity.other.attribute-name.class.seminar"
+          "name": "entity.other.attribute-name.class.seminar seminar.attribute.class"
         },
         {
           "match": "([A-Za-z_][\\w-]*)(=)(\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+)",
           "captures": {
             "1": {
-              "name": "entity.other.attribute-name.seminar"
+              "name": "entity.other.attribute-name.seminar seminar.attribute.name"
             },
             "2": {
-              "name": "punctuation.separator.key-value.seminar"
+              "name": "keyword.operator.assignment.seminar seminar.attribute.separator"
             },
             "3": {
-              "name": "string.unquoted.attribute-value.seminar"
+              "name": "string.unquoted.attribute-value.seminar seminar.attribute.value"
             }
           }
         },
         {
           "match": "[A-Za-z_][\\w-]*",
-          "name": "entity.other.attribute-name.seminar"
+          "name": "entity.other.attribute-name.seminar seminar.attribute.name"
         }
       ]
     },
@@ -310,25 +303,37 @@
       ]
     },
     "directive-reuse": {
-      "match": "(?<!:::)(?<=::)(?:include|recap)$",
-      "name": "keyword.control.import.seminar"
-    },
-    "directive-step": {
-      "match": "(?<=:)step$",
-      "name": "entity.name.function.step.seminar"
+      "begin": "(?:^|\\G)[\\t ]*(::)(include|recap)(?![^\\s\\p{P}\\p{S}]|[-_:])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.other.begin.directive.seminar seminar.directive.delimiter.reuse"
+        },
+        "2": {
+          "name": "keyword.control.import.seminar seminar.directive.name.reuse"
+        }
+      },
+      "end": "(?!\\[|\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
+      "patterns": [
+        {
+          "include": "#directive-label"
+        },
+        {
+          "include": "#attribute-block"
+        }
+      ]
     },
     "directive-notes": {
       "begin": "(?:^|\\G)[\\t ]*(:{3,})(notes)(?![^\\s\\p{P}\\p{S}]|[-_:])",
       "beginCaptures": {
         "1": {
-          "name": "string.other.begin.directive.seminar"
+          "name": "string.other.begin.directive.seminar seminar.directive.delimiter"
         },
         "2": {
-          "name": "entity.name.type.notes.seminar"
+          "name": "entity.name.type.notes.seminar seminar.directive.name.notes"
         }
       },
       "while": "(?:^|\\G)(?![\\t ]*\\1:*[\\t ]*$)",
-      "contentName": "comment.notes.seminar",
+      "contentName": "comment.notes.seminar seminar.notes.text",
       "patterns": [
         {
           "include": "#directive-label"
@@ -343,19 +348,19 @@
     },
     "attribute-step": {
       "match": "(?<![^\\s{])step(?![^\\s}])",
-      "name": "entity.name.function.step.seminar"
+      "name": "entity.name.function.step.seminar seminar.attribute.name.step"
     },
     "slide-attribute-block": {
       "begin": "\\{(?=[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
       "beginCaptures": {
         "0": {
-          "name": "punctuation.definition.attributes.begin.seminar"
+          "name": "punctuation.definition.attributes.begin.seminar seminar.attribute.delimiter"
         }
       },
       "end": "\\}",
       "endCaptures": {
         "0": {
-          "name": "punctuation.definition.attributes.end.seminar"
+          "name": "punctuation.definition.attributes.end.seminar seminar.attribute.delimiter"
         }
       },
       "name": "meta.attributes.seminar",
@@ -369,10 +374,10 @@
       "begin": "(?:^|\\G)[\\t ]*(::)(slide)(?![^\\s\\p{P}\\p{S}]|[-_:])",
       "beginCaptures": {
         "1": {
-          "name": "string.other.begin.directive.seminar"
+          "name": "string.other.begin.directive.seminar seminar.directive.delimiter.slide"
         },
         "2": {
-          "name": "markup.heading.slide.seminar entity.name.section.slide.seminar"
+          "name": "markup.heading.slide.seminar entity.name.section.slide.seminar seminar.directive.name.slide"
         }
       },
       "end": "(?!\\[|\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
@@ -382,6 +387,26 @@
         },
         {
           "include": "#slide-attribute-block"
+        }
+      ]
+    },
+    "directive-step": {
+      "begin": "(?<!:)(:)(step)(?![^\\s\\p{P}\\p{S}]|[-_:]|\\[(?!\\]))",
+      "beginCaptures": {
+        "1": {
+          "name": "string.other.begin.directive.seminar seminar.directive.delimiter.step"
+        },
+        "2": {
+          "name": "entity.name.function.step.seminar seminar.directive.name.step"
+        }
+      },
+      "end": "(?!\\[|\\{[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\})",
+      "patterns": [
+        {
+          "include": "#directive-label"
+        },
+        {
+          "include": "#attribute-block"
         }
       ]
     }

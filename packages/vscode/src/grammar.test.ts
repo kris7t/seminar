@@ -48,6 +48,7 @@ const FILES: Record<string, string> = {
 };
 
 let grammar: IGrammar;
+let registry: Registry;
 
 beforeAll(async () => {
   const wasm = readFileSync(
@@ -56,7 +57,7 @@ beforeAll(async () => {
   await oniguruma.loadWASM(
     wasm.buffer.slice(wasm.byteOffset, wasm.byteOffset + wasm.byteLength),
   );
-  const registry = new Registry({
+  registry = new Registry({
     onigLib: Promise.resolve({
       createOnigScanner: (patterns) => new oniguruma.OnigScanner(patterns),
       createOnigString: (text) => new oniguruma.OnigString(text),
@@ -126,6 +127,33 @@ function tokenize(text: string): [string, string][] {
   return tokens;
 }
 
+/** Returns the color of the first token of `text` with the settings of `theme`. */
+function colorOf(
+  text: string,
+  word: string,
+  theme: Record<string, string>,
+): string | undefined {
+  registry.setTheme({
+    settings: [
+      { settings: { foreground: '#000000', background: '#ffffff' } },
+      ...Object.entries(theme).map(([scope, foreground]) => ({
+        scope,
+        settings: { foreground },
+      })),
+    ],
+  });
+  const { tokens } = grammar.tokenizeLine2(text, INITIAL);
+  const start = text.indexOf(word);
+  for (let index = 0; index < tokens.length; index += 2) {
+    if (tokens[index] === start) {
+      return registry
+        .getColorMap()
+        [((tokens[index + 1] ?? 0) & 0x00ff8000) >>> 15]?.toLowerCase();
+    }
+  }
+  return undefined;
+}
+
 describe('renderDeckGrammar', () => {
   it('replaces the scope of MDX', () => {
     const rendered = renderDeckGrammar(MDX_GRAMMAR);
@@ -150,6 +178,108 @@ describe('renderDeckGrammar', () => {
   });
 });
 
+describe('the scopes of decks', () => {
+  it.each([
+    [':step', 'step', 'entity.name.function', 'seminar.directive.name.step'],
+    [':note', 'note', 'entity.name.tag', 'seminar.directive.name'],
+    ['::recap', 'recap', 'keyword.control', 'seminar.directive.name.reuse'],
+    [':::notes', 'notes', 'entity.name.type', 'seminar.directive.name.notes'],
+    ['::slide', 'slide', 'entity.name.section', 'seminar.directive.name.slide'],
+    [':::note', ':::', 'string', 'seminar.directive.delimiter'],
+    ['$x$', '$', 'string', 'seminar.math.delimiter'],
+    ['![A](./a.svg){#id}', '#id', 'entity.other', 'seminar.attribute.id'],
+    ['![A](./a.svg){.c}', '.c', 'entity.other', 'seminar.attribute.class'],
+    [
+      '![A](./a.svg){step}',
+      'step',
+      'entity.name.function',
+      'seminar.attribute.name.step',
+    ],
+  ])('lets themes override the color of %s', (text, word, fallback, scope) => {
+    expect(colorOf(text, word, { [fallback]: '#111111' })).toBe('#111111');
+    expect(
+      colorOf(text, word, { [fallback]: '#111111', [scope]: '#222222' }),
+    ).toBe('#222222');
+  });
+
+  it.each([':step', ':step{group=a}', ':step[]', 'Text :step', '- :step'])(
+    'lets themes color the delimiter of %s',
+    (text) => {
+      const theme = { 'seminar.directive.delimiter.step': '#555555' };
+      expect(colorOf(text, ':', theme)).toBe('#555555');
+    },
+  );
+
+  it.each([
+    ':note',
+    '::note',
+    ':::note',
+    ':stepper',
+    '::step',
+    ':::step',
+    ':step[label]',
+    ':step[label]{group=a}',
+  ])('leaves the delimiter of %s to other rules', (text) => {
+    const theme = {
+      'seminar.directive.delimiter': '#555555',
+      'seminar.directive.delimiter.step': '#666666',
+    };
+    expect(colorOf(text, ':', theme)).toBe('#555555');
+  });
+
+  it.each(['%% step', '%% step only', '%% step group=a'])(
+    'uses the scope of implicit steps for the delimiter of %s',
+    (line) => {
+      const { ruleStack } = grammar.tokenizeLine('```mermaid', INITIAL);
+      const { tokens } = grammar.tokenizeLine(line, ruleStack);
+      expect(tokens[0]?.scopes).toContain('seminar.directive.delimiter.step');
+    },
+  );
+
+  it('leaves the delimiter of steps with items to other rules', () => {
+    const { ruleStack } = grammar.tokenizeLine('```mermaid', INITIAL);
+    const { tokens } = grammar.tokenizeLine('%% step[a, a->b] only', ruleStack);
+    expect(tokens[0]?.scopes).toContain('seminar.directive.delimiter');
+    expect(tokens[0]?.scopes).not.toContain('seminar.directive.delimiter.step');
+  });
+
+  it.each([
+    ['::include[./a.deck.mdx]', 'seminar.directive.delimiter.reuse'],
+    ['::recap[#a]', 'seminar.directive.delimiter.reuse'],
+    ['::slide[Title]', 'seminar.directive.delimiter.slide'],
+    [':include', 'seminar.directive.delimiter'],
+    [':::recap', 'seminar.directive.delimiter'],
+    ['::included', 'seminar.directive.delimiter'],
+    [':slide', 'seminar.directive.delimiter'],
+    [':::slide', 'seminar.directive.delimiter'],
+    ['::slides', 'seminar.directive.delimiter'],
+  ])('gives the delimiter of %s the scope %s', (text, scope) => {
+    const { tokens } = grammar.tokenizeLine(text, INITIAL);
+    expect(tokens[0]?.scopes.at(-1)).toBe(scope);
+  });
+
+  it.each([
+    [':a{k=v}', '='],
+    ['```ts k=v', '='],
+  ])('colors the = in %s like the one in JSX', (text, word) => {
+    expect(
+      colorOf(text, word, { 'keyword.operator.assignment': '#777777' }),
+    ).toBe('#777777');
+  });
+
+  it('lets themes color all directive names at once', () => {
+    expect(
+      colorOf(':step', 'step', { 'seminar.directive.name': '#333333' }),
+    ).toBe('#333333');
+    expect(
+      colorOf(':step', 'step', {
+        'seminar.directive.name': '#333333',
+        'seminar.directive.name.step': '#444444',
+      }),
+    ).toBe('#444444');
+  });
+});
+
 describe('the grammar of decks', () => {
   it('highlights text directives with labels and attributes', () => {
     expect(tokenize('Hi :term[a word]{#id .wide k="v" bare} there')).toEqual([
@@ -164,7 +294,7 @@ describe('the grammar of decks', () => {
       ['.wide', 'entity.other.attribute-name.class.seminar'],
       [' ', 'meta.attributes.seminar'],
       ['k', 'entity.other.attribute-name.seminar'],
-      ['=', 'punctuation.separator.key-value.seminar'],
+      ['=', 'keyword.operator.assignment.seminar'],
       ['"v"', 'string.unquoted.attribute-value.seminar'],
       [' ', 'meta.attributes.seminar'],
       ['bare', 'entity.other.attribute-name.seminar'],
@@ -257,6 +387,10 @@ describe('the grammar of decks', () => {
   });
 
   it.each([
+    ':step[label]',
+    ':step[label]{group=a}',
+    '::step',
+    ':::step',
     ':include',
     ':recap',
     ':notes',
@@ -271,15 +405,23 @@ describe('the grammar of decks', () => {
       tokenize(text).filter(
         ([, scope]) => scope === 'entity.name.tag.directive.seminar',
       ),
-    ).toEqual([[text.replace(/^:+/, ''), 'entity.name.tag.directive.seminar']]);
-  });
-
-  it.each([':step', '::step', ':::step'])('highlights %s as a step', (text) => {
-    expect(tokenize(text)[1]).toEqual([
-      'step',
-      'entity.name.function.step.seminar',
+    ).toEqual([
+      [
+        text.replace(/^:+/, '').replace(/[[{].*$/, ''),
+        'entity.name.tag.directive.seminar',
+      ],
     ]);
   });
+
+  it.each([':step', ':step{group=a}', ':step[]'])(
+    'highlights %s as a step',
+    (text) => {
+      expect(tokenize(text)[1]).toEqual([
+        'step',
+        'entity.name.function.step.seminar',
+      ]);
+    },
+  );
 
   it.each([
     [':::column{step}', 'step'],
@@ -359,7 +501,7 @@ ${fence}`),
       ['.wide', 'entity.other.attribute-name.class.seminar'],
       ['step', 'entity.name.function.step.seminar'],
       ['group', 'entity.other.attribute-name.seminar'],
-      ['=', 'punctuation.separator.key-value.seminar'],
+      ['=', 'keyword.operator.assignment.seminar'],
       ['impl', 'string.unquoted.attribute-value.seminar'],
     ]);
   });
@@ -446,7 +588,7 @@ flowchart LR
       ['#arch', 'entity.other.attribute-name.id.seminar'],
       [' ', 'meta.attributes.seminar'],
       ['width', 'entity.other.attribute-name.seminar'],
-      ['=', 'punctuation.separator.key-value.seminar'],
+      ['=', 'keyword.operator.assignment.seminar'],
       ['600', 'string.unquoted.attribute-value.seminar'],
       ['}', 'punctuation.definition.attributes.end.seminar'],
     ]);

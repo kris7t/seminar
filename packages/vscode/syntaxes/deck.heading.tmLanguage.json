@@ -6,13 +6,13 @@
       "begin": "\\{(?=[ \\t]*(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?)(?:[ \\t]+(?:[#.][^\\s\"'=#.{}]+|[A-Za-z_][\\w-]*(?:=(?:\"[^\"]*\"|'[^']*'|[^\\s\"'{}]+))?))*[ \\t]*\\}[ \\t]*#*[ \\t]*$)",
       "beginCaptures": {
         "0": {
-          "name": "punctuation.definition.attributes.begin.seminar"
+          "name": "punctuation.definition.attributes.begin.seminar seminar.attribute.delimiter"
         }
       },
       "end": "\\}",
       "endCaptures": {
         "0": {
-          "name": "punctuation.definition.attributes.end.seminar"
+          "name": "punctuation.definition.attributes.end.seminar seminar.attribute.delimiter"
         }
       },
       "name": "meta.attributes.seminar",

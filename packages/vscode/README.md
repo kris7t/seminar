@@ -41,6 +41,39 @@ so it always highlights `$…$` as math, and only on a single line.
 Set `"mdx": { "checkMdx": true }` in `tsconfig.json` to report type errors in
 the JavaScript of decks.
 
+## Colors
+
+Themes don't know about decks, so the syntax uses the common scopes of programming
+languages for its colors. Every token also has a scope of its own, which takes
+precedence, for themes and for `editor.tokenColorCustomizations`:
+
+| Scope                               | Syntax                                                                                 |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| `seminar.directive.delimiter`       | `:`, `::`, `:::`                                                                       |
+| `seminar.directive.delimiter.step`  | The `:` of `:step` and `:step{…}` without a label, and `%%` in `%% step` without items |
+| `seminar.directive.delimiter.reuse` | `::` of `::include`, `::recap`                                                         |
+| `seminar.directive.delimiter.slide` | `::` of `::slide`                                                                      |
+| `seminar.directive.name`            | Names of directives, and these:                                                        |
+| `seminar.directive.name.step`       | `step` in `:step`, `:step{…}`, and `%% step`                                           |
+| `seminar.directive.name.reuse`      | `::include`, `::recap`                                                                 |
+| `seminar.directive.name.notes`      | `:::notes`                                                                             |
+| `seminar.directive.name.slide`      | `::slide`                                                                              |
+| `seminar.directive.label.delimiter` | `[` and `]`                                                                            |
+| `seminar.directive.label.text`      | The text between them                                                                  |
+| `seminar.notes.text`                | Unstyled text in notes                                                                 |
+| `seminar.attribute.delimiter`       | `{` and `}`                                                                            |
+| `seminar.attribute.id`              | `#id`                                                                                  |
+| `seminar.attribute.class`           | `.class`                                                                               |
+| `seminar.attribute.name`            | `key` in `key=value`, and bare words                                                   |
+| `seminar.attribute.name.step`       | A bare `step`                                                                          |
+| `seminar.attribute.separator`       | `=`                                                                                    |
+| `seminar.attribute.value`           | `value` in `key=value`                                                                 |
+| `seminar.math.delimiter`            | `$`, `$$`                                                                              |
+| `seminar.math.content`              | Math, which also has the scopes of TeX                                                 |
+| `seminar.step.item`                 | Items in `%% step[a, a->b]`                                                            |
+| `seminar.step.item.operator`        | `->`                                                                                   |
+| `seminar.step.item.separator`       | `,`                                                                                    |
+
 ## Developing
 
 `syntaxes/source.mdx.tmLanguage` is an unmodified copy of the

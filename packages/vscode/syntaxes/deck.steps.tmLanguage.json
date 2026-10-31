@@ -3,37 +3,55 @@
   "injectionSelector": "L:source.seminar-deck meta.embedded.block.mermaid",
   "patterns": [
     {
-      "match": "^\\s*(%%)\\s*(step)(?:(\\[)([^\\]]*)(\\]))?(?:\\s+(.*))?$",
+      "match": "^\\s*(%%)\\s*(step)(\\[)([^\\]]*)(\\])(?:\\s+(.*))?$",
       "captures": {
         "1": {
-          "name": "string.other.begin.directive.seminar"
+          "name": "string.other.begin.directive.seminar seminar.directive.delimiter"
         },
         "2": {
-          "name": "entity.name.function.step.seminar"
+          "name": "entity.name.function.step.seminar seminar.directive.name.step"
         },
         "3": {
-          "name": "punctuation.definition.label.begin.seminar"
+          "name": "punctuation.definition.label.begin.seminar seminar.directive.label.delimiter"
         },
         "4": {
           "patterns": [
             {
               "match": "->",
-              "name": "keyword.operator.step-item.seminar"
+              "name": "keyword.operator.step-item.seminar seminar.step.item.operator"
             },
             {
               "match": ",",
-              "name": "punctuation.separator.step-item.seminar"
+              "name": "punctuation.separator.step-item.seminar seminar.step.item.separator"
             },
             {
               "match": "[^\\s,]+?(?=->|,|\\s|$)",
-              "name": "variable.other.step-item.seminar"
+              "name": "variable.other.step-item.seminar seminar.step.item"
             }
           ]
         },
         "5": {
-          "name": "punctuation.definition.label.end.seminar"
+          "name": "punctuation.definition.label.end.seminar seminar.directive.label.delimiter"
         },
         "6": {
+          "patterns": [
+            {
+              "include": "source.seminar-deck.injection#code-fence-props"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "match": "^\\s*(%%)\\s*(step)(?:\\s+(.*))?$",
+      "captures": {
+        "1": {
+          "name": "string.other.begin.directive.seminar seminar.directive.delimiter.step"
+        },
+        "2": {
+          "name": "entity.name.function.step.seminar seminar.directive.name.step"
+        },
+        "3": {
           "patterns": [
             {
               "include": "source.seminar-deck.injection#code-fence-props"
