@@ -9,9 +9,7 @@ import {
 } from './stepRange.ts';
 import {
   BUILT_IN_APPEARANCE_RANKS,
-  moreHidden,
   type RankedAppearance,
-  type RankedAppearances,
 } from './stepAppearance.ts';
 import {
   compareDocumentOrder,
@@ -20,12 +18,11 @@ import {
   type StepPlace,
   type StepRegistry,
 } from './StepLayout.ts';
+import { computeStepPages } from './stepPages.ts';
 import {
   parseSlideSplit,
-  planSplit,
   type SlideSplit,
   type SlideSplitProp,
-  type SplitMode,
 } from './stepSplit.ts';
 import { StepNode, type StepOptions, type StepPath } from './StepNode.ts';
 
@@ -345,7 +342,12 @@ export class StepStore {
    * and the split don't change.
    */
   getSplitPaths = (): readonly StepPath[] => {
-    this.#splitCache ??= this.#computeSplitPaths();
+    this.#splitCache ??= computeStepPages({
+      layout: this.#getLayout(),
+      states: this.#positionsInRange(),
+      slideSplit: this.#slideSplit,
+      legibleRank: this.#legibleRank,
+    });
     return this.#splitCache;
   };
 
@@ -826,162 +828,5 @@ export class StepStore {
     return layout.stepOf(node) === undefined
       ? { ...place, inherited }
       : { ...place, inherited, look: layout.lookOf(node, path) };
-  }
-
-  /**
-   * Returns the split mode of `node`: `'each'` if an element asks for it,
-   * `'none'` if all of them do, or else `'auto'`, where elements without a
-   * mode take that of the stepper `node` is nested in, or of the slide.
-   */
-  #splitModeOf(node: StepNode, visited: Set<StepNode>): SplitMode {
-    const step = this.#getLayout().stepOf(node);
-    const parent = step?.owner ?? step?.parent;
-    let inherited: SplitMode | undefined;
-    const getInherited = () => {
-      inherited ??=
-        parent === undefined || visited.has(parent)
-          ? (this.#slideSplit?.mode ?? 'auto')
-          : this.#splitModeOf(parent, visited.add(node));
-      return inherited;
-    };
-    const modes = [...node.elements.values()].map(
-      ({ split }) => split?.mode ?? getInherited(),
-    );
-    if (modes.includes('each')) {
-      return 'each';
-    }
-    return modes.every((mode) => mode === 'none') ? 'none' : 'auto';
-  }
-
-  #computeSplitPaths(): readonly StepPath[] {
-    const states = this.#positionsInRange();
-    const layout = this.#getLayout();
-    const nodes = layout.steppers;
-    const isLegible = (
-      node: StepNode,
-      path: StepPath,
-      look?: RankedAppearances,
-    ) => {
-      const appearance =
-        look === undefined
-          ? layout.lookOf(node, path)
-          : moreHidden(
-              look[layout.placeOf(node, path).phase],
-              layout.inheritedOf(node, path),
-            );
-      return appearance.rank <= this.#legibleRank;
-    };
-    const legibleStates = (
-      node: StepNode,
-      when: (place: StepPlace) => boolean = () => true,
-      look?: RankedAppearances,
-    ) =>
-      new Set(
-        states.flatMap((path, index) =>
-          when(layout.placeOf(node, path)) && isLegible(node, path, look)
-            ? [index]
-            : [],
-        ),
-      );
-    // Elements with a look of their own need a page in that look, too.
-    const looksOf = (node: StepNode): (RankedAppearances | undefined)[] => {
-      const whole = layout.appearancesOf(node);
-      const own = new Set<RankedAppearances>();
-      for (const { appearances, ownLook } of node.elements.values()) {
-        if (
-          ownLook === true &&
-          appearances !== undefined &&
-          appearances !== whole
-        ) {
-          own.add(appearances);
-        }
-      }
-      return [undefined, ...own];
-    };
-    // What isn't a step is part of what encloses it, which isn't an overlay.
-    const overlays = nodes.filter(
-      (node) => isOverlay(node) && !layout.isStepless(node),
-    );
-    const covered = new Set(
-      states.flatMap((path, index) =>
-        overlays.some((node) => isLegible(node, path)) ? [index] : [],
-      ),
-    );
-    // Content is read without overlays before they cover it, unless it's
-    // shown along with them, which then likely don't cover it.
-    const uncoveredOf = (unit: ReadonlySet<number>): ReadonlySet<number> => {
-      const shown = [...unit].sort((a, b) => a - b);
-      const firstCovered = shown.find((index) => covered.has(index));
-      const before = shown.filter(
-        (index) => firstCovered === undefined || index < firstCovered,
-      );
-      return before.length > 0 ? new Set(before) : unit;
-    };
-    // Content outside of steps is shown in every state.
-    const units: ReadonlySet<number>[] = [uncoveredOf(new Set(states.keys()))];
-    const forced: number[] = [];
-    for (const node of nodes) {
-      const mode = this.#splitModeOf(node, new Set());
-      const count = layout.stepOf(node)?.anchor.options.count ?? 1;
-      const nodeUnits = looksOf(node).flatMap((look) =>
-        mode === 'none'
-          ? []
-          : mode === 'each'
-            ? // Content shown before the stepper, e.g., by `Steps`, too.
-              Array.from({ length: count + 1 }, (_, index) =>
-                legibleStates(
-                  node,
-                  ({ stepIndex }) =>
-                    Math.min(stepIndex, count - 1) === index - 1,
-                  look,
-                ),
-              )
-            : [legibleStates(node, undefined, look)],
-      );
-      const overlay = isOverlay(node);
-      for (const unit of nodeUnits) {
-        units.push(overlay ? unit : uncoveredOf(unit));
-      }
-      const turn = states.flatMap((path, index) => {
-        const { phase } = layout.placeOf(node, path);
-        return phase === 'current' || phase === 'open' ? [index] : [];
-      });
-      const first = turn[0];
-      const last = turn.at(-1);
-      if (first === undefined || last === undefined) {
-        continue;
-      }
-      const points = new Set(
-        [...node.elements.values()].flatMap(({ split }) => [
-          ...(split?.points ?? []),
-        ]),
-      );
-      if (points.has('before') && first > 0) {
-        forced.push(first - 1);
-      }
-      if (points.has('initial')) {
-        forced.push(first);
-      }
-      if (points.has('last')) {
-        forced.push(last);
-      }
-    }
-    for (const { group, path } of this.#slideSplit?.pages ?? []) {
-      const groupPath =
-        group === undefined ? [] : this.#getLayout().groupPath(group);
-      if (groupPath === undefined) {
-        continue;
-      }
-      const target = [...groupPath, ...path];
-      const index = states.findIndex(
-        (state) => compareStepPaths(state, target) === 0,
-      );
-      if (index >= 0) {
-        forced.push(index);
-      }
-    }
-    return planSplit(states.length, units, forced).map(
-      (index) => states[index] ?? [],
-    );
   }
 }
