@@ -10,12 +10,15 @@ import {
 } from 'react';
 
 import {
+  resolveElementAppearance,
+  resolveStepperAppearances,
+  resolveStepperPlace,
+  resolveStepperWith,
+} from './resolveStepper.ts';
+import {
   appearanceClass,
-  appearancesOfBehavior,
-  moreHidden,
   SHOWN,
   StepAppearanceContext,
-  splitShorthands,
   type RankedAppearance,
   type RankedAppearances,
 } from './stepAppearance.ts';
@@ -176,15 +179,12 @@ export function useSteps(
 ): StepHandle {
   const {
     with: withProp,
-    step: stepProp,
-    initial,
     id,
     group = id,
     in: parent,
     after,
     title,
     defaults,
-    behavior: ownBehavior,
     split: splitProp,
     overlay: ownOverlay,
     cut,
@@ -197,17 +197,10 @@ export function useSteps(
   const theme = useTheme();
   const slideBehavior = use(StepBehaviorContext);
   const enclosing = use(StepAppearanceContext);
-  const withStep =
-    withProp ??
-    (initial === true || initial === ''
-      ? 'initial'
-      : stepProp === true || stepProp === ''
-        ? 'self'
-        : stepProp === false || stepProp === 'false'
-          ? 'parent'
-          : undefined);
-  const writtenBehavior = ownBehavior ?? splitShorthands(theme, options)[0];
-  const ignoredBehavior = withStep === 'parent' ? writtenBehavior : undefined;
+  const withStep = resolveStepperWith(options);
+  const { written, appearances, defaultAppearances } =
+    resolveStepperAppearances(theme, slideBehavior, options);
+  const ignoredBehavior = withStep === 'parent' ? written : undefined;
   useEffect(() => {
     if (ignoredBehavior !== undefined) {
       console.warn(
@@ -223,19 +216,6 @@ export function useSteps(
       );
     }
   }, [manyParts]);
-  const chosenBehavior = writtenBehavior ?? defaults?.behavior;
-  // What isn't a step always appears like what encloses it.
-  const appearances =
-    chosenBehavior === undefined || withStep === 'parent'
-      ? undefined
-      : appearancesOfBehavior(theme, chosenBehavior);
-  // The behavior of the slide takes precedence over the default of the theme.
-  const defaultAppearances = appearancesOfBehavior(
-    theme,
-    slideBehavior ??
-      theme.components?.SeminarStep?.defaultProps?.behavior ??
-      'reveal',
-  );
   // Only the values matter, which are often given as a new object.
   const cutKey = Array.isArray(cut) ? cut.join(' ') : cut;
   const fades = useMemo<FadeValues | undefined>(
@@ -264,17 +244,9 @@ export function useSteps(
   const node = group === undefined ? ownNode : store.getGroup(group);
   // Hooks can't be called conditionally, so we still create a node if we're
   // linked to another stepper, but never attach it or subscribe to it.
-  const linked = typeof withStep === 'object';
-  const placement =
-    linked || withStep === 'self' ? 'next' : (withStep ?? 'next');
-  const placed = parent !== undefined || after !== undefined;
-  // Placing it otherwise replaces the default of its place.
-  const defaultPlace = withStep === undefined && !placed ? defaults : undefined;
-  // A behavior gives it a step instead of always being shown with one.
-  const defaultJoins =
-    appearances === undefined ? defaultPlace?.joins : undefined;
-  const defaultWith = defaultPlace?.with;
-  const defaultIn = placed ? undefined : defaults?.in;
+  const handle = typeof withProp === 'object' ? withProp : undefined;
+  const { placement, defaultWith, defaultJoins, defaultIn } =
+    resolveStepperPlace(options, appearances !== undefined);
   const overlay = parseOverlay(ownOverlay) ?? parseOverlay(defaults?.overlay);
   const attach = useCallback(
     (
@@ -311,7 +283,7 @@ export function useSteps(
       overlay,
     ],
   );
-  const linkedAttach = linked ? withStep.attach : attach;
+  const linkedAttach = handle?.attach ?? attach;
   const ref = useCallback<RefCallback<Element>>(
     (element) =>
       element === null
@@ -319,23 +291,25 @@ export function useSteps(
         : linkedAttach(element, appearances, defaultAppearances),
     [linkedAttach, appearances, defaultAppearances],
   );
-  const getStatus = linked ? getUnlinkedStatus : () => store.getStatus(node);
+  const getStatus =
+    handle === undefined ? () => store.getStatus(node) : getUnlinkedStatus;
   const {
     stepIndex,
     phase,
     inherited,
     appearance: stepperAppearance,
   } = useSyncExternalStore(
-    linked ? subscribeUnlinked : store.subscribe,
+    handle === undefined ? store.subscribe : subscribeUnlinked,
     getStatus,
     getStatus,
   );
   const clampedIndex = Math.min(stepIndex, count - 1);
-  const ownAppearance = moreHidden(
-    moreHidden(
-      appearances?.[phase] ?? stepperAppearance ?? defaultAppearances[phase],
-      inherited,
-    ),
+  const ownAppearance = resolveElementAppearance(
+    phase,
+    appearances,
+    stepperAppearance,
+    defaultAppearances,
+    inherited,
     enclosing,
   );
   const ownClassName = appearanceClass(ownAppearance, enclosing);
@@ -365,28 +339,28 @@ export function useSteps(
       stepperAppearance,
     ],
   );
-  const linkedAppearance = linked
-    ? moreHidden(
-        moreHidden(
-          appearances?.[withStep.phase] ??
-            withStep.stepperAppearance ??
-            defaultAppearances[withStep.phase],
-          withStep.inherited,
-        ),
-        enclosing,
-      )
-    : undefined;
+  const linkedAppearance =
+    handle === undefined
+      ? undefined
+      : resolveElementAppearance(
+          handle.phase,
+          appearances,
+          handle.stepperAppearance,
+          defaultAppearances,
+          handle.inherited,
+          enclosing,
+        );
   const linkedStep = useMemo(
     () =>
-      linked && linkedAppearance !== undefined
-        ? {
-            ...withStep,
+      handle === undefined || linkedAppearance === undefined
+        ? undefined
+        : {
+            ...handle,
             ref,
             appearance: linkedAppearance,
             className: appearanceClass(linkedAppearance, enclosing),
-          }
-        : undefined,
-    [linked, withStep, ref, linkedAppearance, enclosing],
+          },
+    [handle, ref, linkedAppearance, enclosing],
   );
   return linkedStep ?? ownStep;
 }
