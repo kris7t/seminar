@@ -45,7 +45,7 @@
   "slideWithSteps": "Slide with steps",
   "splitPage": "Exported as a page",
   "overlayStep": "Covers other content",
-  "withParentStep": "Shown with the step around it",
+  "initialStep": "Shown up front",
   "keepsYourChanges": "Keeps your changes",
   "changed": "Changed",
   "spareNote": "spare",

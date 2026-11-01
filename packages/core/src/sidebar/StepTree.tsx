@@ -4,7 +4,7 @@ import { useMemo, useSyncExternalStore, type JSX } from 'react';
 import { useDeck } from '../deck/DeckContext.ts';
 import { OverlayIcon } from '../icons/OverlayIcon.tsx';
 import { SplitPageIcon } from '../icons/SplitPageIcon.tsx';
-import { WithParentIcon } from '../icons/WithParentIcon.tsx';
+import { InitialStepIcon } from '../icons/InitialStepIcon.tsx';
 import type { Translate } from '../i18n/messages.ts';
 import { useT } from '../i18n/UiLanguageContext.ts';
 import { scrollIntoView } from './Sidebar.tsx';
@@ -100,7 +100,7 @@ function Entry({
         {label === '' ? fallback : label}
       </ListItemText>
       {path.at(-1) === 0 && (
-        <WithParentIcon sx={{ ml: 1, color: 'text.secondary' }} />
+        <InitialStepIcon sx={{ ml: 1, color: 'text.secondary' }} />
       )}
       {overlay && <OverlayIcon sx={{ ml: 1, color: 'text.secondary' }} />}
       {page && <SplitPageIcon sx={{ ml: 1, color: 'text.secondary' }} />}

@@ -45,7 +45,7 @@
   "slideWithSteps": "Folie mit Schritten",
   "splitPage": "Als Seite exportiert",
   "overlayStep": "Verdeckt anderen Inhalt",
-  "withParentStep": "Wird mit dem umgebenden Schritt gezeigt",
+  "initialStep": "Von Anfang an gezeigt",
   "keepsYourChanges": "Behält Änderungen",
   "changed": "Geändert",
   "spareNote": "Reserve",

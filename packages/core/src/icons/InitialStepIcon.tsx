@@ -5,15 +5,15 @@ import type { JSX } from 'react';
 import { useT } from '../i18n/UiLanguageContext.ts';
 
 /**
- * Marks a step that is always shown along with the step around it in the tree
- * of steps. Labeled for assistive technology, and shows its label as a tooltip.
+ * Marks an initial step in the tree of steps, which is shown as soon as the step
+ * around it. Labeled for assistive technology, and shows its label as a tooltip.
  */
-export function WithParentIcon(props: SvgIconProps): JSX.Element {
+export function InitialStepIcon(props: SvgIconProps): JSX.Element {
   const t = useT();
   return (
     <PushPinOutlinedIcon
       fontSize="small"
-      titleAccess={t('withParentStep')}
+      titleAccess={t('initialStep')}
       {...props}
     />
   );

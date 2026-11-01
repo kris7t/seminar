@@ -45,7 +45,7 @@
   "slideWithSteps": "Diapositive avec étapes",
   "splitPage": "Exportée comme page",
   "overlayStep": "Couvre d’autres contenus",
-  "withParentStep": "Affiché avec l’étape qui l’entoure",
+  "initialStep": "Affiché d’emblée",
   "keepsYourChanges": "Conserve vos modifications",
   "changed": "Modifiée",
   "spareNote": "réserve",

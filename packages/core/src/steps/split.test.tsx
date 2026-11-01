@@ -13,7 +13,7 @@ import { useStep } from './useSteps.ts';
 const MARKS: Record<string, string> = {
   'Exported as a page': 'page',
   'Covers other content': 'overlay',
-  'Shown with the step around it': 'with parent',
+  'Shown up front': 'initial',
 };
 
 /**
@@ -271,13 +271,13 @@ describe('splitting slides into pages', () => {
     ).toEqual([
       'Start of the slide [page]',
       'Text [page]',
-      'Note [with parent] [overlay]',
+      'Note [initial] [overlay]',
       'More',
       'End [page]',
     ]);
   });
 
-  it('makes pages of elements of a group or stepper with their own look', () => {
+  it('makes pages of elements of a group or stepper with their own appearances', () => {
     function Linked() {
       const handle = useStep();
       return (

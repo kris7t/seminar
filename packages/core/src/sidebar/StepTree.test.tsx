@@ -27,7 +27,7 @@ function renderDeck(props: { defaultShowToc?: boolean } = {}) {
 const MARKS: Record<string, string> = {
   'Exported as a page': 'page',
   'Covers other content': 'overlay',
-  'Shown with the step around it': 'with parent',
+  'Shown up front': 'initial',
 };
 
 /**
@@ -106,7 +106,7 @@ describe('StepTree', () => {
     expect(entries()).toEqual([
       '*Start of the slide',
       'Outer',
-      'Inner [with parent]',
+      'Inner [initial]',
       'Nested',
       'Later [page]',
     ]);
@@ -118,7 +118,7 @@ describe('StepTree', () => {
     expect(entries()).toEqual([
       'Start of the slide',
       '*Outer',
-      'Inner [with parent]',
+      'Inner [initial]',
       'Nested',
       'Later [page]',
     ]);
@@ -169,7 +169,7 @@ describe('StepTree', () => {
         </Slide>
       </Deck>,
     );
-    expect(entries()).toContain('Start of the step [with parent]');
+    expect(entries()).toContain('Start of the step [initial]');
   });
 
   it('labels steps with their titles, which are not tooltips', () => {
