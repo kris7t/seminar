@@ -60,7 +60,9 @@ function textOfElement(
   return textIn(element, (descendant) => {
     const stepper = layout.stepperOf(descendant);
     return (
-      stepper !== undefined && stepper !== node && !layout.isStepless(stepper)
+      stepper !== undefined &&
+      stepper !== node &&
+      !layout.aliasesParent(stepper)
     );
   });
 }
@@ -128,7 +130,7 @@ export function computeStepTree(
         first <= step &&
         step <= last &&
         // Joining steppers without a step aren't part of any entry.
-        !layout.isStepless(node),
+        !layout.aliasesParent(node),
     );
     const path = [...level, step];
     const children = computeStepTree(layout, path);

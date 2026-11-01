@@ -184,9 +184,11 @@ during, and after its turn:
 | `insert`  | collapsed | shown  | shown     | shown                   |
 | `expand`  | collapsed | shown  | shown     | collapsed               |
 | `swap`    | collapsed | shown  | collapsed | collapsed               |
+| `always`  | shown     | shown  | shown     | shown                   |
 
 `reveal` is the default. A step's turn lasts while its nested steps are
-shown, too.
+shown, too. `always` keeps a step shown, e.g., if it's only there for the steps
+nested in it.
 
 Hidden steps keep their space, so that the slide doesn't move when they
 appear. Collapsed steps take no space instead:

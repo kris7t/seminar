@@ -1,5 +1,5 @@
 import {
-  ALWAYS_SHOWN,
+  isAlwaysShown,
   moreHidden,
   SHOWN,
   type RankedAppearance,
@@ -33,7 +33,7 @@ export interface StepRegistry {
   elementGroups: ReadonlyMap<Element, string>;
 }
 
-/** The element that determines the placement and the look of a stepper. */
+/** The element that determines the placement and appearances of a stepper. */
 interface Anchor {
   element: Element;
   options: StepOptions;
@@ -44,10 +44,12 @@ interface PlacedStep {
   anchor: Anchor;
   /** The stepper it's nested in, if any. */
   parent: StepNode | undefined;
-  /** Whether it isn't a step, but part of a step or of what encloses it. */
-  joining: boolean;
-  /** The step it's part of, if any. */
-  owner: StepNode | undefined;
+  /**
+   * What it stands in for, rather than being a step of its own: it has that
+   * step's place and appearance, or those of its parent, if it has no step to
+   * be shown with and doesn't create one.
+   */
+  aliases: StepNode | typeof PARENT | undefined;
   /** Path of the step containing its level. */
   level: StepPath;
   /** Number of its first step on its level. */
@@ -57,7 +59,7 @@ interface PlacedStep {
 }
 
 /** Stands for what encloses a level, which steppers can be part of, too. */
-const PARENT = Symbol('parent');
+const PARENT: unique symbol = Symbol('parent');
 
 /** A level of the tree of steps. */
 interface Level {
@@ -107,7 +109,7 @@ export function isOverlay(node: StepNode): boolean {
 }
 
 /**
- * Returns the element that determines the placement and the look of `node`:
+ * Returns the element that determines the placement and appearances of `node`:
  * its first one in document order. Thus, a group is nested wherever it's first
  * found, along with its other elements.
  */
@@ -268,7 +270,7 @@ function findEnclosing(
     const predecessor = predecessors.get(node);
     const parentOption =
       anchor.options.parent ??
-      (node.elements.size === 1 ? anchor.options.defaultParent : undefined);
+      (node.elements.size === 1 ? anchor.options.defaults?.in : undefined);
     const parent =
       predecessor === undefined
         ? typeof parentOption === 'object'
@@ -331,14 +333,16 @@ function placeSteppers(
     }
     const { options } = anchor;
     const single = node.elements.size === 1;
-    const placement = single
-      ? (options.defaultPlacement ?? options.placement)
-      : options.placement;
+    const defaults = single ? options.defaults : undefined;
+    const placement = defaults?.joins ?? defaults?.with ?? options.placement;
     const around = enclosing.get(node);
     const aroundStep = around === undefined ? undefined : steps.get(around);
-    const parent = aroundStep?.joining
-      ? (aroundStep.owner ?? aroundStep.parent)
-      : around;
+    const parent =
+      aroundStep?.aliases === undefined
+        ? around
+        : aroundStep.aliases === PARENT
+          ? aroundStep.parent
+          : aroundStep.aliases;
     const parentStep = parent === undefined ? undefined : steps.get(parent);
     const path =
       parentStep === undefined ? [] : [...parentStep.level, parentStep.last];
@@ -346,36 +350,39 @@ function placeSteppers(
     const level = levels.get(key) ?? { size: 0 };
     levels.set(key, level);
     const target = targetOf(level, placement);
-    const owner = target === PARENT ? undefined : target;
-    const joining =
-      placement === 'parent' ||
-      (single &&
-        (options.joins === 'always' ||
-          (options.joins === 'target' && target !== undefined)));
+    // Several steps can't be one, and appearances of its own make it a step.
+    const canAlias =
+      single && options.count === 1 && options.appearances === undefined;
+    const aliases =
+      placement === 'parent'
+        ? PARENT
+        : canAlias
+          ? (target ?? (defaults?.joins === undefined ? undefined : PARENT))
+          : undefined;
+    const shownWith = target === PARENT ? undefined : target;
     let first: number;
     if (placement === 'next') {
       first = level.size + 1;
     } else if (placement === 'initial' || placement === 'parent') {
       first = 0;
     } else {
-      first = owner === undefined ? 0 : (steps.get(owner)?.last ?? 0);
+      first = shownWith === undefined ? 0 : (steps.get(shownWith)?.last ?? 0);
     }
-    const last = joining ? first : first + options.count - 1;
+    const last = aliases === undefined ? first + options.count - 1 : first;
     steps.set(node, {
       anchor,
       parent,
-      joining,
-      owner: joining ? owner : undefined,
+      aliases,
       level: path,
       first,
       last,
     });
     level.size = Math.max(level.size, last);
-    if (!joining && first === 0) {
+    if (aliases === undefined && first === 0) {
       level.initial = node;
     }
-    // Without anything to join, it's not something later steppers can join.
-    const latest = joining ? target : node;
+    // Without anything to be shown with, later steppers can't be shown with it.
+    const latest = aliases === undefined ? node : target;
     if (latest !== undefined) {
       level.previous = latest;
       if (!isOverlay(latest === PARENT ? node : latest)) {
@@ -399,14 +406,14 @@ function placeSteppers(
 
 /**
  * The steppers of a slide placed in the tree of steps, and what follows from
- * that alone: where a path is relative to each stepper, and how each one looks
+ * that alone: where a path is relative to each stepper, and how each one appears
  * there. A layout doesn't change, so a new one is made whenever the steppers do.
  */
 export class StepLayout {
   readonly #registry: StepRegistry;
   readonly #steps: ReadonlyMap<StepNode, PlacedStep>;
   readonly #levels: ReadonlyMap<string, Level>;
-  readonly #looks = new Map<StepNode, RankedAppearances | undefined>();
+  readonly #appearances = new Map<StepNode, RankedAppearances | undefined>();
   #positions: readonly StepPath[] | undefined;
   /** The steppers that have a place, in the document order of their anchors. */
   readonly steppers: readonly StepNode[];
@@ -451,10 +458,15 @@ export class StepLayout {
     });
   }
 
-  /** Whether `node` isn't a step, and isn't part of one on its own level. */
-  isStepless(node: StepNode): boolean {
-    const step = this.#steps.get(node);
-    return step?.joining === true && step.owner === undefined;
+  /** Whether `node` stands in for its parent, rather than for a step. */
+  aliasesParent(node: StepNode): boolean {
+    return this.#steps.get(node)?.aliases === PARENT;
+  }
+
+  /** The step that `node` stands in for, if any. */
+  aliasedStep(node: StepNode): StepNode | undefined {
+    const aliases = this.#steps.get(node)?.aliases;
+    return aliases === PARENT ? undefined : aliases;
   }
 
   /**
@@ -524,7 +536,7 @@ export class StepLayout {
     if (step === undefined) {
       return FUTURE;
     }
-    if (step.joining && step.owner === undefined) {
+    if (step.aliases === PARENT) {
       return step.parent === undefined
         ? SLIDE
         : this.progressOf(step.parent, path);
@@ -553,41 +565,46 @@ export class StepLayout {
   }
 
   /**
-   * Returns how `node` looks as a whole, which elements without a look of their
-   * own take on: like its first element in document order that has a look,
-   * apart from elements that are always shown, like `Steps`, if there are others.
+   * Returns how `node` appears as a whole in each phase, which elements without
+   * appearances of their own take on: like its first element in document order
+   * that has any, apart from elements that are always shown, like `Steps`, if
+   * there are others.
    */
   appearancesOf(node: StepNode): RankedAppearances | undefined {
-    if (!this.#looks.has(node)) {
-      const looks = [...node.elements]
+    if (!this.#appearances.has(node)) {
+      const candidates = [...node.elements]
         .sort(([x], [y]) => compareDocumentOrder(x, y))
-        .flatMap(([, { appearances }]) => appearances ?? []);
-      this.#looks.set(
+        .flatMap(
+          ([, { appearances, defaultAppearances }]) =>
+            appearances ?? defaultAppearances ?? [],
+        );
+      this.#appearances.set(
         node,
-        looks.find((look) => look !== ALWAYS_SHOWN) ?? looks[0],
+        candidates.find((candidate) => !isAlwaysShown(candidate)) ??
+          candidates[0],
       );
     }
-    return this.#looks.get(node);
+    return this.#appearances.get(node);
   }
 
   /**
-   * Returns how `node` looks at `path`, at least as hidden as the steppers it
+   * Returns how `node` appears at `path`, at least as hidden as the steppers it
    * is nested in, whether in the DOM or explicitly, or like the step it is part
    * of.
    */
-  lookOf(node: StepNode, path: StepPath): RankedAppearance {
-    return this.#lookOf(node, path, new Set());
+  appearanceAt(node: StepNode, path: StepPath): RankedAppearance {
+    return this.#appearanceAt(node, path, new Set());
   }
 
-  /** Returns how the stepper that `node` is nested in looks at `path`. */
-  inheritedOf(node: StepNode, path: StepPath): RankedAppearance {
+  /** Returns how the stepper that `node` is nested in appears at `path`. */
+  inheritedAt(node: StepNode, path: StepPath): RankedAppearance {
     const parent = this.#steps.get(node)?.parent;
     return parent === undefined
       ? SHOWN
-      : this.#lookOf(parent, path, new Set([node]));
+      : this.#appearanceAt(parent, path, new Set([node]));
   }
 
-  #lookOf(
+  #appearanceAt(
     node: StepNode,
     path: StepPath,
     visited: Set<StepNode>,
@@ -597,30 +614,30 @@ export class StepLayout {
       return SHOWN;
     }
     visited.add(node);
-    const owner = this.#lookOwner(node);
+    const owner = this.#appearanceOwner(node);
     if (owner !== undefined) {
-      return this.#lookOf(owner, path, visited);
+      return this.#appearanceAt(owner, path, visited);
     }
     const { phase } = this.progressOf(node, path);
-    // Without a step to be part of, it looks like what encloses it.
-    const own = this.isStepless(node)
+    // Without a step to be part of, it appears like what encloses it.
+    const own = this.aliasesParent(node)
       ? SHOWN
       : (this.appearancesOf(node)?.[phase] ?? SHOWN);
     const parent = this.#steps.get(node)?.parent;
     return parent === undefined
       ? own
-      : moreHidden(own, this.#lookOf(parent, path, visited));
+      : moreHidden(own, this.#appearanceAt(parent, path, visited));
   }
 
   /**
-   * Returns the step whose look `node` takes on, if it's part of a step that
-   * has a look. Steps whose content changes instead, like `Steps`, have none.
+   * Returns the step whose appearance `node` takes on, if it's part of a step
+   * that has one. Steps whose content changes instead, like `Steps`, have none.
    */
-  #lookOwner(node: StepNode): StepNode | undefined {
-    const owner = this.#steps.get(node)?.owner;
+  #appearanceOwner(node: StepNode): StepNode | undefined {
+    const owner = this.aliasedStep(node);
     const appearances =
       owner === undefined ? undefined : this.appearancesOf(owner);
-    return appearances === undefined || appearances === ALWAYS_SHOWN
+    return appearances === undefined || isAlwaysShown(appearances)
       ? undefined
       : owner;
   }

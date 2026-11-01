@@ -2,6 +2,7 @@ import { generateUtilityClass, generateUtilityClasses } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import { createContext, use, type Context } from 'react';
 
+import type { StepBehavior } from './Step.tsx';
 import type { StepPhase } from './StepNode.ts';
 
 /**
@@ -148,7 +149,8 @@ export type BuiltInStepBehavior =
   | 'scoped'
   | 'insert'
   | 'expand'
-  | 'swap';
+  | 'swap'
+  | 'always';
 
 /**
  * Appearances of the built-in step behaviors (see `StepBehavior`), which
@@ -166,17 +168,59 @@ export const BUILT_IN_STEP_BEHAVIORS: Readonly<
   insert: { future: 'collapsed' },
   expand: { future: 'collapsed', distantPast: 'collapsed' },
   swap: { future: 'collapsed', past: 'collapsed' },
+  always: {},
 };
 
-/** Steps that are always shown, e.g., `Steps`, whose content changes instead. */
-export const ALWAYS_SHOWN: RankedAppearances = {
-  distantFuture: SHOWN,
-  future: SHOWN,
-  current: SHOWN,
-  open: SHOWN,
-  past: SHOWN,
-  distantPast: SHOWN,
-};
+/** Whether `appearances` never hide anything, e.g., those of `Steps`. */
+export function isAlwaysShown(appearances: RankedAppearances): boolean {
+  return Object.values(appearances).every(({ rank }) => rank <= SHOWN.rank);
+}
+
+/**
+ * Separates the behavior shorthands (see `StepBehaviorShorthands`) from the other
+ * `props`, which are passed to the element.
+ *
+ * @returns The behavior of the shorthand, if any, or of the last one if there
+ *   are several, and the other props.
+ */
+export function splitShorthands<Props extends object>(
+  theme: Theme,
+  props: Props,
+): [behavior: StepBehavior | undefined, other: Props] {
+  let behavior: StepBehavior | undefined;
+  const other = Object.fromEntries(
+    Object.entries(props).filter(([name, value]) => {
+      if (
+        !Object.hasOwn(BUILT_IN_STEP_BEHAVIORS, name) &&
+        !Object.hasOwn(theme.stepBehaviors ?? {}, name)
+      ) {
+        return true;
+      }
+      // `false` turns the shorthand off, e.g., `only={false}`.
+      if (value === true || value === '') {
+        behavior = name as StepBehavior;
+      }
+      return false;
+    }),
+  ) as Props;
+  return [behavior, other];
+}
+
+/** Returns how `behavior` appears in each phase in `theme`. */
+export function appearancesOfBehavior(
+  theme: Theme,
+  behavior: StepBehavior,
+): RankedAppearances {
+  const builtIn = BUILT_IN_STEP_BEHAVIORS as Partial<
+    Record<StepBehavior, StepAppearances>
+  >;
+  return rankAppearances(
+    theme,
+    theme.stepBehaviors?.[behavior] ??
+      builtIn[behavior] ??
+      BUILT_IN_STEP_BEHAVIORS.reveal,
+  );
+}
 
 /**
  * Returns the class of the elements of the component `name` with `appearance`,

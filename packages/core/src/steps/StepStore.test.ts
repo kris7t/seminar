@@ -1,8 +1,18 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { SHOWN } from './stepAppearance.ts';
 import { StepNode, type StepOptions } from './StepNode.ts';
 import { StepStore } from './StepStore.ts';
 import type { StepTreeEntry } from './stepTree.ts';
+
+const SOME_APPEARANCES = {
+  distantFuture: SHOWN,
+  future: SHOWN,
+  current: SHOWN,
+  open: SHOWN,
+  past: SHOWN,
+  distantPast: SHOWN,
+};
 
 /** Summarizes a tree of steps as `path label` lines, indented by level. */
 function summarize(entries: readonly StepTreeEntry[], indent = ''): string[] {
@@ -108,8 +118,7 @@ describe('StepStore', () => {
   describe('placing steps around content that is not a step', () => {
     const JOINS = {
       placement: 'next',
-      defaultPlacement: 'content',
-      joins: 'always',
+      defaults: { joins: 'content' },
     } as const;
 
     it('nests a group in the step around its first element', () => {
@@ -154,19 +163,19 @@ describe('StepStore', () => {
         const store = new StepStore();
         addStep(store, 'A');
         addStep(store, 'B', { placement: 'parent' });
-        addStep(store, 'C', { placement, joins: 'target' });
+        addStep(store, 'C', { placement });
         addStep(store, 'D');
         expect(summarize(store.getTree())).toEqual(['1 A', '2 D']);
       },
     );
 
     it.each(['previous', 'content'] as const)(
-      'makes a step 0 with %s after with="parent" for a look of its own',
+      'makes a step 0 with %s after with="parent" with its own appearances',
       (placement) => {
         const store = new StepStore();
         addStep(store, 'A');
         addStep(store, 'B', { placement: 'parent' });
-        addStep(store, 'C', { placement });
+        addStep(store, 'C', { placement, appearances: SOME_APPEARANCES });
         expect(summarize(store.getTree())).toEqual(['0 C', '1 A']);
       },
     );

@@ -1,4 +1,5 @@
 import type { RankedAppearances } from './stepAppearance.ts';
+import type { StepPlace } from './stepDefaults.ts';
 import type { StepSplit } from './stepSplit.ts';
 import type { FadeValues } from '../transitions/fades.ts';
 
@@ -53,27 +54,23 @@ export interface StepOptions {
   count: number;
   placement: StepPlacement;
   /**
-   * Placement instead of `placement` if the stepper has no other elements,
-   * i.e., it doesn't join an existing group.
-   */
-  defaultPlacement?: StepPlacement | undefined;
-  /**
-   * When the stepper is part of what its placement refers to, rather than a
-   * step, unless it has other elements: `'target'` if it refers to anything, or
-   * else it's a step, and `'always'` for being part of what encloses it then.
-   */
-  joins?: 'target' | 'always' | undefined;
-  /**
    * Group of the stepper to nest the stepper in, instead of the stepper
    * enclosing its elements, or an element whose stepper, or the stepper
    * enclosing it, to nest the stepper in.
    */
   parent?: string | Element | undefined;
   /**
-   * Like `parent`, but only if the stepper has no other elements, i.e., it
-   * doesn't join an existing group.
+   * Where the stepper goes if it has no other elements, i.e., it doesn't join an
+   * existing group, instead of `placement` and `parent`: `with` shows it with a
+   * step, creating one if there is none, while `joins` never creates a step.
    */
-  defaultParent?: string | Element | undefined;
+  defaults?:
+    | {
+        with?: StepPlace | undefined;
+        joins?: StepPlace | undefined;
+        in?: string | Element | undefined;
+      }
+    | undefined;
   /**
    * Group of the stepper to place the stepper right after, on the level of
    * that stepper, i.e., nested in the same stepper. Takes precedence over
@@ -82,13 +79,14 @@ export interface StepOptions {
   after?: string | undefined;
   /** Title of the stepper in the tree of steps, instead of its text. */
   title?: string | undefined;
-  /** How the stepper looks in each phase. Shown in all phases by default. */
-  appearances?: RankedAppearances | undefined;
   /**
-   * Whether `appearances` were chosen for this element, rather than being what
-   * the stepper looks like if there is nothing else to look like.
+   * How the element appears in each phase, whatever the stepper does, if it has
+   * an appearance of its own. The first element also sets the appearances of
+   * the stepper.
    */
-  ownLook?: boolean | undefined;
+  appearances?: RankedAppearances | undefined;
+  /** Like `appearances`, but only if the element has none of its own. */
+  defaultAppearances?: RankedAppearances | undefined;
   /**
    * How long the slide fades when the turn of the stepper starts or ends,
    * which applies along with those of the other elements of the stepper.

@@ -300,6 +300,43 @@ describe('step behaviors', () => {
     });
   });
 
+  describe('of steppers', () => {
+    function Stepper({ behavior }: { behavior?: StepBehavior }) {
+      const { ref } = useStep({ behavior });
+      return (
+        <div ref={ref}>
+          <Paragraph>Inside</Paragraph>
+        </div>
+      );
+    }
+
+    it('takes the default of the slide without a behavior', () => {
+      render(
+        <Deck>
+          <Slide>
+            <Stepper />
+          </Slide>
+        </Deck>,
+      );
+      expect(appearanceOf(screen.getByText('Inside'))).toBe('hidden');
+    });
+
+    it('keeps content shown with the behavior always', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide steps="only">
+            <Stepper behavior="always" />
+            <Step>Next</Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(appearanceOf(screen.getByText('Inside'))).toBe('shown');
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect(appearanceOf(screen.getByText('Inside'))).toBe('shown');
+    });
+  });
+
   describe('of groups', () => {
     it('comes from the element creating the group', async () => {
       const user = userEvent.setup();
@@ -437,7 +474,7 @@ describe('step behaviors', () => {
       expect(appearanceOf(screen.getByText('Handle plain'))).toBe('hidden');
     });
 
-    it('takes the default of the slide if what it joins has no look', async () => {
+    it('takes the default of the slide if what it joins has no appearances', async () => {
       const user = userEvent.setup();
       render(
         <Deck>

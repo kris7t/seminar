@@ -24,8 +24,8 @@ function splitModeOf(
   node: StepNode,
   visited: Set<StepNode>,
 ): SplitMode {
-  const step = context.layout.stepOf(node);
-  const parent = step?.owner ?? step?.parent;
+  const { layout } = context;
+  const parent = layout.aliasedStep(node) ?? layout.stepOf(node)?.parent;
   let inherited: SplitMode | undefined;
   const getInherited = () => {
     inherited ??=
@@ -43,19 +43,19 @@ function splitModeOf(
   return modes.every((mode) => mode === 'none') ? 'none' : 'auto';
 }
 
-/** Whether pages show `node` at `path`, in `look` if given. */
+/** Whether pages show `node` at `path`, with `appearances` if given. */
 function isLegible(
   { layout, legibleRank }: PageContext,
   node: StepNode,
   path: StepPath,
-  look?: RankedAppearances,
+  appearances?: RankedAppearances,
 ): boolean {
   const appearance =
-    look === undefined
-      ? layout.lookOf(node, path)
+    appearances === undefined
+      ? layout.appearanceAt(node, path)
       : moreHidden(
-          look[layout.progressOf(node, path).phase],
-          layout.inheritedOf(node, path),
+          appearances[layout.progressOf(node, path).phase],
+          layout.inheritedAt(node, path),
         );
   return appearance.rank <= legibleRank;
 }
@@ -65,12 +65,12 @@ function legibleStates(
   context: PageContext,
   node: StepNode,
   when: (progress: StepProgress) => boolean,
-  look?: RankedAppearances,
+  appearances?: RankedAppearances,
 ): ReadonlySet<number> {
   return new Set(
     context.states.flatMap((path, index) =>
       when(context.layout.progressOf(node, path)) &&
-      isLegible(context, node, path, look)
+      isLegible(context, node, path, appearances)
         ? [index]
         : [],
     ),
@@ -78,22 +78,18 @@ function legibleStates(
 }
 
 /**
- * Returns the looks of `node` that need a page, where `undefined` stands for
- * how it looks as a whole. Elements with a look of their own need a page in that
- * look, too.
+ * Returns the appearances of `node` that need a page, where `undefined` stands
+ * for how it appears as a whole. Elements with appearances of their own need a
+ * page with them, too.
  */
-function looksOf(
+function appearancesToShow(
   layout: StepLayout,
   node: StepNode,
 ): (RankedAppearances | undefined)[] {
   const whole = layout.appearancesOf(node);
   const own = new Set<RankedAppearances>();
-  for (const { appearances, ownLook } of node.elements.values()) {
-    if (
-      ownLook === true &&
-      appearances !== undefined &&
-      appearances !== whole
-    ) {
+  for (const { appearances } of node.elements.values()) {
+    if (appearances !== undefined && appearances !== whole) {
       own.add(appearances);
     }
   }
@@ -132,7 +128,7 @@ function unitsOf(
     return [];
   }
   const count = layout.stepOf(node)?.anchor.options.count ?? 1;
-  const units = looksOf(layout, node).flatMap((look) =>
+  const units = appearancesToShow(layout, node).flatMap((appearances) =>
     mode === 'each'
       ? // Content shown before the stepper, e.g., by `Steps`, too.
         Array.from({ length: count + 1 }, (_, index) =>
@@ -140,10 +136,10 @@ function unitsOf(
             context,
             node,
             ({ stepIndex }) => Math.min(stepIndex, count - 1) === index - 1,
-            look,
+            appearances,
           ),
         )
-      : [legibleStates(context, node, () => true, look)],
+      : [legibleStates(context, node, () => true, appearances)],
   );
   return isOverlay(node)
     ? units
@@ -196,7 +192,7 @@ export function computeStepPages(context: PageContext): readonly StepPath[] {
   const { layout, states } = context;
   // What isn't a step is part of what encloses it, which isn't an overlay.
   const overlays = layout.steppers.filter(
-    (node) => isOverlay(node) && !layout.isStepless(node),
+    (node) => isOverlay(node) && !layout.aliasesParent(node),
   );
   const covered = new Set(
     states.flatMap((path, index) =>

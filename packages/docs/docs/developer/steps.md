@@ -41,16 +41,20 @@ export function Note({ tone, ...stepProps }: NoteProps) {
 Without placement props, a `Step` starts a new step. Components choose what they
 do by default with `defaults`:
 
-- `JOINS_CONTENT` (`{ joins: 'content' }`) makes the component a joining step,
-  like paragraphs, list items, images, and columns: it's part of the latest step
-  on its level that isn't an overlay, or shown up front if there is none. It looks
-  like that step, and steps inside it are nested in that step. `with`, `step`,
-  `in`, `after`, a behavior, or a group with other elements give it a step instead.
-- `{ with: 'content' }`, or `'previous'` or `'initial'`, works like the same `with`
-  from the user: it's also part of that step, but creates a step if there is none.
-  `joins` takes the same values.
+- `JOINS_CONTENT` (`{ joins: 'content' }`) never creates a step, like paragraphs,
+  list items, images, and columns: the component is part of the latest step on its
+  level that isn't an overlay, and looks like it, and steps inside it are nested
+  in that step. If there is no such step, it's simply part of its parent, or of
+  the slide. `with`, `step`, `in`, `after`, a behavior, or a group with other
+  elements give it a step instead.
+- `{ with: 'content' }` works like the same `with` from the user: the component is
+  shown with that step, and is part of it unless it has a behavior of its own. If
+  there is no such step, it creates one, shown up front.
 - `{ in: element }` or `{ in: 'name' }` nests it in the step of an element or of a
   group, like callouts pointing at an element, unless the user sets `in` or `after`.
+
+`joins` and `with` also take `'previous'`, the step right before it, and
+`'initial'`, the step shown as soon as its parent is.
 
 Defaults other than `joins` can also set what the component does as a step, unless
 the user says otherwise:
@@ -75,13 +79,15 @@ document, and read its state:
 - `stepCount`: the number of steps,
 - `phase`: where the presentation is relative to the stepper, e.g.,
   `future`, `current`, or `past`,
-- `isActive` and `isCurrent`.
+- `isActive` and `isCurrent`,
+- `appearance` and `inherited`: how the elements should appear, e.g., hidden or
+  dimmed, and what they inherit from the step they are nested in.
 
 ```tsx
 import { useSteps } from '@seminar/core';
 
 export function Highlights({ parts }: { parts: string[] }) {
-  const { ref, stepIndex } = useSteps(parts.length);
+  const { ref, stepIndex } = useSteps(parts.length, { behavior: 'always' });
   return (
     <ul ref={ref}>
       {parts.map((part, index) => (
@@ -94,16 +100,33 @@ export function Highlights({ parts }: { parts: string[] }) {
 }
 ```
 
-Everything stays visible here, and only the highlight follows the steps.
-`<Steps count={n}>` does the same with a render function as its children.
+The behavior `always` keeps everything visible here, and only the highlight
+follows the steps. `<Steps count={n}>` does the same with a render function as
+its children.
 
-`useSteps` takes the same placement options as `Step`, e.g., `with`, `group`,
-and `in`, and also `split`, `defaultSplit`, and `overlay`. Splitting a slide
-into pages only knows how steppers look from their `appearances`, so a
-component whose content changes in its steps otherwise should pass
-`defaultSplit: 'each'`, like `<Steps>`, to get a page of each step. A handle
-returned by `useStep` can also be passed to the `with` of other steps, which
-then share its stepper, e.g., to reveal items of two lists in parallel.
+`useStep` and `useSteps` take the props of `Step`, so a component that takes
+`StepProps` can pass them on as they are, and places and appears like a `Step`:
+
+```tsx
+import { useStep, type StepProps } from '@seminar/core';
+
+export function Note({ children, ...stepProps }: StepProps) {
+  const { ref, appearance } = useStep(stepProps);
+  return (
+    <div ref={ref} data-appearance={appearance.name}>
+      {typeof children === 'function' ? null : children}
+    </div>
+  );
+}
+```
+
+The hooks don't style their elements. Without a behavior, they take the default
+of the slide, so steps nested in them wait for them, like in a `Step`. Pass
+`always` for content that stays shown. Splitting a slide into pages goes by the
+behavior, too, so a component whose content changes in its steps otherwise should
+pass `defaults: { split: 'each' }`, like `<Steps>`, to get a page of each step. A
+handle returned by `useStep` can also be passed to the `with` of other steps,
+which then share its stepper, e.g., to reveal items of two lists in parallel.
 
 ## Animations
 
@@ -127,7 +150,7 @@ rules:
   to check for that yourself.
 - **Ask for the time your animation needs.** Set the fade of your step to
   the shortest time in which the animation still explains what changes,
-  e.g., `useStep({ fades: { fade: 500 } })`. Steps that change at the same
+  e.g., `useStep({ fade: 500 })`. Steps that change at the same
   time can only make it longer, and the slide fades as long, too.
 - **Expect a duration of 0 anyway.** The author can cut the step, and the
   presenter can skip it, so the component must also work without its

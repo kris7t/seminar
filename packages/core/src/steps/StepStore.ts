@@ -35,15 +35,15 @@ import { StepNode, type StepOptions, type StepPath } from './StepNode.ts';
 /** State of a stepper as stored in a {@link StepStore}. */
 export interface StepStatus extends StepProgress {
   /**
-   * How the stepper it is nested in looks, including the steppers that one is
-   * nested in, which the stepper should look at least as hidden as.
+   * How the stepper it is nested in appears, including the steppers that one is
+   * nested in, which the stepper should be at least as hidden as.
    */
   inherited: RankedAppearance;
   /**
-   * How the stepper looks as a whole, which is how elements without a look of
-   * their own look, or `undefined` before it is placed.
+   * How the stepper appears as a whole, which is how elements without
+   * appearances of their own appear, or `undefined` before it is placed.
    */
-  look?: RankedAppearance | undefined;
+  appearance?: RankedAppearance | undefined;
 }
 
 /**
@@ -203,7 +203,7 @@ export class StepStore {
       cached?.stepIndex === status.stepIndex &&
       cached.phase === status.phase &&
       cached.inherited === status.inherited &&
-      cached.look === status.look
+      cached.appearance === status.appearance
     ) {
       return cached;
     }
@@ -536,9 +536,9 @@ export class StepStore {
     const layout = this.#getLayout();
     const path = this.getPath();
     const place = layout.progressOf(node, path);
-    const inherited = layout.inheritedOf(node, path);
+    const inherited = layout.inheritedAt(node, path);
     return layout.stepOf(node) === undefined
       ? { ...place, inherited }
-      : { ...place, inherited, look: layout.lookOf(node, path) };
+      : { ...place, inherited, appearance: layout.appearanceAt(node, path) };
   }
 }

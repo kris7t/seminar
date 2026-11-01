@@ -15,7 +15,6 @@ import {
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../theme/classNames.ts';
 import {
-  ALWAYS_SHOWN,
   appearanceClass,
   moreHidden,
   StepAppearanceContext,
@@ -23,7 +22,8 @@ import {
   type StepperClassKey,
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepNode.ts';
-import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
+import type { StepDefaults } from './stepDefaults.ts';
+import type { OverlayProp, SplitProp } from './stepSplit.ts';
 import { useSteps, type StepState, type StepWith } from './useSteps.ts';
 
 export interface StepsProps extends Omit<
@@ -65,6 +65,9 @@ export interface StepsProps extends Omit<
   children?: ReactNode | ((state: StepState) => ReactNode);
   sx?: SxProps<Theme>;
 }
+
+// The content is always shown, but may change in each step.
+const DEFAULTS: StepDefaults = { behavior: 'always', split: 'each' };
 
 export type StepsClassKey = StepperClassKey;
 
@@ -134,14 +137,16 @@ export function Steps(inProps: StepsProps): JSX.Element {
     in: parent,
     after,
     title,
-    appearances: ALWAYS_SHOWN,
     split,
-    defaultSplit: 'each',
-    overlay: parseOverlay(overlay),
+    defaults: DEFAULTS,
+    overlay,
   });
   const { ref, stepIndex, phase, inherited } = step;
   // The content is always shown, unless the step it is nested in isn't.
-  const appearance = moreHidden(inherited, enclosing);
+  const appearance = moreHidden(
+    moreHidden(step.appearance, inherited),
+    enclosing,
+  );
   return (
     <StepsRoot
       as={component}

@@ -9,7 +9,6 @@ import {
 import {
   createElement,
   use,
-  useEffect,
   type ElementType,
   type HTMLAttributes,
   type JSX,
@@ -25,9 +24,8 @@ import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../theme/classNames.ts';
 import {
   appearanceClass,
-  BUILT_IN_STEP_BEHAVIORS,
   moreHidden,
-  rankAppearances,
+  splitShorthands,
   StepAppearanceContext,
   stepperClasses,
   type BuiltInStepBehavior,
@@ -36,8 +34,8 @@ import {
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepNode.ts';
 import { StepBehaviorContext } from './StepBehaviorContext.ts';
-import { resolveStepPlace, type StepDefaults } from './stepDefaults.ts';
-import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
+import type { StepDefaults } from './stepDefaults.ts';
+import type { OverlayProp, SplitProp } from './stepSplit.ts';
 import type { FadeProps } from '../transitions/fades.ts';
 import { SlideViewContext } from '../view/SlideViewContext.ts';
 import { useStep, type StepState, type StepWith } from './useSteps.ts';
@@ -52,6 +50,25 @@ function DocumentStep({ component, ...props }: DocumentStepProps): ReactNode {
   // Use `createElement` to avoid tripping `static-components`.
   return createElement(component, props);
 }
+
+/** The props that `useStep` reads, which aren't for the element. */
+const STEPPER_PROPS: ReadonlySet<string> = new Set([
+  'with',
+  'group',
+  'in',
+  'after',
+  'step',
+  'initial',
+  'title',
+  'split',
+  'overlay',
+  'cut',
+  'fade',
+  'fadeIn',
+  'fadeOut',
+  'fadeBefore',
+  'fadeAfter',
+]);
 
 /**
  * Further behaviors of steps. Add them by module augmentation, e.g.,
@@ -75,6 +92,7 @@ export interface StepBehaviorOverrides {}
  * | `insert`  | collapsed | shown         | shown     | shown        |
  * | `expand`  | collapsed | shown         | shown     | collapsed    |
  * | `swap`    | collapsed | shown         | collapsed | collapsed    |
+ * | `always`  | shown     | shown         | shown     | shown        |
  *
  * Hidden steps keep their space in the layout, while collapsed steps take no
  * space, so `insert` makes room for a step when it's shown, `expand` also
@@ -101,48 +119,6 @@ declare module '@mui/material/styles' {
   interface ThemeOptions {
     stepBehaviors?: Partial<Record<StepBehavior, StepAppearances>> | undefined;
   }
-}
-
-/**
- * Separates the behavior shorthands (see {@link StepBehaviorShorthands})
- * from the other `props`, which are passed to the element.
- *
- * @returns The behavior of the shorthand, if any, or of the last one if there
- *   are several, and the other props.
- */
-function splitShorthands<Props extends object>(
-  theme: Theme,
-  props: Props,
-): [behavior: StepBehavior | undefined, other: Props] {
-  let behavior: StepBehavior | undefined;
-  const other = Object.fromEntries(
-    Object.entries(props).filter(([name, value]) => {
-      if (
-        !Object.hasOwn(BUILT_IN_STEP_BEHAVIORS, name) &&
-        !Object.hasOwn(theme.stepBehaviors ?? {}, name)
-      ) {
-        return true;
-      }
-      // `false` turns the shorthand off, e.g., `only={false}`.
-      if (value === true || value === '') {
-        behavior = name as StepBehavior;
-      }
-      return false;
-    }),
-  ) as Props;
-  return [behavior, other];
-}
-
-/** Returns how `behavior` looks in each phase in `theme`. */
-function appearancesOf(theme: Theme, behavior: StepBehavior): StepAppearances {
-  const builtIn = BUILT_IN_STEP_BEHAVIORS as Partial<
-    Record<StepBehavior, StepAppearances>
-  >;
-  return (
-    theme.stepBehaviors?.[behavior] ??
-    builtIn[behavior] ??
-    BUILT_IN_STEP_BEHAVIORS.reveal
-  );
 }
 
 /**
@@ -193,7 +169,7 @@ export interface StepProps
   /**
    * What the step does unless the user says otherwise (see
    * {@link StepDefaults}), which wrapper components can use to choose their
-   * usual place and look.
+   * usual place and behavior.
    */
   defaults?: StepDefaults | undefined;
   /**
@@ -275,7 +251,7 @@ const StepRoot = styled('div', {
  *
  * Nested steps look at least as hidden as the step they are nested in, e.g.,
  * a step nested in a dimmed step is dimmed, too, whether it's nested in the
- * DOM or with `in`. Steps don't repeat the look they inherit from enclosing
+ * DOM or with `in`. Steps don't repeat the appearance they inherit from enclosing
  * elements, so that they aren't dimmed twice.
  *
  * The fade props, i.e., `fade`, `fadeIn`, `fadeOut`, `fadeBefore`,
@@ -307,84 +283,37 @@ export function Step(inProps: StepProps): JSX.Element {
   const enclosing = use(StepAppearanceContext);
   const {
     component = 'div',
-    with: withStep,
     id,
-    group = id,
-    in: parent,
-    after,
-    step: ownStep,
-    initial,
     defaults,
-    title,
     behavior: themeBehavior,
-    split,
-    overlay,
-    cut,
-    fade,
-    fadeIn,
-    fadeOut,
-    fadeBefore,
-    fadeAfter,
     className,
     sx,
     children,
     ...rest
   } = props;
   const view = use(SlideViewContext);
-  const [shorthand, other] = splitShorthands(theme, rest);
-  const ownBehavior = inProps.behavior ?? shorthand;
-  const place = resolveStepPlace({
-    with: withStep,
-    initial,
-    step: ownStep,
-    in: parent,
-    after,
-    behavior: ownBehavior,
-    defaults,
-  });
-  const ignoredBehavior = place.with === 'parent' ? ownBehavior : undefined;
-  useEffect(() => {
-    if (ignoredBehavior !== undefined) {
-      console.warn(
-        `Ignoring the behavior \`${ignoredBehavior}\` of content with \`with="parent"\` or \`step={false}\`, which isn't a step.`,
-      );
-    }
-  }, [ignoredBehavior]);
-  // The behavior of the slide takes precedence over the default of the theme.
-  // The store decides whether this is a step that needs it.
+  const [shorthand, withoutShorthands] = splitShorthands(theme, rest);
+  const other = Object.fromEntries(
+    Object.entries(withoutShorthands).filter(
+      ([name]) => !STEPPER_PROPS.has(name),
+    ),
+  ) as HTMLAttributes<HTMLElement>;
   const behavior =
-    ownBehavior ??
+    inProps.behavior ??
+    shorthand ??
     defaults?.behavior ??
     slideBehavior ??
     themeBehavior ??
     'reveal';
-  const appearances = rankAppearances(theme, appearancesOf(theme, behavior));
-  const step = useStep({
-    with: place.with,
-    group,
-    in: parent,
-    defaultIn: place.defaultIn,
-    defaultWith: place.defaultWith,
-    joins: place.joins,
-    after,
-    title,
-    appearances,
-    ownLook: place.ownLook,
-    fades: { cut, fade, fadeIn, fadeOut, fadeBefore, fadeAfter },
-    split,
-    defaultSplit: defaults?.split,
-    overlay: parseOverlay(overlay) ?? parseOverlay(defaults?.overlay),
-  });
-  const { phase, inherited, look } = step;
+  // A behavior from the theme is only a default, unlike one written here.
+  const step = useStep({ ...props, behavior: inProps.behavior });
+  const { phase, inherited } = step;
   const elementId = useSlideElementId(id ?? '');
   const elementRef = useSlideElementRef(id ?? '');
   const ref = useForkRef(step.ref, id === undefined ? null : elementRef);
   // Elements inside a step already look like it, e.g., hidden or dimmed.
   const appearance = moreHidden(
-    moreHidden(
-      (place.ownLook ? undefined : look) ?? appearances[phase],
-      inherited,
-    ),
+    moreHidden(step.appearance, inherited),
     enclosing,
   );
   const content = typeof children === 'function' ? children(step) : children;

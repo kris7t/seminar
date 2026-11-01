@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
-import { Step, stepClasses } from './Step.tsx';
+import { Step, stepClasses, type StepProps } from './Step.tsx';
 import { ListItem } from '../content/ListItem.tsx';
 import { Paragraph } from '../content/Paragraph.tsx';
 import { Steps } from './Steps.tsx';
@@ -466,6 +466,87 @@ describe('steps', () => {
     expect(shownItems()).toEqual(['*a']);
     await user.keyboard('{ArrowRight}');
     expect(shownItems()).toEqual(['*a', '*b', '*c']);
+  });
+
+  it('keeps steppers with several steps out of the step they are placed with', async () => {
+    const user = userEvent.setup();
+    function Several() {
+      const { ref } = useSteps(2, { with: 'previous' });
+      return <div ref={ref} />;
+    }
+    render(
+      <Deck>
+        <Slide>
+          <Step data-name="a" />
+          <Several />
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=2');
+  });
+
+  describe('placing a stepper with another step', () => {
+    function Placed() {
+      const { ref, phase, appearance } = useStep({ with: 'previous' });
+      return (
+        <div ref={ref} data-testid="placed">
+          {phase} {appearance.name}
+        </div>
+      );
+    }
+
+    it('joins the step if there is one', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step only />
+            <Placed />
+            <Step />
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect(window.location.hash).toBe('#slide=1&step=2');
+      expect(screen.getByTestId('placed').textContent).toBe('past hidden');
+    });
+
+    it('creates a step 0 if there is none', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Placed />
+            <Step />
+          </Slide>
+        </Deck>,
+      );
+      expect(screen.getByTestId('placed').textContent).toBe('current shown');
+      await user.keyboard('{ArrowRight}');
+      // Without a step, it would stay current along with the slide.
+      expect(screen.getByTestId('placed').textContent).toBe('past shown');
+    });
+  });
+
+  it('takes the defaults of a stepper like those of a step', async () => {
+    const user = userEvent.setup();
+    function Joining() {
+      const { ref } = useStep({ defaults: { joins: 'content' } });
+      return <div ref={ref} />;
+    }
+    render(
+      <Deck>
+        <Slide>
+          <Step data-name="a" />
+          <Joining />
+          <Step data-name="b" />
+        </Slide>
+      </Deck>,
+    );
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(window.location.hash).toBe('#slide=1&step=2');
+    expect(shownItems()).toEqual(['a', '*b']);
   });
 
   it('creates a step by default only with with, not joins', async () => {
@@ -1041,13 +1122,22 @@ describe('steps', () => {
     });
   });
 
-  it('returns the handle passed as with from the hooks', () => {
-    const handles: unknown[] = [];
+  it('shares the state of the handle passed as with', async () => {
+    const user = userEvent.setup();
     function Linked() {
-      const step = useSteps(2);
-      const linked = useStep({ with: step });
-      handles.push(step, linked);
-      return <Steps with={step}>{() => 'linked'}</Steps>;
+      const { ref, stepIndex, ...step } = useSteps(2);
+      const handle = { ref, stepIndex, ...step };
+      const { ref: linkedRef, stepIndex: linkedIndex } = useStep({
+        with: handle,
+      });
+      return (
+        <>
+          <div ref={ref} />
+          <div ref={linkedRef} data-testid="linked">
+            {stepIndex} {linkedIndex}
+          </div>
+        </>
+      );
     }
     render(
       <Deck>
@@ -1056,6 +1146,55 @@ describe('steps', () => {
         </Slide>
       </Deck>,
     );
-    expect(handles.at(-1)).toBe(handles.at(-2));
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+    expect(screen.getByTestId('linked').textContent).toBe('1 1');
+    expect(window.location.hash).toBe('#slide=1&step=2');
+  });
+
+  describe('passing the props of a step to the hooks', () => {
+    function Wrapper(props: StepProps) {
+      const { ref, phase, appearance } = useStep(props);
+      return (
+        <div ref={ref} data-testid="wrapper">
+          {phase} {appearance.name}
+        </div>
+      );
+    }
+
+    it.each([
+      ['a shorthand', { only: true }, 'past hidden'],
+      ['a behavior', { behavior: 'focus' }, 'past dimmed'],
+      ['no behavior', {}, 'past dimmed'],
+      ['with="parent"', { with: 'parent' }, 'current shown'],
+      ['step={false}', { step: false }, 'current shown'],
+    ] as const)('takes %s like a step', async (_name, props, expected) => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide steps="dim">
+            <Wrapper {...props} />
+            <Step />
+            <Step />
+          </Slide>
+        </Deck>,
+      );
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect(screen.getByTestId('wrapper').textContent).toBe(expected);
+    });
+
+    it('places a step like the same step', async () => {
+      const user = userEvent.setup();
+      render(
+        <Deck>
+          <Slide>
+            <Step />
+            <Wrapper initial />
+          </Slide>
+        </Deck>,
+      );
+      expect(screen.getByTestId('wrapper').textContent).toBe('current shown');
+      await user.keyboard('{ArrowRight}');
+      expect(screen.getByTestId('wrapper').textContent).toBe('past shown');
+    });
   });
 });

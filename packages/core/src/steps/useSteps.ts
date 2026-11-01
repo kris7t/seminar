@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material/styles';
 import {
   use,
   useCallback,
@@ -9,15 +10,19 @@ import {
 } from 'react';
 
 import {
+  appearancesOfBehavior,
   SHOWN,
+  splitShorthands,
   type RankedAppearance,
   type RankedAppearances,
 } from './stepAppearance.ts';
+import { StepBehaviorContext } from './StepBehaviorContext.ts';
 import { StepNode, type StepPhase } from './StepNode.ts';
+import type { StepBehaviorShorthands, StepProps } from './Step.tsx';
 import type { StepStatus } from './StepStore.ts';
 import type { FadeProps, FadeValues } from '../transitions/fades.ts';
 import { StepStoreContext } from './StepStoreContext.ts';
-import { resolveStepSplit, type SplitProp } from './stepSplit.ts';
+import { parseOverlay, resolveStepSplit } from './stepSplit.ts';
 
 /** State of a stepper. */
 export interface StepState {
@@ -39,15 +44,16 @@ export interface StepState {
    */
   isCurrent: boolean;
   /**
-   * How the step that the stepper is nested in looks, which the stepper
-   * should look at least as hidden as.
+   * How the step that the stepper is nested in appears, which the stepper
+   * should be at least as hidden as.
    */
   inherited: RankedAppearance;
   /**
-   * How the stepper looks as a whole, or `undefined` before it is placed, which
-   * elements without a look of their own should look like.
+   * How the elements of this call should appear, apart from what they inherit,
+   * according to their behavior, the step they are part of, or the first element
+   * of the stepper.
    */
-  look?: RankedAppearance | undefined;
+  appearance: RankedAppearance;
 }
 
 export interface StepHandle extends StepState {
@@ -59,11 +65,19 @@ export interface StepHandle extends StepState {
    * to reveal several list items at once.
    */
   ref: RefCallback<Element>;
-  /** Attaches `element` to the stepper, with a look of its own, if given. */
+  /**
+   * How the stepper appears as a whole, or `undefined` before it is placed, which
+   * elements linked to it follow unless they have a behavior of their own.
+   */
+  stepperAppearance?: RankedAppearance | undefined;
+  /**
+   * Attaches `element` to the stepper, with its own appearances, if given, or
+   * else with what the stepper should do if there's nothing else to follow.
+   */
   attach: (
     element: Element,
     appearances: RankedAppearances | undefined,
-    ownLook: boolean,
+    defaultAppearances: RankedAppearances | undefined,
   ) => () => void;
 }
 
@@ -96,90 +110,30 @@ export interface StepHandle extends StepState {
 export type StepWith =
   'self' | 'previous' | 'content' | 'initial' | 'parent' | StepHandle;
 
-export interface UseStepsOptions {
-  /** See {@link StepWith}. */
-  with?: StepWith | undefined;
-  /**
-   * Name of a stepper shared with the other steps of the group on the same
-   * slide. This allows revealing content in several places in parallel, like
-   * a {@link StepHandle} passed to `with`, but without creating the handle up
-   * front.
-   *
-   * The stepper is placed at the first element of the group in document order,
-   * according to the `count` and `with` of that element, and nested wherever
-   * that element is. Elements without a look of their own look like it. Ignored
-   * if `with` is a handle.
-   */
-  group?: string | undefined;
-  /**
-   * Name of the group whose stepper this stepper is nested in, as if its
-   * elements were inside the elements of the group. This allows nesting steps,
-   * e.g., callouts, outside of the step they belong to. An element nests the
-   * stepper in the stepper of the element, or the stepper enclosing it, e.g.,
-   * for callouts pointing at the element. Ignored if `with` is a handle.
-   */
-  in?: string | Element | undefined;
-  /**
-   * Like `in`, but only if the stepper doesn't join a group with other
-   * elements. Ignored if `with` is a handle.
-   */
-  defaultIn?: string | Element | undefined;
-  /**
-   * Like `with`, but only if the stepper doesn't join a group with other
-   * elements.
-   */
-  defaultWith?: 'previous' | 'content' | 'initial' | undefined;
-  /**
-   * When the stepper is part of the step that `with` or `defaultWith` refers to,
-   * rather than a step of its own, because it has no look of its own: `'target'`
-   * if there is such a step, and `'always'` for being part of what encloses it
-   * if there is none. `with: 'parent'` always is.
-   */
-  joins?: 'target' | 'always' | undefined;
-  /**
-   * Name of the group to place this stepper right after, nested in the same
-   * stepper as the group, before the steppers that follow the group in
-   * document order. Steppers placed after the same group follow each other in
-   * document order. Takes precedence over `in`. Ignored if `with` is a handle.
-   */
-  after?: string | undefined;
-  /**
-   * Title of the stepper in the tree of steps, instead of the text of its
-   * elements. Ignored if `with` is a handle.
-   */
-  title?: string | undefined;
-  /**
-   * How the stepper looks in each phase, which the steppers nested in it
-   * inherit. Shown in all phases by default.
-   */
-  appearances?: RankedAppearances | undefined;
-  /**
-   * Whether the element keeps its `appearances` if it isn't the first element
-   * of the stepper, rather than looking like that one. Defaults to `true`.
-   */
-  ownLook?: boolean | undefined;
-  /**
-   * How long the slide fades when the turn of the stepper starts or ends
-   * (see the `fade` of `Step`). Ignored if `with` is a handle.
-   */
-  fades?: FadeProps | undefined;
-  /**
-   * How the stepper asks for pages when the slide is split into pages, e.g.,
-   * for a PDF (see {@link SplitProp}). Ignored if `with` is a handle.
-   */
-  split?: SplitProp | undefined;
-  /**
-   * What `split` leaves out, e.g., the usual mode of a component, which
-   * takes precedence over the mode of the step the stepper is nested in.
-   */
-  defaultSplit?: SplitProp | undefined;
-  /**
-   * Whether the stepper may cover other content, which then also needs a page
-   * without it when the slide is split into pages, e.g., callouts. Ignored if
-   * `with` is a handle.
-   */
-  overlay?: boolean | undefined;
-}
+/**
+ * The props of `Step` that decide where a stepper goes and how it appears, which
+ * work the same way here, so a component can pass its `StepProps` on as they are.
+ * The `group` is placed at its first element in document order, and the others
+ * follow it unless they have a behavior of their own. If `with` is a handle, only
+ * the behavior counts.
+ */
+export type UseStepsOptions = Pick<
+  StepProps,
+  | 'with'
+  | 'step'
+  | 'initial'
+  | 'id'
+  | 'group'
+  | 'in'
+  | 'after'
+  | 'title'
+  | 'defaults'
+  | 'behavior'
+  | 'split'
+  | 'overlay'
+  | keyof FadeProps
+  | keyof StepBehaviorShorthands
+>;
 
 const UNLINKED: StepStatus = {
   stepIndex: -1,
@@ -196,35 +150,83 @@ function getUnlinkedStatus(): StepStatus {
 }
 
 /**
- * Creates a stepper with `count` consecutive steps.
+ * Creates a stepper with `count` consecutive steps, which takes the same options
+ * as `Step`.
  *
  * The stepper is placed among the other steppers according to the position of
- * the elements that the returned `ref` is attached to.
+ * the elements that the returned `ref` is attached to. The elements aren't styled
+ * for you, so apply `appearance` and `inherited` if they should appear like a
+ * `Step`, or pass the behavior `always` for content that stays shown, which the
+ * steps nested in it and the pages of the slide then rely on.
  *
- * If `with` is a {@link StepHandle}, returns that handle instead, and `count`
- * is ignored.
+ * If `with` is a {@link StepHandle}, shares that stepper, and `count` is ignored.
  */
 export function useSteps(
   count: number,
-  {
-    with: withStep,
-    group,
+  options: UseStepsOptions = {},
+): StepHandle {
+  const {
+    with: withProp,
+    step: stepProp,
+    initial,
+    id,
+    group = id,
     in: parent,
-    defaultIn,
-    defaultWith,
-    joins,
     after,
     title,
-    appearances,
-    ownLook = true,
-    fades: fadeProps,
+    defaults,
+    behavior: ownBehavior,
     split: splitProp,
-    defaultSplit,
-    overlay,
-  }: UseStepsOptions = {},
-): StepHandle {
+    overlay: ownOverlay,
+    cut,
+    fade,
+    fadeIn,
+    fadeOut,
+    fadeBefore,
+    fadeAfter,
+  } = options;
+  const theme = useTheme();
+  const slideBehavior = use(StepBehaviorContext);
+  const withStep =
+    withProp ??
+    (initial === true || initial === ''
+      ? 'initial'
+      : stepProp === true || stepProp === ''
+        ? 'self'
+        : stepProp === false || stepProp === 'false'
+          ? 'parent'
+          : undefined);
+  const writtenBehavior = ownBehavior ?? splitShorthands(theme, options)[0];
+  const ignoredBehavior = withStep === 'parent' ? writtenBehavior : undefined;
+  useEffect(() => {
+    if (ignoredBehavior !== undefined) {
+      console.warn(
+        `Ignoring the behavior \`${ignoredBehavior}\` of content with \`with="parent"\` or \`step={false}\`, which isn't a step.`,
+      );
+    }
+  }, [ignoredBehavior]);
+  const manyParts = withStep === 'parent' && count > 1;
+  useEffect(() => {
+    if (manyParts) {
+      console.warn(
+        "Ignoring the `count` of a stepper with `with: 'parent'`, which isn't a step.",
+      );
+    }
+  }, [manyParts]);
+  const chosenBehavior = writtenBehavior ?? defaults?.behavior;
+  // What isn't a step always appears like what encloses it.
+  const appearances =
+    chosenBehavior === undefined || withStep === 'parent'
+      ? undefined
+      : appearancesOfBehavior(theme, chosenBehavior);
+  // The behavior of the slide takes precedence over the default of the theme.
+  const defaultAppearances = appearancesOfBehavior(
+    theme,
+    slideBehavior ??
+      theme.components?.SeminarStep?.defaultProps?.behavior ??
+      'reveal',
+  );
   // Only the values matter, which are often given as a new object.
-  const { cut, fade, fadeIn, fadeOut, fadeBefore, fadeAfter } = fadeProps ?? {};
   const cutKey = Array.isArray(cut) ? cut.join(' ') : cut;
   const fades = useMemo<FadeValues | undefined>(
     () =>
@@ -239,6 +241,7 @@ export function useSteps(
     [cutKey, fade, fadeIn, fadeOut, fadeBefore, fadeAfter],
   );
   const splitKey = Array.isArray(splitProp) ? splitProp.join(' ') : splitProp;
+  const defaultSplit = defaults?.split;
   const defaultSplitKey = Array.isArray(defaultSplit)
     ? defaultSplit.join(' ')
     : defaultSplit;
@@ -247,14 +250,6 @@ export function useSteps(
     [splitKey, defaultSplitKey],
   );
   const store = use(StepStoreContext);
-  const manyParts = withStep === 'parent' && count > 1;
-  useEffect(() => {
-    if (manyParts) {
-      console.warn(
-        "Ignoring the `count` of a stepper with `with: 'parent'`, which isn't a step.",
-      );
-    }
-  }, [manyParts]);
   const [ownNode] = useState(() => new StepNode());
   const node = group === undefined ? ownNode : store.getGroup(group);
   // Hooks can't be called conditionally, so we still create a node if we're
@@ -262,23 +257,30 @@ export function useSteps(
   const linked = typeof withStep === 'object';
   const placement =
     linked || withStep === 'self' ? 'next' : (withStep ?? 'next');
+  const placed = parent !== undefined || after !== undefined;
+  // Placing it otherwise replaces the default of its place.
+  const defaultPlace = withStep === undefined && !placed ? defaults : undefined;
+  // A behavior gives it a step instead of always being shown with one.
+  const defaultJoins =
+    appearances === undefined ? defaultPlace?.joins : undefined;
+  const defaultWith = defaultPlace?.with;
+  const defaultIn = placed ? undefined : defaults?.in;
+  const overlay = parseOverlay(ownOverlay) ?? parseOverlay(defaults?.overlay);
   const attach = useCallback(
     (
       element: Element,
       elementAppearances: RankedAppearances | undefined,
-      elementOwnLook: boolean,
+      elementDefaultAppearances: RankedAppearances | undefined,
     ) =>
       store.attach(node, element, {
         count,
         placement,
-        defaultPlacement: defaultWith,
-        joins,
+        defaults: { with: defaultWith, joins: defaultJoins, in: defaultIn },
         parent,
-        defaultParent: defaultIn,
         after,
         title,
         appearances: elementAppearances,
-        ownLook: elementOwnLook,
+        defaultAppearances: elementDefaultAppearances,
         fades,
         split,
         overlay,
@@ -289,9 +291,9 @@ export function useSteps(
       count,
       placement,
       defaultWith,
-      joins,
-      parent,
+      defaultJoins,
       defaultIn,
+      parent,
       after,
       title,
       fades,
@@ -304,16 +306,23 @@ export function useSteps(
     (element) =>
       element === null
         ? undefined
-        : linkedAttach(element, appearances, ownLook),
-    [linkedAttach, appearances, ownLook],
+        : linkedAttach(element, appearances, defaultAppearances),
+    [linkedAttach, appearances, defaultAppearances],
   );
   const getStatus = linked ? getUnlinkedStatus : () => store.getStatus(node);
-  const { stepIndex, phase, inherited, look } = useSyncExternalStore(
+  const {
+    stepIndex,
+    phase,
+    inherited,
+    appearance: stepperAppearance,
+  } = useSyncExternalStore(
     linked ? subscribeUnlinked : store.subscribe,
     getStatus,
     getStatus,
   );
   const clampedIndex = Math.min(stepIndex, count - 1);
+  const ownAppearance =
+    appearances?.[phase] ?? stepperAppearance ?? defaultAppearances[phase];
   const ownStep = useMemo(
     () => ({
       ref,
@@ -324,17 +333,33 @@ export function useSteps(
       isActive: phase !== 'future' && phase !== 'distantFuture',
       isCurrent: phase === 'current' || phase === 'open',
       inherited,
-      look,
+      appearance: ownAppearance,
+      stepperAppearance,
     }),
-    [ref, attach, count, clampedIndex, phase, inherited, look],
+    [
+      ref,
+      attach,
+      count,
+      clampedIndex,
+      phase,
+      inherited,
+      ownAppearance,
+      stepperAppearance,
+    ],
   );
+  const linkedAppearance = linked
+    ? (appearances?.[withStep.phase] ??
+      withStep.stepperAppearance ??
+      defaultAppearances[withStep.phase])
+    : undefined;
   const linkedStep = useMemo(
     () =>
-      // Only elements with a look need to tell the stepper about it.
-      linked && appearances !== undefined ? { ...withStep, ref } : undefined,
-    [linked, withStep, ref, appearances],
+      linked && linkedAppearance !== undefined
+        ? { ...withStep, ref, appearance: linkedAppearance }
+        : undefined,
+    [linked, withStep, ref, linkedAppearance],
   );
-  return linkedStep ?? (linked ? withStep : ownStep);
+  return linkedStep ?? ownStep;
 }
 
 /** Creates a stepper with a single step. See {@link useSteps}. */
