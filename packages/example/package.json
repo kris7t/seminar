@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "pdf": "tsc --build ../cli ../vite-plugin && node ../cli/dist/index.js pdf",
     "preview": "tsc --build ../cli ../vite-plugin && node ../cli/dist/index.js preview",
     "present": "tsc --build ../cli ../vite-plugin && node ../cli/dist/index.js present"
   },

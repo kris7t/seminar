@@ -21,34 +21,35 @@ step, until the slide is done and the next slide comes.
 :step This paragraph is shown in the third step.
 ```
 
-Content without `:step` is part of the latest step before it on its level, or
-shown up front if there is none. It appears and goes with that step, and looks
-like it, whatever its behavior. This holds for list items, paragraphs, images,
-and also elements like columns. So `:step` marks where a new step begins, and
-everything after it follows along until the next `:step`, except for steps
-nested in it, which come after it. A group counts where it's placed, not at its
-later elements.
+Content without `:step` goes with the latest step before it on its level. It
+appears and goes away with that step, and looks like it. If there is no such step,
+it's shown up front. This holds for list items, paragraphs, images, and elements
+like columns.
 
-`with` chooses when a step is shown:
+So `:step` marks where a new step begins. Everything after it goes along until the
+next `:step`. Steps nested in it come after it.
 
-- `with=previous` shows it with the step right before it, whatever that is.
-- `with=content` shows it with the latest step that shows content, not an
-  overlay like a callout, which is what content without `:step` does.
-- `with=initial`, or just `initial`, shows it as soon as what encloses it is
-  shown, even after other steps.
-- `with=parent` makes it part of what encloses it, rather than a step, so it
-  has no look of its own, and steps inside it are nested directly in what
-  encloses it. A behavior doesn't apply here. `step=false` means the same.
-  Content after it, including `with=previous` and `with=content`, is part of
-  what encloses it, too, until the next step.
+`with` shows a step together with another one:
 
-Without a behavior of its own, a step placed like this is part of the step it's
-shown with, and looks like it. A behavior like `:step{reveal with=previous}` gives
-it its own look. If there is no step to join, `with=previous`, `with=content`, and
-`with=initial` make a step that is shown up front, unlike content without `:step`.
-It's a real step: it takes the default of the slide, and steps inside it end at the
-next step on its level. A level has only one step 0, so a later `with=initial` is
-part of it, even if it's an overlay like a callout:
+- `with=previous` uses the step right before it.
+- `with=content` uses the latest step that shows content, and skips overlays like
+  callouts. Content without `:step` works this way, too.
+- `with=initial`, or just `initial`, shows it as soon as its parent is, even after
+  other steps. The parent is the step it's nested in, or the slide.
+- `with=parent` doesn't make a step. The content is simply part of its parent, and
+  steps inside it are nested directly in the parent. A behavior doesn't apply here.
+  `step=false` means the same. Content without `:step` after it is also part of
+  the parent, until the next step.
+
+A step placed like this looks like the step it's shown with. A behavior gives it
+its own look, e.g., `:step{reveal with=previous}`.
+
+If there is no step to be shown with, `with` creates one, shown up front. Content
+without `:step` never does this. A step created this way takes the default of the
+slide, and goes past at the next step on its level.
+
+A level has only one step shown up front. A later `with=initial` joins it, even if
+it's an overlay like a callout:
 
 ```mdx
 - :step{initial} Shown up front:callout[Goes away with the next item]
@@ -57,10 +58,10 @@ part of it, even if it's an overlay like a callout:
 - :step The next item
 ```
 
-Attributes that configure a step, like `split`, `overlay`, and `fade`, don't make
-one. On content that is part of a step, they apply along with those of the step,
-as for the elements of a group: `![Results](./results.png){split=none}` needs no
-page of its own, while the step it's part of still does.
+`split`, `overlay`, and `fade` configure a step, but don't make one. On content
+that is part of a step, they apply along with those of the step. For example,
+`![Results](./results.png){split=none}` needs no page of its own, while its step
+still does.
 
 Images take `step` and the other attributes of `:step` in their attributes,
 e.g., `![Results](./results.png){step}`. Other elements take them the same
@@ -111,15 +112,15 @@ The step tree (Shift+T) shows how the steps of the current slide nest, and
 the address shows the current step, e.g., `#parsing&step=1.2` for Syntax
 tree.
 
-A paragraph or image in a list item is part of its item, and one with `:step`
-is a nested step of the item. Steps in content without `:step` are nested in the
-step that content is part of, or are steps of the slide if there is none.
+A paragraph or image in a list item is part of its item. One with `:step` is a
+nested step of the item. Steps in content without `:step` are nested in the step
+that content goes with, or are steps of the slide if there is none.
 
-Steps nested in a step shown up front have a 0 in the address, e.g., `step=0.1`,
-or `step=1.0.1` for a step shown as soon as step 1. The step tree shows them
-below the step they are nested in, which is the first entry for the slide. It
-marks steps that are always shown with the step around them, and choosing them
-goes to that step.
+Steps nested in a step shown up front have a 0 in the address, e.g., `step=0.1`.
+For a step shown as soon as step 1, it's `step=1.0.1`. The step tree shows them
+below the step they are nested in. For the slide, that's the first entry. Steps
+shown up front are marked in the tree, and choosing them goes to the step around
+them.
 
 ## Groups
 
@@ -133,20 +134,18 @@ slide:
 - :step{group=con} but figures still need components
 ```
 
-Here, both pros are shown in the first step, and both cons in the second
-one.
+Here, both pros are shown in the first step, and both cons in the second one.
 
-The first element of a group decides where it's placed and how it looks. The
-group is nested wherever that element is, so an element outside of a step can
-join a group inside it, and then also goes away with it. Other elements look
-like the first one, unless they have a behavior of their own. With `with=parent`,
-the first element makes the group a name for what encloses it, rather than a
-step.
+The first element of a group decides where it's placed and how it looks:
 
-A step with a name, like `:step{#parse}`, is in the group of the same name,
-unless it has a `group`. The address can refer to steps by their group,
-e.g., `#intro&step=parse`, which keeps working when steps are added before
-it.
+- The group is nested wherever that element is. An element outside of a step can
+  still join a group inside it, and then goes away with it.
+- Other elements look like the first one, unless they have a behavior of their own.
+- With `with=parent`, the group is just a name for the parent of that element.
+
+A step with a name, like `:step{#parse}`, is in the group of that name, unless it
+has a `group`. The address can refer to steps by their group, e.g.,
+`#intro&step=parse`. This keeps working when steps are added before it.
 
 `:step{title=…}` names a step in the step tree, instead of its text.
 
@@ -195,9 +194,9 @@ appear. Collapsed steps take no space instead:
 
 - `insert` makes room for a step when it's shown, pushing the content after
   it, e.g., a line inserted into a listing.
-- `expand` also collapses a step again once the step it's nested in is past,
-  e.g., details that expand under their item one by one, and fold away when
-  the next item comes, so that a long outline fits on a slide:
+- `expand` also collapses a step again once the step it's nested in is past. Details
+  expand under their item one by one, and fold away when the next item comes, so
+  that a long outline fits on a slide:
 
 ```mdx
 - :step Parsing
@@ -221,9 +220,9 @@ appear. Collapsed steps take no space instead:
 `initial` shows the first one up front, until the second one replaces
 it. Steps nested in a collapsed step are collapsed with it.
 
-The behavior is a bare word on the step, e.g., `:step{only}`, or
-`behavior=only`. `{steps=dim}` on a slide sets the default behavior of its
-steps, e.g., to dim past steps, so that the audience follows the current one:
+The behavior is a bare word on the step, e.g., `:step{only}`, or `behavior=only`.
+`{steps=dim}` on a slide sets the default behavior of its steps. For example, it
+can dim past steps, so that the audience follows the current one:
 
 ```mdx
 ### Step by step {steps=dim}
@@ -274,11 +273,10 @@ skipped steps can still be chosen from the step tree.
 
 ## Splitting into pages
 
-A slide with steps becomes as few pages as possible when it's split into
-pages, e.g., for [printing](../presenting.md#printing), so that everything
-shown at some step is on some page. A page shows the slide at a step, and a
-step becomes a page just before something is hidden, collapsed, or covered,
-and at the end of the slide:
+A slide with steps becomes as few pages as possible when it's split into pages,
+e.g., for [printing](../presenting.md#printing). Everything shown at some step is
+still on some page. A page shows the slide at a step. A step becomes a page just
+before something is hidden, collapsed, or covered, and at the end of the slide:
 
 - Steps that stay shown, like `reveal`, make a single page of the last step.
 - `only`, `swap`, and `expand` make a page of each step before it goes away.
@@ -316,27 +314,28 @@ A step can have a mode and several points, e.g., `split="none last"`. Steps
 of a group make the pages that any of them asks for.
 
 Content that floats over other content, like
-[callouts](../plugins/elements/callouts.md), is an overlay. The content it
-may cover also gets a page before overlays first cover it, e.g., a figure
-before the callouts pointing at it. Content shown along with an overlay
-doesn't, since the overlay likely doesn't cover it. `:step{overlay}` makes a
-step an overlay, and `overlay=false` makes a callout an ordinary step. Content
-that isn't a step, like a callout with `with=parent`, doesn't count. The step
-tree marks overlays, too.
+[callouts](../plugins/elements/callouts.md), is an overlay. The content it may cover
+gets a page before overlays first cover it, e.g., a figure before the callouts
+pointing at it. Content shown along with an overlay doesn't, since the overlay
+likely doesn't cover it.
 
-`split` on a slide sets the mode of its steps, e.g., `{split=none}` for a
-single page of the last step. It can also list the steps to make pages of,
-like the [ranges of steps](#ranges-of-steps), e.g., `{split="1, parse"}`,
-or `0` for the slide before its steps, which then make no other pages unless
-the slide also has a mode or the steps ask for them. Only the steps in the
-range of the slide become pages.
+`:step{overlay}` makes a step an overlay, and `overlay=false` makes a callout an
+ordinary step. Content that isn't a step, like a callout with `with=parent`, doesn't
+count. The step tree marks overlays, too.
+
+`split` on a slide sets the mode of its steps, e.g., `{split=none}` for a single
+page of the last step. It can also list the steps to make pages of, like the
+[ranges of steps](#ranges-of-steps), e.g., `{split="1, parse"}`. Use `0` for the
+slide before its steps. The steps then make no other pages, unless the slide also
+has a mode or the steps ask for them. Only the steps in the range of the slide
+become pages.
 
 ## Steps in JSX
 
 JSX on a slide can use the components of `@seminar/core`:
 
 - `<Step>` takes the same props as `:step`, e.g., `<Step group="parse" only>`.
-- `<Steps count={3}>` takes several steps, and passes the current one to a
-  function as its children, e.g., to highlight parts of a figure one after
-  another. Since its content may change in each step, it makes a page of each
-  step, unless it has `split="none"`, e.g., if it only highlights.
+- `<Steps count={3}>` takes several steps, and passes the current one to a function
+  as its children, e.g., to highlight parts of a figure one after another. Its
+  content may change in each step, so it makes a page of each step. Use
+  `split="none"` if it only highlights.
