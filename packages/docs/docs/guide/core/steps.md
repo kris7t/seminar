@@ -37,16 +37,14 @@ next `:step`. Steps nested in it come after it.
 - `with=initial`, or just `initial`, shows it as soon as its parent is, even after
   other steps. The parent is the step it's nested in, or the slide.
 - `with=parent` doesn't make a step. The content is simply part of its parent, and
-  steps inside it are nested directly in the parent. A behavior doesn't apply here.
-  `step=false` means the same. Content without `:step` after it is also part of
-  the parent, until the next step.
+  steps inside it are nested directly in the parent. `step=false` means the same.
+  Content without `:step` after it is also part of the parent, until the next step.
 
 A step placed like this looks like the step it's shown with. A behavior gives it
 its own look, e.g., `:step{reveal with=previous}`.
 
-If there is no step to be shown with, `with` creates one, shown up front. Content
-without `:step` never does this. A step created this way takes the default of the
-slide, and goes past at the next step on its level.
+If there is no step to be shown with, `with` creates one, shown up front. It goes
+past at the next step on its level. Content without `:step` never creates a step.
 
 A level has only one step shown up front. A later `with=initial` joins it, even if
 it's an overlay like a callout:

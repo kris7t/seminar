@@ -158,27 +158,49 @@ describe('StepStore', () => {
     });
 
     it.each(['previous', 'content'] as const)(
-      'joins what encloses content with %s after with="parent"',
+      'makes a step 0 with %s after with="parent"',
       (placement) => {
         const store = new StepStore();
         addStep(store, 'A');
         addStep(store, 'B', { placement: 'parent' });
         addStep(store, 'C', { placement });
-        addStep(store, 'D');
-        expect(summarize(store.getTree())).toEqual(['1 A', '2 D']);
+        addStep(store, 'D', { placement });
+        addStep(store, 'E');
+        expect(summarize(store.getTree())).toEqual(['0 C · D', '1 A', '2 E']);
       },
     );
 
     it.each(['previous', 'content'] as const)(
-      'makes a step 0 with %s after with="parent" with its own appearances',
+      'joins step 0 with %s after with="parent"',
       (placement) => {
         const store = new StepStore();
-        addStep(store, 'A');
-        addStep(store, 'B', { placement: 'parent' });
-        addStep(store, 'C', { placement, appearances: SOME_APPEARANCES });
-        expect(summarize(store.getTree())).toEqual(['0 C', '1 A']);
+        addStep(store, 'A', { placement: 'initial' });
+        addStep(store, 'B');
+        addStep(store, 'C', { placement: 'parent' });
+        addStep(store, 'D', { placement });
+        expect(summarize(store.getTree())).toEqual(['0 A · D', '1 B']);
       },
     );
+
+    it('keeps content after with="parent" out of step 0', () => {
+      const store = new StepStore();
+      addStep(store, 'A', { placement: 'initial' });
+      addStep(store, 'B', { placement: 'parent' });
+      addStep(store, 'C', JOINS);
+      addStep(store, 'D');
+      expect(summarize(store.getTree())).toEqual(['0 A', '1 D']);
+    });
+
+    it('makes a step 0 with its own appearances after with="parent"', () => {
+      const store = new StepStore();
+      addStep(store, 'A');
+      addStep(store, 'B', { placement: 'parent' });
+      addStep(store, 'C', {
+        placement: 'content',
+        appearances: SOME_APPEARANCES,
+      });
+      expect(summarize(store.getTree())).toEqual(['0 C', '1 A']);
+    });
 
     it('joins the step before an overlay with="parent"', () => {
       const store = new StepStore();

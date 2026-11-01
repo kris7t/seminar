@@ -100,15 +100,16 @@ export interface StepHandle extends StepState {
  *   same level, whatever that is, e.g., to show two callouts at once. If there
  *   is none, it works like `'initial'`.
  * - `'content'` works like `'previous'`, but skips overlays, so it shows its
- *   first step together with the content on the same level so far.
+ *   first step together with the content on the same level so far. If there is
+ *   none, it works like `'initial'`.
  * - `'initial'` shows its first step as soon as the enclosing step (or the
  *   slide) is shown, as step 0 of the level, which has no state of its own. It
  *   stays current until the first step on the same level is shown. This allows
  *   using the same component for content that is visible up front and content
  *   revealed in steps.
- * - `'parent'` is part of what encloses the stepper, rather than a step, and
- *   so is whatever `'previous'` or `'content'` refers to it after it. A group
- *   placed like this is just a name for what encloses it.
+ * - `'parent'` is part of what encloses the stepper, rather than a step, so what
+ *   comes after it has nothing to be placed with. A group placed like this is
+ *   just a name for what encloses it.
  * - A {@link StepHandle}, e.g., created up front with {@link useStep} or
  *   {@link useSteps}, shares that stepper instead of creating a new one: the
  *   elements are attached to it and follow its state. This allows revealing

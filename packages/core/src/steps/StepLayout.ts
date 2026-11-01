@@ -60,17 +60,17 @@ interface PlacedStep {
   last: number;
 }
 
-/** Stands for what encloses a level, which steppers can be part of, too. */
+/** Stands for the parent of a stepper, which it can be part of instead of a step. */
 const PARENT: unique symbol = Symbol('parent');
 
 /** A level of the tree of steps. */
 interface Level {
   /** Number of its last step, which is 0 for levels with only step 0. */
   size: number;
-  /** What its latest stepper is, or is part of. */
-  previous?: StepNode | typeof PARENT;
+  /** What its latest stepper is, or is part of, if anything. */
+  previous?: StepNode | undefined;
   /** Likewise, without the steppers that are overlays. */
-  content?: StepNode | typeof PARENT;
+  content?: StepNode | undefined;
   /** Its latest step at step 0. */
   initial?: StepNode;
 }
@@ -291,20 +291,19 @@ function findEnclosing(
   return enclosing;
 }
 
-/** Returns what `placement` refers to on `level`, if anything. */
+/** Returns the step that `placement` refers to on `level`, if any. */
 function targetOf(
-  level: Level | undefined,
+  level: Level,
   placement: StepPlacement,
-): StepNode | typeof PARENT | undefined {
+): StepNode | undefined {
   switch (placement) {
     case 'previous':
-      return level?.previous;
+      return level.previous;
     case 'content':
-      return level?.content;
+      return level.content;
     case 'initial':
-      return level?.initial;
+      return level.initial;
     case 'parent':
-      return PARENT;
     case 'next':
       return undefined;
   }
@@ -336,7 +335,7 @@ function placeSteppers(
     const { options } = anchor;
     const single = node.elements.size === 1;
     const defaults = single ? options.defaults : undefined;
-    const placement = defaults?.joins ?? defaults?.with ?? options.placement;
+    const written = defaults?.joins ?? defaults?.with ?? options.placement;
     const around = enclosing.get(node);
     const aroundStep = around === undefined ? undefined : steps.get(around);
     const parent =
@@ -351,6 +350,13 @@ function placeSteppers(
     const key = levelKey(path);
     const level = levels.get(key) ?? { size: 0 };
     levels.set(key, level);
+    // Without a step to be shown with, `with` goes to step 0 of the level.
+    const placement =
+      targetOf(level, written) === undefined &&
+      defaults?.joins === undefined &&
+      (written === 'previous' || written === 'content')
+        ? 'initial'
+        : written;
     const target = targetOf(level, placement);
     // Several steps can't be one, and appearances of its own make it a step.
     const canAlias =
@@ -361,21 +367,20 @@ function placeSteppers(
         : canAlias
           ? (target ?? (defaults?.joins === undefined ? undefined : PARENT))
           : undefined;
-    const shownWith = target === PARENT ? undefined : target;
     let first: number;
     if (placement === 'next') {
       first = level.size + 1;
     } else if (placement === 'initial' || placement === 'parent') {
       first = 0;
     } else {
-      first = shownWith === undefined ? 0 : (steps.get(shownWith)?.last ?? 0);
+      first = target === undefined ? 0 : (steps.get(target)?.last ?? 0);
     }
     const last = aliases === undefined ? first + options.count - 1 : first;
     steps.set(node, {
       anchor,
       parent,
       aliases,
-      shownWith,
+      shownWith: target,
       level: path,
       first,
       last,
@@ -384,12 +389,20 @@ function placeSteppers(
     if (aliases === undefined && first === 0) {
       level.initial = node;
     }
-    // Without anything to be shown with, later steppers can't be shown with it.
-    const latest = aliases === undefined ? node : target;
-    if (latest !== undefined) {
-      level.previous = latest;
-      if (!isOverlay(latest === PARENT ? node : latest)) {
-        level.content = latest;
+    if (placement === 'parent') {
+      // It isn't a step, so what comes after it has nothing to be shown with.
+      level.previous = undefined;
+      if (!isOverlay(node)) {
+        level.content = undefined;
+      }
+    } else {
+      // Without anything to be shown with, later steppers can't be shown with it.
+      const latest = aliases === undefined ? node : target;
+      if (latest !== undefined) {
+        level.previous = latest;
+        if (!isOverlay(latest)) {
+          level.content = latest;
+        }
       }
     }
     for (const child of nested.get(node) ?? []) {

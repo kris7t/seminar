@@ -43,8 +43,8 @@ export type StepPhase =
  *   document order), or like `'initial'` if there is none.
  * - `'content'`: like `'previous'`, but skipping the steppers that are overlays.
  * - `'initial'`: at step 0, i.e., shown as soon as the level is shown.
- * - `'parent'`: like `'initial'`, but as part of what encloses the stepper. The
- *   steppers placed with `'previous'` or `'content'` after it are, too.
+ * - `'parent'`: part of what encloses the stepper, rather than a step, so what
+ *   comes after it has nothing to be placed with.
  */
 export type StepPlacement =
   'next' | 'previous' | 'content' | 'initial' | 'parent';
