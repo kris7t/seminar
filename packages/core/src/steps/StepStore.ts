@@ -11,19 +11,21 @@ import {
   BUILT_IN_APPEARANCE_RANKS,
   type RankedAppearance,
 } from './stepAppearance.ts';
+import { StepLayout, type StepPlace, type StepRegistry } from './StepLayout.ts';
 import {
-  compareDocumentOrder,
-  isOverlay,
-  StepLayout,
-  type StepPlace,
-  type StepRegistry,
-} from './StepLayout.ts';
+  describeStepPath,
+  pathsEqual,
+  rememberStepTarget,
+  resolveStepTarget,
+  stepTargetOf,
+} from './stepLocation.ts';
 import { computeStepPages } from './stepPages.ts';
 import {
   parseSlideSplit,
   type SlideSplit,
   type SlideSplitProp,
 } from './stepSplit.ts';
+import { computeStepTree, type StepTreeEntry } from './stepTree.ts';
 import { StepNode, type StepOptions, type StepPath } from './StepNode.ts';
 
 /** State of a stepper as stored in a {@link StepStore}. */
@@ -38,83 +40,6 @@ export interface StepStatus extends StepPlace {
    * their own look, or `undefined` before it is placed.
    */
   look?: RankedAppearance | undefined;
-}
-
-/** A step of a slide in the tree of its steps, see {@link StepStore.getTree}. */
-export interface StepTreeEntry {
-  /** The path that shows the step as the current one. */
-  path: StepPath;
-  /**
-   * The title of the step, or the text shown by it, without the text of the
-   * steps nested in it, or the empty string if it shows no text.
-   */
-  label: string;
-  /** Whether a stepper of the step may cover other content. */
-  overlay: boolean;
-  /** The steps nested in the step. */
-  children: readonly StepTreeEntry[];
-}
-
-function trimPath(path: number[]): number[] {
-  while (path.at(-1) === 0) {
-    path.pop();
-  }
-  return path;
-}
-
-/** Elements whose text isn't shown, or not as text. */
-const TEXTLESS_SELECTOR =
-  'annotation, script, style, template, [aria-hidden="true"]';
-
-/**
- * Returns the text in `element`, collapsing whitespace, and leaving out the
- * elements for which `skip` returns `true`, along with their contents.
- */
-function textOf(element: Element, skip: (element: Element) => boolean): string {
-  const parts: string[] = [];
-  const visit = (node: Node) => {
-    if (node instanceof Element) {
-      if (node.matches(TEXTLESS_SELECTOR) || skip(node)) {
-        return;
-      }
-      for (const child of node.childNodes) {
-        visit(child);
-      }
-    } else if (node.nodeType === Node.TEXT_NODE) {
-      parts.push(node.textContent ?? '');
-    }
-  };
-  for (const child of element.childNodes) {
-    visit(child);
-  }
-  return parts.join('').replaceAll(/\s+/g, ' ').trim();
-}
-
-function pathsEqual(a: StepPath, b: StepPath): boolean {
-  return a.length === b.length && a.every((step, i) => step === b[i]);
-}
-
-/**
- * How much the texts of two steps overlap, from 0 for none to 1 for the same
- * texts, counting repeated texts as often as they appear in both.
- */
-function overlapOf(a: readonly string[], b: readonly string[]): number {
-  if (a.length + b.length === 0) {
-    return 0;
-  }
-  const counts = new Map<string, number>();
-  for (const text of a) {
-    counts.set(text, (counts.get(text) ?? 0) + 1);
-  }
-  let common = 0;
-  for (const text of b) {
-    const count = counts.get(text) ?? 0;
-    if (count > 0) {
-      counts.set(text, count - 1);
-      common += 1;
-    }
-  }
-  return (2 * common) / (a.length + b.length);
 }
 
 /**
@@ -397,15 +322,7 @@ export class StepStore {
    *   `target` isn't in it.
    */
   reset(target: StepPath = [], toEnd = false, inRange = false): void {
-    // Refer to the step by its group if possible, so that it stays shown when
-    // steps are added before it, e.g., when the slide is edited.
-    const { group, path } = this.describePath(target);
-    const texts = this.#textsOf(target);
-    this.#position.set(
-      group === undefined
-        ? { path: target, texts, toEnd, inRange }
-        : { path, group, fallback: target, texts, toEnd, inRange },
-    );
+    this.#position.set(stepTargetOf(this.#getLayout(), target, toEnd, inRange));
     if (this.#unsubscribePosition === undefined) {
       // Nobody follows the position, so we have to forget the path ourselves.
       this.#invalidatePath();
@@ -419,27 +336,13 @@ export class StepStore {
    * removed.
    */
   rememberPath(): void {
-    const target = this.#position.get();
-    if (target.toEnd || target.texts !== undefined) {
-      return;
-    }
-    const path = this.getPath();
-    if (target.group === undefined) {
-      if (pathsEqual(path, trimPath([...target.path]))) {
-        const texts = this.#textsOf(path);
-        if (texts !== undefined) {
-          this.#position.set({ ...target, texts });
-        }
-      }
-    } else if (
-      target.fallback === undefined &&
-      this.#getLayout().groupPath(target.group) !== undefined
-    ) {
-      this.#position.set({
-        ...target,
-        fallback: path,
-        texts: this.#textsOf(path),
-      });
+    const target = rememberStepTarget(
+      this.#getLayout(),
+      this.#position.get(),
+      this.getPath(),
+    );
+    if (target !== undefined) {
+      this.#position.set(target);
     }
   }
 
@@ -579,146 +482,9 @@ export class StepStore {
    * it doesn't follow changes of their text.
    */
   getTree = (): readonly StepTreeEntry[] => {
-    this.#tree ??= this.#computeTree([]);
+    this.#tree ??= computeStepTree(this.#getLayout());
     return this.#tree;
   };
-
-  #computeTree(level: StepPath): StepTreeEntry[] {
-    const layout = this.#getLayout();
-    const size = layout.sizeOf(level);
-    if (size === undefined) {
-      return [];
-    }
-    const steppers = layout.steppersOn(level);
-    const entries: StepTreeEntry[] = [];
-    for (let step = 0; step <= size; step += 1) {
-      const shown = steppers.filter(
-        ([node, { first, last }]) =>
-          first <= step &&
-          step <= last &&
-          // Joining steppers without a step aren't part of any entry.
-          !layout.isStepless(node),
-      );
-      const path = [...level, step];
-      const children = this.#computeTree(path);
-      // Without other steps, a slide with step 0 alone has nothing to go to.
-      if (
-        step === 0 &&
-        (shown.length === 0 ||
-          (level.length === 0 && size === 0 && children.length === 0))
-      ) {
-        continue;
-      }
-      const labels = shown
-        .map(([node, { anchor, first, last }]) => {
-          const text = anchor.options.title?.trim() ?? this.#textOf(node);
-          return last > first && text !== ''
-            ? `${text} (${String(step - first + 1)}/${String(last - first + 1)})`
-            : text;
-        })
-        .filter((label) => label !== '');
-      entries.push({
-        path,
-        label: labels.join(' · '),
-        overlay: shown.some(([node]) => isOverlay(node)),
-        children,
-      });
-    }
-    return entries;
-  }
-
-  /**
-   * Returns the texts shown by the step at `path`: the text of each element of
-   * each stepper that shows it, without the steps nested in them, along with
-   * which step of the stepper it is. Each element counts on its own, so that
-   * steps still match in part if elements move between steppers.
-   *
-   * @returns The texts in order, or `undefined` if the step shows no text, or
-   *   the slide has no such step.
-   */
-  #textsOf(path: StepPath): readonly string[] | undefined {
-    const step = path.at(-1);
-    if (step === undefined || step === 0) {
-      return undefined;
-    }
-    const texts: string[] = [];
-    for (const [node, { first, last }] of this.#getLayout().steppersOn(
-      path.slice(0, -1),
-    )) {
-      if (step < first || step > last) {
-        continue;
-      }
-      for (const element of node.elements.keys()) {
-        const text = textOf(element, (descendant) =>
-          this.#showsOtherStep(node, descendant),
-        );
-        if (text !== '') {
-          texts.push(`${String(step - first)}\u0000${text}`);
-        }
-      }
-    }
-    return texts.length === 0 ? undefined : texts.sort();
-  }
-
-  /**
-   * Finds the step that shows the most of `texts`, preferring `path`, and
-   * then the steps closest to it. Returns `path` if no step shows any of them.
-   */
-  #findByTexts(path: StepPath, texts: readonly string[]): StepPath {
-    const own = this.#textsOf(path);
-    if (own !== undefined && overlapOf(own, texts) === 1) {
-      return path;
-    }
-    const positions = this.#getLayout().positions();
-    const index = positions.findIndex(
-      (position) => compareStepPaths(position, path) >= 0,
-    );
-    const origin = index === -1 ? positions.length : index;
-    let best = path;
-    let bestOverlap = own === undefined ? 0 : overlapOf(own, texts);
-    let bestDistance = 0;
-    for (const [position, candidate] of positions.entries()) {
-      const candidateTexts = this.#textsOf(candidate);
-      if (candidateTexts === undefined) {
-        continue;
-      }
-      const overlap = overlapOf(candidateTexts, texts);
-      const distance = Math.abs(position - origin);
-      if (
-        overlap > bestOverlap ||
-        (overlap === bestOverlap && overlap > 0 && distance < bestDistance)
-      ) {
-        best = candidate;
-        bestOverlap = overlap;
-        bestDistance = distance;
-      }
-    }
-    return best;
-  }
-
-  /** Returns the text of the elements of `node`, in document order. */
-  #textOf(node: StepNode): string {
-    return [...node.elements.keys()]
-      .sort(compareDocumentOrder)
-      .map((element) =>
-        textOf(element, (descendant) => this.#showsOtherStep(node, descendant)),
-      )
-      .filter((text) => text !== '')
-      .join(' ');
-  }
-
-  /**
-   * Whether `element` shows a step other than `node`, rather than content that
-   * is part of what encloses it.
-   */
-  #showsOtherStep(node: StepNode, element: Element): boolean {
-    const owner = this.#steppers.get(element);
-    return (
-      owner !== undefined &&
-      owner !== node &&
-      !this.#getLayout().isStepless(owner)
-    );
-  }
 
   #invalidateLayout() {
     this.#layout = undefined;
@@ -740,73 +506,15 @@ export class StepStore {
     return this.#layout;
   }
 
-  /**
-   * Describes `path` relative to the first step of a step group, if it is
-   * that step or nested in it, so that it can be referred to by the name of
-   * the group. If there are several such groups, the most nested one is used,
-   * or the first one in document order among those.
-   *
-   * @returns The name of the group, if any, and the rest of the path.
-   */
+  /** See {@link describeStepPath}. */
   describePath(path: StepPath): { group?: string; path: StepPath } {
-    const layout = this.#getLayout();
-    let best: { group?: string; path: StepPath } = { path };
-    let bestLength = 0;
-    for (const name of layout.groupNames()) {
-      const groupPath = layout.groupPath(name) ?? [];
-      if (
-        groupPath.length > bestLength &&
-        groupPath.length <= path.length &&
-        groupPath.every((step, depth) => step === path[depth])
-      ) {
-        best = { group: name, path: path.slice(groupPath.length) };
-        bestLength = groupPath.length;
-      }
-    }
-    return best;
+    return describeStepPath(this.#getLayout(), path);
   }
 
   #resolvePath(): StepPath {
-    const layout = this.#getLayout();
-    const {
-      path: relative,
-      group,
-      fallback = [],
-      texts,
-      toEnd,
-      inRange,
-    } = this.#position.get();
-    const groupPath = group === undefined ? [] : layout.groupPath(group);
-    let target =
-      groupPath === undefined ? fallback : [...groupPath, ...relative];
-    // Steps without their group are found by their texts instead.
-    if (
-      texts !== undefined &&
-      (group === undefined || groupPath === undefined)
-    ) {
-      target = this.#findByTexts(target, texts);
-    }
-    const path: number[] = [];
-    for (const position of target) {
-      const size = layout.sizeOf(path) ?? 0;
-      if (!Number.isInteger(position) || position < 0 || position > size) {
-        break;
-      }
-      path.push(position);
-    }
-    if (toEnd) {
-      // Go to the last step of each nested level, including the levels nested
-      // in step 0 if there are no other steps.
-      for (;;) {
-        const size = layout.sizeOf(path);
-        if (size === undefined) {
-          break;
-        }
-        path.push(size);
-      }
-    }
-    const resolved = trimPath(path);
-    if (inRange !== true || this.isInRange(resolved)) {
+    const target = this.#position.get();
+    const resolved = resolveStepTarget(this.#getLayout(), target);
+    if (target.inRange !== true || this.isInRange(resolved)) {
       return resolved;
     }
     // Show the closest step in the range instead.
