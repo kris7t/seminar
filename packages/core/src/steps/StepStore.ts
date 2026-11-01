@@ -11,7 +11,11 @@ import {
   BUILT_IN_APPEARANCE_RANKS,
   type RankedAppearance,
 } from './stepAppearance.ts';
-import { StepLayout, type StepPlace, type StepRegistry } from './StepLayout.ts';
+import {
+  StepLayout,
+  type StepProgress,
+  type StepRegistry,
+} from './StepLayout.ts';
 import {
   describeStepPath,
   pathsEqual,
@@ -29,7 +33,7 @@ import { computeStepTree, type StepTreeEntry } from './stepTree.ts';
 import { StepNode, type StepOptions, type StepPath } from './StepNode.ts';
 
 /** State of a stepper as stored in a {@link StepStore}. */
-export interface StepStatus extends StepPlace {
+export interface StepStatus extends StepProgress {
   /**
    * How the stepper it is nested in looks, including the steppers that one is
    * nested in, which the stepper should look at least as hidden as.
@@ -401,12 +405,12 @@ export class StepStore {
       return undefined;
     }
     const forward = order > 0;
-    const isTurn = ({ phase }: StepPlace) =>
+    const isTurn = ({ phase }: StepProgress) =>
       phase === 'current' || phase === 'open';
     const layout = this.#getLayout();
     const fades = layout.steppers.flatMap((node) => {
-      const before = layout.placeOf(node, from);
-      const after = layout.placeOf(node, target);
+      const before = layout.progressOf(node, from);
+      const after = layout.progressOf(node, target);
       const moved = before.stepIndex !== after.stepIndex;
       const sides = [
         ...(isTurn(before) && (!isTurn(after) || moved)
@@ -531,7 +535,7 @@ export class StepStore {
   #computeStatus(node: StepNode): StepStatus {
     const layout = this.#getLayout();
     const path = this.getPath();
-    const place = layout.placeOf(node, path);
+    const place = layout.progressOf(node, path);
     const inherited = layout.inheritedOf(node, path);
     return layout.stepOf(node) === undefined
       ? { ...place, inherited }

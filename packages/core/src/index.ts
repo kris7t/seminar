@@ -129,13 +129,15 @@ export {
   type SlideNumberProps,
 } from './slide/SlideNumber.tsx';
 export {
-  Step,
-  stepClasses,
   JOINS_CONTENT,
-  type StepClassKey,
   type StepDefaults,
   type StepOwnDefaults,
   type StepPlace,
+} from './steps/stepDefaults.ts';
+export {
+  Step,
+  stepClasses,
+  type StepClassKey,
   type StepProps,
   type StepBehavior,
   type StepBehaviorOverrides,

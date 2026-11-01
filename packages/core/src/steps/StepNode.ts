@@ -58,13 +58,11 @@ export interface StepOptions {
    */
   defaultPlacement?: StepPlacement | undefined;
   /**
-   * Whether the stepper has no look of its own, and thus is part of the step
-   * its placement refers to, if any, rather than a step, unless it has other
-   * elements.
+   * When the stepper is part of what its placement refers to, rather than a
+   * step, unless it has other elements: `'target'` if it refers to anything, or
+   * else it's a step, and `'always'` for being part of what encloses it then.
    */
-  joins?: boolean | undefined;
-  /** Whether the stepper with `joins` isn't a step without a step to join. */
-  stepless?: boolean | undefined;
+  joins?: 'target' | 'always' | undefined;
   /**
    * Group of the stepper to nest the stepper in, instead of the stepper
    * enclosing its elements, or an element whose stepper, or the stepper

@@ -1,5 +1,5 @@
 import { moreHidden, type RankedAppearances } from './stepAppearance.ts';
-import { isOverlay, type StepLayout, type StepPlace } from './StepLayout.ts';
+import { isOverlay, type StepLayout, type StepProgress } from './StepLayout.ts';
 import type { StepNode, StepPath } from './StepNode.ts';
 import { compareStepPaths } from './stepRange.ts';
 import { planSplit, type SlideSplit, type SplitMode } from './stepSplit.ts';
@@ -54,7 +54,7 @@ function isLegible(
     look === undefined
       ? layout.lookOf(node, path)
       : moreHidden(
-          look[layout.placeOf(node, path).phase],
+          look[layout.progressOf(node, path).phase],
           layout.inheritedOf(node, path),
         );
   return appearance.rank <= legibleRank;
@@ -64,12 +64,12 @@ function isLegible(
 function legibleStates(
   context: PageContext,
   node: StepNode,
-  when: (place: StepPlace) => boolean,
+  when: (progress: StepProgress) => boolean,
   look?: RankedAppearances,
 ): ReadonlySet<number> {
   return new Set(
     context.states.flatMap((path, index) =>
-      when(context.layout.placeOf(node, path)) &&
+      when(context.layout.progressOf(node, path)) &&
       isLegible(context, node, path, look)
         ? [index]
         : [],
@@ -153,7 +153,7 @@ function unitsOf(
 /** Returns the indices of the states that `node` asks to be pages. */
 function pointsOf({ layout, states }: PageContext, node: StepNode): number[] {
   const turn = states.flatMap((path, index) => {
-    const { phase } = layout.placeOf(node, path);
+    const { phase } = layout.progressOf(node, path);
     return phase === 'current' || phase === 'open' ? [index] : [];
   });
   const first = turn[0];

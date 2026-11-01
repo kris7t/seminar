@@ -130,16 +130,12 @@ export interface UseStepsOptions {
    */
   defaultWith?: 'previous' | 'content' | 'initial' | undefined;
   /**
-   * Like `defaultWith`, but part of that step, without creating a step if there
-   * is none.
+   * When the stepper is part of the step that `with` or `defaultWith` refers to,
+   * rather than a step of its own, because it has no look of its own: `'target'`
+   * if there is such a step, and `'always'` for being part of what encloses it
+   * if there is none. `with: 'parent'` always is.
    */
-  defaultJoins?: 'previous' | 'content' | 'initial' | undefined;
-  /**
-   * Whether the stepper has no look of its own, and thus is part of the step
-   * that `with` refers to, if any, rather than a step of its own. Always the
-   * case for `with: 'parent'` and `defaultJoins`.
-   */
-  joins?: boolean | undefined;
+  joins?: 'target' | 'always' | undefined;
   /**
    * Name of the group to place this stepper right after, nested in the same
    * stepper as the group, before the steppers that follow the group in
@@ -216,8 +212,7 @@ export function useSteps(
     in: parent,
     defaultIn,
     defaultWith,
-    defaultJoins,
-    joins = withStep === 'parent' || defaultJoins !== undefined,
+    joins,
     after,
     title,
     appearances,
@@ -276,9 +271,8 @@ export function useSteps(
       store.attach(node, element, {
         count,
         placement,
-        defaultPlacement: defaultJoins ?? defaultWith,
+        defaultPlacement: defaultWith,
         joins,
-        stepless: defaultJoins !== undefined,
         parent,
         defaultParent: defaultIn,
         after,
@@ -295,7 +289,6 @@ export function useSteps(
       count,
       placement,
       defaultWith,
-      defaultJoins,
       joins,
       parent,
       defaultIn,

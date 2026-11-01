@@ -1,4 +1,3 @@
-import { generateUtilityClasses } from '@mui/material';
 import { useForkRef } from '@mui/material/utils';
 import {
   styled,
@@ -30,11 +29,14 @@ import {
   moreHidden,
   rankAppearances,
   StepAppearanceContext,
+  stepperClasses,
   type BuiltInStepBehavior,
   type StepAppearances,
+  type StepperClassKey,
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepNode.ts';
 import { StepBehaviorContext } from './StepBehaviorContext.ts';
+import { resolveStepPlace, type StepDefaults } from './stepDefaults.ts';
 import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
 import type { FadeProps } from '../transitions/fades.ts';
 import { SlideViewContext } from '../view/SlideViewContext.ts';
@@ -224,83 +226,10 @@ export interface StepProps
   sx?: SxProps<Theme>;
 }
 
-/** A step that a step without a place of its own can be shown with. */
-export type StepPlace = 'previous' | 'content' | 'initial';
+export type StepClassKey = StepperClassKey;
 
-/** What a step does by default if it is a step, see {@link StepDefaults}. */
-export interface StepOwnDefaults {
-  /**
-   * The behavior unless a behavior or a shorthand is set, which takes precedence
-   * over the default of the slide and theme.
-   */
-  behavior?: StepBehavior | undefined;
-  /** What `split` leaves out. */
-  split?: SplitProp | undefined;
-  /** Whether the step is an overlay unless `overlay` says otherwise. */
-  overlay?: OverlayProp | undefined;
-}
-
-/**
- * What a `Step` does unless the user says otherwise:
- *
- * - `{ joins: 'content' }` isn't a step: it's part of the step it refers to,
- *   and looks like it, or is shown up front if there is none, e.g., list items.
- *   `with`, `step`, `in`, `after`, a step behavior, e.g., `only`, or a group
- *   with other steps replaces it with a step.
- * - `{ with: 'content' }`, like `with="content"`, is also part of that step, but
- *   creates a step if there is none. `with`, `step`, `in`, or `after` replaces it.
- * - `{ in: group }` nests the step in a group or in the step of an element,
- *   e.g., callouts in the step of the element they point at. `in` or `after`
- *   replaces it.
- *
- * Steps creating a group, e.g., with an `id`, still use their default.
- */
-export type StepDefaults =
-  | {
-      joins: StepPlace;
-      with?: never;
-      in?: never;
-      behavior?: never;
-      split?: never;
-      overlay?: never;
-    }
-  | (StepOwnDefaults & {
-      joins?: never;
-      with?: StepPlace | undefined;
-      in?: never;
-    })
-  | (StepOwnDefaults & {
-      joins?: never;
-      with?: never;
-      in: string | Element;
-    });
-
-/**
- * Makes a step part of the content before it by default, rather than a step of
- * its own, or shows it up front if there is none, e.g., for content shown in
- * order with the steps around it, like paragraphs.
- */
-export const JOINS_CONTENT: StepDefaults = { joins: 'content' };
-
-export type StepClassKey =
-  'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
-
-export const stepClasses: Record<StepClassKey, string> = {
-  ...generateUtilityClasses('SeminarStep', [
-    'root',
-    'distantFuture',
-    'future',
-    'current',
-    'open',
-    'past',
-    'distantPast',
-    'hidden',
-    'dimmed',
-    'collapsed',
-  ]),
-  // MUI would use its global `Mui-open` state class for this.
-  open: 'SeminarStep-open',
-};
+export const stepClasses: Record<StepClassKey, string> =
+  stepperClasses('SeminarStep');
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -404,36 +333,16 @@ export function Step(inProps: StepProps): JSX.Element {
   const view = use(SlideViewContext);
   const [shorthand, other] = splitShorthands(theme, rest);
   const ownBehavior = inProps.behavior ?? shorthand;
-  const explicitWith =
-    withStep ??
-    (initial === true || initial === ''
-      ? 'initial'
-      : ownStep === true || ownStep === ''
-        ? 'self'
-        : ownStep === false || ownStep === 'false'
-          ? 'parent'
-          : undefined);
-  const placed = parent !== undefined || after !== undefined;
-  // Placing it otherwise replaces the default of its place.
-  const defaultPlace =
-    explicitWith === undefined && !placed ? defaults : undefined;
-  const defaultWith = defaultPlace?.with;
-  const defaultJoins =
-    ownBehavior === undefined ? defaultPlace?.joins : undefined;
-  // What isn't a step always looks like what encloses it.
-  const hasOwnLook =
-    explicitWith !== 'parent' &&
-    (ownBehavior !== undefined || defaults?.behavior !== undefined);
-  // Without a look of its own, a step is part of the step it's placed with.
-  const joins =
-    explicitWith === 'parent' ||
-    defaultJoins !== undefined ||
-    (!hasOwnLook &&
-      (defaultWith !== undefined ||
-        explicitWith === 'previous' ||
-        explicitWith === 'content' ||
-        explicitWith === 'initial'));
-  const ignoredBehavior = explicitWith === 'parent' ? ownBehavior : undefined;
+  const place = resolveStepPlace({
+    with: withStep,
+    initial,
+    step: ownStep,
+    in: parent,
+    after,
+    behavior: ownBehavior,
+    defaults,
+  });
+  const ignoredBehavior = place.with === 'parent' ? ownBehavior : undefined;
   useEffect(() => {
     if (ignoredBehavior !== undefined) {
       console.warn(
@@ -451,17 +360,16 @@ export function Step(inProps: StepProps): JSX.Element {
     'reveal';
   const appearances = rankAppearances(theme, appearancesOf(theme, behavior));
   const step = useStep({
-    with: explicitWith,
+    with: place.with,
     group,
     in: parent,
-    defaultIn: placed ? undefined : defaults?.in,
-    defaultWith,
-    defaultJoins,
-    joins,
+    defaultIn: place.defaultIn,
+    defaultWith: place.defaultWith,
+    joins: place.joins,
     after,
     title,
     appearances,
-    ownLook: hasOwnLook,
+    ownLook: place.ownLook,
     fades: { cut, fade, fadeIn, fadeOut, fadeBefore, fadeAfter },
     split,
     defaultSplit: defaults?.split,
@@ -474,7 +382,7 @@ export function Step(inProps: StepProps): JSX.Element {
   // Elements inside a step already look like it, e.g., hidden or dimmed.
   const appearance = moreHidden(
     moreHidden(
-      (hasOwnLook ? undefined : look) ?? appearances[phase],
+      (place.ownLook ? undefined : look) ?? appearances[phase],
       inherited,
     ),
     enclosing,

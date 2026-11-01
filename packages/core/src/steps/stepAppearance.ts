@@ -1,4 +1,4 @@
-import { generateUtilityClass } from '@mui/material';
+import { generateUtilityClass, generateUtilityClasses } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import { createContext, use, type Context } from 'react';
 
@@ -208,4 +208,28 @@ export const StepAppearanceContext: Context<RankedAppearance> =
  */
 export function useStepAppearance(): RankedAppearance {
   return use(StepAppearanceContext);
+}
+
+/** The classes of a component that follows the steps of its slide. */
+export type StepperClassKey =
+  'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
+
+/** Returns the classes of the component `name`, like `SeminarStep`. */
+export function stepperClasses(name: string): Record<StepperClassKey, string> {
+  return {
+    ...generateUtilityClasses(name, [
+      'root',
+      'distantFuture',
+      'future',
+      'current',
+      'open',
+      'past',
+      'distantPast',
+      'hidden',
+      'dimmed',
+      'collapsed',
+    ]),
+    // MUI would use its global `Mui-open` state class for this.
+    open: `${name}-open`,
+  };
 }

@@ -14,7 +14,7 @@ import type {
 } from './StepNode.ts';
 
 /** Where a stepper is in the steps of its level. */
-export interface StepPlace {
+export interface StepProgress {
   /**
    * Zero-based index of the current step of the stepper, `-1` if the stepper
    * is not yet active, or `Infinity` if it is past.
@@ -71,22 +71,22 @@ interface Level {
   initial?: StepNode;
 }
 
-const FUTURE: StepPlace = { stepIndex: -1, phase: 'future' };
+const FUTURE: StepProgress = { stepIndex: -1, phase: 'future' };
 
-const PAST: StepPlace = {
+const PAST: StepProgress = {
   stepIndex: Number.POSITIVE_INFINITY,
   phase: 'past',
 };
 
-const DISTANT_FUTURE: StepPlace = { stepIndex: -1, phase: 'distantFuture' };
+const DISTANT_FUTURE: StepProgress = { stepIndex: -1, phase: 'distantFuture' };
 
-const DISTANT_PAST: StepPlace = {
+const DISTANT_PAST: StepProgress = {
   stepIndex: Number.POSITIVE_INFINITY,
   phase: 'distantPast',
 };
 
 /** The place of steppers that are part of the slide itself, not of any step. */
-const SLIDE: StepPlace = { stepIndex: 0, phase: 'current' };
+const SLIDE: StepProgress = { stepIndex: 0, phase: 'current' };
 
 function levelKey(level: StepPath): string {
   return level.join('.');
@@ -350,8 +350,8 @@ function placeSteppers(
     const joining =
       placement === 'parent' ||
       (single &&
-        options.joins === true &&
-        (target !== undefined || options.stepless === true));
+        (options.joins === 'always' ||
+          (options.joins === 'target' && target !== undefined)));
     let first: number;
     if (placement === 'next') {
       first = level.size + 1;
@@ -519,7 +519,7 @@ export class StepLayout {
    * Returns where `path` is relative to `node`, which is what encloses it if
    * it isn't a step, or the slide itself.
    */
-  placeOf(node: StepNode, path: StepPath): StepPlace {
+  progressOf(node: StepNode, path: StepPath): StepProgress {
     const step = this.#steps.get(node);
     if (step === undefined) {
       return FUTURE;
@@ -527,7 +527,7 @@ export class StepLayout {
     if (step.joining && step.owner === undefined) {
       return step.parent === undefined
         ? SLIDE
-        : this.placeOf(step.parent, path);
+        : this.progressOf(step.parent, path);
     }
     const { level, first, last } = step;
     for (const [depth, levelStep] of level.entries()) {
@@ -601,7 +601,7 @@ export class StepLayout {
     if (owner !== undefined) {
       return this.#lookOf(owner, path, visited);
     }
-    const { phase } = this.placeOf(node, path);
+    const { phase } = this.progressOf(node, path);
     // Without a step to be part of, it looks like what encloses it.
     const own = this.isStepless(node)
       ? SHOWN

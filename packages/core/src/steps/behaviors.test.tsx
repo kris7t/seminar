@@ -7,12 +7,8 @@ import { Paragraph } from '../content/Paragraph.tsx';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide } from '../slide/Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
-import {
-  Step,
-  stepClasses,
-  type StepBehavior,
-  type StepDefaults,
-} from './Step.tsx';
+import { Step, stepClasses, type StepBehavior } from './Step.tsx';
+import type { StepDefaults } from './stepDefaults.ts';
 import { rankAppearances, type StepAppearances } from './stepAppearance.ts';
 import { Steps } from './Steps.tsx';
 import { useStep } from './useSteps.ts';

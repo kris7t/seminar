@@ -4,7 +4,8 @@ import type { JSX, ReactNode } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../theme/classNames.ts';
-import { Step, JOINS_CONTENT, type StepProps } from '../steps/Step.tsx';
+import { JOINS_CONTENT } from '../steps/stepDefaults.ts';
+import { Step, type StepProps } from '../steps/Step.tsx';
 
 /** Props of an {@link Image}. */
 export interface ImageProps extends Omit<

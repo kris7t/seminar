@@ -1,4 +1,3 @@
-import { generateUtilityClasses } from '@mui/material';
 import {
   styled,
   useThemeProps,
@@ -20,6 +19,8 @@ import {
   appearanceClass,
   moreHidden,
   StepAppearanceContext,
+  stepperClasses,
+  type StepperClassKey,
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepNode.ts';
 import { parseOverlay, type OverlayProp, type SplitProp } from './stepSplit.ts';
@@ -65,25 +66,10 @@ export interface StepsProps extends Omit<
   sx?: SxProps<Theme>;
 }
 
-export type StepsClassKey =
-  'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
+export type StepsClassKey = StepperClassKey;
 
-export const stepsClasses: Record<StepsClassKey, string> = {
-  ...generateUtilityClasses('SeminarSteps', [
-    'root',
-    'distantFuture',
-    'future',
-    'current',
-    'open',
-    'past',
-    'distantPast',
-    'hidden',
-    'dimmed',
-    'collapsed',
-  ]),
-  // MUI would use its global `Mui-open` state class for this.
-  open: 'SeminarSteps-open',
-};
+export const stepsClasses: Record<StepsClassKey, string> =
+  stepperClasses('SeminarSteps');
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
