@@ -89,18 +89,10 @@ export interface DiagramProps extends Omit<
   fontSize?: number | string | undefined;
 }
 
-export type DiagramClassKey =
-  'root' | 'svg' | 'error' | 'hidden' | 'dimmed' | 'collapsed';
+export type DiagramClassKey = 'root' | 'svg' | 'error';
 
 export const diagramClasses: Record<DiagramClassKey, string> =
-  generateUtilityClasses('SeminarDiagram', [
-    'root',
-    'svg',
-    'error',
-    'hidden',
-    'dimmed',
-    'collapsed',
-  ]);
+  generateUtilityClasses('SeminarDiagram', ['root', 'svg', 'error']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -147,13 +139,6 @@ const DiagramRoot = styled(Step, {
     '--pele-border': palette.primary.main,
     '--pele-accent': palette.primary.main,
     '--pele-radius': `${String(theme.shape.borderRadius)}px`,
-    // The appearances of the steps of items, like those of `Step`. The
-    // layout of the diagram doesn't change, even for collapsed items.
-    [`& .${diagramClasses.hidden}`]: { visibility: 'hidden', opacity: 0 },
-    [`& .${diagramClasses.dimmed}`]: {
-      opacity: 'var(--SeminarStep-dim-opacity, 0.35)',
-    },
-    [`& .${diagramClasses.collapsed}`]: { display: 'none' },
     ...Object.fromEntries(
       series.map((color, index) => [
         `--pele-series-${String(index + 1)}`,
@@ -445,11 +430,7 @@ function ItemAppearance({
   target,
   enclosing,
 }: ItemAppearanceProps): null {
-  const className = appearanceClass(
-    'SeminarDiagram',
-    useStepAppearance(),
-    enclosing,
-  );
+  const className = appearanceClass(useStepAppearance(), enclosing);
   useLayoutEffect(() => {
     if (target === undefined || className === undefined) {
       return undefined;

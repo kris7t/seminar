@@ -181,6 +181,7 @@ export {
   appearanceClass,
   BUILT_IN_APPEARANCE_RANKS,
   BUILT_IN_STEP_BEHAVIORS,
+  StepAppearanceContext,
   useStepAppearance,
   type BuiltInStepBehavior,
   type RankedAppearance,

@@ -1,5 +1,5 @@
 import { generateUtilityClass, generateUtilityClasses } from '@mui/material';
-import type { Theme } from '@mui/material/styles';
+import type { CSSObject, Theme } from '@mui/material/styles';
 import { createContext, use, type Context } from 'react';
 
 import type { StepBehavior } from './Step.tsx';
@@ -8,8 +8,7 @@ import type { StepPhase } from './StepNode.ts';
 /**
  * Further appearances of steps. Add them by module augmentation, e.g.,
  * `interface StepAppearanceOverrides { blurred: true }`, give them a rank with
- * `stepAppearances` in the theme, and style them with their
- * `SeminarStep-<name>` class.
+ * `stepAppearances` in the theme, and styles with `stepAppearanceStyles`.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- Augmented by themes.
 export interface StepAppearanceOverrides {}
@@ -69,6 +68,13 @@ declare module '@mui/material/styles' {
      */
     stepAppearances?: Partial<Record<StepAppearance, number>> | undefined;
     /**
+     * Styles of further appearances of steps, which may also change those of the
+     * built-in ones. They apply to anything on a slide with the class from
+     * {@link appearanceClass}.
+     */
+    stepAppearanceStyles?:
+      Partial<Record<StepAppearance, CSSObject>> | undefined;
+    /**
      * The most hidden appearance that still shows content when slides are
      * split into pages, e.g., for a PDF. Defaults to `dimmed`, so that dimmed
      * content doesn't need pages of its own.
@@ -78,6 +84,8 @@ declare module '@mui/material/styles' {
 
   interface ThemeOptions {
     stepAppearances?: Partial<Record<StepAppearance, number>> | undefined;
+    stepAppearanceStyles?:
+      Partial<Record<StepAppearance, CSSObject>> | undefined;
     legibleStepAppearance?: StepAppearance | undefined;
   }
 }
@@ -223,18 +231,46 @@ export function appearancesOfBehavior(
 }
 
 /**
- * Returns the class of the elements of the component `name` with `appearance`,
- * e.g., `SeminarStep-dimmed`, if they have to apply it themselves, i.e., it's
- * more hidden than `enclosing`, which they inherit from the DOM.
+ * Returns the class that makes an element on a slide appear as `appearance`, like
+ * `SeminarStep-dimmed`, if it has to apply it itself, i.e., it's more hidden than
+ * `enclosing`, which it inherits from the DOM.
  */
 export function appearanceClass(
-  name: string,
   appearance: RankedAppearance,
   enclosing: RankedAppearance,
 ): string | undefined {
   return appearance.rank > enclosing.rank
-    ? generateUtilityClass(name, appearance.name)
+    ? generateUtilityClass('SeminarStep', appearance.name)
     : undefined;
+}
+
+// Steps change at once: views that show them fade the whole slide instead (see
+// `SlideTransitions`), since parents and nested steps fading at the same time
+// would show the nested steps through.
+const BUILT_IN_APPEARANCE_STYLES: Readonly<
+  Record<'hidden' | 'dimmed' | 'collapsed', CSSObject>
+> = {
+  // Keep the space of hidden content, so that the layout doesn't shift.
+  hidden: { visibility: 'hidden', opacity: 0 },
+  dimmed: { opacity: 'var(--SeminarStep-dim-opacity, 0.35)' },
+  collapsed: { display: 'none' },
+};
+
+/**
+ * Returns the styles that make the elements inside an element appear as the
+ * classes from {@link appearanceClass} say, which every slide applies, so that
+ * components only have to add the classes.
+ */
+export function stepAppearanceStyles(theme: Theme): CSSObject {
+  return Object.fromEntries(
+    Object.entries({
+      ...BUILT_IN_APPEARANCE_STYLES,
+      ...theme.stepAppearanceStyles,
+    }).map(([name, styles]) => [
+      `& .${generateUtilityClass('SeminarStep', name)}`,
+      styles,
+    ]),
+  );
 }
 
 /**
@@ -255,8 +291,7 @@ export function useStepAppearance(): RankedAppearance {
 }
 
 /** The classes of a component that follows the steps of its slide. */
-export type StepperClassKey =
-  'root' | StepPhase | 'hidden' | 'dimmed' | 'collapsed';
+export type StepperClassKey = 'root' | StepPhase;
 
 /** Returns the classes of the component `name`, like `SeminarStep`. */
 export function stepperClasses(name: string): Record<StepperClassKey, string> {
@@ -269,9 +304,6 @@ export function stepperClasses(name: string): Record<StepperClassKey, string> {
       'open',
       'past',
       'distantPast',
-      'hidden',
-      'dimmed',
-      'collapsed',
     ]),
     // MUI would use its global `Mui-open` state class for this.
     open: `${name}-open`,

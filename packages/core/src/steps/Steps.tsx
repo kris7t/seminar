@@ -4,19 +4,11 @@ import {
   type SxProps,
   type Theme,
 } from '@mui/material/styles';
-import {
-  use,
-  type ElementType,
-  type HTMLAttributes,
-  type JSX,
-  type ReactNode,
-} from 'react';
+import type { ElementType, HTMLAttributes, JSX, ReactNode } from 'react';
 
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../theme/classNames.ts';
 import {
-  appearanceClass,
-  moreHidden,
   StepAppearanceContext,
   stepperClasses,
   type StepperClassKey,
@@ -96,14 +88,7 @@ interface StepsOwnerState extends StepsProps {
 const StepsRoot = styled('div', {
   name: 'SeminarSteps',
   slot: 'Root',
-})<{ ownerState: StepsOwnerState }>({
-  // Like `Step`, for content nested in hidden or dimmed steps with `in`.
-  [`&.${stepsClasses.hidden}`]: { visibility: 'hidden' },
-  [`&.${stepsClasses.dimmed}`]: {
-    opacity: 'var(--SeminarStep-dim-opacity, 0.35)',
-  },
-  [`&.${stepsClasses.collapsed}`]: { display: 'none' },
-});
+})<{ ownerState: StepsOwnerState }>({});
 
 /**
  * Content that changes over `count` consecutive steps of the presentation,
@@ -130,7 +115,6 @@ export function Steps(inProps: StepsProps): JSX.Element {
     children,
     ...other
   } = props;
-  const enclosing = use(StepAppearanceContext);
   const step = useSteps(count ?? 1, {
     with: withStep,
     group,
@@ -141,12 +125,7 @@ export function Steps(inProps: StepsProps): JSX.Element {
     defaults: DEFAULTS,
     overlay,
   });
-  const { ref, stepIndex, phase, inherited } = step;
-  // The content is always shown, unless the step it is nested in isn't.
-  const appearance = moreHidden(
-    moreHidden(step.appearance, inherited),
-    enclosing,
-  );
+  const { ref, stepIndex, phase, appearance } = step;
   return (
     <StepsRoot
       as={component}
@@ -154,7 +133,7 @@ export function Steps(inProps: StepsProps): JSX.Element {
       className={classNames(
         stepsClasses.root,
         stepsClasses[phase],
-        appearanceClass('SeminarSteps', appearance, enclosing),
+        step.className,
         className,
       )}
       ownerState={{ ...props, stepIndex, phase }}

@@ -23,8 +23,6 @@ import {
 import type { ComponentTheme } from '../theme/ComponentTheme.ts';
 import { classNames } from '../theme/classNames.ts';
 import {
-  appearanceClass,
-  moreHidden,
   splitShorthands,
   StepAppearanceContext,
   stepperClasses,
@@ -202,10 +200,14 @@ export interface StepProps
   sx?: SxProps<Theme>;
 }
 
-export type StepClassKey = StepperClassKey;
+export type StepClassKey = StepperClassKey | 'hidden' | 'dimmed' | 'collapsed';
 
-export const stepClasses: Record<StepClassKey, string> =
-  stepperClasses('SeminarStep');
+export const stepClasses: Record<StepClassKey, string> = {
+  ...stepperClasses('SeminarStep'),
+  hidden: 'SeminarStep-hidden',
+  dimmed: 'SeminarStep-dimmed',
+  collapsed: 'SeminarStep-collapsed',
+};
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -229,17 +231,7 @@ interface StepOwnerState extends StepProps {
 const StepRoot = styled('div', {
   name: 'SeminarStep',
   slot: 'Root',
-})<{ ownerState: StepOwnerState }>({
-  // Steps change at once: views that show them fade the whole slide instead
-  // (see `SlideTransitions`), since parents and nested steps fading at the
-  // same time would show the nested steps through.
-  // Keep the space of hidden content, so that the layout doesn't shift.
-  [`&.${stepClasses.hidden}`]: { visibility: 'hidden', opacity: 0 },
-  [`&.${stepClasses.dimmed}`]: {
-    opacity: 'var(--SeminarStep-dim-opacity, 0.35)',
-  },
-  [`&.${stepClasses.collapsed}`]: { display: 'none' },
-});
+})<{ ownerState: StepOwnerState }>({});
 
 /**
  * Content shown from a step of the presentation.
@@ -272,15 +264,14 @@ const StepRoot = styled('div', {
  * appearance added by the theme (see {@link StepAppearanceOverrides}). The
  * opacity of dimmed steps is the `--SeminarStep-dim-opacity` custom property.
  * Add behaviors with `stepBehaviors` in the theme, which map phases to
- * appearances, and style further appearances by their classes here, e.g.,
- * `{ root: { '&.SeminarStep-blurred': { filter: 'blur(4px)' } } }`, rather
- * than styling behaviors or phases, which nested steps don't inherit.
+ * appearances, and style further appearances with `stepAppearanceStyles`, e.g.,
+ * `{ blurred: { filter: 'blur(4px)' } }`, rather than styling behaviors or phases,
+ * which nested steps don't inherit.
  */
 export function Step(inProps: StepProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SeminarStep' });
   const theme = useTheme();
   const slideBehavior = use(StepBehaviorContext);
-  const enclosing = use(StepAppearanceContext);
   const {
     component = 'div',
     id,
@@ -307,15 +298,10 @@ export function Step(inProps: StepProps): JSX.Element {
     'reveal';
   // A behavior from the theme is only a default, unlike one written here.
   const step = useStep({ ...props, behavior: inProps.behavior });
-  const { phase, inherited } = step;
+  const { phase, appearance } = step;
   const elementId = useSlideElementId(id ?? '');
   const elementRef = useSlideElementRef(id ?? '');
   const ref = useForkRef(step.ref, id === undefined ? null : elementRef);
-  // Elements inside a step already look like it, e.g., hidden or dimmed.
-  const appearance = moreHidden(
-    moreHidden(step.appearance, inherited),
-    enclosing,
-  );
   const content = typeof children === 'function' ? children(step) : children;
   if (view.kind === 'document') {
     // Every step is part of the document, without styles or appearances.
@@ -339,7 +325,7 @@ export function Step(inProps: StepProps): JSX.Element {
       className={classNames(
         stepClasses.root,
         stepClasses[phase],
-        appearanceClass('SeminarStep', appearance, enclosing),
+        step.className,
         className,
       )}
       ownerState={{ ...props, behavior, phase }}

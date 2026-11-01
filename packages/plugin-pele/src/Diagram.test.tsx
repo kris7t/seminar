@@ -12,6 +12,7 @@ import {
   Slide,
   Step,
   useSlideElement,
+  stepClasses,
 } from '@seminar/core';
 import flowchart from 'pele/diagrams/flowchart';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -121,7 +122,7 @@ describe('Diagram', () => {
     await screen.findByText('Render');
     const hidden = (id: string) =>
       [...document.querySelectorAll(`[data-id="${id}"]`)].map((element) =>
-        element.classList.contains(diagramClasses.hidden),
+        element.classList.contains(stepClasses.hidden),
       );
     expect([hidden('A'), hidden('B'), hidden('L_A_B_0')]).toEqual([
       [false],
@@ -154,10 +155,10 @@ describe('Diagram', () => {
       [
         !document
           .querySelector('[data-id="B"]')
-          ?.classList.contains(diagramClasses.hidden),
+          ?.classList.contains(stepClasses.hidden),
         !document
           .querySelector('[data-id="C"]')
-          ?.classList.contains(diagramClasses.hidden),
+          ?.classList.contains(stepClasses.hidden),
         getComputedStyle(screen.getByTestId('note')).visibility !== 'hidden',
       ].join(' ');
     const seen = [shown()];
@@ -201,7 +202,7 @@ describe('Diagram', () => {
       expect(
         document
           .querySelector('[data-id="B"]')
-          ?.classList.contains(diagramClasses.hidden),
+          ?.classList.contains(stepClasses.hidden),
       ).toBe(true);
     });
     await user.keyboard('{ArrowRight}');

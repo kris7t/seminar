@@ -160,8 +160,9 @@ of new appearances, and can also change those of the built-in ones.
 
 So themes customize steps in two layers:
 
-1. **Appearances** say how a step looks. Style them by their class, and add
-   new ones with a rank between the others, as above.
+1. **Appearances** say how a step looks. Style them with
+   `stepAppearanceStyles`, and add new ones with a rank between the others, as
+   above.
 2. **Behaviors** say which appearance a step has in each phase. Change them
    or add new ones with `stepBehaviors`.
 
@@ -180,20 +181,14 @@ declare module '@seminar/core' {
 
 createSlideTheme({
   stepAppearances: { blurred: 50 },
+  stepAppearanceStyles: { blurred: { filter: 'blur(4px)' } },
   stepBehaviors: { blur: { future: 'hidden', past: 'blurred' } },
-  components: {
-    SeminarStep: {
-      styleOverrides: {
-        root: { '&.SeminarStep-blurred': { filter: 'blur(4px)' } },
-      },
-    },
-  },
 });
 ```
 
-`<Steps>` applies appearances with its own classes, like `SeminarSteps-blurred`,
-so style those in `SeminarSteps` as well. Decks then use `:step{blur}` or
-`{steps=blur}`. A step nested in a blurred step is blurred with it, while a
+`stepAppearanceStyles` apply on every slide to anything with the class of the
+appearance, including `<Steps>` and the items of diagrams. Decks then use
+`:step{blur}` or `{steps=blur}`. A step nested in a blurred step is blurred with it, while a
 blurred step nested in a dimmed or hidden step stays dimmed or hidden.
 
 When slides are split into pages, content counts as shown up to

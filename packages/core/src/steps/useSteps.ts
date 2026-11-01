@@ -10,8 +10,11 @@ import {
 } from 'react';
 
 import {
+  appearanceClass,
   appearancesOfBehavior,
+  moreHidden,
   SHOWN,
+  StepAppearanceContext,
   splitShorthands,
   type RankedAppearance,
   type RankedAppearances,
@@ -49,11 +52,17 @@ export interface StepState {
    */
   inherited: RankedAppearance;
   /**
-   * How the elements of this call should appear, apart from what they inherit,
-   * according to their behavior, the step they are part of, or the first element
-   * of the stepper.
+   * How the elements of this call should appear, according to their behavior, the
+   * step they are part of or nested in, or the first element of the stepper.
    */
   appearance: RankedAppearance;
+  /**
+   * The class that makes the elements appear like this on a slide, or `undefined`
+   * if they already do, because of the elements around them. Elements with steps
+   * inside them should pass `appearance` to `StepAppearanceContext`, so that those
+   * steps don't apply the same appearance again.
+   */
+  className: string | undefined;
 }
 
 export interface StepHandle extends StepState {
@@ -154,10 +163,9 @@ function getUnlinkedStatus(): StepStatus {
  * as `Step`.
  *
  * The stepper is placed among the other steppers according to the position of
- * the elements that the returned `ref` is attached to. The elements aren't styled
- * for you, so apply `appearance` and `inherited` if they should appear like a
- * `Step`, or pass the behavior `always` for content that stays shown, which the
- * steps nested in it and the pages of the slide then rely on.
+ * the elements that the returned `ref` is attached to. Add the returned `className`
+ * to them to appear like a `Step`, or pass the behavior `always` for content that
+ * stays shown, which the steps nested in it and the pages of the slide rely on.
  *
  * If `with` is a {@link StepHandle}, shares that stepper, and `count` is ignored.
  */
@@ -187,6 +195,7 @@ export function useSteps(
   } = options;
   const theme = useTheme();
   const slideBehavior = use(StepBehaviorContext);
+  const enclosing = use(StepAppearanceContext);
   const withStep =
     withProp ??
     (initial === true || initial === ''
@@ -321,8 +330,14 @@ export function useSteps(
     getStatus,
   );
   const clampedIndex = Math.min(stepIndex, count - 1);
-  const ownAppearance =
-    appearances?.[phase] ?? stepperAppearance ?? defaultAppearances[phase];
+  const ownAppearance = moreHidden(
+    moreHidden(
+      appearances?.[phase] ?? stepperAppearance ?? defaultAppearances[phase],
+      inherited,
+    ),
+    enclosing,
+  );
+  const ownClassName = appearanceClass(ownAppearance, enclosing);
   const ownStep = useMemo(
     () => ({
       ref,
@@ -334,6 +349,7 @@ export function useSteps(
       isCurrent: phase === 'current' || phase === 'open',
       inherited,
       appearance: ownAppearance,
+      className: ownClassName,
       stepperAppearance,
     }),
     [
@@ -344,20 +360,32 @@ export function useSteps(
       phase,
       inherited,
       ownAppearance,
+      ownClassName,
       stepperAppearance,
     ],
   );
   const linkedAppearance = linked
-    ? (appearances?.[withStep.phase] ??
-      withStep.stepperAppearance ??
-      defaultAppearances[withStep.phase])
+    ? moreHidden(
+        moreHidden(
+          appearances?.[withStep.phase] ??
+            withStep.stepperAppearance ??
+            defaultAppearances[withStep.phase],
+          withStep.inherited,
+        ),
+        enclosing,
+      )
     : undefined;
   const linkedStep = useMemo(
     () =>
       linked && linkedAppearance !== undefined
-        ? { ...withStep, ref, appearance: linkedAppearance }
+        ? {
+            ...withStep,
+            ref,
+            appearance: linkedAppearance,
+            className: appearanceClass(linkedAppearance, enclosing),
+          }
         : undefined,
-    [linked, withStep, ref, linkedAppearance],
+    [linked, withStep, ref, linkedAppearance, enclosing],
   );
   return linkedStep ?? ownStep;
 }

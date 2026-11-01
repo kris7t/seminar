@@ -80,8 +80,8 @@ document, and read its state:
 - `phase`: where the presentation is relative to the stepper, e.g.,
   `future`, `current`, or `past`,
 - `isActive` and `isCurrent`,
-- `appearance` and `inherited`: how the elements should appear, e.g., hidden or
-  dimmed, and what they inherit from the step they are nested in.
+- `appearance` and `className`: how the elements should appear, e.g., hidden or
+  dimmed, and the class that makes them.
 
 ```tsx
 import { useSteps } from '@seminar/core';
@@ -108,25 +108,31 @@ its children.
 `StepProps` can pass them on as they are, and places and appears like a `Step`:
 
 ```tsx
-import { useStep, type StepProps } from '@seminar/core';
+import { StepAppearanceContext, useStep, type StepProps } from '@seminar/core';
 
 export function Note({ children, ...stepProps }: StepProps) {
-  const { ref, appearance } = useStep(stepProps);
+  const { ref, className, appearance } = useStep(stepProps);
   return (
-    <div ref={ref} data-appearance={appearance.name}>
-      {typeof children === 'function' ? null : children}
+    <div ref={ref} className={className}>
+      <StepAppearanceContext value={appearance}>
+        {typeof children === 'function' ? null : children}
+      </StepAppearanceContext>
     </div>
   );
 }
 ```
 
-The hooks don't style their elements. Without a behavior, they take the default
-of the slide, so steps nested in them wait for them, like in a `Step`. Pass
-`always` for content that stays shown. Splitting a slide into pages goes by the
-behavior, too, so a component whose content changes in its steps otherwise should
-pass `defaults: { split: 'each' }`, like `<Steps>`, to get a page of each step. A
-handle returned by `useStep` can also be passed to the `with` of other steps,
-which then share its stepper, e.g., to reveal items of two lists in parallel.
+Every slide styles `className`, so components don't need any CSS of their own, and
+it also works on elements that can't be a `Step`, like the parts of a figure. The
+context keeps steps inside the element from applying the same appearance again.
+
+Without a behavior, the hooks take the default of the slide, so steps nested in
+them wait for them, like in a `Step`. Pass `always` for content that stays shown.
+Splitting a slide into pages goes by the behavior, too, so a component whose
+content changes in its steps otherwise should pass
+`defaults: { split: 'each' }`, like `<Steps>`, to get a page of each step. A handle
+returned by `useStep` can also be passed to the `with` of other steps, which then
+share its stepper, e.g., to reveal items of two lists in parallel.
 
 ## Animations
 

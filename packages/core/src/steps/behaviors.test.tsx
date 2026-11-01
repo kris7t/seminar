@@ -300,6 +300,76 @@ describe('step behaviors', () => {
     });
   });
 
+  describe('with the styles of the slide', () => {
+    it('hides elements of a hook with its class', () => {
+      function Note() {
+        const { ref, className } = useStep();
+        return (
+          <div ref={ref} className={className}>
+            Note
+          </div>
+        );
+      }
+      render(
+        <Deck>
+          <Slide>
+            <Note />
+          </Slide>
+        </Deck>,
+      );
+      expect(getComputedStyle(screen.getByText('Note')).visibility).toBe(
+        'hidden',
+      );
+    });
+
+    it('styles appearances of the theme', () => {
+      const theme = createSlideTheme({
+        stepAppearances: { faded: 50 },
+        stepAppearanceStyles: { faded: { color: 'rgb(1, 2, 3)' } },
+        stepBehaviors: { fade: { future: 'faded' } },
+      } as never);
+      render(
+        <Deck theme={theme}>
+          <Slide steps={'fade' as StepBehavior}>
+            <Step>A</Step>
+          </Slide>
+        </Deck>,
+      );
+      expect(getComputedStyle(screen.getByText('A')).color).toBe(
+        'rgb(1, 2, 3)',
+      );
+    });
+
+    it('keeps the styles of a theme to its own deck', () => {
+      const themeOf = (color: string) =>
+        createSlideTheme({
+          stepAppearances: { faded: 50 },
+          stepAppearanceStyles: { faded: { color } },
+          stepBehaviors: { fade: { future: 'faded' } },
+        } as never);
+      render(
+        <>
+          <Deck theme={themeOf('rgb(1, 1, 1)')}>
+            <Slide steps={'fade' as StepBehavior}>
+              <Step>First</Step>
+            </Slide>
+          </Deck>
+          <Deck theme={themeOf('rgb(2, 2, 2)')}>
+            <Slide steps={'fade' as StepBehavior}>
+              <Step>Second</Step>
+            </Slide>
+          </Deck>
+        </>,
+      );
+      expect(getComputedStyle(screen.getByText('First')).color).toBe(
+        'rgb(1, 1, 1)',
+      );
+      expect(getComputedStyle(screen.getByText('Second')).color).toBe(
+        'rgb(2, 2, 2)',
+      );
+    });
+  });
+
   describe('of steppers', () => {
     function Stepper({ behavior }: { behavior?: StepBehavior }) {
       const { ref } = useStep({ behavior });

@@ -222,6 +222,6 @@ createSlideTheme({
 
 See [Theming](https://pele.run/theming) for the custom properties of Pele.
 
-Items in steps that aren't shown have the classes `SeminarDiagram-hidden`,
-`SeminarDiagram-dimmed`, and so on, which you can style in the `root` of
-`SeminarDiagram`, too.
+Items in steps that aren't shown have the classes of the
+[appearances of steps](../../../developer/themes.md), like `SeminarStep-hidden`
+and `SeminarStep-dimmed`, and appear like them.

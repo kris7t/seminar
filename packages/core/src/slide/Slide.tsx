@@ -1,4 +1,5 @@
 import { useTheme } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import {
   createElement,
   use,
@@ -14,10 +15,19 @@ import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
 import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepBehaviorContext } from '../steps/StepBehaviorContext.ts';
-import { rankOf } from '../steps/stepAppearance.ts';
+import { rankOf, stepAppearanceStyles } from '../steps/stepAppearance.ts';
 import type { SlideSplitProp } from '../steps/stepSplit.ts';
 import { SlideElementScope } from './SlideElements.tsx';
 import { SlideViewContext } from '../view/SlideViewContext.ts';
+
+/**
+ * Applies the appearances of steps to everything on the slide, with the theme of
+ * the slide. It has no box, so that the master is laid out as if it wasn't there.
+ */
+const SlideSteps = styled('div')(({ theme }) => ({
+  display: 'contents',
+  ...stepAppearanceStyles(theme),
+}));
 
 /**
  * Props of a {@link Slide}.
@@ -185,13 +195,10 @@ export function Slide({
   const content = (
     <SlideElementScope>
       <StepBehaviorContext value={steps}>
-        {slideLang === undefined ? (
+        {inDocument ? (
           master
         ) : (
-          // Without a box of its own, so that the master is laid out as before.
-          <div lang={slideLang} style={{ display: 'contents' }}>
-            {master}
-          </div>
+          <SlideSteps lang={slideLang}>{master}</SlideSteps>
         )}
       </StepBehaviorContext>
     </SlideElementScope>
