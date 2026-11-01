@@ -295,8 +295,15 @@ content needs a page:
   Pages made for other content may still show it.
 - `split=each` needs a page of each of its steps, like `<Steps>`.
 
-Steps nested in a step take its mode, unless they set their own. Points make
-pages at the step, in addition to the mode:
+A page shows a whole step, so everything shown at that step decides together:
+
+- One element that asks for a page is enough.
+- Content without a mode goes along with the rest. With `:step{only split=none}`
+  followed by a paragraph, neither gets a page.
+- A step without a mode takes the mode of the step it's nested in, or of the slide,
+  unless it's shown with another step.
+
+Points make pages at the step, in addition to the mode:
 
 - `split=before` makes a page just before the step is shown, e.g., of what
   the step covers.

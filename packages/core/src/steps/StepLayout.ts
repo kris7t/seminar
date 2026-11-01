@@ -50,6 +50,8 @@ interface PlacedStep {
    * be shown with and doesn't create one.
    */
   aliases: StepNode | typeof PARENT | undefined;
+  /** The step it's shown with, whether it stands in for it or not, if any. */
+  shownWith: StepNode | undefined;
   /** Path of the step containing its level. */
   level: StepPath;
   /** Number of its first step on its level. */
@@ -373,6 +375,7 @@ function placeSteppers(
       anchor,
       parent,
       aliases,
+      shownWith,
       level: path,
       first,
       last,
@@ -461,6 +464,30 @@ export class StepLayout {
   /** Whether `node` stands in for its parent, rather than for a step. */
   aliasesParent(node: StepNode): boolean {
     return this.#steps.get(node)?.aliases === PARENT;
+  }
+
+  /**
+   * Returns the stepper that created the moment `node` is shown at, or
+   * `undefined` for what's only part of the slide itself.
+   */
+  momentOf(
+    node: StepNode,
+    visited: Set<StepNode> = new Set<StepNode>(),
+  ): StepNode | undefined {
+    const step = this.#steps.get(node);
+    if (step === undefined || visited.has(node)) {
+      return undefined;
+    }
+    visited.add(node);
+    if (step.shownWith !== undefined) {
+      return this.momentOf(step.shownWith, visited);
+    }
+    if (step.aliases !== PARENT) {
+      return node;
+    }
+    return step.parent === undefined
+      ? undefined
+      : this.momentOf(step.parent, visited);
   }
 
   /** The step that `node` stands in for, if any. */

@@ -3,6 +3,7 @@ import type { Theme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { Paragraph } from '../content/Paragraph.tsx';
 import { Deck } from '../deck/Deck.tsx';
 import { Slide, type SlideProps } from '../slide/Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
@@ -349,5 +350,65 @@ describe('splitting slides into pages', () => {
         </>,
       ),
     ).toEqual(['Start of the slide', 'AInert', 'B [page]']);
+  });
+
+  describe('at a moment shown together', () => {
+    it('makes no page if only other steps have a say against one', () => {
+      expect(
+        splitOf(
+          <>
+            <Step only split="none">
+              A
+            </Step>
+            <Paragraph>B</Paragraph>
+            <Step only with="previous">
+              C
+            </Step>
+            <Step>D</Step>
+          </>,
+        ),
+      ).toEqual(['Start of the slide', 'A · B · C', 'D [page]']);
+    });
+
+    it('makes a page if any step asks for it', () => {
+      expect(
+        splitOf(
+          <>
+            <Step only split="none">
+              A
+            </Step>
+            <Step only with="previous" split="auto">
+              B
+            </Step>
+            <Step>C</Step>
+          </>,
+        ),
+      ).toEqual(['Start of the slide', 'A · B [page]', 'C [page]']);
+    });
+
+    it('keeps the page of a step if what joins it needs none', () => {
+      expect(
+        splitOf(
+          <>
+            <Step only>A</Step>
+            <Paragraph split="none">B</Paragraph>
+            <Step>C</Step>
+          </>,
+        ),
+      ).toEqual(['Start of the slide', 'A · B [page]', 'C [page]']);
+    });
+
+    it('takes the mode of the slide for the step creating the moment', () => {
+      expect(
+        splitOf(
+          <>
+            <Step only>A</Step>
+            <Paragraph>B</Paragraph>
+            <Step>C</Step>
+          </>,
+          { split: 'none' },
+        ),
+      ).toEqual(['Start of the slide', 'A · B', 'C [page]']);
+    });
   });
 });

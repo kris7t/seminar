@@ -14,33 +14,57 @@ interface PageContext {
   legibleRank: number;
 }
 
+/** Returns the strongest of `modes`, if any: `each`, then `auto`, then `none`. */
+function strongestMode(modes: readonly SplitMode[]): SplitMode | undefined {
+  return (['each', 'auto', 'none'] as const).find((mode) =>
+    modes.includes(mode),
+  );
+}
+
+/** Returns the mode that the elements of `node` ask for, if any. */
+function writtenModeOf(node: StepNode): SplitMode | undefined {
+  return strongestMode(
+    [...node.elements.values()].flatMap(({ split }) => split?.mode ?? []),
+  );
+}
+
 /**
- * Returns the split mode of `node`: `'each'` if an element asks for it, `'none'`
- * if all of them do, or else `'auto'`, where elements without a mode take that
- * of the stepper `node` is nested in, or of the slide.
+ * Returns the split mode of `node`: its own, or else that of the moment it's
+ * shown at. Steppers are shown at a moment together, so only those that set a
+ * mode have a say, along with the stepper that created the moment, whose mode
+ * defaults to that of the stepper it's nested in, or of the slide.
  */
 function splitModeOf(
   context: PageContext,
   node: StepNode,
   visited: Set<StepNode>,
 ): SplitMode {
-  const { layout } = context;
-  const parent = layout.aliasedStep(node) ?? layout.stepOf(node)?.parent;
-  let inherited: SplitMode | undefined;
-  const getInherited = () => {
-    inherited ??=
-      parent === undefined || visited.has(parent)
-        ? (context.slideSplit?.mode ?? 'auto')
-        : splitModeOf(context, parent, visited.add(node));
-    return inherited;
-  };
-  const modes = [...node.elements.values()].map(
-    ({ split }) => split?.mode ?? getInherited(),
-  );
-  if (modes.includes('each')) {
-    return 'each';
+  const { layout, slideSplit } = context;
+  const written = writtenModeOf(node);
+  if (written !== undefined) {
+    return written;
   }
-  return modes.every((mode) => mode === 'none') ? 'none' : 'auto';
+  const moment = layout.momentOf(node);
+  if (moment === undefined || visited.has(moment)) {
+    return slideSplit?.mode ?? 'auto';
+  }
+  visited.add(moment);
+  const created = writtenModeOf(moment);
+  const parent = layout.stepOf(moment)?.parent;
+  const inherited =
+    created !== undefined
+      ? []
+      : parent === undefined
+        ? [slideSplit?.mode ?? 'auto']
+        : [splitModeOf(context, parent, visited)];
+  return (
+    strongestMode([
+      ...inherited,
+      ...layout.steppers.flatMap((other) =>
+        layout.momentOf(other) === moment ? (writtenModeOf(other) ?? []) : [],
+      ),
+    ]) ?? 'auto'
+  );
 }
 
 /** Whether pages show `node` at `path`, with `appearances` if given. */
