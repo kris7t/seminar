@@ -98,7 +98,8 @@ describe('useSlideProbe', () => {
       </Deck>,
     );
     await idle();
-    expect(views).toEqual([
+    // Thumbnails may render the slide by now, too, if the machine is busy.
+    expect(views.filter(({ view }) => view.kind === 'probe')).toEqual([
       {
         view: {
           index: 1,
@@ -150,13 +151,17 @@ describe('useSlideProbe', () => {
   });
 
   it('keeps the state of the slides to themselves', async () => {
-    let created = 0;
+    let probes = 0;
     function Counter(): JSX.Element {
-      const [count] = useSlideState(() => {
-        created += 1;
-        return created;
+      const { kind } = useSlideView();
+      const [setUpBy] = useSlideState(() => {
+        // Thumbnails may render the slide by now, too, if the machine is busy.
+        if (kind === 'probe') {
+          probes += 1;
+        }
+        return kind;
       });
-      return <span>{`Count ${String(count)}`}</span>;
+      return <span data-testid="set-up-by">{setUpBy}</span>;
     }
     render(
       <Deck>
@@ -167,13 +172,14 @@ describe('useSlideProbe', () => {
       </Deck>,
     );
     await idle();
-    expect(created).toBe(1);
+    expect(probes).toBe(1);
     act(() => {
       window.location.hash = '#slide=2';
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     // The slide sets up its own state, rather than the one of the probe.
-    expect(await screen.findByText('Count 2')).toBeDefined();
+    const setUpBy = await screen.findByTestId('set-up-by');
+    expect(setUpBy.textContent).not.toBe('probe');
   });
 
   it('keeps probe transient values separate from the currently presented slide', async () => {

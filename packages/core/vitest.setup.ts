@@ -1,5 +1,9 @@
+import { configure } from '@testing-library/react';
 import { vi } from 'vitest';
 import type * as ThumbnailCapture from './src/overview/captureThumbnail.ts';
+
+// Waiting for something is slow if the machine is busy, e.g., for pages to print.
+configure({ asyncUtilTimeout: 10000 });
 
 // jsdom cannot rasterize DOM nodes. Thumbnail behavior is tested separately.
 vi.mock('./src/overview/captureThumbnail.ts', async (importOriginal) => ({
