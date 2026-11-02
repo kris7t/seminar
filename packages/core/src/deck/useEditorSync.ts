@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { getDevChannel } from '../host/devChannel.ts';
+import type { SourceRange } from '../host/sourceRanges.ts';
 import type { StepPath } from '../steps/StepNode.ts';
 import type { StepStore } from '../steps/StepStore.ts';
 import type { StepTreeEntry } from '../steps/stepTree.ts';
@@ -27,14 +28,6 @@ interface GoToStep {
   version?: unknown;
   slideIndex?: unknown;
   path?: unknown;
-}
-
-/** Returns where the slide with the `source` prop `source` starts, if known. */
-function parseSource(source: string | undefined) {
-  const [line, column] = (source ?? '').split(':').map(Number);
-  return line === undefined || column === undefined || Number.isNaN(column)
-    ? undefined
-    : { line, column };
 }
 
 /** Returns the text among `node`, leaving out what only components render. */
@@ -121,7 +114,8 @@ function isStepPath(path: unknown): path is StepPath {
 /** What {@link useEditorSync} tells about the deck, and how it moves. */
 export interface EditorSyncOptions extends SlideMarks {
   slideIds: readonly (string | undefined)[];
-  slideSources: readonly (string | undefined)[];
+  /** Where the slides are in the source of the deck, if known. */
+  slideSources: readonly (SourceRange | undefined)[];
   slideIndex: number;
   toc: readonly ResolvedTocEntry[];
   /** The steps of the current slide. */
@@ -152,7 +146,7 @@ export function useEditorSync({
   const table = JSON.stringify(
     slideIds.map((id, index) => ({
       id,
-      start: parseSource(slideSources[index]),
+      start: slideSources[index]?.start,
     })),
   );
   useEffect(() => {

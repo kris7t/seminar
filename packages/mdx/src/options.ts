@@ -20,6 +20,7 @@ import type { ModuleImporter, ModuleResolver } from './config/themeConfig.ts';
 import { rehypeListSteps } from './steps/rehypeListSteps.ts';
 import { rehypeSlideElements } from './content/rehypeSlideElements.ts';
 import { remarkSlides, type RemarkSlidesOptions } from './deck/remarkSlides.ts';
+import { recmaSourceRanges, rehypeSourceRanges } from './deck/sourceRanges.ts';
 import { remarkStepDirectives } from './steps/remarkStepDirectives.ts';
 import { remarkSteps } from './steps/remarkSteps.ts';
 import {
@@ -41,6 +42,11 @@ export interface SeminarMdxOptions extends RemarkSlidesOptions {
   seminarConfigs?: readonly LoadedSeminarConfigEntry[] | undefined;
   /** Plugins of unified that the configs add, see `loadDeckSetup`. */
   mdxPlugins?: MdxPlugins | undefined;
+  /**
+   * Whether the deck tells where its elements are in its source, for editors in
+   * the dev server, see `__seminarAt` in `@seminar/core`.
+   */
+  sourcePositions?: boolean | undefined;
 }
 
 /**
@@ -60,6 +66,7 @@ export function seminarMdxOptions({
   directives,
   seminarConfigs,
   mdxPlugins = emptyMdxPlugins(),
+  sourcePositions = false,
   ...options
 }: SeminarMdxOptions = {}): Pick<
   CompileOptions,
@@ -93,6 +100,7 @@ export function seminarMdxOptions({
       rehypeListSteps,
       rehypeSlideElements,
       ...mdxPlugins.rehypePlugins.after,
+      ...(sourcePositions ? [rehypeSourceRanges] : []),
     ],
     recmaPlugins: [
       ...mdxPlugins.recmaPlugins.before,
@@ -100,6 +108,14 @@ export function seminarMdxOptions({
       recmaSlideTitles,
       recmaSlideExports,
       ...mdxPlugins.recmaPlugins.after,
+      ...(sourcePositions
+        ? [
+            [
+              recmaSourceRanges,
+              { importSource: options.importSource ?? '@seminar/core' },
+            ] as [typeof recmaSourceRanges, { importSource: string }],
+          ]
+        : []),
     ],
   };
 }

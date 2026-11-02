@@ -5,6 +5,7 @@ import {
   type ReactElement,
 } from 'react';
 
+import { withSourceOf } from '../host/sourceRanges.ts';
 import type { SlideProps } from '../slide/Slide.tsx';
 
 type SlideNode = ReturnType<typeof Children.toArray>[number];
@@ -138,18 +139,21 @@ export function resolveRecaps(
     const recapId = id ?? deriveId(slideIds[original]);
     ids[index] = recapId;
     // The recap is the recapped slide with some of its props replaced.
-    // eslint-disable-next-line @eslint-react/no-clone-element
-    return cloneElement(recapped, {
-      key: (slide as ReactElement).key ?? `recap-${String(index)}`,
-      id: recapId,
-      aliases: undefined,
-      spare,
-      ...range,
-      to,
-      before,
-      recap: undefined,
-      recapOf: original,
-    });
+    return withSourceOf(
+      // eslint-disable-next-line @eslint-react/no-clone-element
+      cloneElement(recapped, {
+        key: (slide as ReactElement).key ?? `recap-${String(index)}`,
+        id: recapId,
+        aliases: undefined,
+        spare,
+        ...range,
+        to,
+        before,
+        recap: undefined,
+        recapOf: original,
+      }),
+      slide as ReactElement<object>,
+    );
   });
   return { slides: resolved, recapOf };
 }

@@ -86,6 +86,7 @@ import {
 } from '../interaction/useSwipeNavigation.ts';
 import { DeckMenu } from '../menu/DeckMenu.tsx';
 import { getSeminarHost } from '../host/SeminarHost.ts';
+import { getSourceRange } from '../host/sourceRanges.ts';
 import { PrintDialog } from '../print/PrintDialog.tsx';
 import {
   PrintView,
@@ -234,16 +235,10 @@ function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
   return undefined;
 }
 
-function getSlideSource(
-  slide: ReturnType<typeof Children.toArray>[number],
-): string | undefined {
-  if (isValidElement<{ source?: unknown }>(slide)) {
-    const { source } = slide.props;
-    if (typeof source === 'string') {
-      return source;
-    }
-  }
-  return undefined;
+function getSlideSource(slide: ReturnType<typeof Children.toArray>[number]) {
+  return isValidElement<object>(slide)
+    ? getSourceRange(slide.props)
+    : undefined;
 }
 
 function isSpare(slide: ReturnType<typeof Children.toArray>[number]) {
@@ -315,8 +310,7 @@ function InteractiveDeck({
     return {
       slides: resolved.slides,
       slideIds: resolved.slides.map(getSlideId),
-      // Of the slide in the deck, even if it shows another slide as a recap.
-      slideSources: raw.map(getSlideSource),
+      slideSources: resolved.slides.map(getSlideSource),
       aliases: rawAliases,
       recapOf: resolved.recapOf,
     };

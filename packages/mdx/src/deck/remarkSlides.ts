@@ -64,11 +64,6 @@ export interface RemarkSlidesOptions extends DeckDefaults {
    * decks that slides are included from.
    */
   syntaxPlugins?: PluggableList | undefined;
-  /**
-   * Whether slides tell where they start in the deck, with their `source` prop,
-   * for editors in the dev server.
-   */
-  sourcePositions?: boolean | undefined;
 }
 
 /**
@@ -143,7 +138,6 @@ function createSlideElement(
   }: SlideDraft,
   bindings: Set<string>,
   file: VFile,
-  sourcePositions: boolean,
 ): MdxJsxFlowElement {
   // Bare words only refer to masters of the theme, so this is likely a
   // mistake, e.g., `## Total {count}` instead of `## Total {String(count)}`.
@@ -167,8 +161,6 @@ function createSlideElement(
   if (splitProblem !== undefined) {
     file.message(splitProblem, { place });
   }
-  // Slides before the first heading start with their content.
-  const start = (place ?? children[0]?.position)?.start;
   const props = new Map(attributes);
   if (id !== undefined && !attributes.has('id')) {
     props.set('id', id);
@@ -202,6 +194,7 @@ function createSlideElement(
               : title) as unknown as MdxJsxFlowElement['children'],
           },
         ];
+  const position = place ?? children[0]?.position;
   return {
     type: 'mdxJsxFlowElement',
     // Included slides are rendered by the component imported for them.
@@ -232,20 +225,11 @@ function createSlideElement(
       ...(aliases === undefined
         ? []
         : [createExpressionAttribute('aliases', JSON.stringify(aliases))]),
-      // Also replaces the position in the deck of an included slide.
-      ...(sourcePositions
-        ? [
-            start === undefined
-              ? createExpressionAttribute('source', 'undefined')
-              : createStringAttribute(
-                  'source',
-                  `${String(start.line)}:${String(start.column)}`,
-                ),
-          ]
-        : []),
       ...[...props].map(([name, value]) => createStringAttribute(name, value)),
     ],
     children: [...titleElement, ...(children as MdxJsxFlowElement['children'])],
+    // Slides before the first heading start with their content.
+    ...(position === undefined ? {} : { position }),
   };
 }
 
@@ -383,7 +367,6 @@ export function remarkSlides({
   importSource = '@seminar/core',
   onDependency,
   syntaxPlugins,
-  sourcePositions = false,
   ...defaults
 }: RemarkSlidesOptions = {}): (tree: Root, file: VFile) => void {
   return (tree, file) => {
@@ -447,9 +430,7 @@ export function remarkSlides({
       ),
       children: slides
         .filter(({ noSlide }) => noSlide !== true)
-        .map((slide) =>
-          createSlideElement(slide, bindings, file, sourcePositions),
-        ),
+        .map((slide) => createSlideElement(slide, bindings, file)),
     };
     tree.children = [
       createEsm(

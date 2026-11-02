@@ -97,6 +97,7 @@ export class DeckSync implements Disposable {
             synced.table,
             contentChanges.map(({ range, text }) => ({
               startLine: range.start.line,
+              startColumn: range.start.character,
               endLine: range.end.line,
               endColumn: range.end.character,
               text,

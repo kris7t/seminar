@@ -1,12 +1,19 @@
-/** Where a slide of a deck starts in its source, if known, from 1. */
+/** A position in the source of a deck, from 1. */
+export interface SourcePosition {
+  line: number;
+  column: number;
+}
+
+/** Where a slide of a deck starts in its source, if known. */
 export interface SlideSource {
   id?: string | undefined;
-  start?: { line: number; column: number } | undefined;
+  start?: SourcePosition | undefined;
 }
 
 /** A change of the source of a deck, with lines and columns from 0. */
 export interface SourceChange {
   startLine: number;
+  startColumn: number;
   endLine: number;
   endColumn: number;
   /** The text that replaces the range. */
@@ -42,29 +49,53 @@ export function slideAtLine(
 }
 
 /**
- * Returns `table` for the source with `changes` applied, in order, so that it
- * stays right until saving the source compiles the deck again.
+ * Returns `position`, from 1, in the source with `change` applied: after the
+ * change, it moves with what follows it, and inside of it, to its start.
+ */
+function shiftPosition(
+  position: SourcePosition,
+  { startLine, startColumn, endLine, endColumn, text }: SourceChange,
+): SourcePosition {
+  const line = position.line - 1;
+  const column = position.column - 1;
+  if (line < startLine || (line === startLine && column < startColumn)) {
+    return position;
+  }
+  if (line < endLine || (line === endLine && column < endColumn)) {
+    return { line: startLine + 1, column: startColumn + 1 };
+  }
+  const added = text.split('\n');
+  const lastLine = added.at(-1) ?? '';
+  const newEndLine = startLine + added.length - 1;
+  const newEndColumn =
+    added.length === 1 ? startColumn + lastLine.length : lastLine.length;
+  return line === endLine
+    ? {
+        line: newEndLine + 1,
+        column: newEndColumn + column - endColumn + 1,
+      }
+    : { line: line + newEndLine - endLine + 1, column: position.column };
+}
+
+/** Returns `position` in the source with `changes` applied, in order. */
+export function shiftThrough(
+  position: SourcePosition,
+  changes: readonly SourceChange[],
+): SourcePosition {
+  return changes.reduce(shiftPosition, position);
+}
+
+/**
+ * Returns `table` for the source with `changes` applied, so that it stays right
+ * until saving the source compiles the deck again.
  */
 export function shiftTable(
   table: readonly SlideSource[],
   changes: readonly SourceChange[],
 ): SlideSource[] {
-  return table.map((slide) => {
-    if (slide.start === undefined) {
-      return slide;
-    }
-    let line = slide.start.line - 1;
-    let { column } = slide.start;
-    for (const { startLine, endLine, endColumn, text } of changes) {
-      const delta = text.split('\n').length - 1 - (endLine - startLine);
-      if (line > endLine || (line === endLine && column - 1 >= endColumn)) {
-        line += delta;
-      } else if (line > startLine) {
-        // The start of the slide was replaced.
-        line = startLine;
-        column = 1;
-      }
-    }
-    return { ...slide, start: { line: line + 1, column } };
-  });
+  return table.map((slide) =>
+    slide.start === undefined
+      ? slide
+      : { ...slide, start: shiftThrough(slide.start, changes) },
+  );
 }

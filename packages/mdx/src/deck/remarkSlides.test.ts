@@ -244,28 +244,6 @@ author: Someone
     });
   });
 
-  it('tells where slides start only if asked to', async () => {
-    const source = 'Intro\n\n## Next\n\nText\n\n***\n\nMore';
-    const compile = async (options: object) =>
-      renderDeck(
-        (await evaluate(source, {
-          ...runtime,
-          ...seminarMdxOptions({ importSource: STUB_URL, ...options }),
-          baseUrl: import.meta.url,
-        })) as Awaited<ReturnType<typeof compileDeck>>,
-      ).props.children as { props: { source?: string } }[];
-    expect(
-      (await compile({ sourcePositions: true })).map(
-        ({ props }) => props.source,
-      ),
-    ).toEqual(['1:1', '3:1', '7:1']);
-    expect((await compile({})).map(({ props }) => props.source)).toEqual([
-      undefined,
-      undefined,
-      undefined,
-    ]);
-  });
-
   it('uses the defaults passed as options', async () => {
     const options = seminarMdxOptions({
       importSource: STUB_URL,

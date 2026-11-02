@@ -162,6 +162,13 @@ export type { StepRange } from './steps/stepRange.ts';
 export type { DeckMetadata } from './deck/DeckMetadata.ts';
 export type { ScreenArea, SeminarHost } from './host/SeminarHost.ts';
 export { getDevChannel, type DevChannel } from './host/devChannel.ts';
+export {
+  __seminarAt,
+  getSourceRange,
+  withSourceOf,
+  type SourcePosition,
+  type SourceRange,
+} from './host/sourceRanges.ts';
 export type {
   PagesPerSheet,
   PrintedDocument,

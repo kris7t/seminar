@@ -2,6 +2,7 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { DevChannel } from '../host/devChannel.ts';
+import { __seminarAt } from '../host/sourceRanges.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
 import { Deck } from './Deck.tsx';
@@ -35,11 +36,17 @@ describe('useEditorSync', () => {
     Reflect.deleteProperty(globalThis, CHANNEL);
   });
 
-  function deck(sources = ['1:1', '5:1'], titles = ['First', 'Second']) {
+  function deck(sources = [1, 5], titles = ['First', 'Second']) {
     return (
       <Deck>
-        <Slide id="first" title={titles[0]} source={sources[0]} />
-        <Slide title={titles[1]} source={sources[1]} />
+        {__seminarAt(
+          <Slide id="first" title={titles[0]} />,
+          `${String(sources[0])}:1-${String(sources[0])}:5`,
+        )}
+        {__seminarAt(
+          <Slide title={titles[1]} />,
+          `${String(sources[1])}:1-${String(sources[1])}:5`,
+        )}
         <Slide id="third" title="Third" />
       </Deck>
     );
@@ -71,11 +78,29 @@ describe('useEditorSync', () => {
     expect(messages('location')).toEqual([{ version: 1, slideIndex: 0 }]);
   });
 
+  it('tells where recaps are, rather than the slides that they show', () => {
+    render(
+      <Deck>
+        {__seminarAt(<Slide id="first" title="First" />, '1:1-1:5')}
+        {__seminarAt(<Slide id="again" recap="first" />, '9:1-9:5')}
+      </Deck>,
+    );
+    expect(messages('slides')).toEqual([
+      {
+        version: 1,
+        slides: [
+          { id: 'first', start: { line: 1, column: 1 } },
+          { id: 'again', start: { line: 9, column: 1 } },
+        ],
+      },
+    ]);
+  });
+
   it('tells again only if the places of the slides change', () => {
     const { rerender } = render(deck());
-    rerender(deck(['1:1', '5:1'], ['Changed', 'Second']));
+    rerender(deck([1, 5], ['Changed', 'Second']));
     expect(messages('slides')).toHaveLength(1);
-    rerender(deck(['1:1', '7:1']));
+    rerender(deck([1, 7]));
     expect(messages('slides')).toHaveLength(2);
   });
 
