@@ -63,8 +63,10 @@ choose it themselves.
   gets the keys, including most shortcuts of the editor.
 - `window` opens it in the app of `seminar preview`, with all of its features.
 
-Previews in a project share a dev server, whose output is in the `Seminar`
-output channel. It stops a minute after the last preview closes.
+Previews in a project share a dev server, which stops a minute after the last
+preview closes. Build errors, and the errors and warnings of the pages of decks,
+are in the `Seminar Dev Server` output channel, which opens with the first of
+them, or with the `Seminar: Show Dev Server Output` command.
 
 In remote workspaces, the dev server runs on the remote machine, with its port
 forwarded to the editor. A preview in a window opens in your browser instead of

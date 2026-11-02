@@ -56,9 +56,10 @@ seminar preview decks/talk.deck.mdx   # another deck
 
 `seminar preview` chooses the deck like `seminar present`, but serves it
 with the dev server of Vite instead of building it, and opens it in the same
-app, which updates the deck as you edit it. The title of its window says that
-it's a preview, and it doesn't start presenting until you press P, which then
-works like in `seminar present`, also on Wayland.
+app, which updates the deck as you edit it. The dev server prints the build
+errors, and the errors and warnings of the page. The title of its window says
+that it's a preview, and it doesn't start presenting until you press P, which
+then works like in `seminar present`, also on Wayland.
 
 With `--present`, it starts presenting right away, and quits once you stop,
 like `seminar present`. With `--no-quit-at-end`, it stays open instead.
@@ -66,7 +67,7 @@ like `seminar present`. With `--no-quit-at-end`, it stays open instead.
 too.
 
 `seminar preview --url <url>` previews a page of a dev server that is already
-running, like that of `seminar dev`.
+running, like that of `seminar dev`, which prints the errors of the page.
 
 ## Serving decks
 

@@ -57,8 +57,10 @@ interface Preview {
 export class DeckPreviews implements Disposable {
   readonly #extensionUri: Uri;
   readonly #previews = new Map<string, Preview>();
-  readonly #output: OutputChannel = window.createOutputChannel('Seminar');
+  readonly #output: OutputChannel =
+    window.createOutputChannel('Seminar Dev Server');
   readonly #servers = new DevServers(async (project, events) => {
+    let shownErrors = false;
     // From the project itself, whichever deck starts its dev server.
     const cli = findCli(`${project}/package.json`);
     if (cli === undefined) {
@@ -70,6 +72,13 @@ export class DeckPreviews implements Disposable {
       allowAnyHost: env.uiKind === UIKind.Web,
       log: (text) => {
         this.#output.append(text);
+      },
+      // Once for each dev server, and not again if it's closed afterwards.
+      onErrors: () => {
+        if (!shownErrors) {
+          shownErrors = true;
+          this.#output.show(true);
+        }
       },
     });
   });
@@ -108,6 +117,9 @@ export class DeckPreviews implements Disposable {
         this.#showInEditor(uri);
       }),
       command('seminar.previewInWindow', (uri) => this.#showInWindow(uri)),
+      commands.registerCommand('seminar.showDevServerOutput', () => {
+        this.#output.show();
+      }),
       window.registerWebviewPanelSerializer(VIEW_TYPE, {
         deserializeWebviewPanel: (
           panel,

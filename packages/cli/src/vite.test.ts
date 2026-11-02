@@ -129,6 +129,29 @@ describe('serveDeck', () => {
     await server.close();
   });
 
+  it('prints the errors of pages with the dev server', async () => {
+    await vite(
+      '',
+      `import { writeFileSync } from 'node:fs';
+export async function createServer(config) {
+  writeFileSync('config.json', JSON.stringify(config.server.forwardConsole));
+  return {
+    config: { root: process.cwd() },
+    httpServer: { address: () => ({ port: 1234 }) },
+    listen: async () => undefined,
+  };
+}`,
+    );
+    const server = await serveDeck({
+      project,
+      deck: path.join(project, 'talk.deck.mdx'),
+    });
+    expect(
+      JSON.parse(await readFile(path.join(project, 'config.json'), 'utf8')),
+    ).toEqual({ unhandledErrors: true, logLevels: ['warn', 'error'] });
+    await server.close();
+  });
+
   it('stops the dev server when aborted', async () => {
     await vite(
       '',
@@ -156,6 +179,7 @@ export async function createServer(config) {
     deck: process.env.SEMINAR_DECK,
     allowedHosts: config.server.allowedHosts,
     host: config.server.host,
+    forwardConsole: config.server.forwardConsole,
   }));
   for (const plugin of config.plugins) {
     plugin.configureServer({ ws: { clients: { size: 2 }, on() {} } });
@@ -185,7 +209,10 @@ export async function createServer(config) {
     expect(server.url).toBe('http://127.0.0.1:1234/');
     expect(server.root).toBe(path.join(project, 'decks'));
     expect(pages).toEqual([2]);
-    expect(await config()).toEqual({ host: '127.0.0.1' });
+    expect(await config()).toEqual({
+      host: '127.0.0.1',
+      forwardConsole: { unhandledErrors: true, logLevels: ['warn', 'error'] },
+    });
     await server.close();
     await expect(server.exited).resolves.toBeUndefined();
   });
@@ -193,7 +220,10 @@ export async function createServer(config) {
   it('allows any host if asked to, still only locally', async () => {
     await vite('', API);
     const server = await serveProject({ project, allowAnyHost: true });
-    expect(await config()).toEqual({ allowedHosts: true, host: '127.0.0.1' });
+    expect(await config()).toMatchObject({
+      allowedHosts: true,
+      host: '127.0.0.1',
+    });
     await server.close();
   });
 });

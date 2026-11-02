@@ -164,11 +164,14 @@ export function runSeminarDev(
   {
     allowAnyHost,
     log,
+    onErrors,
     onPages,
     onExit,
   }: DevServerEvents & {
     allowAnyHost: boolean;
     log: (text: string) => void;
+    /** Called after logging what it printed as errors and warnings. */
+    onErrors: () => void;
   },
 ): Promise<DevServer> {
   return new Promise((resolve, reject) => {
@@ -178,18 +181,23 @@ export function runSeminarDev(
       { cwd: project, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] },
     );
     let errors = '';
+    let started = false;
     child.stdout?.on('data', (data: Buffer) => {
       log(data.toString());
     });
     child.stderr?.on('data', (data: Buffer) => {
-      errors += data.toString();
+      if (!started) {
+        errors += data.toString();
+      }
       log(data.toString());
+      onErrors();
     });
     child.once('error', reject);
     child.on('message', (message: DevMessage) => {
       if (message.type === 'pages') {
         onPages(message.count);
       } else {
+        started = true;
         resolve({
           url: message.url,
           root: message.root,

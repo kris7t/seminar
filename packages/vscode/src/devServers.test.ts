@@ -133,6 +133,7 @@ describe('runSeminarDev', () => {
     return {
       allowAnyHost: false,
       log: vi.fn<(text: string) => void>(),
+      onErrors: vi.fn<() => void>(),
       onPages: vi.fn<(count: number) => void>(),
       onExit: vi.fn<() => void>(),
     };
@@ -159,6 +160,26 @@ setInterval(() => undefined, 1000);`),
     await vi.waitFor(() => {
       expect(options.onExit).toHaveBeenCalledOnce();
     });
+  });
+
+  it('logs its output, and tells about errors', async () => {
+    const options = events();
+    const server = await runSeminarDev(
+      await cli(`console.log('Serving');
+process.send({ type: 'ready', url: 'http://127.0.0.1:1234/', root: '/' });
+setTimeout(() => {
+  console.error('Internal server error');
+}, 100);
+setInterval(() => undefined, 1000);`),
+      project,
+      options,
+    );
+    await vi.waitFor(() => {
+      expect(options.onErrors).toHaveBeenCalled();
+    });
+    expect(options.log).toHaveBeenCalledWith('Serving\n');
+    expect(options.log).toHaveBeenCalledWith('Internal server error\n');
+    server.stop();
   });
 
   it('rejects with what it printed if it fails to start', async () => {

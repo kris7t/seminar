@@ -62,6 +62,11 @@
         "command": "seminar.previewInWindow",
         "title": "Preview Deck in a Window",
         "category": "Seminar"
+      },
+      {
+        "command": "seminar.showDevServerOutput",
+        "title": "Show Dev Server Output",
+        "category": "Seminar"
       }
     ],
     "menus": {

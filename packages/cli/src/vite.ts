@@ -360,7 +360,11 @@ export function serveProject(
   delete env[DECK_ENV];
   return startDevServer(
     project,
-    { env, args: allowAnyHost ? [ALLOW_ANY_HOST] : [], onPages },
+    {
+      env,
+      args: allowAnyHost ? [ALLOW_ANY_HOST] : [],
+      onPages,
+    },
     abortSignal,
   );
 }

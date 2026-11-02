@@ -15,6 +15,7 @@ interface Vite {
       port: number;
       open: boolean;
       allowedHosts?: true;
+      forwardConsole: { unhandledErrors: boolean; logLevels: string[] };
     };
     plugins: DevServerPlugin[];
     logLevel: 'warn';
@@ -45,6 +46,8 @@ const server = await createServer({
     port: 0,
     open: false,
     ...(args.includes(ALLOW_ANY_HOST) ? { allowedHosts: true } : {}),
+    // Prints the errors of pages, wherever they are shown.
+    forwardConsole: { unhandledErrors: true, logLevels: ['warn', 'error'] },
   },
   plugins: [
     devServerPlugin((count) => {

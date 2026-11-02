@@ -259,7 +259,10 @@ function present(compositor: Compositor | undefined): void {
   presenter.on('closed', () => {
     app.quit();
   });
-  forwardConsole(webContents, name);
+  // The dev server of Vite prints the errors of its pages.
+  if (!('url' in job)) {
+    forwardConsole(webContents, name);
+  }
   webContents.on('will-navigate', (event) => {
     if (!isDeck(event.url)) {
       event.preventDefault();
