@@ -11,10 +11,10 @@ Language support for the `.deck.mdx` files of
   actual syntax errors are reported where they are.
 - Provides hover, go to definition, completion, and rename in the JavaScript
   of decks, and the outline of their headings.
-- Presents and previews the open deck with the buttons in the title bar of its
-  editor, or the `Seminar: Present Deck` and `Seminar: Preview Deck` commands.
-  They run `seminar` in a task, so `@seminar/cli` has to be installed in the
-  project of the deck, and Node has to be on the `PATH`.
+- Previews the open deck next to its editor, updating it as you save, and
+  presents it, with the buttons in the title bar of its editor or the commands
+  starting with `Seminar:`. They run `seminar`, so `@seminar/cli` has to be
+  installed in the project of the deck, and Node has to be on the `PATH`.
 
 ## Installing
 
@@ -49,6 +49,29 @@ Step behaviors, like `only` in `::Box{only}` or `%% step only`, are colored with
 semantic tokens, which are turned on for decks. Behaviors from
 `StepBehaviorOverrides` are recognized if the augmentation is part of the
 TypeScript project of the deck.
+
+## Previewing
+
+The `Seminar: Preview Deck` command and its button show the deck in the panel
+or the window that `seminar.preview.location` chooses. The commands
+`Seminar: Preview Deck in the Editor` and `Seminar: Preview Deck in a Window`
+choose it themselves.
+
+- `editor`, the default, shows it in a panel. Panels can't open windows, go full
+  screen, or print, so P fills the panel with the slides, and Shift+P shows the
+  presenter view without an audience window. While the deck has the focus, it
+  gets the keys, including most shortcuts of the editor.
+- `window` opens it in the app of `seminar preview`, with all of its features.
+
+Previews in a project share a dev server, whose output is in the `Seminar`
+output channel. It stops a minute after the last preview closes.
+
+In remote workspaces, the dev server runs on the remote machine, with its port
+forwarded to the editor. A preview in a window opens in your browser instead of
+the app, and the button to present isn't shown, since the app would run on the
+remote machine. In editors running in a browser, the dev server has to answer
+requests for any host name, which turns off the protection of Vite against DNS
+rebinding. Remote workspaces haven't been tested yet.
 
 ## Colors
 

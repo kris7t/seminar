@@ -1,9 +1,15 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildDeck, buildDirectory, findSources, serveDeck } from './vite.ts';
+import {
+  buildDeck,
+  buildDirectory,
+  findSources,
+  serveDeck,
+  serveProject,
+} from './vite.ts';
 
 let project: string;
 
@@ -12,6 +18,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await rm(project, { recursive: true, force: true });
 });
 
@@ -138,5 +145,55 @@ describe('serveDeck', () => {
     await expect(serving).rejects.toThrow(
       'The dev server of Vite stopped with signal SIGTERM.',
     );
+  });
+});
+
+describe('serveProject', () => {
+  /** A fake Vite that saves its config, and has two connected pages. */
+  const API = `import { writeFileSync } from 'node:fs';
+export async function createServer(config) {
+  writeFileSync('config.json', JSON.stringify({
+    deck: process.env.SEMINAR_DECK,
+    allowedHosts: config.server.allowedHosts,
+    host: config.server.host,
+  }));
+  for (const plugin of config.plugins) {
+    plugin.configureServer({ ws: { clients: { size: 2 }, on() {} } });
+  }
+  return {
+    config: { root: process.cwd() + '/decks' },
+    httpServer: { address: () => ({ port: 1234 }) },
+    listen: async () => undefined,
+  };
+}`;
+
+  async function config() {
+    return JSON.parse(
+      await readFile(path.join(project, 'config.json'), 'utf8'),
+    ) as unknown;
+  }
+
+  it('serves all decks locally, with the root and the pages', async () => {
+    await vite('', API);
+    vi.stubEnv('SEMINAR_DECK', 'other.deck.mdx');
+    const pages: number[] = [];
+    const server = await serveProject({
+      project,
+      allowAnyHost: false,
+      onPages: (count) => pages.push(count),
+    });
+    expect(server.url).toBe('http://127.0.0.1:1234/');
+    expect(server.root).toBe(path.join(project, 'decks'));
+    expect(pages).toEqual([2]);
+    expect(await config()).toEqual({ host: '127.0.0.1' });
+    await server.close();
+    await expect(server.exited).resolves.toBeUndefined();
+  });
+
+  it('allows any host if asked to, still only locally', async () => {
+    await vite('', API);
+    const server = await serveProject({ project, allowAnyHost: true });
+    expect(await config()).toEqual({ allowedHosts: true, host: '127.0.0.1' });
+    await server.close();
   });
 });

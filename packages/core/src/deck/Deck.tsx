@@ -475,7 +475,7 @@ function InteractiveDeck({
     firstSlideIndex,
   ]);
   const presenterView = usePresenterView(t('presenterView'));
-  const presenting = presenterView.audience !== undefined;
+  const presenting = presenterView.active;
   const [presenterAreaRef, , presenterAreaSize] = useFitScale(
     SLIDE_WIDTH,
     SLIDE_HEIGHT,
@@ -493,6 +493,9 @@ function InteractiveDeck({
     defaultMirrorPointer ? 'mirror' : 'off',
   );
   const pointerHandlers = usePointerTracking(pointer, pointerMode, transitions);
+  // Embedded decks have no audience window to show the pointer in.
+  const mirroringPointer =
+    presenterView.audience !== undefined && pointerMode === 'mirror';
   const [interaction] = useState(createInteractionStore);
   const [presenterFrame, setPresenterFrame] = useState<HTMLElement | null>(
     null,
@@ -506,7 +509,7 @@ function InteractiveDeck({
     [presenterFrame],
   );
   useInteractionCapture(
-    presenting && pointerMode === 'mirror' ? presenterFrame : null,
+    mirroringPointer ? presenterFrame : null,
     interaction,
     transitions,
   );
@@ -524,10 +527,7 @@ function InteractiveDeck({
   // The time elapsed counts from when the presenter view was opened, or from
   // when it was last reset, whichever is later.
   const [timerResetAt, setTimerResetAt] = useState(0);
-  const timerStart = Math.max(
-    presenterView.audience?.openedAt ?? 0,
-    timerResetAt,
-  );
+  const timerStart = Math.max(presenterView.openedAt ?? 0, timerResetAt);
   const resetTimer = useCallback(() => {
     setTimerResetAt(Date.now());
   }, []);
@@ -771,20 +771,32 @@ function InteractiveDeck({
     };
   }, [host, previewLabel]);
   const closePresenterView = presenterView.close;
+  const stopPresentation = presentation.toggle;
   const onEscape = useCallback(() => {
-    if (!presenting) {
-      return false;
+    if (presenting) {
+      closePresenterView();
+      return true;
     }
-    closePresenterView();
-    return true;
-  }, [presenting, closePresenterView]);
+    // Browsers only leave real full screen by themselves.
+    if (presentation.contained) {
+      stopPresentation();
+      return true;
+    }
+    return false;
+  }, [
+    presenting,
+    closePresenterView,
+    presentation.contained,
+    stopPresentation,
+  ]);
   // Only used in the presenter view.
   const onMirrorPointer = useCallback(() => {
-    if (presenting) {
+    const mirrorable = presenterView.audience !== undefined;
+    if (mirrorable) {
       toggleMirrorPointer();
     }
-    return presenting;
-  }, [presenting, toggleMirrorPointer]);
+    return mirrorable;
+  }, [presenterView.audience, toggleMirrorPointer]);
   const onLaserPointer = useCallback(() => {
     if (presenting) {
       toggleLaserPointer();
@@ -813,7 +825,7 @@ function InteractiveDeck({
     onLaserPointer,
     onResetTimer,
     onEscape,
-    onPrint: openPrint,
+    onPrint: host?.embedded === true ? undefined : openPrint,
   });
   const onClick = useClickNavigation(
     next,
@@ -856,7 +868,8 @@ function InteractiveDeck({
     notesOnly,
     setNotesOnly,
     pointerMode,
-    onMirrorPointer: toggleMirrorPointer,
+    onMirrorPointer:
+      presenterView.audience === undefined ? undefined : toggleMirrorPointer,
     onLaserPointer: toggleLaserPointer,
     menuOpen: menuPosition !== undefined,
     onOpenMenu: openMenu,
@@ -1293,13 +1306,18 @@ function InteractiveDeck({
                                 notesOnly,
                                 onFocusNotes,
                                 pointerMode,
-                                onMirrorPointer: toggleMirrorPointer,
+                                onMirrorPointer:
+                                  presenterView.audience === undefined
+                                    ? undefined
+                                    : toggleMirrorPointer,
                                 onLaserPointer: toggleLaserPointer,
                                 onResetTimer: resetTimer,
                               }
                             : undefined
                         }
-                        onPrint={openPrint}
+                        onPrint={
+                          host?.embedded === true ? undefined : openPrint
+                        }
                       />
                       <GoToSlideDialog
                         open={goToSlideOpen}
@@ -1339,7 +1357,7 @@ function InteractiveDeck({
   );
   return (
     <SharedWorkProvider>
-      <PointerMirroringContext value={presenting && pointerMode === 'mirror'}>
+      <PointerMirroringContext value={mirroringPointer}>
         {content}
       </PointerMirroringContext>
     </SharedWorkProvider>

@@ -3,11 +3,29 @@ import { useSyncExternalStore } from 'react';
 /** Matches if the browser shows the page in full screen, e.g., with F11. */
 const FULLSCREEN_QUERY = '(display-mode: fullscreen)';
 
+/** Whether the presentation fills the frame of an embedded deck. */
+let contained = false;
+
+const containedListeners = new Set<() => void>();
+
+/**
+ * Shows the UI of the deck as in full screen, or not, for embedded decks, which
+ * can't go full screen.
+ */
+export function showAsFullscreen(value: boolean): void {
+  contained = value;
+  for (const listener of containedListeners) {
+    listener();
+  }
+}
+
 function subscribe(listener: () => void): () => void {
   const query = window.matchMedia(FULLSCREEN_QUERY);
   document.addEventListener('fullscreenchange', listener);
   query.addEventListener('change', listener);
+  containedListeners.add(listener);
   return () => {
+    containedListeners.delete(listener);
     document.removeEventListener('fullscreenchange', listener);
     query.removeEventListener('change', listener);
   };
@@ -15,6 +33,7 @@ function subscribe(listener: () => void): () => void {
 
 function isFullscreen(): boolean {
   return (
+    contained ||
     // Missing in environments without the Fullscreen API.
     (document.fullscreenElement ?? null) !== null ||
     window.matchMedia(FULLSCREEN_QUERY).matches
@@ -23,7 +42,8 @@ function isFullscreen(): boolean {
 
 /**
  * Whether the page is shown in full screen, either with the Fullscreen API or
- * by the browser, e.g., after pressing F11.
+ * by the browser, e.g., after pressing F11, or as if it were, in the frame of
+ * an embedded deck.
  */
 export function useFullscreen(): boolean {
   return useSyncExternalStore(subscribe, isFullscreen);

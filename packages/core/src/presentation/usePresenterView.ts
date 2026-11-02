@@ -1,6 +1,7 @@
 import createCache, { type EmotionCache } from '@emotion/cache';
 import { useCallback, useEffect, useState } from 'react';
 
+import { getSeminarHost } from '../host/SeminarHost.ts';
 import { mirrorStylisPlugin } from './mirror/mirrorStylisPlugin.ts';
 import type { ScreenDetailed } from './screens.ts';
 
@@ -59,7 +60,14 @@ function setUpDocument(
 }
 
 export interface PresenterView {
-  /** The window showing the slides to the audience, if it's open. */
+  /** Whether this window is the presenter view. */
+  active: boolean;
+  /** When the presenter view was opened, in milliseconds since the epoch. */
+  openedAt: number | undefined;
+  /**
+   * The window showing the slides to the audience, if it's open. Embedded
+   * decks have a presenter view without one.
+   */
   audience: AudienceWindow | undefined;
   /**
    * Opens the audience window, in full screen on `screen` if given, while
@@ -106,8 +114,14 @@ export function usePresenterView(
   label = 'Presenter view',
 ): PresenterView {
   const [audience, setAudience] = useState<AudienceWindow>();
+  // When the presenter view without an audience window was opened, if it was.
+  const [embeddedAt, setEmbeddedAt] = useState<number>();
 
   const open = useCallback((screen?: ScreenDetailed) => {
+    if (getSeminarHost()?.embedded === true) {
+      setEmbeddedAt(Date.now());
+      return true;
+    }
     // Some environments return `undefined` instead of `null`.
     const opened =
       window.open('', WINDOW_NAME, windowFeatures(screen)) ?? undefined;
@@ -127,19 +141,23 @@ export function usePresenterView(
   const close = useCallback(() => {
     audience?.window.close();
     setAudience(undefined);
+    setEmbeddedAt(undefined);
   }, [audience]);
 
+  const openedAt = audience?.openedAt ?? embeddedAt;
+  const active = openedAt !== undefined;
+
   const toggle = useCallback(() => {
-    if (audience === undefined) {
-      open();
-    } else {
+    if (active) {
       close();
+    } else {
+      open();
     }
-  }, [audience, open, close]);
+  }, [active, open, close]);
 
   // Tell the windows apart, e.g., when sharing one of them in a video call.
   useEffect(() => {
-    if (audience === undefined) {
+    if (!active) {
       return undefined;
     }
     const title = document.title;
@@ -147,7 +165,7 @@ export function usePresenterView(
     return () => {
       document.title = title;
     };
-  }, [audience, label]);
+  }, [active, label]);
 
   useEffect(() => {
     if (audience === undefined) {
@@ -176,5 +194,5 @@ export function usePresenterView(
     };
   }, [audience]);
 
-  return { audience, open, close, toggle };
+  return { active, openedAt, audience, open, close, toggle };
 }

@@ -24,7 +24,9 @@ deck. See the
 [`@seminar/cli` package](https://github.com/kris7t/seminar/tree/main/packages/cli#readme).
 
 To preview in a browser instead, run `npm run dev`, and open the address Vite
-prints.
+prints. The
+[VS Code extension](https://github.com/kris7t/seminar/tree/main/packages/vscode#readme)
+previews decks next to their editors.
 
 Navigate to the slide you want to edit. Change `decks/index.deck.mdx` and save
 it. With `@vitejs/plugin-react` enabled, Seminar keeps the current slide, open

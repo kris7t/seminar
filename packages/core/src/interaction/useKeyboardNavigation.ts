@@ -42,8 +42,8 @@ export interface KeyboardNavigationOptions {
    * @returns Whether Escape was handled.
    */
   onEscape: () => boolean;
-  /** Asks how to print the deck. */
-  onPrint: () => void;
+  /** Asks how to print the deck, if it can be. */
+  onPrint: (() => void) | undefined;
 }
 
 /**
@@ -177,6 +177,7 @@ export function useKeyboardNavigation(
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (
+        onPrint !== undefined &&
         !event.defaultPrevented &&
         (event.ctrlKey || event.metaKey) &&
         !event.altKey &&

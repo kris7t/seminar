@@ -10,7 +10,7 @@ import {
   type ScreenDetailed,
   type ScreenDetails,
 } from './screens.ts';
-import { useFullscreen } from './useFullscreen.ts';
+import { showAsFullscreen, useFullscreen } from './useFullscreen.ts';
 import type { PresenterView } from './usePresenterView.ts';
 
 export interface Presentation {
@@ -32,6 +32,8 @@ export interface Presentation {
   choose: (screen: ScreenDetailed) => void;
   /** Closes the choice of screens without starting the presentation. */
   cancel: () => void;
+  /** Whether the presentation fills the frame of an embedded deck. */
+  contained: boolean;
 }
 
 /**
@@ -69,6 +71,8 @@ async function screenChoice(details: ScreenDetails): Promise<ScreenChoice> {
  * presenter view, and this window stays as it is.
  *
  * Otherwise, the page is shown in full screen on the current screen.
+ *
+ * Embedded decks can do neither, so the presentation fills their frame.
  */
 export function usePresentation(presenterView: PresenterView): Presentation {
   const [screens, setScreens] = useState<ScreenChoice>();
@@ -103,11 +107,22 @@ export function usePresentation(presenterView: PresenterView): Presentation {
     };
   }, [details]);
 
-  const { audience, open, close } = presenterView;
+  const { active, open, close } = presenterView;
+  const [contained, setContained] = useState(false);
+  useEffect(() => {
+    showAsFullscreen(contained);
+    return () => {
+      showAsFullscreen(false);
+    };
+  }, [contained]);
+  // The presenter view replaces the presentation in the frame.
+  if (active && contained) {
+    setContained(false);
+  }
   // Tell the host when the presentation ends, in this window or in the
   // audience window.
   const fullscreen = useFullscreen();
-  const presenting = audience !== undefined || fullscreen;
+  const presenting = active || fullscreen;
   const wasPresentingRef = useRef(false);
   useEffect(() => {
     if (wasPresentingRef.current && !presenting) {
@@ -117,8 +132,12 @@ export function usePresentation(presenterView: PresenterView): Presentation {
   }, [presenting]);
 
   const toggle = useCallback(() => {
-    if (audience !== undefined) {
+    if (active) {
       close();
+      return;
+    }
+    if (getSeminarHost()?.embedded === true) {
+      setContained(!contained);
       return;
     }
     // Missing in environments without the Fullscreen API.
@@ -145,7 +164,7 @@ export function usePresentation(presenterView: PresenterView): Presentation {
         setDetails(details);
       })
       .catch(warnFailure);
-  }, [audience, close]);
+  }, [active, contained, close]);
 
   const choose = useCallback(
     (screen: ScreenDetailed) => {
@@ -181,5 +200,5 @@ export function usePresentation(presenterView: PresenterView): Presentation {
     getSeminarHost()?.presentationEnded?.();
   }, []);
 
-  return { toggle, screens, choose, cancel };
+  return { toggle, screens, choose, cancel, contained };
 }

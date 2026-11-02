@@ -24,15 +24,17 @@ import {
 } from 'vscode';
 
 import { findCli } from './cli.ts';
+import { DeckPreviews } from './previews.ts';
 
 const DECK_LANGUAGE = 'seminar-deck';
 
 let client: LanguageClient | undefined;
 
-/** Registers the command that runs `seminar command` on a deck in a task. */
-function registerDeckCommand(command: 'present' | 'preview'): Disposable {
+/** Registers the command that runs `seminar present` on a deck in a task. */
+function registerPresentCommand(): Disposable {
+  const command = 'present';
   return commands.registerCommand(
-    `seminar.${command}`,
+    'seminar.present',
     async (uri: Uri | undefined = window.activeTextEditor?.document.uri) => {
       if (uri === undefined) {
         return;
@@ -66,8 +68,8 @@ function registerDeckCommand(command: 'present' | 'preview'): Disposable {
 export async function activate(context: ExtensionContext) {
   // Before the language server, so that they work if it can't start.
   context.subscriptions.push(
-    registerDeckCommand('present'),
-    registerDeckCommand('preview'),
+    registerPresentCommand(),
+    new DeckPreviews(context),
   );
   // It provides the TypeScript that the language server loads.
   await extensions

@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import { Interrupted, run } from './cli.ts';
 
+// Don't outlive the program that started us with a channel, e.g., an editor.
+process.once('disconnect', () => {
+  process.kill(process.pid, 'SIGTERM');
+});
+
 try {
   await run(process.argv.slice(2));
 } catch (error) {

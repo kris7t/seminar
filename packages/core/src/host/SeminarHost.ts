@@ -41,6 +41,13 @@ export interface SeminarHost {
    */
   readonly preview?: boolean | undefined;
   /**
+   * Whether the deck is in a frame of the application that can't open windows,
+   * go full screen, or print, e.g., in a panel of an editor. Frames can't tell
+   * ahead of time. The presentation fills the frame instead, the presenter view
+   * has no audience window, and printing isn't offered.
+   */
+  readonly embedded?: boolean | undefined;
+  /**
    * Called when the presenter stops the presentation, e.g., when the slides
    * leave full screen, or the presenter view closes, or cancels choosing the
    * screen to start it on, so that the application can quit afterwards.

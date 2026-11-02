@@ -1,14 +1,22 @@
 // Runs the dev server of Vite for the Vite project in the working directory,
-// in a process started by `serveDeck`, and sends it the URL of the deck.
+// in a process started by `serveDeck` or `serveProject`, and sends it the URL
+// of the dev server.
 import type { AddressInfo } from 'node:net';
 import { pathToFileURL } from 'node:url';
 
-import { pagePath, type DevServerMessage } from './vite.ts';
+import { devServerPlugin, type DevServerPlugin } from './devServerPlugin.ts';
+import { ALLOW_ANY_HOST, type DevServerMessage } from './vite.ts';
 
 /** What we need from the API of Vite. */
 interface Vite {
   createServer: (config: {
-    server: { host: string; port: number; open: boolean };
+    server: {
+      host: string;
+      port: number;
+      open: boolean;
+      allowedHosts?: true;
+    };
+    plugins: DevServerPlugin[];
     logLevel: 'warn';
     clearScreen: boolean;
   }) => Promise<{
@@ -18,7 +26,11 @@ interface Vite {
   }>;
 }
 
-const [vite = '', deck = ''] = process.argv.slice(2);
+const [vite = '', ...args] = process.argv.slice(2);
+
+function send(message: DevServerMessage): void {
+  process.send?.(message);
+}
 
 // Don't outlive the command, even if it couldn't stop us.
 process.once('disconnect', () => {
@@ -27,8 +39,18 @@ process.once('disconnect', () => {
 
 const { createServer } = (await import(pathToFileURL(vite).href)) as Vite;
 const server = await createServer({
-  // Port 0 for any free port.
-  server: { host: '127.0.0.1', port: 0, open: false },
+  server: {
+    // Port 0 for any free port.
+    host: '127.0.0.1',
+    port: 0,
+    open: false,
+    ...(args.includes(ALLOW_ANY_HOST) ? { allowedHosts: true } : {}),
+  },
+  plugins: [
+    devServerPlugin((count) => {
+      send({ type: 'pages', count });
+    }),
+  ],
   logLevel: 'warn',
   clearScreen: false,
 });
@@ -37,12 +59,8 @@ const address = server.httpServer?.address();
 if (address === null || address === undefined || typeof address === 'string') {
   throw new Error('The dev server of Vite has no port.');
 }
-process.send?.({
-  url: `http://127.0.0.1:${String(address.port)}/${pagePath(
-    server.config.root,
-    deck,
-  )
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')}`,
-} satisfies DevServerMessage);
+send({
+  type: 'ready',
+  url: `http://127.0.0.1:${String(address.port)}/`,
+  root: server.config.root,
+});

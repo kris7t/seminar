@@ -86,7 +86,7 @@ export interface PresenterToolbarProps {
   /** How the pointer of the presenter is shown to the audience. */
   pointerMode: PointerMode;
   /** Shows or hides the pointer to the audience. */
-  onMirrorPointer: () => void;
+  onMirrorPointer: (() => void) | undefined;
   /** Turns the pointer into a laser pointer, or back. */
   onLaserPointer: () => void;
   /** Whether the menu is open. */
@@ -152,13 +152,15 @@ export function PresenterToolbar({
           setNotesOnly(!notesOnly);
         }}
       />
-      <ToolButton
-        label={t('showPointer')}
-        shortcut="M"
-        icon={MouseIcon}
-        pressed={pointerMode === 'mirror'}
-        onClick={onMirrorPointer}
-      />
+      {onMirrorPointer !== undefined && (
+        <ToolButton
+          label={t('showPointer')}
+          shortcut="M"
+          icon={MouseIcon}
+          pressed={pointerMode === 'mirror'}
+          onClick={onMirrorPointer}
+        />
+      )}
       <ToolButton
         label={t('laserPointer')}
         shortcut="L"

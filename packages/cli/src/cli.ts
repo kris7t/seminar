@@ -14,8 +14,12 @@ import {
   findSources,
   pagePath,
   serveDeck,
+  serveProject,
   type BuildJob,
   type DevServer,
+  type DevServerMessage,
+  type ProjectServeJob,
+  type ProjectServer,
   type ServeJob,
 } from './vite.ts';
 import { findDecks, type DeckPage } from './decks.ts';
@@ -48,6 +52,8 @@ Commands:
                       a built deck
   preview [path]      Preview a deck of the project with the dev server of
                       Vite, updating it as you edit it
+  dev                 Serve all decks of the project with the dev server of
+                      Vite, without showing them
   pdf [paths...]      Save built decks as PDF files (default: dist)
   install-electron    Download the Electron that Seminar runs, e.g., in CI
 
@@ -59,7 +65,7 @@ audience, and quits once you stop it.
 
 preview chooses the deck like present, but serves it with the dev server
 of Vite instead of building it, and doesn't start the presentation until
-you press P.
+you press P. With --url, it opens that page of a running dev server instead.
 
 Options of present and preview:
   --present                     Start the presentation right away when
@@ -68,6 +74,13 @@ Options of present and preview:
                                 or cancel choosing its screen
   --quit-at-end                 Quit then, also when previewing, which
                                 starts the presentation right away
+  --url <url>                   Preview this page of a dev server, e.g., of
+                                seminar dev
+
+Options of dev:
+  --allow-any-host              Answer requests for any host name, for ports
+                                forwarded from an address that isn't local.
+                                Other websites may then read the dev server
 
 Options of pdf:
   --layout <slides|notes|grid>  Slides, slides with notes, or several slides
@@ -146,6 +159,19 @@ export interface RunOptions {
    * `signal` is aborted.
    */
   serve?: (job: ServeJob, signal: AbortSignal) => Promise<DevServer>;
+  /**
+   * Starts the dev server of Vite for the project of `job`, stopping it if
+   * `signal` is aborted.
+   */
+  serveAll?: (
+    job: ProjectServeJob,
+    signal: AbortSignal,
+  ) => Promise<ProjectServer>;
+  /**
+   * Tells the process that started the command about its dev server, e.g., an
+   * editor, if any.
+   */
+  notify?: (message: DevServerMessage) => void;
   /**
    * Presents or previews the deck of `job`, calling `output` with each
    * message, and stopping if `signal` is aborted.
@@ -386,6 +412,8 @@ export async function run(
     },
     build = buildDeck,
     serve = serveDeck,
+    serveAll = serveProject,
+    notify = (message) => process.send?.(message),
     chooseDeck = chooseInTerminal,
   }: RunOptions = {},
 ): Promise<void> {
@@ -403,6 +431,8 @@ export async function run(
       'out-dir': { type: 'string' },
       present: { type: 'boolean' },
       'quit-at-end': { type: 'boolean' },
+      url: { type: 'string' },
+      'allow-any-host': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
       version: { type: 'boolean', short: 'v' },
     },
@@ -535,6 +565,16 @@ export async function run(
         throw new Error('Choose one deck to preview.');
       }
       const [input] = paths;
+      const { url } = values;
+      if (url !== undefined) {
+        if (input !== undefined) {
+          throw new Error('Choose either a deck or --url to preview.');
+        }
+        await interruptible((signal) =>
+          present({ url, present: presentNow, quitAtEnd }, output, signal),
+        );
+        return;
+      }
       if (input !== undefined && !input.endsWith(DECK_SUFFIX)) {
         throw new Error(
           `Choose a ${DECK_SUFFIX} file to preview. To present a built deck, use seminar present ${input}.`,
@@ -553,6 +593,38 @@ export async function run(
           );
         } finally {
           await server.close();
+        }
+      });
+      return;
+    }
+    case 'dev': {
+      if (paths.length > 0) {
+        throw new Error(
+          'dev serves all decks of the project in this directory, and takes no paths.',
+        );
+      }
+      const project = findProject(cwd);
+      if (project === undefined) {
+        throw new Error(
+          'Found no Vite project here, with a Vite config, e.g., vite.config.ts.',
+        );
+      }
+      await interruptible(async (signal) => {
+        const server = await serveAll(
+          {
+            project,
+            allowAnyHost: values['allow-any-host'] ?? false,
+            onPages: (count) => {
+              notify({ type: 'pages', count });
+            },
+          },
+          signal,
+        );
+        output(`Serving the decks of ${project} at ${server.url}`);
+        notify({ type: 'ready', url: server.url, root: server.root });
+        await server.exited;
+        if (!signal.aborted) {
+          throw new Error('The dev server of Vite stopped.');
         }
       });
       return;

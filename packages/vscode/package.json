@@ -1,7 +1,7 @@
 {
   "name": "seminar-vscode",
   "displayName": "Seminar",
-  "description": "Language support for Seminar decks: syntax highlighting and IntelliSense for .deck.mdx files, and buttons to present and preview them",
+  "description": "Language support for Seminar decks: syntax highlighting and IntelliSense for .deck.mdx files, previews in the editor, and buttons to present and preview them",
   "version": "0.2.1",
   "private": true,
   "publisher": "kris7t",
@@ -36,6 +36,9 @@
     },
     "virtualWorkspaces": false
   },
+  "activationEvents": [
+    "onWebviewPanel:seminar.preview"
+  ],
   "contributes": {
     "commands": [
       {
@@ -49,16 +52,34 @@
         "title": "Preview Deck",
         "category": "Seminar",
         "icon": "$(open-preview)"
+      },
+      {
+        "command": "seminar.previewInEditor",
+        "title": "Preview Deck in the Editor",
+        "category": "Seminar"
+      },
+      {
+        "command": "seminar.previewInWindow",
+        "title": "Preview Deck in a Window",
+        "category": "Seminar"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "seminar.present",
-          "when": "editorLangId == seminar-deck && resourceScheme == file"
+          "when": "editorLangId == seminar-deck && resourceScheme == file && !remoteName"
         },
         {
           "command": "seminar.preview",
+          "when": "editorLangId == seminar-deck && resourceScheme == file"
+        },
+        {
+          "command": "seminar.previewInEditor",
+          "when": "editorLangId == seminar-deck && resourceScheme == file"
+        },
+        {
+          "command": "seminar.previewInWindow",
           "when": "editorLangId == seminar-deck && resourceScheme == file"
         }
       ],
@@ -70,10 +91,28 @@
         },
         {
           "command": "seminar.present",
-          "when": "resourceLangId == seminar-deck && resourceScheme == file",
+          "when": "resourceLangId == seminar-deck && resourceScheme == file && !remoteName",
           "group": "navigation@2"
         }
       ]
+    },
+    "configuration": {
+      "title": "Seminar",
+      "properties": {
+        "seminar.preview.location": {
+          "type": "string",
+          "enum": [
+            "editor",
+            "window"
+          ],
+          "enumDescriptions": [
+            "In a panel of the editor, where the deck can't open windows, go full screen, or print.",
+            "In a window of its own, or in your browser in a remote workspace."
+          ],
+          "default": "editor",
+          "description": "Where the Preview Deck button shows a deck."
+        }
+      }
     },
     "semanticTokenTypes": [
       {

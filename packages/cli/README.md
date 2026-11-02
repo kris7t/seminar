@@ -65,6 +65,20 @@ like `seminar present`. With `--no-quit-at-end`, it stays open instead.
 `--quit-at-end` makes it start presenting right away and quit at the end,
 too.
 
+`seminar preview --url <url>` previews a page of a dev server that is already
+running, like that of `seminar dev`.
+
+## Serving decks
+
+`seminar dev` runs the dev server of Vite for all decks of the project on a free
+port, without showing them, and prints its address. The VS Code extension runs
+it, so that previews of decks can share a dev server.
+
+The server only listens on the local machine. With `--allow-any-host`, it also
+answers requests for other host names, as forwarded ports may need. This turns
+off the protection of Vite against DNS rebinding, which lets other websites read
+the dev server.
+
 ## Saving PDFs
 
 `seminar pdf` saves each deck in `dist/` as a PDF next to it, like

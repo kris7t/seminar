@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { BuildJob } from './vite.ts';
+import type { BuildJob, ProjectServeJob } from './vite.ts';
 import { Interrupted, run } from './cli.ts';
 import type { BuiltDeck, PdfJob, PresentJob } from './job.ts';
 
@@ -570,6 +570,20 @@ describe('seminar preview', () => {
     );
   });
 
+  it('previews a page of a running dev server', async () => {
+    const url = 'http://127.0.0.1:1234/talk.html';
+    expect(await preview(['preview', '--url', url])).toEqual({
+      job: { url, present: false, quitAtEnd: false },
+      closed: false,
+    });
+  });
+
+  it('previews either a deck or a page of a dev server', async () => {
+    await expect(
+      preview(['preview', 'talk.deck.mdx', '--url', 'http://127.0.0.1:1234/']),
+    ).rejects.toThrow('Choose either a deck or --url to preview.');
+  });
+
   it('stops the dev server on a signal', async () => {
     await page('vite.config.ts', '');
     await page('decks/talk.deck.mdx', '# Talk');
@@ -592,5 +606,75 @@ describe('seminar preview', () => {
     });
     await expect(previewing).rejects.toHaveProperty('signal', 'SIGINT');
     expect(closed).toBe(true);
+  });
+});
+
+describe('seminar dev', () => {
+  /** A dev server that keeps running until `signal` is aborted. */
+  function fakeServer(signal: AbortSignal) {
+    return {
+      url: 'http://127.0.0.1:1234/',
+      root: path.join(directory, 'decks'),
+      exited: aborted(signal),
+      close: () => Promise.resolve(),
+    };
+  }
+
+  it('serves the project, and tells its parent until stopped', async () => {
+    await page('vite.config.ts', '');
+    await mkdir(path.join(directory, 'decks/talks'), { recursive: true });
+    const messages: unknown[] = [];
+    const jobs: ProjectServeJob[] = [];
+    const running = run(['dev', '--allow-any-host'], {
+      cwd: path.join(directory, 'decks/talks'),
+      output: () => undefined,
+      serveAll: (job, signal) => {
+        jobs.push(job);
+        job.onPages?.(1);
+        setTimeout(() => process.emit('SIGTERM', 'SIGTERM'));
+        return Promise.resolve(fakeServer(signal));
+      },
+      notify: (message) => messages.push(message),
+    });
+    await expect(running).rejects.toHaveProperty('signal', 'SIGTERM');
+    expect(jobs).toMatchObject([{ project: directory, allowAnyHost: true }]);
+    expect(messages).toEqual([
+      { type: 'pages', count: 1 },
+      {
+        type: 'ready',
+        url: 'http://127.0.0.1:1234/',
+        root: path.join(directory, 'decks'),
+      },
+    ]);
+  });
+
+  it('fails if the dev server stops by itself', async () => {
+    await page('vite.config.ts', '');
+    await expect(
+      run(['dev'], {
+        cwd: directory,
+        output: () => undefined,
+        notify: () => undefined,
+        serveAll: () =>
+          Promise.resolve({
+            url: 'http://127.0.0.1:1234/',
+            root: directory,
+            exited: Promise.resolve(),
+            close: () => Promise.resolve(),
+          }),
+      }),
+    ).rejects.toThrow('The dev server of Vite stopped.');
+  });
+
+  it('needs a Vite project, and takes no paths', async () => {
+    await expect(
+      run(['dev'], { cwd: directory, output: () => undefined }),
+    ).rejects.toThrow('Found no Vite project here');
+    await expect(
+      run(['dev', 'talk.deck.mdx'], {
+        cwd: directory,
+        output: () => undefined,
+      }),
+    ).rejects.toThrow('takes no paths');
   });
 });

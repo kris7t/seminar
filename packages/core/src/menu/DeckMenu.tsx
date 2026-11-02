@@ -56,7 +56,8 @@ export interface PresenterSettings {
   notesOnly: boolean;
   onFocusNotes: () => void;
   pointerMode: PointerMode;
-  onMirrorPointer: () => void;
+  /** Shows or hides the pointer to the audience, if there's an audience. */
+  onMirrorPointer: (() => void) | undefined;
   onLaserPointer: () => void;
   /** Resets the time elapsed. */
   onResetTimer: () => void;
@@ -77,7 +78,8 @@ export interface DeckMenuProps {
   /** Settings of the presenter view, if it's open. */
   presenterSettings?: PresenterSettings | undefined;
   /** Asks how to print the deck. */
-  onPrint: () => void;
+  /** Asks how to print the deck, if it can be. */
+  onPrint: (() => void) | undefined;
 }
 
 interface Item {
@@ -345,13 +347,17 @@ export function DeckMenu({
               action: presenterSettings.onFocusNotes,
               checked: presenterSettings.notesOnly,
             },
-            {
-              label: t('showPointer'),
-              icon: MouseIcon,
-              shortcut: 'M',
-              action: presenterSettings.onMirrorPointer,
-              checked: presenterSettings.pointerMode === 'mirror',
-            },
+            ...(presenterSettings.onMirrorPointer === undefined
+              ? []
+              : [
+                  {
+                    label: t('showPointer'),
+                    icon: MouseIcon,
+                    shortcut: 'M',
+                    action: presenterSettings.onMirrorPointer,
+                    checked: presenterSettings.pointerMode === 'mirror',
+                  },
+                ]),
             {
               label: t('laserPointer'),
               icon: FlareIcon,
@@ -367,14 +373,18 @@ export function DeckMenu({
             },
           ],
         ]),
-    [
-      {
-        label: t('printEllipsis'),
-        icon: PrintIcon,
-        shortcut: 'Ctrl+P',
-        action: onPrint,
-      },
-    ],
+    ...(onPrint === undefined
+      ? []
+      : [
+          [
+            {
+              label: t('printEllipsis'),
+              icon: PrintIcon,
+              shortcut: 'Ctrl+P',
+              action: onPrint,
+            },
+          ],
+        ]),
     [
       {
         label: t('textSelection'),

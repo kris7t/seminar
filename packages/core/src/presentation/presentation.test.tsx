@@ -769,6 +769,125 @@ describe('the presenter view', () => {
   });
 });
 
+describe('an embedded deck', () => {
+  let open: ReturnType<typeof vi.spyOn>;
+  let requestFullscreen: ReturnType<typeof vi.fn>;
+  let getScreenDetails: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    window.history.replaceState(null, '', '#');
+    const host: SeminarHost = { embedded: true };
+    Object.assign(window, { seminarHost: host });
+    open = vi.spyOn(window, 'open').mockReturnValue(null);
+    requestFullscreen = vi.fn(() => Promise.resolve());
+    getScreenDetails = vi.fn();
+    stub('requestFullscreen', document.documentElement, requestFullscreen);
+    stub('getScreenDetails', window, getScreenDetails);
+    stub('isExtended', window.screen, true);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    for (const [name, target] of [
+      ['requestFullscreen', document.documentElement],
+      ['isExtended', window.screen],
+      ['getScreenDetails', window],
+      ['seminarHost', window],
+    ] as const) {
+      Reflect.deleteProperty(target, name);
+    }
+  });
+
+  function renderDeck() {
+    render(
+      <Deck defaultMirrorPointer>
+        <Slide title="First">
+          <Notes>Some notes</Notes>
+        </Slide>
+      </Deck>,
+    );
+  }
+
+  it('fills its frame instead of asking for screens or full screen', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    expect(screen.queryByRole('button', { name: 'Menu' })).not.toBeNull();
+    expect(screen.queryByLabelText('Presenter notes')).not.toBeNull();
+    await user.keyboard('p');
+    expect(screen.queryByRole('button', { name: 'Menu' })).toBeNull();
+    expect(screen.queryByLabelText('Presenter notes')).toBeNull();
+    expect(requestFullscreen).not.toHaveBeenCalled();
+    expect(getScreenDetails).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it.each(['p', '{Escape}'])('stops presenting with %s', async (key) => {
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    await user.keyboard(key);
+    expect(screen.queryByRole('button', { name: 'Menu' })).not.toBeNull();
+  });
+
+  it('forgets presenting when the deck goes away', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    cleanup();
+    renderDeck();
+    expect(screen.queryByRole('button', { name: 'Menu' })).not.toBeNull();
+  });
+
+  it('has a presenter view without opening a window', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('{Shift>}P{/Shift}');
+    expect(open).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('toolbar', { name: 'Presenter controls' }),
+    ).not.toBeNull();
+    await user.keyboard('{Escape}');
+    expect(
+      screen.queryByRole('toolbar', { name: 'Presenter controls' }),
+    ).toBeNull();
+  });
+
+  it('replaces the presentation with the presenter view', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('p');
+    await user.keyboard('{Shift>}P{/Shift}');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('button', { name: 'Menu' })).not.toBeNull();
+  });
+
+  it('offers neither showing the pointer to the audience nor printing', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    await user.keyboard('{Shift>}P{/Shift}');
+    expect(
+      screen.queryByRole('button', { name: 'Show pointer to the audience' }),
+    ).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    expect(
+      screen.queryByRole('menuitemcheckbox', {
+        name: 'Show pointer to the audience',
+      }),
+    ).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: /^Print/ })).toBeNull();
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: 'Laser pointer' }),
+    ).not.toBeNull();
+  });
+
+  it('leaves Ctrl+P to the application', () => {
+    renderDeck();
+    expect(fireEvent.keyDown(window, { key: 'p', ctrlKey: true })).toBe(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
 describe('the presenter toolbar', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '#');

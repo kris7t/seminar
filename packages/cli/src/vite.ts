@@ -11,6 +11,9 @@ export const DECK_SUFFIX = '.deck.mdx';
 /** The environment variable that makes the Vite plugin build only a deck. */
 const DECK_ENV = 'SEMINAR_DECK';
 
+/** The argument that makes the script of the dev server allow any host. */
+export const ALLOW_ANY_HOST = '--allow-any-host';
+
 /** Names of the config files that Vite looks for, in its order. */
 const VITE_CONFIGS = [
   'vite.config.js',
@@ -223,28 +226,69 @@ export interface DevServer {
   close: () => Promise<void>;
 }
 
-/** What the script of the dev server sends once it serves the deck. */
-export interface DevServerMessage {
-  url: string;
+/** A Vite project to serve all decks of. */
+export interface ProjectServeJob {
+  /** Directory of the Vite project, with its config. */
+  project: string;
+  /**
+   * Whether to answer requests for any host name, for forwarded ports whose
+   * address isn't local. It turns off the protection of Vite against DNS
+   * rebinding.
+   */
+  allowAnyHost: boolean;
+  /** Called with the number of pages connected to the dev server. */
+  onPages?: (count: number) => void;
 }
 
+/** A running dev server of Vite for all decks of a project. */
+export interface ProjectServer {
+  /** URL of the root of the dev server. */
+  url: string;
+  /** Path of the root directory of the Vite project, as its config sets it. */
+  root: string;
+  /** Resolves once the dev server has exited. */
+  exited: Promise<void>;
+  /** Stops the dev server, and resolves once it has exited. */
+  close: () => Promise<void>;
+}
+
+/** What the script of the dev server sends. */
+export type DevServerMessage =
+  /** Once it serves the decks. */
+  | { type: 'ready'; url: string; root: string }
+  /** When pages connect to it or leave. */
+  | { type: 'pages'; count: number };
+
 /**
- * Starts the dev server of Vite for the deck of `job` on a free port, in a
- * process of its own, which shows its warnings and errors in the terminal.
- * Stops it when `abortSignal` is aborted.
+ * Starts the dev server of Vite on a free port, in a process of its own, which
+ * shows its warnings and errors in the terminal. Stops it when `abortSignal`
+ * is aborted.
  */
-export function serveDeck(
-  { project, deck }: ServeJob,
+function startDevServer(
+  project: string,
+  {
+    env,
+    args,
+    onPages,
+  }: {
+    env: NodeJS.ProcessEnv;
+    args: string[];
+    onPages?: ((count: number) => void) | undefined;
+  },
   abortSignal?: AbortSignal,
-): Promise<DevServer> {
+): Promise<ProjectServer> {
   abortSignal?.throwIfAborted();
   const vite = resolveVite(project, 'vite');
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [script('devServer'), vite, deck], {
-      cwd: project,
-      env: { ...process.env, [DECK_ENV]: deck },
-      stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
-    });
+    const child = spawn(
+      process.execPath,
+      [script('devServer'), vite, ...args],
+      {
+        cwd: project,
+        env,
+        stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+      },
+    );
     const stop = () => child.kill();
     abortSignal?.addEventListener('abort', stop, { once: true });
     const exited = new Promise<void>((resolve) => {
@@ -254,9 +298,15 @@ export function serveDeck(
       });
     });
     child.once('error', reject);
-    child.once('message', ({ url }: DevServerMessage) => {
+    child.on('message', (message: DevServerMessage) => {
+      if (message.type === 'pages') {
+        onPages?.(message.count);
+        return;
+      }
       resolve({
-        url,
+        url: message.url,
+        root: message.root,
+        exited,
         close: async () => {
           stop();
           await exited;
@@ -274,4 +324,43 @@ export function serveDeck(
       );
     });
   });
+}
+
+/**
+ * Starts the dev server of Vite for the deck of `job` on a free port, in a
+ * process of its own, which shows its warnings and errors in the terminal.
+ * Stops it when `abortSignal` is aborted.
+ */
+export async function serveDeck(
+  { project, deck }: ServeJob,
+  abortSignal?: AbortSignal,
+): Promise<DevServer> {
+  const { url, root, close } = await startDevServer(
+    project,
+    { env: { ...process.env, [DECK_ENV]: deck }, args: [] },
+    abortSignal,
+  );
+  return {
+    url: `${url}${pagePath(root, deck).split('/').map(encodeURIComponent).join('/')}`,
+    close,
+  };
+}
+
+/**
+ * Starts the dev server of Vite for all decks of the project of `job` on a
+ * free port, in a process of its own, which shows its warnings and errors in
+ * the terminal. Stops it when `abortSignal` is aborted.
+ */
+export function serveProject(
+  { project, allowAnyHost, onPages }: ProjectServeJob,
+  abortSignal?: AbortSignal,
+): Promise<ProjectServer> {
+  const env = { ...process.env };
+  // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+  delete env[DECK_ENV];
+  return startDevServer(
+    project,
+    { env, args: allowAnyHost ? [ALLOW_ANY_HOST] : [], onPages },
+    abortSignal,
+  );
 }
