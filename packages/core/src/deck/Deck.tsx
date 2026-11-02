@@ -489,8 +489,21 @@ function InteractiveDeck({
     goTo,
     firstSlideIndex,
   ]);
-  useEditorSync(slideIds, slideSources, slideIndex, (index) => {
-    goTo(index, 'restore');
+  useEditorSync({
+    slideIds,
+    slideSources,
+    slideIndex,
+    toc,
+    stepStore,
+    spares,
+    recapOf,
+    hasSteps,
+    hasState,
+    stateChanged,
+    goToSlide: (index) => {
+      goTo(index, 'restore');
+    },
+    resetSlide,
   });
   const presenterView = usePresenterView(t('presenterView'));
   const presenting = presenterView.active;

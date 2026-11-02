@@ -131,6 +131,30 @@ describe('devServerPlugin', () => {
     expect(sender.received).toEqual([]);
   });
 
+  it('tells when the last page of a deck closes', async () => {
+    const one = await connectPage();
+    const two = await connectPage();
+    const message = { page: '/talk.html', event: 'slides', data: 1 };
+    one.send(message);
+    two.send(message);
+    await vi.waitFor(() => {
+      expect(onChannel).toHaveBeenCalledTimes(2);
+    });
+    one.socket.close();
+    await vi.waitFor(() => {
+      expect(onPages).toHaveBeenLastCalledWith(1);
+    });
+    expect(onChannel).toHaveBeenCalledTimes(2);
+    two.socket.close();
+    await vi.waitFor(() => {
+      expect(onChannel).toHaveBeenLastCalledWith({
+        page: '/talk.html',
+        event: 'pageClosed',
+        data: { version: 1 },
+      });
+    });
+  });
+
   it('sends messages of the editor to all pages', async () => {
     const page = await connectPage();
     const message = { page: '/talk.html', event: 'goToSlide', data: 1 };

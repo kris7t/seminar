@@ -86,6 +86,10 @@
         {
           "command": "seminar.previewInWindow",
           "when": "editorLangId == seminar-deck && resourceScheme == file"
+        },
+        {
+          "command": "seminar.showDevServerOutput",
+          "when": "seminar.deckOpen"
         }
       ],
       "editor/title": [
@@ -98,6 +102,31 @@
           "command": "seminar.present",
           "when": "resourceLangId == seminar-deck && resourceScheme == file && !remoteName",
           "group": "navigation@2"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "seminar",
+          "title": "Seminar",
+          "icon": "assets/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "seminar": [
+        {
+          "type": "webview",
+          "id": "seminar.contents",
+          "name": "Contents",
+          "when": "seminar.deckOpen"
+        },
+        {
+          "type": "webview",
+          "id": "seminar.steps",
+          "name": "Steps",
+          "when": "seminar.deckOpen"
         }
       ]
     },

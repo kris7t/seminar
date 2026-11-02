@@ -21,7 +21,8 @@ import {
 } from 'vscode';
 
 import { deckPage, findCli, findProject } from './cli.ts';
-import { DeckSync } from './deckSync.ts';
+import { deckOfUri, DeckSync, PREVIEW_VIEW_TYPE } from './deckSync.ts';
+import { DeckViews } from './deckViews.ts';
 import {
   DevServers,
   runSeminarDev,
@@ -32,8 +33,6 @@ import {
   previewHtml,
   type PreviewContent,
 } from './previewPage.ts';
-
-const VIEW_TYPE = 'seminar.preview';
 
 const CLI_MISSING =
   'Install @seminar/cli in the project of this deck to preview it, e.g., with npm install --save-dev @seminar/cli.';
@@ -69,6 +68,10 @@ export class DeckPreviews implements Disposable {
     }
     return runSeminarDev(cli, project, {
       ...events,
+      onExit: () => {
+        this.#sync.serverStopped(project);
+        events.onExit();
+      },
       onMessage: (message, root) => {
         this.#sync.receive(project, root, message);
       },
@@ -99,9 +102,7 @@ export class DeckPreviews implements Disposable {
     ): Disposable =>
       commands.registerCommand(
         name,
-        async (
-          uri: Uri | undefined = window.activeTextEditor?.document.uri,
-        ) => {
+        async (uri: Uri | undefined = this.#deckInFront()) => {
           if (uri !== undefined) {
             await workspace.save(uri);
             await preview(uri);
@@ -110,6 +111,7 @@ export class DeckPreviews implements Disposable {
       );
     this.#disposables = [
       this.#output,
+      new DeckViews(this.#sync),
       this.#sync,
       command('seminar.preview', async (uri) => {
         if (
@@ -128,7 +130,7 @@ export class DeckPreviews implements Disposable {
       commands.registerCommand('seminar.showDevServerOutput', () => {
         this.#output.show();
       }),
-      window.registerWebviewPanelSerializer(VIEW_TYPE, {
+      window.registerWebviewPanelSerializer(PREVIEW_VIEW_TYPE, {
         deserializeWebviewPanel: (
           panel,
           state: { deck?: string } | undefined,
@@ -149,6 +151,17 @@ export class DeckPreviews implements Disposable {
       disposable.dispose();
     }
     this.#servers.dispose();
+  }
+
+  /** Returns the deck that commands without a file are for, if any. */
+  #deckInFront(): Uri | undefined {
+    const editor = window.activeTextEditor?.document.uri;
+    const path = this.#sync.activePath;
+    return editor !== undefined && deckOfUri(editor) !== undefined
+      ? editor
+      : path === undefined
+        ? undefined
+        : Uri.file(path);
   }
 
   /** Returns a lease of the dev server of `deck`, or says why it can't. */
@@ -181,7 +194,7 @@ export class DeckPreviews implements Disposable {
     }
     this.#attach(
       window.createWebviewPanel(
-        VIEW_TYPE,
+        PREVIEW_VIEW_TYPE,
         '',
         { viewColumn: ViewColumn.Beside, preserveFocus: true },
         // Hiding the panel shouldn't lose the place in the deck.
@@ -208,6 +221,12 @@ export class DeckPreviews implements Disposable {
         randomBytes(16).toString('hex'),
       );
     };
+    this.#sync.setActive(deck);
+    panel.onDidChangeViewState(({ webviewPanel }) => {
+      if (webviewPanel.active) {
+        this.#sync.setActive(deck);
+      }
+    });
     panel.onDidDispose(() => {
       preview.disposed = true;
       lease?.release();

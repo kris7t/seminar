@@ -68,6 +68,11 @@ slide. Editors scroll to the slide that a preview goes to, and highlight its
 start, without moving the cursor. `seminar.preview.sync` turns either off, or
 both.
 
+The Seminar sidebar shows the table of contents of a deck and the steps of its
+slide like the sidebar of the deck does, and goes to what you click. It needs a
+preview, since only that knows the steps, and it's there while a deck is open
+in an editor or a preview.
+
 Previews in a project share a dev server, which stops a minute after the last
 preview closes. Build errors, and the errors and warnings of the pages of decks,
 are in the `Seminar Dev Server` output channel, which opens with the first of

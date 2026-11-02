@@ -1,5 +1,9 @@
 import {
+  commands,
+  EventEmitter,
   Range,
+  TabInputText,
+  TabInputWebview,
   TextEditorRevealType,
   TextEditorSelectionChangeKind,
   ThemeColor,
@@ -11,6 +15,7 @@ import {
 } from 'vscode';
 
 import { deckOfPage } from './cli.ts';
+import type { DeckContents, SlideSteps } from './sidebarPage.ts';
 import type { ChannelMessage } from './devServers.ts';
 import { shiftTable, slideAtLine, type SlideSource } from './slideTable.ts';
 
@@ -23,13 +28,27 @@ const CURSOR_DELAY = 150;
 /** How long the start of the shown slide stays highlighted. */
 const HIGHLIGHT_TIME = 1000;
 
+/** The view type of preview panels, which tabs have with a prefix. */
+export const PREVIEW_VIEW_TYPE = 'seminar.preview';
+
 /** What is known of the previews of a deck. */
-interface SyncedDeck {
+export interface SyncedDeck {
   project: string;
   page: string;
+  /** Whether a preview of the deck is open. */
+  live: boolean;
   table: SlideSource[];
   /** The slide that the previews show, if known. */
   current: number | undefined;
+  contents: DeckContents | undefined;
+  steps: SlideSteps | undefined;
+}
+
+/** Returns the path of the deck at `uri`, if it's a deck. */
+export function deckOfUri(uri: Uri): string | undefined {
+  return uri.scheme === 'file' && uri.fsPath.endsWith('.deck.mdx')
+    ? uri.fsPath
+    : undefined;
 }
 
 function syncMode(deck: string): string | undefined {
@@ -46,14 +65,31 @@ export class DeckSync implements Disposable {
     isWholeLine: true,
     backgroundColor: new ThemeColor('editor.findMatchHighlightBackground'),
   });
+  readonly #changed = new EventEmitter<undefined>();
+  /** Fires when what is known of the active deck may have changed. */
+  readonly onDidChange = this.#changed.event;
   readonly #disposables: Disposable[];
+  /** The deck that was last in front. */
+  #active: string | undefined;
   #cursorTimer: ReturnType<typeof setTimeout> | undefined;
   #highlightTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(send: (project: string, message: ChannelMessage) => void) {
     this.#send = send;
+    const activeEditor = window.activeTextEditor;
+    this.#active = activeEditor && deckOfUri(activeEditor.document.uri);
     this.#disposables = [
       this.#highlight,
+      this.#changed,
+      window.onDidChangeActiveTextEditor((editor) => {
+        const deck = editor && deckOfUri(editor.document.uri);
+        if (deck !== undefined) {
+          this.setActive(deck);
+        }
+      }),
+      window.tabGroups.onDidChangeTabs(() => {
+        this.#update();
+      }),
       workspace.onDidChangeTextDocument(({ document, contentChanges }) => {
         const synced = this.#decks.get(document.uri.fsPath);
         if (synced !== undefined) {
@@ -80,6 +116,7 @@ export class DeckSync implements Disposable {
         }
       }),
     ];
+    this.#update();
   }
 
   dispose(): void {
@@ -90,6 +127,73 @@ export class DeckSync implements Disposable {
     }
   }
 
+  /** The path of the deck that the sidebar shows, if any. */
+  get activePath(): string | undefined {
+    const decks = this.#openDecks();
+    if (this.#active !== undefined && decks.has(this.#active)) {
+      return this.#active;
+    }
+    const [first] = decks;
+    return first;
+  }
+
+  /** What is known of the previews of the deck that the sidebar shows. */
+  get activeDeck(): SyncedDeck | undefined {
+    const path = this.activePath;
+    return path === undefined ? undefined : this.#decks.get(path);
+  }
+
+  /** Makes `deck` the one in front. */
+  setActive(deck: string): void {
+    this.#active = deck;
+    this.#update();
+  }
+
+  /** Forgets the previews in `project`, whose dev server has stopped. */
+  serverStopped(project: string): void {
+    for (const synced of this.#decks.values()) {
+      if (synced.project === project) {
+        this.#close(synced);
+      }
+    }
+    this.#update();
+  }
+
+  /** Moves the previews of the active deck to a slide. */
+  goToSlide(slideIndex: number): void {
+    const deck = this.activePath;
+    const synced = this.activeDeck;
+    if (deck !== undefined && synced !== undefined) {
+      synced.current = slideIndex;
+      this.#sendTo(synced, 'goToSlide', {
+        slideId: synced.table[slideIndex]?.id,
+        slideIndex,
+      });
+      // The page doesn't tell about moves that it was asked for.
+      this.#showSlide(deck, synced);
+      this.#update();
+    }
+  }
+
+  /** Moves the previews of the active deck to a step of their slide. */
+  goToStep(path: readonly number[]): void {
+    const synced = this.activeDeck;
+    if (synced?.steps !== undefined) {
+      this.#sendTo(synced, 'goToStep', {
+        slideIndex: synced.steps.slideIndex,
+        path,
+      });
+    }
+  }
+
+  /** Resets the state of a slide in the previews of the active deck. */
+  resetSlide(slideIndex: number): void {
+    const synced = this.activeDeck;
+    if (synced !== undefined) {
+      this.#sendTo(synced, 'resetSlide', { slideIndex });
+    }
+  }
+
   /** Handles what a page of the dev server in `root` of `project` sends. */
   receive(project: string, root: string, message: ChannelMessage): void {
     const deck = deckOfPage(root, message.page);
@@ -97,19 +201,33 @@ export class DeckSync implements Disposable {
       version?: unknown;
       slides?: SlideSource[];
       slideIndex?: unknown;
+      entries?: unknown;
     } | null;
     if (deck === undefined || data?.version !== VERSION) {
       return;
     }
-    const synced = this.#decks.get(deck) ?? {
+    const synced: SyncedDeck = this.#decks.get(deck) ?? {
       project,
       page: message.page,
+      live: true,
       table: [],
       current: undefined,
+      contents: undefined,
+      steps: undefined,
     };
     this.#decks.set(deck, synced);
+    if (message.event === 'pageClosed') {
+      this.#close(synced);
+      this.#update();
+      return;
+    }
+    synced.live = true;
     if (message.event === 'slides' && Array.isArray(data.slides)) {
       synced.table = data.slides;
+    } else if (message.event === 'contents' && Array.isArray(data.entries)) {
+      synced.contents = data as unknown as DeckContents;
+    } else if (message.event === 'steps' && Array.isArray(data.entries)) {
+      synced.steps = data as unknown as SlideSteps;
     } else if (
       message.event === 'location' &&
       typeof data.slideIndex === 'number'
@@ -117,6 +235,60 @@ export class DeckSync implements Disposable {
       synced.current = data.slideIndex;
       this.#showSlide(deck, synced);
     }
+    this.#update();
+  }
+
+  #close(synced: SyncedDeck): void {
+    synced.live = false;
+    synced.contents = undefined;
+    synced.steps = undefined;
+  }
+
+  /** Returns the decks with an open tab or preview. */
+  #openDecks(): Set<string> {
+    const decks = new Set<string>();
+    for (const { tabs } of window.tabGroups.all) {
+      for (const { input } of tabs) {
+        const deck = input instanceof TabInputText && deckOfUri(input.uri);
+        if (deck) {
+          decks.add(deck);
+        }
+      }
+    }
+    for (const [deck, { live }] of this.#decks) {
+      if (live) {
+        decks.add(deck);
+      }
+    }
+    return decks;
+  }
+
+  /** Whether the tab of a preview panel is open, also if it wasn't restored. */
+  #hasPreviewTab(): boolean {
+    return window.tabGroups.all.some(({ tabs }) =>
+      tabs.some(
+        ({ input }) =>
+          input instanceof TabInputWebview &&
+          input.viewType.includes(PREVIEW_VIEW_TYPE),
+      ),
+    );
+  }
+
+  #update(): void {
+    void commands.executeCommand(
+      'setContext',
+      'seminar.deckOpen',
+      this.activePath !== undefined || this.#hasPreviewTab(),
+    );
+    this.#changed.fire(undefined);
+  }
+
+  #sendTo(synced: SyncedDeck, event: string, data: object): void {
+    this.#send(synced.project, {
+      page: synced.page,
+      event,
+      data: { version: VERSION, ...data },
+    });
   }
 
   #followCursor(editor: TextEditor): void {
@@ -133,15 +305,11 @@ export class DeckSync implements Disposable {
     );
     if (slideIndex !== undefined && slideIndex !== synced.current) {
       synced.current = slideIndex;
-      this.#send(synced.project, {
-        page: synced.page,
-        event: 'goToSlide',
-        data: {
-          version: VERSION,
-          slideId: synced.table[slideIndex]?.id,
-          slideIndex,
-        },
+      this.#sendTo(synced, 'goToSlide', {
+        slideId: synced.table[slideIndex]?.id,
+        slideIndex,
       });
+      this.#update();
     }
   }
 
@@ -159,8 +327,12 @@ export class DeckSync implements Disposable {
       start === undefined ||
       mode === 'off' ||
       mode === 'editorToPreview' ||
-      slideAtLine(synced.table, editor.selection.active.line, current) ===
-        current
+      // Already there, unless the editor has scrolled away from the cursor.
+      (slideAtLine(synced.table, editor.selection.active.line, current) ===
+        current &&
+        editor.visibleRanges.some((visible) =>
+          visible.contains(editor.selection.active),
+        ))
     ) {
       return;
     }

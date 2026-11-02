@@ -13,9 +13,10 @@ import type { StepStore } from '../steps/StepStore.ts';
 import type { StepTreeEntry } from '../steps/stepTree.ts';
 
 /** Where a step is relative to the current one. */
-type EntryPhase = 'past' | 'open' | 'current' | 'shownWith' | 'future';
+export type EntryPhase = 'past' | 'open' | 'current' | 'shownWith' | 'future';
 
-function phaseOf(path: StepPath, current: StepPath): EntryPhase {
+/** Returns where the step at `path` is relative to the one at `current`. */
+export function phaseOf(path: StepPath, current: StepPath): EntryPhase {
   // The start of the slide only encloses the steps nested in step 0.
   if (path.length === 0) {
     if (current.length === 0) {

@@ -184,7 +184,7 @@ export async function createServer(config) {
   for (const plugin of config.plugins) {
     plugin.configureServer({
       config: { base: '/' },
-      ws: { clients: { size: 2 }, on() {} },
+      ws: { clients: new Set([{}, {}]), on() {} },
     });
   }
   return {

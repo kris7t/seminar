@@ -42,6 +42,11 @@ const CHANNEL_SOURCE = `if (import.meta.hot) {
 }
 `;
 
+/** The event that tells that no page shows a deck anymore. */
+const PAGE_CLOSED = 'pageClosed';
+
+const PAGE_CLOSED_VERSION = 1;
+
 /** A message between a page of a deck and the editor. */
 export interface ChannelMessage {
   /** The path of the page, from its URL. */
@@ -108,7 +113,7 @@ export interface DevServerPluginEvents {
  *   does so again after Vite restarts, e.g., because its config has changed,
  *   which it calls the plugin for;
  * - gives pages a channel to the editor, which also reaches the other pages of
- *   the deck;
+ *   the deck, and tells the editor when no page shows a deck anymore;
  * - tells the pages with {@link EMBEDDED_QUERY} that they are embedded, since
  *   the applications that show them in a frame of another origin can't.
  */
@@ -118,17 +123,38 @@ export function devServerPlugin({
 }: DevServerPluginEvents): DevServerPlugin {
   let hot: ViteHotChannel<ViteHotClient> | undefined;
   let base = '/';
+  // The pages that have used their channel, which tells what they show.
+  const pages = new Map<ViteHotClient, string>();
+  const forgetPages = (connected: (client: ViteHotClient) => boolean) => {
+    for (const [client, page] of pages) {
+      if (!connected(client)) {
+        pages.delete(client);
+        if (![...pages.values()].includes(page)) {
+          onChannel({
+            page,
+            event: PAGE_CLOSED,
+            data: { version: PAGE_CLOSED_VERSION },
+          });
+        }
+      }
+    }
+  };
   return {
     name: 'seminar:dev-server',
     configureServer({ config, ws }) {
       hot = ws;
       ({ base } = config);
+      // Pages connect again after Vite restarts.
+      forgetPages(() => false);
       const report = () => {
         onPages(ws.clients.size);
+        const connected = new Set(ws.clients);
+        forgetPages((client) => connected.has(client));
       };
       ws.on('vite:client:connect', report);
       ws.on('vite:client:disconnect', report);
       ws.on(CHANNEL_EVENT, (message: ChannelMessage, sender: ViteHotClient) => {
+        pages.set(sender, message.page);
         onChannel(message);
         for (const client of ws.clients) {
           if (client !== sender) {
