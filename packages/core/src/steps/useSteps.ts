@@ -72,6 +72,8 @@ export interface StepState {
 }
 
 export interface StepHandle extends StepState {
+  /** The stepper, which the elements of calls with this handle are part of. */
+  stepper: StepNode;
   /**
    * Attach this ref to the elements of the stepper.
    *
@@ -318,6 +320,7 @@ export function useSteps(
   const ownClassName = appearanceClass(ownAppearance, enclosing);
   const ownStep = useMemo(
     () => ({
+      stepper: node,
       ref,
       attach,
       stepCount: count,
@@ -331,6 +334,7 @@ export function useSteps(
       stepperAppearance,
     }),
     [
+      node,
       ref,
       attach,
       count,
@@ -366,22 +370,19 @@ export function useSteps(
     [handle, ref, linkedAppearance, enclosing],
   );
   // Editors show where steppers are in the source, and which ones can be read.
-  // Only the dev server has a channel to editors. Linked calls have no stepper
-  // of their own to tell about.
-  const range =
-    handle === undefined && getDevChannel() !== undefined
-      ? findSourceRange()
-      : undefined;
-  const { rank } = ownAppearance;
+  // Only the dev server has a channel to editors.
+  const range = getDevChannel() === undefined ? undefined : findSourceRange();
+  const { rank } = linkedAppearance ?? ownAppearance;
+  const stepper = handle?.stepper ?? node;
   useLayoutEffect(() => {
     if (range === undefined) {
       return undefined;
     }
-    store.reportSource(ownNode, { node, range, rank });
+    store.reportSource(ownNode, { node: stepper, range, rank });
     return () => {
       store.reportSource(ownNode, undefined);
     };
-  }, [store, ownNode, node, range, rank]);
+  }, [store, ownNode, stepper, range, rank]);
   return linkedStep ?? ownStep;
 }
 

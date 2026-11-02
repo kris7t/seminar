@@ -5,12 +5,14 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import type { JSX } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { DevChannel } from '../host/devChannel.ts';
 import { __seminarAt } from '../host/sourceRanges.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
+import { useStep } from '../steps/useSteps.ts';
 import { Deck } from './Deck.tsx';
 
 const CHANNEL = Symbol.for('seminar.devChannel');
@@ -399,6 +401,35 @@ describe('useEditorSync', () => {
       goToStep([2]);
       await settled();
       expect(sources().map(({ visible }) => visible)).toEqual([true, true]);
+    });
+
+    it('tells where elements linked to a stepper are, with its step', async () => {
+      function Linked(): JSX.Element {
+        const shared = useStep();
+        return (
+          <>
+            {__seminarAt(<p ref={shared.ref}>Here</p>, '3:1-3:5')}
+            {__seminarAt(<Step with={shared}>There</Step>, '7:1-7:6')}
+          </>
+        );
+      }
+      render(
+        <Deck>
+          <Slide id="first" title="First">
+            {__seminarAt(<Step>Before</Step>, '1:1-1:6')}
+            {__seminarAt(<Linked />, '2:1-9:1')}
+          </Slide>
+        </Deck>,
+      );
+      await settled();
+      const linked = () => sources().find(({ start }) => start.line === 7);
+      expect(linked()).toMatchObject({ path: [2], visible: false });
+      goToStep([2]);
+      await settled();
+      expect(linked()).toMatchObject({ path: [2], visible: true });
+      goToStep([1]);
+      await settled();
+      expect(linked()).toMatchObject({ visible: false });
     });
 
     it('tells that steps that leave are not visible', async () => {
