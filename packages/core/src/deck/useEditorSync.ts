@@ -8,7 +8,7 @@ import {
 } from 'react';
 
 import { getDevChannel } from '../host/devChannel.ts';
-import type { SourceRange } from '../host/sourceRanges.ts';
+import { findSourceRangeOf, type SourceRange } from '../host/sourceRanges.ts';
 import type { StepPath } from '../steps/StepNode.ts';
 import type { StepStore } from '../steps/StepStore.ts';
 import type { StepTreeEntry } from '../steps/stepTree.ts';
@@ -194,6 +194,30 @@ export function useEditorSync({
     send();
     return stepStore.subscribe(send);
   }, [stepStore, slideIndex]);
+
+  // Ctrl or Cmd+click goes to the source. Before anything else sees the click,
+  // since it would go to the next step.
+  useEffect(() => {
+    const channel = getDevChannel();
+    if (channel === undefined) {
+      return undefined;
+    }
+    const onClick = (event: MouseEvent) => {
+      const range =
+        (event.ctrlKey || event.metaKey) && event.target instanceof Element
+          ? findSourceRangeOf(event.target)
+          : undefined;
+      if (range !== undefined) {
+        event.preventDefault();
+        event.stopPropagation();
+        channel.send('goToSource', { version: VERSION, range });
+      }
+    };
+    window.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('click', onClick, true);
+    };
+  }, []);
 
   // The slide that was asked for, which there's no need to tell about.
   const requestedRef = useRef<number>(undefined);

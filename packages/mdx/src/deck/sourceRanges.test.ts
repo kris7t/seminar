@@ -39,6 +39,17 @@ describe('source ranges', () => {
     expect(code).not.toContain('__seminarSource');
   });
 
+  it('tells which file the elements are in', async () => {
+    const code = String(
+      await compile(
+        { path: '/project/talk.deck.mdx', value: '# Title\n\nText' },
+        seminarMdxOptions({ importSource: STUB, sourcePositions: true }),
+      ),
+    );
+    expect(code).toContain('const _seminarFile = "/project/talk.deck.mdx"');
+    expect(code).toMatch(/"3:1-3:5", _seminarFile\)/);
+  });
+
   it('tells where inline steps are', async () => {
     const code = await compiled('# Title\n\n:step[One] :step[Two]');
     expect(ranges(code)).toEqual(

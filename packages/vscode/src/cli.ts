@@ -49,6 +49,14 @@ export function findProject(deck: string): string | undefined {
 
 const DECK_SUFFIX = '.deck.mdx';
 
+/** Whether the file at `file` is in the directory at `directory`. */
+export function isInside(directory: string, file: string): boolean {
+  const relative = path.relative(directory, file);
+  return (
+    relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative)
+  );
+}
+
 /**
  * Returns the deck with the page at the path `page` of the URL of a dev server
  * with the root directory `root`, if the page can be one.

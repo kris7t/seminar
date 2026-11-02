@@ -4,9 +4,11 @@ import type {
   Node,
   ObjectExpression,
   Program,
+  VariableDeclaration,
 } from 'estree';
 import type { Root } from 'hast';
 import type { Position } from 'unist';
+import type { VFile } from 'vfile';
 
 /** The attribute that takes the range of an element to its JSX call. */
 const RANGE_ATTRIBUTE = '__seminarSource';
@@ -16,6 +18,8 @@ const JSX_CALLS: ReadonlySet<string> = new Set(['_jsx', '_jsxs', '_jsxDEV']);
 const HELPER = '__seminarAt';
 
 const HELPER_LOCAL = '_seminarAt';
+
+const FILE_LOCAL = '_seminarFile';
 
 /** Calls `visit` on `node` and the nodes in its fields, before them. */
 function walk<T extends { type: string }>(
@@ -108,8 +112,8 @@ export function recmaSourceRanges({
   importSource,
 }: {
   importSource: string;
-}): (tree: Program) => void {
-  return (tree) => {
+}): (tree: Program, file: VFile) => void {
+  return (tree, file) => {
     const told: CallExpression[] = [];
     walk(tree as Node, (node) => {
       if (
@@ -128,7 +132,11 @@ export function recmaSourceRanges({
       const call: CallExpression = { ...node };
       told.push(call);
       node.callee = { type: 'Identifier', name: HELPER_LOCAL };
-      node.arguments = [call, { type: 'Literal', value: range }];
+      node.arguments = [
+        call,
+        { type: 'Literal', value: range },
+        { type: 'Identifier', name: FILE_LOCAL },
+      ];
     });
     if (told.length > 0) {
       const helper: ImportDeclaration = {
@@ -143,7 +151,22 @@ export function recmaSourceRanges({
         source: { type: 'Literal', value: importSource },
         attributes: [],
       };
-      tree.body.unshift(helper);
+      // The elements of slides that other decks include are in this file.
+      const path: VariableDeclaration = {
+        type: 'VariableDeclaration',
+        kind: 'const',
+        declarations: [
+          {
+            type: 'VariableDeclarator',
+            id: { type: 'Identifier', name: FILE_LOCAL },
+            init:
+              file.history.length === 0
+                ? { type: 'Identifier', name: 'undefined' }
+                : { type: 'Literal', value: file.path },
+          },
+        ],
+      };
+      tree.body.unshift(helper, path);
     }
   };
 }

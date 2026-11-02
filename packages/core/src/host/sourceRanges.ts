@@ -11,6 +11,8 @@ export interface SourcePosition {
 export interface SourceRange {
   start: SourcePosition;
   end: SourcePosition;
+  /** The path of the file, if it's known, which is the deck or one it includes. */
+  file?: string | undefined;
 }
 
 /**
@@ -22,13 +24,17 @@ const ranges = new WeakMap<object, SourceRange>();
 
 const RANGE = /^(\d+):(\d+)-(\d+):(\d+)$/;
 
-function parseRange(range: string): SourceRange | undefined {
+function parseRange(
+  range: string,
+  file: string | undefined,
+): SourceRange | undefined {
   const match = RANGE.exec(range);
   return match === null
     ? undefined
     : {
         start: { line: Number(match[1]), column: Number(match[2]) },
         end: { line: Number(match[3]), column: Number(match[4]) },
+        ...(file === undefined ? {} : { file }),
       };
 }
 
@@ -40,8 +46,9 @@ function parseRange(range: string): SourceRange | undefined {
 export function __seminarAt<T extends ReactElement<object>>(
   element: T,
   range: string,
+  file?: string,
 ): T {
-  const parsed = parseRange(range);
+  const parsed = parseRange(range, file);
   if (parsed !== undefined) {
     ranges.set(element.props, parsed);
   }
@@ -67,6 +74,21 @@ export function withSourceOf<T extends ReactElement<object>>(
     ranges.set(element.props, range);
   }
   return element;
+}
+
+/** Returns the range of the closest fiber with one, from `first` up. */
+function findInFibers(
+  first: Fiber | null | undefined,
+): SourceRange | undefined {
+  for (let fiber = first; fiber; fiber = fiber.return) {
+    const range =
+      (fiber.pendingProps && ranges.get(fiber.pendingProps)) ??
+      (fiber.memoizedProps && ranges.get(fiber.memoizedProps));
+    if (range) {
+      return range;
+    }
+  }
+  return undefined;
 }
 
 /** What we need from the fibers of React. */
@@ -99,12 +121,22 @@ function currentFiber(): Fiber | null | undefined {
  * Only works while rendering, and only in the development build of React.
  */
 export function findSourceRange(): SourceRange | undefined {
-  for (let fiber = currentFiber(); fiber; fiber = fiber.return) {
-    const range =
-      (fiber.pendingProps && ranges.get(fiber.pendingProps)) ??
-      (fiber.memoizedProps && ranges.get(fiber.memoizedProps));
-    if (range) {
-      return range;
+  return findInFibers(currentFiber());
+}
+
+/** Prefix of the property of DOM nodes with their fibers, which is internal. */
+const FIBER_PREFIX = '__reactFiber$';
+
+/**
+ * Returns where the closest element around `element` is in the source of its
+ * deck, if known, from the fiber that React keeps on it, like
+ * {@link findSourceRange}.
+ */
+export function findSourceRangeOf(element: Element): SourceRange | undefined {
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    const key = Object.keys(node).find((name) => name.startsWith(FIBER_PREFIX));
+    if (key !== undefined) {
+      return findInFibers((node as unknown as Record<string, Fiber>)[key]);
     }
   }
   return undefined;

@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   __seminarAt,
   findSourceRange,
+  findSourceRangeOf,
   getSourceRange,
   withSourceOf,
   type SourceRange,
@@ -124,6 +125,37 @@ describe('source ranges', () => {
   it('finds nothing without a range', () => {
     render(<DropsProps name="a" />);
     expect(found.get('a')).toBeUndefined();
+  });
+
+  it('tells the file', () => {
+    const element = __seminarAt(
+      <p />,
+      '1:1-1:5',
+      '/deck.mdx',
+    ) as ReactElement<object>;
+    expect(getSourceRange(element.props)?.file).toBe('/deck.mdx');
+  });
+
+  it('finds the closest range of a DOM element', () => {
+    const { container } = render(
+      at(
+        <div>
+          {at(
+            <p>
+              <em>text</em>
+            </p>,
+            2,
+          )}
+          <b />
+        </div>,
+        1,
+      ),
+    );
+    const em = container.querySelector('em');
+    const b = container.querySelector('b');
+    expect(em && findSourceRangeOf(em)).toEqual(range(2));
+    expect(b && findSourceRangeOf(b)).toEqual(range(1));
+    expect(findSourceRangeOf(document.body)).toBeUndefined();
   });
 
   it('finds nothing outside of rendering', () => {

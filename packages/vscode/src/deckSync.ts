@@ -8,16 +8,22 @@ import {
   TextEditorSelectionChangeKind,
   ThemeColor,
   Uri,
+  ViewColumn,
   window,
   workspace,
   type Disposable,
   type TextEditor,
 } from 'vscode';
 
-import { deckOfPage } from './cli.ts';
+import { deckOfPage, isInside } from './cli.ts';
 import type { DeckContents, SlideSteps } from './sidebarPage.ts';
 import type { ChannelMessage } from './devServers.ts';
-import { shiftTable, slideAtLine, type SlideSource } from './slideTable.ts';
+import {
+  shiftTable,
+  slideAtLine,
+  type SlideSource,
+  type SourcePosition,
+} from './slideTable.ts';
 
 /** The version of the messages, which both sides ignore if it isn't theirs. */
 const VERSION = 1;
@@ -27,6 +33,9 @@ const CURSOR_DELAY = 150;
 
 /** How long the start of the shown slide stays highlighted. */
 const HIGHLIGHT_TIME = 1000;
+
+/** How long the element that was clicked on stays highlighted. */
+const SOURCE_HIGHLIGHT_TIME = 2000;
 
 /** The view type of preview panels, which tabs have with a prefix. */
 export const PREVIEW_VIEW_TYPE = 'seminar.preview';
@@ -42,6 +51,13 @@ export interface SyncedDeck {
   current: number | undefined;
   contents: DeckContents | undefined;
   steps: SlideSteps | undefined;
+}
+
+/** Where a clicked element is, as a page tells it, from 1. */
+interface PageRange {
+  start: SourcePosition;
+  end: SourcePosition;
+  file?: string;
 }
 
 /** Returns the path of the deck at `uri`, if it's a deck. */
@@ -65,6 +81,10 @@ export class DeckSync implements Disposable {
     isWholeLine: true,
     backgroundColor: new ThemeColor('editor.findMatchHighlightBackground'),
   });
+  // Only what the element is, to compare it with what the slide shows.
+  readonly #sourceHighlight = window.createTextEditorDecorationType({
+    backgroundColor: new ThemeColor('editor.findMatchHighlightBackground'),
+  });
   readonly #changed = new EventEmitter<undefined>();
   /** Fires when what is known of the active deck may have changed. */
   readonly onDidChange = this.#changed.event;
@@ -73,6 +93,7 @@ export class DeckSync implements Disposable {
   #active: string | undefined;
   #cursorTimer: ReturnType<typeof setTimeout> | undefined;
   #highlightTimer: ReturnType<typeof setTimeout> | undefined;
+  #sourceHighlightTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(send: (project: string, message: ChannelMessage) => void) {
     this.#send = send;
@@ -80,6 +101,7 @@ export class DeckSync implements Disposable {
     this.#active = activeEditor && deckOfUri(activeEditor.document.uri);
     this.#disposables = [
       this.#highlight,
+      this.#sourceHighlight,
       this.#changed,
       window.onDidChangeActiveTextEditor((editor) => {
         const deck = editor && deckOfUri(editor.document.uri);
@@ -123,6 +145,7 @@ export class DeckSync implements Disposable {
   dispose(): void {
     clearTimeout(this.#cursorTimer);
     clearTimeout(this.#highlightTimer);
+    clearTimeout(this.#sourceHighlightTimer);
     for (const disposable of this.#disposables) {
       disposable.dispose();
     }
@@ -203,6 +226,7 @@ export class DeckSync implements Disposable {
       slides?: SlideSource[];
       slideIndex?: unknown;
       entries?: unknown;
+      range?: PageRange;
     } | null;
     if (deck === undefined || data?.version !== VERSION) {
       return;
@@ -223,7 +247,13 @@ export class DeckSync implements Disposable {
       return;
     }
     synced.live = true;
-    if (message.event === 'slides' && Array.isArray(data.slides)) {
+    if (message.event === 'goToSource') {
+      this.#goToSource(deck, project, data.range).catch((error: unknown) => {
+        void window.showErrorMessage(
+          error instanceof Error ? error.message : String(error),
+        );
+      });
+    } else if (message.event === 'slides' && Array.isArray(data.slides)) {
       synced.table = data.slides;
     } else if (message.event === 'contents' && Array.isArray(data.entries)) {
       synced.contents = data as unknown as DeckContents;
@@ -312,6 +342,42 @@ export class DeckSync implements Disposable {
       });
       this.#update();
     }
+  }
+
+  /**
+   * Shows where a clicked element of `deck` is in its source, or in the deck in
+   * `project` that it was included from.
+   */
+  async #goToSource(
+    deck: string,
+    project: string,
+    range: PageRange | undefined,
+  ): Promise<void> {
+    const file = range?.file ?? deck;
+    if (range === undefined || !isInside(project, file)) {
+      return;
+    }
+    const uri = Uri.file(file);
+    const document = await workspace.openTextDocument(uri);
+    const shown = window.visibleTextEditors.find(
+      (editor) => editor.document.uri.fsPath === file,
+    );
+    const target = new Range(
+      range.start.line - 1,
+      range.start.column - 1,
+      range.end.line - 1,
+      range.end.column - 1,
+    );
+    const editor = await window.showTextDocument(document, {
+      viewColumn: shown?.viewColumn ?? ViewColumn.One,
+      selection: new Range(target.start, target.start),
+    });
+    editor.revealRange(target, TextEditorRevealType.InCenterIfOutsideViewport);
+    editor.setDecorations(this.#sourceHighlight, [target]);
+    clearTimeout(this.#sourceHighlightTimer);
+    this.#sourceHighlightTimer = setTimeout(() => {
+      editor.setDecorations(this.#sourceHighlight, []);
+    }, SOURCE_HIGHLIGHT_TIME);
   }
 
   /** Scrolls to the shown slide, without moving the cursor or the focus. */

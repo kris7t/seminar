@@ -1,4 +1,10 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { DevChannel } from '../host/devChannel.ts';
@@ -260,6 +266,67 @@ describe('useEditorSync', () => {
     render(stepsDeck());
     goToSlide({ slideId: 'second' });
     expect(lastSteps()).toMatchObject({ slideIndex: 1, entries: [] });
+  });
+
+  describe('going to the source', () => {
+    function sourceDeck() {
+      return (
+        <Deck>
+          {__seminarAt(
+            <Slide id="first" title="First">
+              {__seminarAt(<p>Paragraph</p>, '3:1-3:10', '/deck.mdx')}
+            </Slide>,
+            '1:1-1:8',
+          )}
+          <Slide id="second" title="Second" />
+        </Deck>
+      );
+    }
+
+    it('tells where a clicked element is, without going to the next slide', () => {
+      render(sourceDeck());
+      const [paragraph] = screen.getAllByText('Paragraph');
+      if (paragraph === undefined) {
+        throw new Error('No paragraph');
+      }
+      const notPrevented = fireEvent.click(paragraph, { ctrlKey: true });
+      expect(notPrevented).toBe(false);
+      expect(messages('goToSource')).toEqual([
+        {
+          version: 1,
+          range: {
+            start: { line: 3, column: 1 },
+            end: { line: 3, column: 10 },
+            file: '/deck.mdx',
+          },
+        },
+      ]);
+      expect(window.location.hash).toBe('#first');
+    });
+
+    it('also takes Cmd', () => {
+      render(sourceDeck());
+      const [paragraph] = screen.getAllByText('Paragraph');
+      if (paragraph !== undefined) {
+        fireEvent.click(paragraph, { metaKey: true });
+      }
+      expect(messages('goToSource')).toHaveLength(1);
+    });
+
+    it('leaves other clicks alone', () => {
+      render(sourceDeck());
+      const [paragraph] = screen.getAllByText('Paragraph');
+      if (paragraph !== undefined) {
+        expect(fireEvent.click(paragraph)).toBe(true);
+      }
+      expect(messages('goToSource')).toEqual([]);
+    });
+
+    it('leaves clicks on what has no source alone', () => {
+      render(deck());
+      expect(fireEvent.click(document.body, { ctrlKey: true })).toBe(true);
+      expect(messages('goToSource')).toEqual([]);
+    });
   });
 
   it('ignores slides that do not exist, and other versions', () => {

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { deckOfPage, deckPage, findCli, findProject } from './cli.ts';
+import { deckOfPage, deckPage, findCli, findProject, isInside } from './cli.ts';
 
 describe('findCli', () => {
   let project: string;
@@ -52,6 +52,15 @@ describe('findProject', () => {
     expect(findProject(deck)).toBe(project);
     writeFileSync(path.join(project, 'nested', 'vite.config.js'), '');
     expect(findProject(deck)).toBe(path.join(project, 'nested'));
+  });
+});
+
+describe('isInside', () => {
+  it('only accepts files in the directory', () => {
+    expect(isInside('/project', '/project/a/talk.deck.mdx')).toBe(true);
+    expect(isInside('/project', '/other/talk.deck.mdx')).toBe(false);
+    expect(isInside('/project', '/project/../secret')).toBe(false);
+    expect(isInside('/project', '/project')).toBe(false);
   });
 });
 
