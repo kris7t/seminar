@@ -3,6 +3,8 @@ import type { LanguageServicePlugin } from '@volar/language-server';
 import { create as createMarkdownServicePlugin } from 'volar-service-markdown';
 import { create as createTypeScriptServicePlugin } from 'volar-service-typescript';
 
+import { createStepBehaviorPlugin } from './stepBehaviorTokens.ts';
+
 /**
  * Creates the language service plugins of decks.
  *
@@ -26,5 +28,6 @@ export function createDeckServicePlugins(
       },
     },
     ...createTypeScriptServicePlugin(typescript, {}),
+    createStepBehaviorPlugin(typescript),
   ];
 }

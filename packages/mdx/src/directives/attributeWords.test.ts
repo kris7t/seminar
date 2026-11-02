@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAttributeWords } from './attributeWords.ts';
+import { bareAttributeWords, parseAttributeWords } from './attributeWords.ts';
+
+describe('bareAttributeWords', () => {
+  it('finds only the bare words, with their offsets', () => {
+    expect(
+      bareAttributeWords('#id .class only a=b title="in quotes" {1-3} swap'),
+    ).toEqual([
+      { word: 'only', index: 11 },
+      { word: 'swap', index: 44 },
+    ]);
+  });
+});
 
 describe('parseAttributeWords', () => {
   it('reads ids, classes, values, and bare words', () => {

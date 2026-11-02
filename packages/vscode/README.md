@@ -45,6 +45,11 @@ so it always highlights `$…$` as math, and only on a single line.
 Set `"mdx": { "checkMdx": true }` in `tsconfig.json` to report type errors in
 the JavaScript of decks.
 
+Step behaviors, like `only` in `::Box{only}` or `%% step only`, are colored with
+semantic tokens, which are turned on for decks. Behaviors from
+`StepBehaviorOverrides` are recognized if the augmentation is part of the
+TypeScript project of the deck.
+
 ## Colors
 
 Themes don't know about decks, so the syntax uses the common scopes of programming
@@ -69,7 +74,7 @@ precedence, for themes and for `editor.tokenColorCustomizations`:
 | `seminar.attribute.id`              | `#id`                                                                                  |
 | `seminar.attribute.class`           | `.class`                                                                               |
 | `seminar.attribute.name`            | `key` in `key=value`, and bare words                                                   |
-| `seminar.attribute.name.step`       | A bare `step`                                                                          |
+| `seminar.attribute.name.step`       | A bare `step`, and step behaviors among the props of directives, images, and code      |
 | `seminar.attribute.separator`       | `=`                                                                                    |
 | `seminar.attribute.value`           | `value` in `key=value`                                                                 |
 | `seminar.math.delimiter`            | `$`, `$$`                                                                              |

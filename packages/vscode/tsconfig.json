@@ -8,5 +8,8 @@
     "tsBuildInfoFile": "../../node_modules/.cache/tsc/vscode.tsbuildinfo"
   },
   "include": ["src"],
-  "references": [{ "path": "../mdx/tsconfig.lib.json" }]
+  "references": [
+    { "path": "../core/tsconfig.lib.json" },
+    { "path": "../mdx/tsconfig.lib.json" }
+  ]
 }

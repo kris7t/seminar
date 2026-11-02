@@ -16,6 +16,19 @@ function unquote(value: string): string {
 }
 
 /**
+ * Returns the bare words among the attributes in a line of words, which
+ * {@link parseAttributeWords} reads as attributes without values, with their
+ * offsets in `text`.
+ */
+export function bareAttributeWords(
+  text: string,
+): { word: string; index: number }[] {
+  return [...text.matchAll(WORD)]
+    .filter(([word]) => ATTRIBUTE.test(word) && /^[^#.][^=]*$/.test(word))
+    .map(({ 0: word, index }) => ({ word, index }));
+}
+
+/**
  * Reads the attributes in a line of words, e.g., the rest of the first line
  * of a code block after its language, like `#fib .wide step group=impl`,
  * written like the attributes of directives, but without braces.

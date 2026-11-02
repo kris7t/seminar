@@ -75,6 +75,28 @@
         }
       ]
     },
+    "semanticTokenTypes": [
+      {
+        "id": "seminarStepBehavior",
+        "description": "A step behavior among the props of a deck."
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "seminar-deck",
+        "scopes": {
+          "seminarStepBehavior": [
+            "seminar.attribute.name.step",
+            "entity.name.function"
+          ]
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "[seminar-deck]": {
+        "editor.semanticHighlighting.enabled": true
+      }
+    },
     "taskDefinitions": [
       {
         "type": "seminar",
@@ -196,6 +218,7 @@
   },
   "devDependencies": {
     "@mdx-js/language-service": "0.7.4",
+    "@seminar/core": "0.2.1",
     "@seminar/mdx": "0.2.1",
     "@shikijs/langs": "^4.5.0",
     "@types/vscode": "~1.100.0",
