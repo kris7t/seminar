@@ -185,6 +185,7 @@ export function useEditorSync({
         startPhase: phaseOf([], current),
         startPage: pages.has(''),
         entries: describeSteps(stepStore.getTree(), stepStore, pages, current),
+        sources: stepStore.getSources(),
       });
       if (steps !== stepsRef.current) {
         stepsRef.current = steps;
@@ -192,7 +193,27 @@ export function useEditorSync({
       }
     };
     send();
-    return stepStore.subscribe(send);
+    // Steppers tell how they appear after they have rendered the new step, all
+    // at once, so wait for them.
+    let scheduled = false;
+    const schedule = () => {
+      if (!scheduled) {
+        scheduled = true;
+        queueMicrotask(() => {
+          scheduled = false;
+          send();
+        });
+      }
+    };
+    const stop = [
+      stepStore.subscribe(schedule),
+      stepStore.subscribeSources(schedule),
+    ];
+    return () => {
+      for (const listener of stop) {
+        listener();
+      }
+    };
   }, [stepStore, slideIndex]);
 
   // Ctrl or Cmd+click goes to the source. Before anything else sees the click,

@@ -4,6 +4,13 @@ export interface SourcePosition {
   column: number;
 }
 
+/** Where something is in the source of a deck, or a deck it includes. */
+export interface SourceRange {
+  start: SourcePosition;
+  end: SourcePosition;
+  file?: string | undefined;
+}
+
 /** Where a slide of a deck starts in its source, if known. */
 export interface SlideSource {
   id?: string | undefined;
@@ -98,4 +105,19 @@ export function shiftTable(
       ? slide
       : { ...slide, start: shiftThrough(slide.start, changes) },
   );
+}
+
+/**
+ * Returns `ranges` in the source with `changes` applied, so that they stay right
+ * until saving the source compiles the deck again.
+ */
+export function shiftRanges<T extends SourceRange>(
+  ranges: readonly T[],
+  changes: readonly SourceChange[],
+): T[] {
+  return ranges.map((range) => ({
+    ...range,
+    start: shiftThrough(range.start, changes),
+    end: shiftThrough(range.end, changes),
+  }));
 }

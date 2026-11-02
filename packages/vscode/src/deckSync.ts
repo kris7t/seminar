@@ -17,8 +17,15 @@ import {
 
 import { deckOfPage, isInside } from './cli.ts';
 import type { DeckContents, SlideSteps } from './sidebarPage.ts';
+import {
+  hiddenSources,
+  sourceOfStep,
+  sourcesIn,
+  stepOfCursor,
+} from './stepSources.ts';
 import type { ChannelMessage } from './devServers.ts';
 import {
+  shiftRanges,
   shiftTable,
   slideAtLine,
   type SlideSource,
@@ -67,6 +74,10 @@ export function deckOfUri(uri: Uri): string | undefined {
     : undefined;
 }
 
+function samePath(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((step, index) => step === b[index]);
+}
+
 function syncMode(deck: string): string | undefined {
   return workspace
     .getConfiguration('seminar.preview', Uri.file(deck))
@@ -85,12 +96,15 @@ export class DeckSync implements Disposable {
   readonly #sourceHighlight = window.createTextEditorDecorationType({
     backgroundColor: new ThemeColor('editor.findMatchHighlightBackground'),
   });
+  readonly #hidden = window.createTextEditorDecorationType({ opacity: '0.4' });
   readonly #changed = new EventEmitter<undefined>();
   /** Fires when what is known of the active deck may have changed. */
   readonly onDidChange = this.#changed.event;
   readonly #disposables: Disposable[];
   /** The deck that was last in front. */
   #active: string | undefined;
+  /** The cursor whose slide doesn't have its steps yet. */
+  #waitingCursor: { synced: SyncedDeck; editor: TextEditor } | undefined;
   #cursorTimer: ReturnType<typeof setTimeout> | undefined;
   #highlightTimer: ReturnType<typeof setTimeout> | undefined;
   #sourceHighlightTimer: ReturnType<typeof setTimeout> | undefined;
@@ -102,6 +116,7 @@ export class DeckSync implements Disposable {
     this.#disposables = [
       this.#highlight,
       this.#sourceHighlight,
+      this.#hidden,
       this.#changed,
       window.onDidChangeActiveTextEditor((editor) => {
         const deck = editor && deckOfUri(editor.document.uri);
@@ -113,18 +128,39 @@ export class DeckSync implements Disposable {
         this.#update();
       }),
       workspace.onDidChangeTextDocument(({ document, contentChanges }) => {
-        const synced = this.#decks.get(document.uri.fsPath);
+        const file = document.uri.fsPath;
+        const changes = contentChanges.map(({ range, text }) => ({
+          startLine: range.start.line,
+          startColumn: range.start.character,
+          endLine: range.end.line,
+          endColumn: range.end.character,
+          text,
+        }));
+        const synced = this.#decks.get(file);
         if (synced !== undefined) {
-          synced.table = shiftTable(
-            synced.table,
-            contentChanges.map(({ range, text }) => ({
-              startLine: range.start.line,
-              startColumn: range.start.character,
-              endLine: range.end.line,
-              endColumn: range.end.character,
-              text,
-            })),
-          );
+          synced.table = shiftTable(synced.table, changes);
+        }
+        for (const [deck, { steps }] of this.#decks) {
+          if (steps !== undefined) {
+            const changed = new Set(sourcesIn(steps.sources, file, deck));
+            if (changed.size > 0) {
+              steps.sources = steps.sources.map(
+                (source) =>
+                  (changed.has(source)
+                    ? shiftRanges([source], changes)[0]
+                    : undefined) ?? source,
+              );
+            }
+          }
+        }
+        this.#updateDimming();
+      }),
+      window.onDidChangeVisibleTextEditors(() => {
+        this.#updateDimming();
+      }),
+      workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('seminar.preview.dimHidden')) {
+          this.#updateDimming();
         }
       }),
       window.onDidChangeTextEditorSelection(({ textEditor, kind }) => {
@@ -258,7 +294,7 @@ export class DeckSync implements Disposable {
     } else if (message.event === 'contents' && Array.isArray(data.entries)) {
       synced.contents = data as unknown as DeckContents;
     } else if (message.event === 'steps' && Array.isArray(data.entries)) {
-      synced.steps = data as unknown as SlideSteps;
+      this.#receiveSteps(deck, synced, data as unknown as SlideSteps);
     } else if (
       message.event === 'location' &&
       typeof data.slideIndex === 'number'
@@ -311,6 +347,7 @@ export class DeckSync implements Disposable {
       'seminar.deckOpen',
       this.activePath !== undefined || this.#hasPreviewTab(),
     );
+    this.#updateDimming();
     this.#changed.fire(undefined);
   }
 
@@ -322,11 +359,100 @@ export class DeckSync implements Disposable {
     });
   }
 
+  #receiveSteps(deck: string, synced: SyncedDeck, steps: SlideSteps): void {
+    const previous = synced.steps;
+    synced.steps = steps;
+    if (
+      previous !== undefined &&
+      (previous.slideIndex !== steps.slideIndex ||
+        !samePath(previous.current, steps.current))
+    ) {
+      this.#showStep(deck, steps);
+    }
+    const waiting = this.#waitingCursor;
+    if (waiting !== undefined && this.#decks.get(deck) === waiting.synced) {
+      this.#followStep(deck, waiting.synced, waiting.editor);
+    }
+  }
+
+  /** Scrolls to the current step, without moving the cursor or the focus. */
+  #showStep(deck: string, steps: SlideSteps): void {
+    const mode = syncMode(deck);
+    if (mode === 'off' || mode === 'editorToPreview') {
+      return;
+    }
+    const editor = window.visibleTextEditors.find(
+      ({ document }) => document.uri.fsPath === deck,
+    );
+    const source =
+      editor &&
+      sourceOfStep(sourcesIn(steps.sources, deck, deck), steps.current);
+    if (source !== undefined) {
+      editor?.revealRange(
+        new Range(
+          source.start.line - 1,
+          source.start.column - 1,
+          source.end.line - 1,
+          source.end.column - 1,
+        ),
+        TextEditorRevealType.InCenterIfOutsideViewport,
+      );
+    }
+  }
+
+  /**
+   * Goes to the step of the stepper that the cursor is in, if it can't be read
+   * now. Blank lines say nothing, even in a stepper, so that going through them
+   * doesn't jump. If the steps of the slide of the cursor aren't known yet, it
+   * waits for them, unless the cursor moves.
+   */
+  #followStep(deck: string, synced: SyncedDeck, editor: TextEditor): void {
+    const { document, selection } = editor;
+    const { active } = selection;
+    this.#waitingCursor = undefined;
+    const { steps } = synced;
+    const sources =
+      steps?.slideIndex === synced.current && steps !== undefined
+        ? sourcesIn(steps.sources, document.uri.fsPath, deck)
+        : [];
+    if (sources.length === 0) {
+      this.#waitingCursor = { synced, editor };
+      return;
+    }
+    if (
+      steps === undefined ||
+      document.lineAt(active.line).isEmptyOrWhitespace
+    ) {
+      return;
+    }
+    const path = stepOfCursor(sources, {
+      line: active.line + 1,
+      column: active.character + 1,
+    });
+    if (path !== undefined && !samePath(path, steps.current)) {
+      this.#sendTo(synced, 'goToStep', {
+        slideIndex: steps.slideIndex,
+        path,
+      });
+    }
+  }
+
   #followCursor(editor: TextEditor): void {
-    const deck = editor.document.uri.fsPath;
+    const file = editor.document.uri.fsPath;
+    this.#waitingCursor = undefined;
+    // The cursor may be in a deck that the deck in front includes a slide of.
+    const active = this.activeDeck;
+    const deck =
+      this.#decks.has(file) || active === undefined
+        ? file
+        : (this.activePath ?? file);
     const synced = this.#decks.get(deck);
     const mode = syncMode(deck);
     if (synced === undefined || mode === 'off' || mode === 'previewToEditor') {
+      return;
+    }
+    if (deck !== file) {
+      this.#followStep(deck, synced, editor);
       return;
     }
     const slideIndex = slideAtLine(
@@ -341,6 +467,37 @@ export class DeckSync implements Disposable {
         slideIndex,
       });
       this.#update();
+    }
+    if (slideIndex !== undefined) {
+      this.#followStep(deck, synced, editor);
+    }
+  }
+
+  /** Fades what can't be read at the current step in the editors of decks. */
+  #updateDimming(): void {
+    for (const editor of window.visibleTextEditors) {
+      const file = editor.document.uri.fsPath;
+      const dim = workspace
+        .getConfiguration('seminar.preview', editor.document.uri)
+        .get('dimHidden');
+      editor.setDecorations(
+        this.#hidden,
+        dim === false
+          ? []
+          : [...this.#decks].flatMap(([deck, { live, steps }]) =>
+              live && steps !== undefined
+                ? hiddenSources(sourcesIn(steps.sources, file, deck)).map(
+                    ({ start, end }) =>
+                      new Range(
+                        start.line - 1,
+                        start.column - 1,
+                        end.line - 1,
+                        end.column - 1,
+                      ),
+                  )
+                : [],
+            ),
+      );
     }
   }
 

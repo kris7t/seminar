@@ -245,10 +245,13 @@ describe('useEditorSync', () => {
     });
   });
 
-  it('goes to the step that it is asked for, on the current slide only', () => {
+  it('goes to the step that it is asked for, on the current slide only', async () => {
     render(stepsDeck());
     act(() => {
       listeners.get('goToStep')?.({ version: 1, slideIndex: 0, path: [2] });
+    });
+    await act(async () => {
+      await Promise.resolve();
     });
     expect(lastSteps().current).toEqual([2]);
     expect(lastSteps().entries.map(({ phase }) => phase)).toEqual([
@@ -326,6 +329,84 @@ describe('useEditorSync', () => {
       render(deck());
       expect(fireEvent.click(document.body, { ctrlKey: true })).toBe(true);
       expect(messages('goToSource')).toEqual([]);
+    });
+  });
+
+  describe('the steps in the source', () => {
+    function sourceSteps(behavior: 'only' | 'reveal' = 'reveal') {
+      return (
+        <Deck>
+          <Slide id="first" title="First">
+            {__seminarAt(<Step behavior={behavior}>One</Step>, '3:1-3:5', '/a')}
+            {__seminarAt(<Step behavior={behavior}>Two</Step>, '5:1-5:5', '/a')}
+            <Step>Unknown</Step>
+          </Slide>
+        </Deck>
+      );
+    }
+
+    function sources() {
+      return (
+        messages('steps').at(-1) as {
+          sources: {
+            start: { line: number };
+            file: string;
+            path: number[];
+            visible: boolean;
+          }[];
+        }
+      ).sources;
+    }
+
+    function goToStep(path: number[]) {
+      act(() => {
+        listeners.get('goToStep')?.({ version: 1, slideIndex: 0, path });
+      });
+    }
+
+    async function settled() {
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+
+    it('tells where the steppers are, and the steps that show them', async () => {
+      render(sourceSteps());
+      await settled();
+      expect(sources()).toEqual([
+        expect.objectContaining({
+          start: { line: 3, column: 1 },
+          end: { line: 3, column: 5 },
+          file: '/a',
+          path: [1],
+          last: 1,
+        }),
+        expect.objectContaining({
+          start: { line: 5, column: 1 },
+          path: [2],
+          last: 2,
+        }),
+      ]);
+    });
+
+    it('tells which ones are visible as the step changes', async () => {
+      render(sourceSteps());
+      await settled();
+      expect(sources().map(({ visible }) => visible)).toEqual([false, false]);
+      goToStep([1]);
+      await settled();
+      expect(sources().map(({ visible }) => visible)).toEqual([true, false]);
+      goToStep([2]);
+      await settled();
+      expect(sources().map(({ visible }) => visible)).toEqual([true, true]);
+    });
+
+    it('tells that steps that leave are not visible', async () => {
+      render(sourceSteps('only'));
+      await settled();
+      goToStep([2]);
+      await settled();
+      expect(sources().map(({ visible }) => visible)).toEqual([false, true]);
     });
   });
 

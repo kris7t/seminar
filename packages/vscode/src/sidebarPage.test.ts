@@ -52,6 +52,7 @@ const steps = (entries: StepEntry[], current: number[] = []) =>
     startPhase: 'current',
     startPage: false,
     entries,
+    sources: [],
   });
 
 describe('contentsHtml', () => {

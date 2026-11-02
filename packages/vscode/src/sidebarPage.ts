@@ -1,3 +1,5 @@
+import type { SourceRange } from './slideTable.ts';
+
 /** An entry of the table of contents of a deck, see `TocList` in the core. */
 export interface ContentsEntry {
   title: string;
@@ -36,6 +38,16 @@ export interface StepEntry {
   children: StepEntry[];
 }
 
+/** Where a stepper is in the source of its deck. */
+export interface StepSource extends SourceRange {
+  /** The step that shows it first. */
+  path: number[];
+  /** Number of its last step on the level of `path`. */
+  last: number;
+  /** Whether it can be read at the current step. */
+  visible: boolean;
+}
+
 /** The steps of a slide, and the current one. */
 export interface SlideSteps {
   slideIndex: number;
@@ -43,6 +55,8 @@ export interface SlideSteps {
   startPhase: StepPhase;
   startPage: boolean;
   entries: StepEntry[];
+  /** Where the steppers of the slide are in the source. */
+  sources: StepSource[];
 }
 
 /** What a sidebar page asks the extension to do. */

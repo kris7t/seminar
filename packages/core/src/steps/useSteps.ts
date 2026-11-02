@@ -3,12 +3,15 @@ import {
   use,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   useSyncExternalStore,
   type RefCallback,
 } from 'react';
 
+import { getDevChannel } from '../host/devChannel.ts';
+import { findSourceRange } from '../host/sourceRanges.ts';
 import {
   resolveElementAppearance,
   resolveStepperAppearances,
@@ -362,6 +365,23 @@ export function useSteps(
           },
     [handle, ref, linkedAppearance, enclosing],
   );
+  // Editors show where steppers are in the source, and which ones can be read.
+  // Only the dev server has a channel to editors. Linked calls have no stepper
+  // of their own to tell about.
+  const range =
+    handle === undefined && getDevChannel() !== undefined
+      ? findSourceRange()
+      : undefined;
+  const { rank } = ownAppearance;
+  useLayoutEffect(() => {
+    if (range === undefined) {
+      return undefined;
+    }
+    store.reportSource(ownNode, { node, range, rank });
+    return () => {
+      store.reportSource(ownNode, undefined);
+    };
+  }, [store, ownNode, node, range, rank]);
   return linkedStep ?? ownStep;
 }
 

@@ -1,3 +1,4 @@
+import type { SourceRange } from '../host/sourceRanges.ts';
 import { fadesOf, pickFade, sidesOf } from '../transitions/fades.ts';
 import { createStepPosition, type StepPosition } from './StepPosition.ts';
 import {
@@ -33,6 +34,24 @@ import { computeStepTree, type StepTreeEntry } from './stepTree.ts';
 import { StepNode, type StepOptions, type StepPath } from './StepNode.ts';
 
 /** State of a stepper as stored in a {@link StepStore}. */
+/** What a call of `useSteps` tells about its elements, see `reportSource`. */
+export interface ReportedSource {
+  node: StepNode;
+  range: SourceRange;
+  /** The rank of the appearance of the elements now. */
+  rank: number;
+}
+
+/** Where a stepper is in the source of its deck, for editors. */
+export interface StepSource extends SourceRange {
+  /** The step that shows it first. */
+  path: StepPath;
+  /** Number of its last step on the level of `path`. */
+  last: number;
+  /** Whether it can be read now, see `legibleStepAppearance` of the theme. */
+  visible: boolean;
+}
+
 export interface StepStatus extends StepProgress {
   /**
    * How the stepper it is nested in appears, including the steppers that one is
@@ -84,6 +103,9 @@ export class StepStore {
   #splitCache: readonly StepPath[] | undefined;
   #path: StepPath = [];
   #pathValid = false;
+  /** Where the elements of steppers are in the source of the deck, if known. */
+  readonly #sources = new Map<object, ReportedSource>();
+  readonly #sourceListeners = new Set<() => void>();
 
   /**
    * @param options.position The position in the steps of the slide, which may
@@ -163,6 +185,60 @@ export class StepStore {
     }
     return node;
   }
+
+  /**
+   * Tells where the elements of a call of `useSteps` for `node` are in the
+   * source of the deck, and how they appear now, or that they are gone.
+   *
+   * @param owner Identifies the call.
+   */
+  reportSource(owner: object, source: ReportedSource | undefined): void {
+    if (source === undefined) {
+      this.#sources.delete(owner);
+    } else {
+      this.#sources.set(owner, source);
+    }
+    for (const listener of this.#sourceListeners) {
+      listener();
+    }
+  }
+
+  /** Calls `listener` when {@link getSources} may return something else. */
+  subscribeSources = (listener: () => void): (() => void) => {
+    this.#sourceListeners.add(listener);
+    return () => {
+      this.#sourceListeners.delete(listener);
+    };
+  };
+
+  /**
+   * Returns where the steppers of the slide are in the source of the deck, and
+   * the steps that show them. An editor of the source can show this.
+   */
+  getSources = (): StepSource[] => {
+    const layout = this.#getLayout();
+    // In the order of the source, whichever stepper told last.
+    const reported = [...this.#sources.values()].sort(
+      ({ range: { start: a } }, { range: { start: b } }) =>
+        a.line - b.line || a.column - b.column,
+    );
+    return reported.flatMap(({ node, range, rank }) => {
+      const step = layout.stepOf(node);
+      return step === undefined
+        ? []
+        : [
+            {
+              ...range,
+              // What is part of the step around it has no step of its own.
+              path: layout.aliasesParent(node)
+                ? step.level
+                : [...step.level, step.first],
+              last: step.last,
+              visible: rank <= this.#legibleRank,
+            },
+          ];
+    });
+  };
 
   subscribe = (listener: () => void): (() => void) => {
     // Only follow the position while someone listens, so that stores of

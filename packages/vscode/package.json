@@ -156,12 +156,17 @@
           ],
           "enumDescriptions": [
             "Previews follow the cursor, and editors follow the previews.",
-            "Previews follow the cursor.",
-            "Editors scroll to the slide that previews show.",
+            "Previews follow the cursor to its slide, and to its step if it can't be read there.",
+            "Editors scroll to the slide and step that previews show.",
             "Previews and editors don't follow each other."
           ],
           "default": "both",
           "description": "How the editor of a deck and its previews follow each other."
+        },
+        "seminar.preview.dimHidden": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to fade the source of what can't be read at the current step of a preview."
         }
       }
     },

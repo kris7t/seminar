@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  shiftRanges,
   shiftTable,
   shiftThrough,
   slideAtLine,
@@ -154,5 +155,34 @@ describe('shiftThrough', () => {
       line: 5,
       column: 14,
     });
+  });
+});
+
+describe('shiftRanges', () => {
+  it('moves both ends, and keeps the rest', () => {
+    const ranges = [
+      {
+        start: { line: 5, column: 1 },
+        end: { line: 5, column: 9 },
+        file: '/deck',
+      },
+    ];
+    expect(
+      shiftRanges(ranges, [
+        {
+          startLine: 4,
+          startColumn: 3,
+          endLine: 4,
+          endColumn: 3,
+          text: 'ab',
+        },
+      ]),
+    ).toEqual([
+      {
+        start: { line: 5, column: 1 },
+        end: { line: 5, column: 11 },
+        file: '/deck',
+      },
+    ]);
   });
 });
