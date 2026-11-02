@@ -116,6 +116,23 @@
           ],
           "default": "editor",
           "description": "Where the Preview Deck button shows a deck."
+        },
+        "seminar.preview.sync": {
+          "type": "string",
+          "enum": [
+            "both",
+            "editorToPreview",
+            "previewToEditor",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Previews follow the cursor, and editors follow the previews.",
+            "Previews follow the cursor.",
+            "Editors scroll to the slide that previews show.",
+            "Previews and editors don't follow each other."
+          ],
+          "default": "both",
+          "description": "How the editor of a deck and its previews follow each other."
         }
       }
     },

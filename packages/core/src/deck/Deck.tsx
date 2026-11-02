@@ -115,6 +115,7 @@ import { useUiLanguageState } from '../i18n/useUiLanguageState.ts';
 import { Sidebar, type SidebarSection } from '../sidebar/Sidebar.tsx';
 import { StepTree } from '../sidebar/StepTree.tsx';
 import { useSlideProbe } from '../view/SlideProbe.tsx';
+import { useEditorSync } from './useEditorSync.ts';
 import { TocList } from '../sidebar/TocList.tsx';
 import { SlideOverview } from '../overview/SlideOverview.tsx';
 import { ThumbnailCache } from '../overview/ThumbnailCache.ts';
@@ -233,6 +234,18 @@ function getSlideId(slide: ReturnType<typeof Children.toArray>[number]) {
   return undefined;
 }
 
+function getSlideSource(
+  slide: ReturnType<typeof Children.toArray>[number],
+): string | undefined {
+  if (isValidElement<{ source?: unknown }>(slide)) {
+    const { source } = slide.props;
+    if (typeof source === 'string') {
+      return source;
+    }
+  }
+  return undefined;
+}
+
 function isSpare(slide: ReturnType<typeof Children.toArray>[number]) {
   return (
     isValidElement<{ spare?: unknown }>(slide) && slide.props.spare === true
@@ -293,7 +306,7 @@ function InteractiveDeck({
 }: DeckProps): JSX.Element {
   const uiLanguage = useUiLanguageState(lang, uiLocales);
   const { t } = uiLanguage;
-  const { slides, slideIds, aliases, recapOf } = useMemo(() => {
+  const { slides, slideIds, slideSources, aliases, recapOf } = useMemo(() => {
     // Slides are positional children, so we need to index into them.
     // eslint-disable-next-line @eslint-react/no-children-to-array
     const raw = Children.toArray(children);
@@ -302,6 +315,8 @@ function InteractiveDeck({
     return {
       slides: resolved.slides,
       slideIds: resolved.slides.map(getSlideId),
+      // Of the slide in the deck, even if it shows another slide as a recap.
+      slideSources: raw.map(getSlideSource),
       aliases: rawAliases,
       recapOf: resolved.recapOf,
     };
@@ -474,6 +489,9 @@ function InteractiveDeck({
     goTo,
     firstSlideIndex,
   ]);
+  useEditorSync(slideIds, slideSources, slideIndex, (index) => {
+    goTo(index, 'restore');
+  });
   const presenterView = usePresenterView(t('presenterView'));
   const presenting = presenterView.active;
   const [presenterAreaRef, , presenterAreaSize] = useFitScale(

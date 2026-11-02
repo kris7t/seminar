@@ -616,6 +616,7 @@ describe('seminar dev', () => {
       url: 'http://127.0.0.1:1234/',
       root: path.join(directory, 'decks'),
       exited: aborted(signal),
+      send: () => undefined,
       close: () => Promise.resolve(),
     };
   }
@@ -648,6 +649,36 @@ describe('seminar dev', () => {
     ]);
   });
 
+  it('passes messages between its parent and the pages', async () => {
+    await page('vite.config.ts', '');
+    const fromPage = { page: '/talk.html', event: 'location', data: 1 };
+    const toPage = { page: '/talk.html', event: 'goToSlide', data: 2 };
+    const messages: unknown[] = [];
+    const sent: unknown[] = [];
+    const running = run(['dev'], {
+      cwd: directory,
+      output: () => undefined,
+      serveAll: (job, signal) => {
+        job.onChannel?.(fromPage);
+        return Promise.resolve({
+          ...fakeServer(signal),
+          send: (message) => {
+            sent.push(message);
+            setTimeout(() => process.emit('SIGTERM', 'SIGTERM'));
+          },
+        });
+      },
+      notify: (message) => messages.push(message),
+      listen: (listener) => {
+        listener({ type: 'pages', count: 1 });
+        listener({ type: 'channel', message: toPage });
+      },
+    });
+    await expect(running).rejects.toHaveProperty('signal', 'SIGTERM');
+    expect(messages).toContainEqual({ type: 'channel', message: fromPage });
+    expect(sent).toEqual([toPage]);
+  });
+
   it('fails if the dev server stops by itself', async () => {
     await page('vite.config.ts', '');
     await expect(
@@ -660,6 +691,7 @@ describe('seminar dev', () => {
             url: 'http://127.0.0.1:1234/',
             root: directory,
             exited: Promise.resolve(),
+            send: () => undefined,
             close: () => Promise.resolve(),
           }),
       }),

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { deckPage, findCli, findProject } from './cli.ts';
+import { deckOfPage, deckPage, findCli, findProject } from './cli.ts';
 
 describe('findCli', () => {
   let project: string;
@@ -52,6 +52,20 @@ describe('findProject', () => {
     expect(findProject(deck)).toBe(project);
     writeFileSync(path.join(project, 'nested', 'vite.config.js'), '');
     expect(findProject(deck)).toBe(path.join(project, 'nested'));
+  });
+});
+
+describe('deckOfPage', () => {
+  it('returns the deck of the page', () => {
+    expect(deckOfPage('/project', '/my%20talks/intro.html')).toBe(
+      path.join('/project', 'my talks', 'intro.deck.mdx'),
+    );
+  });
+
+  it('only accepts pages in the root', () => {
+    expect(deckOfPage('/project', '/%2e%2e/secret.html')).toBeUndefined();
+    expect(deckOfPage('/project', '/%.html')).toBeUndefined();
+    expect(deckOfPage('/project', '/components')).toBeUndefined();
   });
 });
 

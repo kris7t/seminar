@@ -52,6 +52,11 @@ export interface SlideProps extends FadeProps {
    */
   id?: string | undefined;
   /**
+   * Where the slide starts in the source of the deck, as `line:column`, which
+   * the dev server sets for editors. The slide itself doesn't use it.
+   */
+  source?: string | undefined;
+  /**
    * Further ids that refer to the slide in the location hash, e.g., of a
    * division of the deck without a slide of its own, whose first slide this
    * is. The location hash shows the `id` of the slide instead.

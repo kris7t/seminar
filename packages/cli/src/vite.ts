@@ -6,6 +6,8 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type { ChannelMessage } from './devServerPlugin.ts';
+
 export const DECK_SUFFIX = '.deck.mdx';
 
 /** The environment variable that makes the Vite plugin build only a deck. */
@@ -210,6 +212,8 @@ export function buildDeck(
   });
 }
 
+export type { ChannelMessage };
+
 /** A deck to serve with the dev server of Vite. */
 export interface ServeJob {
   /** Directory of the Vite project, with its config. */
@@ -238,6 +242,8 @@ export interface ProjectServeJob {
   allowAnyHost: boolean;
   /** Called with the number of pages connected to the dev server. */
   onPages?: (count: number) => void;
+  /** Called with what pages send over their channel. */
+  onChannel?: (message: ChannelMessage) => void;
 }
 
 /** A running dev server of Vite for all decks of a project. */
@@ -248,6 +254,8 @@ export interface ProjectServer {
   root: string;
   /** Resolves once the dev server has exited. */
   exited: Promise<void>;
+  /** Sends a message to pages over their channel. */
+  send: (message: ChannelMessage) => void;
   /** Stops the dev server, and resolves once it has exited. */
   close: () => Promise<void>;
 }
@@ -257,7 +265,9 @@ export type DevServerMessage =
   /** Once it serves the decks. */
   | { type: 'ready'; url: string; root: string }
   /** When pages connect to it or leave. */
-  | { type: 'pages'; count: number };
+  | { type: 'pages'; count: number }
+  /** What a page sends over its channel, and what to send to pages. */
+  | { type: 'channel'; message: ChannelMessage };
 
 /**
  * Starts the dev server of Vite on a free port, in a process of its own, which
@@ -270,10 +280,12 @@ function startDevServer(
     env,
     args,
     onPages,
+    onChannel,
   }: {
     env: NodeJS.ProcessEnv;
     args: string[];
     onPages?: ((count: number) => void) | undefined;
+    onChannel?: ((message: ChannelMessage) => void) | undefined;
   },
   abortSignal?: AbortSignal,
 ): Promise<ProjectServer> {
@@ -303,10 +315,22 @@ function startDevServer(
         onPages?.(message.count);
         return;
       }
+      if (message.type === 'channel') {
+        onChannel?.(message.message);
+        return;
+      }
       resolve({
         url: message.url,
         root: message.root,
         exited,
+        send: (channelMessage) => {
+          if (child.connected) {
+            child.send({
+              type: 'channel',
+              message: channelMessage,
+            } satisfies DevServerMessage);
+          }
+        },
         close: async () => {
           stop();
           await exited;
@@ -352,7 +376,7 @@ export async function serveDeck(
  * the terminal. Stops it when `abortSignal` is aborted.
  */
 export function serveProject(
-  { project, allowAnyHost, onPages }: ProjectServeJob,
+  { project, allowAnyHost, onPages, onChannel }: ProjectServeJob,
   abortSignal?: AbortSignal,
 ): Promise<ProjectServer> {
   const env = { ...process.env };
@@ -364,6 +388,7 @@ export function serveProject(
       env,
       args: allowAnyHost ? [ALLOW_ANY_HOST] : [],
       onPages,
+      onChannel,
     },
     abortSignal,
   );

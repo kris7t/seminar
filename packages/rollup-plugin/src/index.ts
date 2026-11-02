@@ -157,6 +157,10 @@ export default function seminar({
       defaultMirrorPointer,
       seminarConfigs: setup.seminarConfigs,
       mdxPlugins: setup.mdxPlugins,
+      // Vite tells more than the types of the MDX plugin say.
+      sourcePositions:
+        (configured?.env as { command?: string } | undefined)?.command ===
+        'serve',
       onDependency(path, dependency) {
         let deckDependencies = dependencies.get(path);
         if (deckDependencies === undefined) {

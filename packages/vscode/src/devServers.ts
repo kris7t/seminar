@@ -3,12 +3,22 @@ import { spawn } from 'node:child_process';
 /** How long to keep an unused dev server, to reopen previews right away. */
 const IDLE_TIME = 60_000;
 
+/** A message between a page of a deck and the extension. */
+export interface ChannelMessage {
+  /** The path of the page, from its URL. */
+  page: string;
+  event: string;
+  data: unknown;
+}
+
 /** A running dev server of a project. */
 export interface DevServer {
   /** URL of the root of the dev server. */
   url: string;
   /** Path of the root directory of the Vite project. */
   root: string;
+  /** Sends a message to the pages of the dev server. */
+  send: (message: ChannelMessage) => void;
   /** Stops the dev server. */
   stop: () => void;
 }
@@ -83,6 +93,16 @@ export class DevServers {
     }
   }
 
+  /** Sends a message to the pages of the dev server of `project`, if any. */
+  send(project: string, message: ChannelMessage): void {
+    this.#entries.get(project)?.server.then(
+      ({ send }) => {
+        send(message);
+      },
+      () => undefined,
+    );
+  }
+
   /** Stops all dev servers. */
   dispose(): void {
     for (const [project, entry] of this.#entries) {
@@ -151,7 +171,8 @@ export class DevServers {
 /** What `seminar dev` sends to the process that started it. */
 type DevMessage =
   | { type: 'ready'; url: string; root: string }
-  | { type: 'pages'; count: number };
+  | { type: 'pages'; count: number }
+  | { type: 'channel'; message: ChannelMessage };
 
 /**
  * Runs `seminar dev` with the script `cli` in `project` until it's stopped,
@@ -165,6 +186,7 @@ export function runSeminarDev(
     allowAnyHost,
     log,
     onErrors,
+    onMessage,
     onPages,
     onExit,
   }: DevServerEvents & {
@@ -172,6 +194,11 @@ export function runSeminarDev(
     log: (text: string) => void;
     /** Called after logging what it printed as errors and warnings. */
     onErrors: () => void;
+    /**
+     * Called with what the pages of the dev server send, and its root
+     * directory.
+     */
+    onMessage: (message: ChannelMessage, root: string) => void;
   },
 ): Promise<DevServer> {
   return new Promise((resolve, reject) => {
@@ -182,6 +209,7 @@ export function runSeminarDev(
     );
     let errors = '';
     let started = false;
+    let root = '';
     child.stdout?.on('data', (data: Buffer) => {
       log(data.toString());
     });
@@ -196,11 +224,22 @@ export function runSeminarDev(
     child.on('message', (message: DevMessage) => {
       if (message.type === 'pages') {
         onPages(message.count);
+      } else if (message.type === 'channel') {
+        onMessage(message.message, root);
       } else {
         started = true;
+        ({ root } = message);
         resolve({
           url: message.url,
           root: message.root,
+          send: (channelMessage) => {
+            if (child.connected) {
+              child.send({
+                type: 'channel',
+                message: channelMessage,
+              } satisfies DevMessage);
+            }
+          },
           stop: () => {
             child.kill();
           },

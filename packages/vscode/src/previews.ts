@@ -21,6 +21,7 @@ import {
 } from 'vscode';
 
 import { deckPage, findCli, findProject } from './cli.ts';
+import { DeckSync } from './deckSync.ts';
 import {
   DevServers,
   runSeminarDev,
@@ -68,6 +69,9 @@ export class DeckPreviews implements Disposable {
     }
     return runSeminarDev(cli, project, {
       ...events,
+      onMessage: (message, root) => {
+        this.#sync.receive(project, root, message);
+      },
       // Forwarded ports only have local addresses in desktop editors.
       allowAnyHost: env.uiKind === UIKind.Web,
       log: (text) => {
@@ -81,6 +85,9 @@ export class DeckPreviews implements Disposable {
         }
       },
     });
+  });
+  readonly #sync = new DeckSync((project, message) => {
+    this.#servers.send(project, message);
   });
   readonly #disposables: Disposable[];
 
@@ -103,6 +110,7 @@ export class DeckPreviews implements Disposable {
       );
     this.#disposables = [
       this.#output,
+      this.#sync,
       command('seminar.preview', async (uri) => {
         if (
           workspace.getConfiguration('seminar.preview', uri).get('location') ===

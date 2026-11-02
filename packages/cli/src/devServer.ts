@@ -38,6 +38,21 @@ process.once('disconnect', () => {
   process.exit();
 });
 
+const plugin = devServerPlugin({
+  onPages: (count) => {
+    send({ type: 'pages', count });
+  },
+  onChannel: (message) => {
+    send({ type: 'channel', message });
+  },
+});
+
+process.on('message', (message: DevServerMessage) => {
+  if (message.type === 'channel') {
+    plugin.sendToPages(message.message);
+  }
+});
+
 const { createServer } = (await import(pathToFileURL(vite).href)) as Vite;
 const server = await createServer({
   server: {
@@ -49,11 +64,7 @@ const server = await createServer({
     // Prints the errors of pages, wherever they are shown.
     forwardConsole: { unhandledErrors: true, logLevels: ['warn', 'error'] },
   },
-  plugins: [
-    devServerPlugin((count) => {
-      send({ type: 'pages', count });
-    }),
-  ],
+  plugins: [plugin],
   logLevel: 'warn',
   clearScreen: false,
 });

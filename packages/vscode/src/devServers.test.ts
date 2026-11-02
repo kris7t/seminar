@@ -6,22 +6,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DevServers,
   runSeminarDev,
+  type ChannelMessage,
   type DevServerEvents,
 } from './devServers.ts';
 
 describe('DevServers', () => {
   let started: (DevServerEvents & { project: string; stop: () => void })[];
   let servers: DevServers;
+  let sent: unknown[];
 
   beforeEach(() => {
     vi.useFakeTimers();
     started = [];
+    sent = [];
     servers = new DevServers((project, events) => {
       const stop = vi.fn();
       started.push({ project, ...events, stop });
       return Promise.resolve({
         url: `http://${project}/`,
         root: project,
+        send: (message) => {
+          sent.push([project, message]);
+        },
         stop,
       });
     });
@@ -101,6 +107,15 @@ describe('DevServers', () => {
     expect(attempts).toBe(2);
   });
 
+  it('only sends messages to running dev servers', async () => {
+    const message = { page: '/talk.html', event: 'goToSlide', data: 1 };
+    servers.send('a', message);
+    await servers.acquire('a');
+    servers.send('a', message);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent).toEqual([['a', message]]);
+  });
+
   it('stops all dev servers when disposed', async () => {
     await Promise.all([servers.acquire('a'), servers.acquire('b')]);
     servers.dispose();
@@ -134,6 +149,7 @@ describe('runSeminarDev', () => {
       allowAnyHost: false,
       log: vi.fn<(text: string) => void>(),
       onErrors: vi.fn<() => void>(),
+      onMessage: vi.fn<(message: ChannelMessage, root: string) => void>(),
       onPages: vi.fn<(count: number) => void>(),
       onExit: vi.fn<() => void>(),
     };
@@ -179,6 +195,26 @@ setInterval(() => undefined, 1000);`),
     });
     expect(options.log).toHaveBeenCalledWith('Serving\n');
     expect(options.log).toHaveBeenCalledWith('Internal server error\n');
+    server.stop();
+  });
+
+  it('passes messages between the pages and the extension', async () => {
+    const options = events();
+    const server = await runSeminarDev(
+      await cli(`process.send({ type: 'ready', url: 'http://127.0.0.1:1234/', root: '/' });
+process.on('message', ({ message }) => {
+  process.send({ type: 'channel', message: { ...message, event: 'echo' } });
+});`),
+      project,
+      options,
+    );
+    server.send({ page: '/talk.html', event: 'goToSlide', data: 1 });
+    await vi.waitFor(() => {
+      expect(options.onMessage).toHaveBeenCalledWith(
+        { page: '/talk.html', event: 'echo', data: 1 },
+        '/',
+      );
+    });
     server.stop();
   });
 

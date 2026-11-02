@@ -63,6 +63,11 @@ choose it themselves.
   gets the keys, including most shortcuts of the editor.
 - `window` opens it in the app of `seminar preview`, with all of its features.
 
+Previews follow the cursor to the slide that it's on, keeping the step of the
+slide. Editors scroll to the slide that a preview goes to, and highlight its
+start, without moving the cursor. `seminar.preview.sync` turns either off, or
+both.
+
 Previews in a project share a dev server, which stops a minute after the last
 preview closes. Build errors, and the errors and warnings of the pages of decks,
 are in the `Seminar Dev Server` output channel, which opens with the first of

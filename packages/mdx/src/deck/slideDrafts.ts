@@ -489,6 +489,7 @@ export function buildSlides(
       slides.push(current);
     } else if (node.type === 'thematicBreak') {
       current = createSlide('content', undefined, undefined);
+      current.place = node.position;
       slides.push(current);
     } else if (node.type === 'leafDirective' && node.name === 'include') {
       if (onInclude === undefined) {

@@ -182,7 +182,10 @@ export async function createServer(config) {
     forwardConsole: config.server.forwardConsole,
   }));
   for (const plugin of config.plugins) {
-    plugin.configureServer({ ws: { clients: { size: 2 }, on() {} } });
+    plugin.configureServer({
+      config: { base: '/' },
+      ws: { clients: { size: 2 }, on() {} },
+    });
   }
   return {
     config: { root: process.cwd() + '/decks' },

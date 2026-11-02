@@ -173,6 +173,11 @@ export interface RunOptions {
    */
   notify?: (message: DevServerMessage) => void;
   /**
+   * Calls `listener` with what the process that started the command sends, if
+   * anything.
+   */
+  listen?: (listener: (message: DevServerMessage) => void) => void;
+  /**
    * Presents or previews the deck of `job`, calling `output` with each
    * message, and stopping if `signal` is aborted.
    */
@@ -414,6 +419,9 @@ export async function run(
     serve = serveDeck,
     serveAll = serveProject,
     notify = (message) => process.send?.(message),
+    listen = (listener) => {
+      process.on('message', listener);
+    },
     chooseDeck = chooseInTerminal,
   }: RunOptions = {},
 ): Promise<void> {
@@ -617,10 +625,18 @@ export async function run(
             onPages: (count) => {
               notify({ type: 'pages', count });
             },
+            onChannel: (message) => {
+              notify({ type: 'channel', message });
+            },
           },
           signal,
         );
         output(`Serving the decks of ${project} at ${server.url}`);
+        listen((message) => {
+          if (message.type === 'channel') {
+            server.send(message.message);
+          }
+        });
         notify({ type: 'ready', url: server.url, root: server.root });
         await server.exited;
         if (!signal.aborted) {

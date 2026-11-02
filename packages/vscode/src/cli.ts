@@ -50,6 +50,24 @@ export function findProject(deck: string): string | undefined {
 const DECK_SUFFIX = '.deck.mdx';
 
 /**
+ * Returns the deck with the page at the path `page` of the URL of a dev server
+ * with the root directory `root`, if the page can be one.
+ */
+export function deckOfPage(root: string, page: string): string | undefined {
+  if (!page.endsWith('.html')) {
+    return undefined;
+  }
+  let relative;
+  try {
+    relative = decodeURIComponent(page.slice(1, -'.html'.length));
+  } catch {
+    return undefined;
+  }
+  const deck = path.join(root, `${relative}${DECK_SUFFIX}`);
+  return path.relative(root, deck).startsWith('..') ? undefined : deck;
+}
+
+/**
  * Returns the URL of the page of `deck` at the URL `base` of a dev server with
  * the root directory `root`, with the query `query`, if any, or `undefined` if
  * the deck isn't in the root.
