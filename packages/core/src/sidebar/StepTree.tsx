@@ -77,7 +77,12 @@ function Entry({
       onClick={() => {
         store.reset(path);
       }}
-      sx={{ pl: 2 + level * 2 }}
+      sx={[
+        { pl: 2 + level * 2 },
+        // The icons follow the color of the text, and the selection undims both.
+        phase === 'future' && { color: 'text.secondary' },
+        phase !== 'current' && skipped && { color: 'text.disabled' },
+      ]}
     >
       <ListItemText
         // Placeholders are in the language of the user interface.
@@ -88,23 +93,17 @@ function Entry({
             noWrap: true,
             sx: [
               phase === 'open' && { fontWeight: 500 },
-              phase === 'future' && { color: 'text.secondary' },
               label === '' && { fontStyle: 'italic' },
-              skipped && {
-                color: 'text.disabled',
-                textDecoration: 'line-through',
-              },
+              skipped && { textDecoration: 'line-through' },
             ],
           },
         }}
       >
         {label === '' ? fallback : label}
       </ListItemText>
-      {path.at(-1) === 0 && (
-        <InitialStepIcon sx={{ ml: 1, color: 'text.secondary' }} />
-      )}
-      {overlay && <OverlayIcon sx={{ ml: 1, color: 'text.secondary' }} />}
-      {page && <SplitPageIcon sx={{ ml: 1, color: 'text.secondary' }} />}
+      {path.at(-1) === 0 && <InitialStepIcon sx={{ ml: 1 }} />}
+      {overlay && <OverlayIcon sx={{ ml: 1 }} />}
+      {page && <SplitPageIcon sx={{ ml: 1 }} />}
     </ListItemButton>
   );
 }

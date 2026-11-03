@@ -119,7 +119,12 @@ function row(
   marks: string,
   buttons: string,
 ): string {
-  return `<div class="row${current === undefined ? '' : ' current'}" style="--level:${String(level)}"><button class="entry" ${action(message)}${current === undefined ? '' : ` aria-current="${current}"`}><span class="label ${classes.join(' ')}" title="${escapeHtml(label)}">${escapeHtml(label)}</span>${marks}</button>${buttons}</div>`;
+  const rowClasses = [
+    'row',
+    ...classes,
+    ...(current === undefined ? [] : ['current']),
+  ].join(' ');
+  return `<div class="${rowClasses}" style="--level:${String(level)}"><button class="entry" ${action(message)}${current === undefined ? '' : ` aria-current="${current}"`}><span class="label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>${marks}</button>${buttons}</div>`;
 }
 
 function contentsRows(
@@ -297,14 +302,14 @@ const STYLE = `
   button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
   .row { display: flex; align-items: center; height: 22px; padding-right: 12px; }
   .row:hover { background: var(--vscode-list-hoverBackground); color: var(--vscode-list-hoverForeground); }
-  .row.current { background: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground); }
   .entry { display: flex; align-items: center; flex: 1; min-width: 0; height: 100%; gap: 4px; padding: 0 3px 0 calc(20px + var(--level) * 16px); text-align: left; }
   .label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .open { font-weight: 600; }
-  .future, .skipped { color: var(--vscode-gitDecoration-ignoredResourceForeground, var(--vscode-list-deemphasizedForeground)); }
+  .row.future, .row.skipped { color: var(--vscode-gitDecoration-ignoredResourceForeground, var(--vscode-list-deemphasizedForeground)); }
+  .row.current { background: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground); }
   .fallback { font-style: italic; }
-  .skipped { text-decoration: line-through; }
-  .icon { flex: none; width: 16px; height: 16px; fill: currentColor; opacity: 0.8; }
+  .skipped .label { text-decoration: line-through; }
+  .icon { flex: none; width: 16px; height: 16px; fill: currentColor; }
   .mark { position: relative; display: flex; flex: none; padding: 3px; border-radius: 5px; }
   .mark.changed::after { content: ''; position: absolute; top: 2px; right: 2px; width: 6px; height: 6px; border-radius: 50%; background: var(--vscode-notificationsInfoIcon-foreground); }
   .mark:hover { background: var(--vscode-toolbar-hoverBackground); }

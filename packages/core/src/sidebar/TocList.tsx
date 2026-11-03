@@ -180,6 +180,9 @@ function renderEntries({
           // Without the space below inline content, so that the buttons are
           // centered on the entry.
           { '& .MuiListItemSecondaryAction-root': { display: 'flex' } },
+          // The icons follow the color of the text, and the selection undims
+          // both.
+          spare && !isCurrent && { color: 'text.secondary' },
           // Room for the buttons next to the entry, so that titles that are
           // cut off end before them.
           buttons > 0 && {
@@ -194,6 +197,7 @@ function renderEntries({
                 <IconButton
                   edge={steps || state ? false : 'end'}
                   size="small"
+                  color="inherit"
                   aria-label={link.label}
                   onClick={() => {
                     goTo(link.target);
@@ -207,6 +211,7 @@ function renderEntries({
                   <IconButton
                     edge={steps ? false : 'end'}
                     size="small"
+                    color="inherit"
                     aria-label={t('resetSlide')}
                     onClick={() => {
                       resetSlide(entry.slideIndex);
@@ -225,7 +230,6 @@ function renderEntries({
                       display: 'flex',
                       p: '5px',
                       mr: steps ? 0 : '-3px',
-                      color: 'action.active',
                       cursor: 'pointer',
                     }}
                   >
@@ -236,6 +240,7 @@ function renderEntries({
                 <IconButton
                   edge="end"
                   size="small"
+                  color="inherit"
                   aria-label={t('showSteps')}
                   onClick={() => {
                     showSteps(entry.slideIndex);
@@ -271,17 +276,14 @@ function renderEntries({
               primary: {
                 variant: 'body2',
                 noWrap: true,
-                sx: [
-                  level === 0 && { fontWeight: 500 },
-                  spare && { color: 'text.secondary' },
-                ],
+                sx: level === 0 ? { fontWeight: 500 } : undefined,
               },
             }}
           >
             {entry.title}
           </EntryTitle>
           {/* Spare slides are skipped when going through the deck. */}
-          {spare && <SpareIcon sx={{ ml: 1, color: 'text.secondary' }} />}
+          {spare && <SpareIcon sx={{ ml: 1 }} />}
         </ListItemButton>
       </ListItem>,
       ...renderEntries({

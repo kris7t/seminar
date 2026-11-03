@@ -61,6 +61,27 @@ describe('StepTree', () => {
     cleanup();
   });
 
+  it('colors the icons like the text, and undims the current step', async () => {
+    const user = userEvent.setup();
+    renderDeck();
+    const entry = (name: RegExp) => {
+      const button = screen.getByRole('button', { name });
+      return {
+        text: getComputedStyle(
+          button.querySelector('.MuiTypography-root') ?? button,
+        ).color,
+        icon: getComputedStyle(button.querySelector('svg') ?? button).color,
+      };
+    };
+    const current = entry(/^Start of the slide/);
+    const future = entry(/^detail/);
+    expect(future.text).not.toBe(current.text);
+    expect(future.icon).toBe(future.text);
+    await user.click(screen.getByRole('button', { name: /^detail/ }));
+    expect(entry(/^detail/).text).toBe(current.text);
+    expect(entry(/^detail/).icon).toBe(current.text);
+  });
+
   it('lists the steps of the current slide by their text', () => {
     renderDeck();
     expect(entries()).toEqual([

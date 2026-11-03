@@ -202,6 +202,33 @@ describe('TocList', () => {
     });
   });
 
+  it('colors spare slides and their icons, unless they are current', async () => {
+    const user = userEvent.setup();
+    render(
+      <Deck toc={[{ slide: 0 }, { slide: 'a' }]} defaultShowToc>
+        <Slide title="B" />
+        <Slide id="a" title="A" spare />
+        <Slide recap="a" />
+      </Deck>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Table of contents' });
+    const colors = (name: RegExp) => {
+      const button = within(nav).getByRole('button', { name });
+      const item = button.closest('li') ?? button;
+      return [
+        button.querySelector('.MuiTypography-root') ?? button,
+        ...item.querySelectorAll('svg'),
+      ].map((element) => getComputedStyle(element).color);
+    };
+    const [normal] = colors(/^B/);
+    const dimmed = colors(/^A/);
+    expect(dimmed[0]).not.toBe(normal);
+    expect(new Set(dimmed).size).toBe(1);
+    expect(dimmed.length).toBeGreaterThan(1);
+    await user.click(within(nav).getByRole('button', { name: /^A/ }));
+    expect(new Set(colors(/^A/))).toEqual(new Set([normal]));
+  });
+
   it('links recaps and the slides they recap', async () => {
     const user = userEvent.setup();
     render(

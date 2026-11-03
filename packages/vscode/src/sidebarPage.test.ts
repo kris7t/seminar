@@ -45,6 +45,11 @@ function rows(html: string): string[] {
   return html.split('<div class="row').slice(1);
 }
 
+/** Returns the classes of a row from `rows`, which color all of it. */
+function rowClasses(row: string | undefined): string | undefined {
+  return row?.slice(0, row.indexOf('"'));
+}
+
 const steps = (entries: StepEntry[], current: number[] = []) =>
   stepsHtml({
     slideIndex: 0,
@@ -63,10 +68,10 @@ describe('contentsHtml', () => {
         entries: [entry(0, 'First', { children: [entry(1, 'Nested')] })],
       }),
     );
-    expect(first).toContain('label open');
+    expect(rowClasses(first)).toBe(' open');
     expect(first).not.toContain('aria-current');
     expect(nested).toContain('aria-current="page"');
-    expect(nested).not.toContain('label open');
+    expect(rowClasses(nested)).toBe(' current');
     expect(nested).toContain('--level:1');
   });
 
@@ -94,7 +99,7 @@ describe('contentsHtml', () => {
       ],
     });
     expect(html).toContain('Spare slide');
-    expect(html).toContain('label open future');
+    expect(rowClasses(rows(html)[0])).toBe(' open future');
     expect(html).toContain(
       `{&quot;type&quot;:&quot;goToSlide&quot;,&quot;slideIndex&quot;:4}`,
     );
@@ -149,11 +154,12 @@ describe('stepsHtml', () => {
   it('styles steps by where they are', () => {
     const html = (other: Partial<StepEntry>) =>
       rows(steps([step([1], { label: 'A', ...other })]))[1];
-    expect(html({ phase: 'past' })).toContain('class="label "');
-    expect(html({ phase: 'open' })).toContain('label open');
-    expect(html({ phase: 'future' })).toContain('label future');
+    expect(rowClasses(html({ phase: 'past' }))).toBe('');
+    expect(rowClasses(html({ phase: 'open' }))).toBe(' open');
+    expect(rowClasses(html({ phase: 'future' }))).toBe(' future');
+    expect(rowClasses(html({ phase: 'current' }))).toBe(' current');
     expect(html({ phase: 'current' })).toContain('aria-current="step"');
-    expect(html({ skipped: true })).toContain('skipped');
+    expect(rowClasses(html({ skipped: true }))).toBe(' skipped');
   });
 
   it('italicizes the names of steps without text', () => {
@@ -204,7 +210,12 @@ describe('sidebarHtml', () => {
     );
     expect(html).toContain('color: var(--vscode-list-hoverForeground)');
     expect(html).toContain(
-      '.future, .skipped { color: var(--vscode-gitDecoration-ignoredResourceForeground, var(--vscode-list-deemphasizedForeground)); }',
+      '.row.future, .row.skipped { color: var(--vscode-gitDecoration-ignoredResourceForeground, var(--vscode-list-deemphasizedForeground)); }',
+    );
+    expect(html).toContain('fill: currentColor; }');
+    // The selection takes over the color of dimmed rows, by coming later.
+    expect(html.indexOf('.row.current {')).toBeGreaterThan(
+      html.indexOf('.row.future, .row.skipped {'),
     );
   });
 });
