@@ -196,4 +196,15 @@ describe('sidebarHtml', () => {
     );
     expect(html).toContain('<script nonce="abc">');
   });
+
+  it('colors its text like the lists of the sidebar', () => {
+    const html = sidebarHtml('abc');
+    expect(html).toContain(
+      'color: var(--vscode-sideBar-foreground, var(--vscode-foreground))',
+    );
+    expect(html).toContain('color: var(--vscode-list-hoverForeground)');
+    expect(html).toContain(
+      '.future, .skipped { color: var(--vscode-gitDecoration-ignoredResourceForeground, var(--vscode-list-deemphasizedForeground)); }',
+    );
+  });
 });

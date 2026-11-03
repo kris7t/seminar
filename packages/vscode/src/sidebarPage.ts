@@ -283,19 +283,27 @@ export function welcomeHtml(what: string): string {
 
 const STYLE = `
   html, body { margin: 0; padding: 0; }
-  body { color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
+  html { scrollbar-width: none; }
+  #scrollbar { position: fixed; top: 0; right: 0; bottom: 0; z-index: 14; width: 10px; background: var(--vscode-scrollbar-background); }
+  #scrollbar.visible { opacity: 1; transition: opacity 0.1s linear; }
+  #scrollbar.invisible { opacity: 0; pointer-events: none; }
+  #scrollbar.invisible.fade { transition: opacity 0.8s linear; }
+  #slider { position: absolute; width: 100%; background: var(--vscode-scrollbarSlider-background); }
+  #slider:hover { background: var(--vscode-scrollbarSlider-hoverBackground); }
+  #slider.active { background: var(--vscode-scrollbarSlider-activeBackground); }
+  body { color: var(--vscode-sideBar-foreground, var(--vscode-foreground)); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
   p { margin: 0; padding: 8px 20px; }
   button { color: inherit; font: inherit; border: 0; background: none; cursor: pointer; }
   button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
-  .row { display: flex; align-items: center; height: 22px; padding-right: 4px; }
-  .row:hover { background: var(--vscode-list-hoverBackground); }
+  .row { display: flex; align-items: center; height: 22px; padding-right: 12px; }
+  .row:hover { background: var(--vscode-list-hoverBackground); color: var(--vscode-list-hoverForeground); }
   .row.current { background: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground); }
   .entry { display: flex; align-items: center; flex: 1; min-width: 0; height: 100%; gap: 4px; padding: 0 3px 0 calc(20px + var(--level) * 16px); text-align: left; }
   .label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .open { font-weight: 600; }
-  .future { color: var(--vscode-descriptionForeground); }
+  .future, .skipped { color: var(--vscode-gitDecoration-ignoredResourceForeground, var(--vscode-list-deemphasizedForeground)); }
   .fallback { font-style: italic; }
-  .skipped { color: var(--vscode-disabledForeground); text-decoration: line-through; }
+  .skipped { text-decoration: line-through; }
   .icon { flex: none; width: 16px; height: 16px; fill: currentColor; opacity: 0.8; }
   .mark { position: relative; display: flex; flex: none; padding: 3px; border-radius: 5px; }
   .mark.changed::after { content: ''; position: absolute; top: 2px; right: 2px; width: 6px; height: 6px; border-radius: 50%; background: var(--vscode-notificationsInfoIcon-foreground); }
@@ -303,6 +311,86 @@ const STYLE = `
   .action { display: block; box-sizing: border-box; width: calc(100% - 40px); margin: 0 20px; padding: 4px; border-radius: 2px; background: var(--vscode-button-background); color: var(--vscode-button-foreground); text-align: center; }
   .action:hover { background: var(--vscode-button-hoverBackground); }
 `;
+
+/**
+ * Draws the scrollbar of the page like the scrollable elements of the editor,
+ * because webviews can only have scrollbars that take up space.
+ */
+const SCROLLBAR_SCRIPT = `
+      const root = document.documentElement;
+      const scrollbar = document.getElementById('scrollbar');
+      const slider = document.getElementById('slider');
+      const MIN_SLIDER_SIZE = 20;
+      const HIDE_DELAY = 500;
+      let mouseOver = false;
+      let dragging = false;
+      let hideTimer;
+      function layOutScrollbar() {
+        const { scrollTop, scrollHeight, clientHeight } = root;
+        scrollbar.hidden = scrollHeight <= clientHeight;
+        const size = Math.max(MIN_SLIDER_SIZE, clientHeight ** 2 / scrollHeight);
+        slider.style.height = size + 'px';
+        slider.style.top = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - size) + 'px';
+      }
+      function revealScrollbar() {
+        clearTimeout(hideTimer);
+        scrollbar.className = 'visible';
+      }
+      function hideScrollbar() {
+        if (!mouseOver && !dragging) {
+          scrollbar.className = 'invisible fade';
+        }
+      }
+      function scheduleHideScrollbar() {
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(hideScrollbar, HIDE_DELAY);
+      }
+      // Not when the mouse enters, which isn't sent after a drag ends outside.
+      root.addEventListener('pointermove', () => {
+        if (!mouseOver) {
+          mouseOver = true;
+          revealScrollbar();
+        }
+      });
+      root.addEventListener('mouseleave', () => {
+        mouseOver = false;
+        hideScrollbar();
+      });
+      window.addEventListener('scroll', () => {
+        layOutScrollbar();
+        revealScrollbar();
+        scheduleHideScrollbar();
+      });
+      window.addEventListener('resize', layOutScrollbar);
+      new ResizeObserver(layOutScrollbar).observe(document.body);
+      scrollbar.addEventListener('mousedown', (event) => event.preventDefault());
+      scrollbar.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) {
+          return;
+        }
+        const { top, height } = slider.getBoundingClientRect();
+        const grabbed = event.target === slider ? event.clientY - top : height / 2;
+        const scrollTo = ({ clientY }) => {
+          const { scrollHeight, clientHeight } = root;
+          root.scrollTop = ((clientY - grabbed) / (clientHeight - height)) * (scrollHeight - clientHeight);
+        };
+        const stop = ({ clientX, clientY }) => {
+          // Neither is the mouse leaving during a drag.
+          mouseOver = clientX >= 0 && clientX < innerWidth && clientY >= 0 && clientY < innerHeight;
+          dragging = false;
+          slider.classList.remove('active');
+          scrollbar.removeEventListener('pointermove', scrollTo);
+          scrollbar.removeEventListener('lostpointercapture', stop);
+          scheduleHideScrollbar();
+        };
+        dragging = true;
+        slider.classList.add('active');
+        scrollbar.setPointerCapture(event.pointerId);
+        scrollbar.addEventListener('pointermove', scrollTo);
+        scrollbar.addEventListener('lostpointercapture', stop);
+        scrollTo(event);
+      });
+      layOutScrollbar();`;
 
 /**
  * Returns the page of a view of the sidebar, which shows the HTML it is sent,
@@ -320,7 +408,8 @@ export function sidebarHtml(nonce: string): string {
     <style>${STYLE}</style>
   </head>
   <body>
-    <script nonce="${nonce}">
+    <div id="scrollbar" class="invisible" hidden><div id="slider"></div></div>
+    <script nonce="${nonce}">${SCROLLBAR_SCRIPT}
       const vscode = acquireVsCodeApi();
       document.addEventListener('click', ({ target }) => {
         const message = target.closest('[data-message]')?.dataset.message;

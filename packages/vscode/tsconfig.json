@@ -1,15 +1,7 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "isolatedDeclarations": false,
-    "rewriteRelativeImportExtensions": false,
-    "allowImportingTsExtensions": true,
-    "tsBuildInfoFile": "../../node_modules/.cache/tsc/vscode.tsbuildinfo"
-  },
-  "include": ["src"],
+  "files": [],
   "references": [
-    { "path": "../core/tsconfig.lib.json" },
-    { "path": "../mdx/tsconfig.lib.json" }
+    { "path": "./tsconfig.lib.json" },
+    { "path": "./tsconfig.test.json" }
   ]
 }
