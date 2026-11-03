@@ -166,7 +166,7 @@
         "seminar.preview.dimHidden": {
           "type": "boolean",
           "default": true,
-          "description": "Whether to fade the source of what can't be read at the current step of a preview."
+          "description": "Whether to fade the source of what can't be read at the current step of a preview, as much as unused code, except in high contrast themes."
         }
       }
     },

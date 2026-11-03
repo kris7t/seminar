@@ -1,4 +1,5 @@
 import {
+  ColorThemeKind,
   commands,
   EventEmitter,
   Range,
@@ -108,7 +109,16 @@ export class DeckSync implements Disposable {
   readonly #sourceHighlight = window.createTextEditorDecorationType({
     backgroundColor: new ThemeColor('editor.findMatchHighlightBackground'),
   });
-  readonly #hidden = window.createTextEditorDecorationType({ opacity: '0.4' });
+  // As much as unused code, which the theme tells. This variable isn't an API of
+  // the editor, so it has a fallback, the defaults of the editor.
+  readonly #hidden = window.createTextEditorDecorationType({
+    light: {
+      opacity: 'var(--monaco-editor-unnecessary-decoration-opacity, 0.467)',
+    },
+    dark: {
+      opacity: 'var(--monaco-editor-unnecessary-decoration-opacity, 0.667)',
+    },
+  });
   readonly #changed = new EventEmitter<undefined>();
   /** Fires when what is known of the active deck may have changed. */
   readonly onDidChange = this.#changed.event;
@@ -193,6 +203,9 @@ export class DeckSync implements Disposable {
         this.#updateDimming();
       }),
       window.onDidChangeVisibleTextEditors(() => {
+        this.#updateDimming();
+      }),
+      window.onDidChangeActiveColorTheme(() => {
         this.#updateDimming();
       }),
       workspace.onDidChangeConfiguration((event) => {
@@ -540,8 +553,15 @@ export class DeckSync implements Disposable {
     this.#update();
   }
 
-  /** Fades what can't be read at the current step in the editors of decks. */
+  /**
+   * Fades what can't be read at the current step in the editors of decks, except
+   * in high contrast themes, like unused code.
+   */
   #updateDimming(): void {
+    const { kind } = window.activeColorTheme;
+    const highContrast =
+      kind === ColorThemeKind.HighContrast ||
+      kind === ColorThemeKind.HighContrastLight;
     for (const editor of window.visibleTextEditors) {
       const file = editor.document.uri.fsPath;
       const dim = workspace
@@ -549,7 +569,7 @@ export class DeckSync implements Disposable {
         .get('dimHidden');
       editor.setDecorations(
         this.#hidden,
-        dim === false
+        dim === false || highContrast
           ? []
           : [...this.#decks].flatMap(([deck, { live, steps }]) =>
               live && steps !== undefined
