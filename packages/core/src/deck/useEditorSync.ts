@@ -4,6 +4,7 @@ import {
   useEffect,
   useEffectEvent,
   useRef,
+  useState,
   type ReactNode,
 } from 'react';
 
@@ -288,12 +289,26 @@ export function useEditorSync({
 
   // The slide that was asked for, which there's no need to tell about.
   const requestedRef = useRef<number>(undefined);
+  // The first slide is only where the page starts, not where the presenter went,
+  // and whether the location said so tells if it was chosen, e.g., when reloading.
+  const [restored] = useState(
+    () => typeof window !== 'undefined' && window.location.hash !== '',
+  );
+  // Effects run twice in strict mode, which isn't going anywhere.
+  const toldRef = useRef<number>(undefined);
   useEffect(() => {
-    if (requestedRef.current !== slideIndex) {
-      getDevChannel()?.send('location', { version: VERSION, slideIndex });
+    if (toldRef.current !== slideIndex) {
+      if (requestedRef.current !== slideIndex) {
+        getDevChannel()?.send('location', {
+          version: VERSION,
+          slideIndex,
+          ...(toldRef.current === undefined ? { initial: true, restored } : {}),
+        });
+      }
+      toldRef.current = slideIndex;
     }
     requestedRef.current = undefined;
-  }, [slideIndex]);
+  }, [slideIndex, restored]);
 
   const onGoToSlide = useEffectEvent(
     ({ version, slideId, slideIndex: index, path }: GoToSlide) => {
@@ -341,7 +356,9 @@ export function useEditorSync({
       }),
       // Where another page of the deck went.
       channel.on('location', (data) => {
-        onGoToSlide(data as GoToSlide);
+        if ((data as { initial?: unknown }).initial !== true) {
+          onGoToSlide(data as GoToSlide);
+        }
       }),
       channel.on('goToStep', (data) => {
         onGoToStep(data as GoToStep);

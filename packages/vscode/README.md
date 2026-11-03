@@ -63,7 +63,7 @@ choose it themselves.
   gets the keys, including most shortcuts of the editor.
 - `window` opens it in the app of `seminar preview`, with all of its features.
 
-Previews follow the cursor to the slide that it's on and to the step that shows
+Previews start at the cursor, and follow it to the slide that it's on and to the step that shows
 what it's on. Once on the slide, they stay on their step if what the cursor is on
 can be read there.
 Editors scroll to the slide and step that a preview goes to, and highlight the

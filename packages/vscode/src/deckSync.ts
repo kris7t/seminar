@@ -324,6 +324,8 @@ export class DeckSync implements Disposable {
       slides?: SlideSource[] | Placed[][];
       slideIndex?: unknown;
       entries?: unknown;
+      initial?: unknown;
+      restored?: unknown;
       range?: PageRange;
     } | null;
     if (deck === undefined || data?.version !== VERSION) {
@@ -369,7 +371,11 @@ export class DeckSync implements Disposable {
       typeof data.slideIndex === 'number'
     ) {
       synced.current = data.slideIndex;
-      this.#showSlide(deck, synced);
+      if (data.initial !== true) {
+        this.#showSlide(deck, synced);
+      } else if (data.restored !== true) {
+        this.#startAtCursor(deck);
+      }
     }
     this.#update();
   }
@@ -431,6 +437,23 @@ export class DeckSync implements Disposable {
       event,
       data: { version: VERSION, ...data },
     });
+  }
+
+  /**
+   * Moves a preview that has just started on its first slide to the cursor in
+   * the editor of its deck, if any, rather than scrolling the editor to the top.
+   */
+  #startAtCursor(deck: string): void {
+    const active = window.activeTextEditor;
+    const editor =
+      active?.document.uri.fsPath === deck
+        ? active
+        : window.visibleTextEditors.find(
+            ({ document }) => document.uri.fsPath === deck,
+          );
+    if (editor !== undefined) {
+      this.#followCursor(editor);
+    }
   }
 
   #receiveSteps(deck: string, synced: SyncedDeck, steps: SlideSteps): void {

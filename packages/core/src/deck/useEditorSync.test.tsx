@@ -5,7 +5,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import type { JSX } from 'react';
+import { StrictMode, type JSX } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DevChannel } from '../host/devChannel.ts';
@@ -83,7 +83,9 @@ describe('useEditorSync', () => {
         ],
       },
     ]);
-    expect(messages('location')).toEqual([{ version: 1, slideIndex: 0 }]);
+    expect(messages('location')).toEqual([
+      { version: 1, slideIndex: 0, initial: true, restored: false },
+    ]);
   });
 
   it('tells where recaps are, rather than the slides that they show', () => {
@@ -129,9 +131,38 @@ describe('useEditorSync', () => {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     expect(messages('location')).toEqual([
-      { version: 1, slideIndex: 0 },
+      { version: 1, slideIndex: 0, initial: true, restored: false },
       { version: 1, slideIndex: 2 },
     ]);
+  });
+
+  it('tells where it starts only once in strict mode', () => {
+    render(<StrictMode>{deck()}</StrictMode>);
+    expect(messages('location')).toEqual([
+      { version: 1, slideIndex: 0, initial: true, restored: false },
+    ]);
+  });
+
+  it('tells if the location chose the slide that it starts on', () => {
+    window.history.replaceState(null, '', '#third');
+    render(deck());
+    expect(messages('location')).toEqual([
+      { version: 1, slideIndex: 2, initial: true, restored: true },
+    ]);
+  });
+
+  it('stays when another page of the deck starts', () => {
+    render(deck());
+    goToSlide({ slideId: 'third' });
+    act(() => {
+      listeners.get('location')?.({
+        version: 1,
+        slideIndex: 0,
+        initial: true,
+        restored: false,
+      });
+    });
+    expect(window.location.hash).toBe('#third');
   });
 
   it('follows the other pages of the deck, without telling them', () => {
