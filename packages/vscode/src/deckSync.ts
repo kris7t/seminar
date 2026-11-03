@@ -5,7 +5,6 @@ import {
   TabInputText,
   TabInputWebview,
   TextEditorRevealType,
-  TextEditorSelectionChangeKind,
   ThemeColor,
   Uri,
   ViewColumn,
@@ -39,6 +38,12 @@ const VERSION = 1;
 
 /** How long to wait for the cursor to settle before moving the preview. */
 const CURSOR_DELAY = 150;
+
+/** How long after an edit a moving cursor only follows it, in milliseconds. */
+const EDIT_TIME = 100;
+
+/** How long to wait for what steppers tell to settle, in milliseconds. */
+const DIMMING_DELAY = 80;
 
 /** How long a new slide may still change where steps are, in milliseconds. */
 const SETTLE_TIME = 1500;
@@ -118,6 +123,11 @@ export class DeckSync implements Disposable {
    */
   #settling:
     { synced: SyncedDeck; editor: TextEditor; until: number } | undefined;
+  /** Where the cursor was last. */
+  #cursor: string | undefined;
+  /** When a document was last edited, whose cursors just follow the edit. */
+  #editedAt = 0;
+  #dimmingTimer: ReturnType<typeof setTimeout> | undefined;
   #cursorTimer: ReturnType<typeof setTimeout> | undefined;
   #highlightTimer: ReturnType<typeof setTimeout> | undefined;
   #sourceHighlightTimer: ReturnType<typeof setTimeout> | undefined;
@@ -178,6 +188,8 @@ export class DeckSync implements Disposable {
             }
           }
         }
+        this.#editedAt = Date.now();
+        clearTimeout(this.#cursorTimer);
         this.#updateDimming();
       }),
       window.onDidChangeVisibleTextEditors(() => {
@@ -188,10 +200,19 @@ export class DeckSync implements Disposable {
           this.#updateDimming();
         }
       }),
-      window.onDidChangeTextEditorSelection(({ textEditor, kind }) => {
+      // Whatever moved the cursor, also other extensions, like Vim modes, except
+      // for typing, which the cursor only follows. They may also tell about
+      // cursors that stay, e.g., changing modes, which shouldn't move a preview
+      // that was moved elsewhere.
+      window.onDidChangeTextEditorSelection(({ textEditor }) => {
+        const { line, character } = textEditor.selection.active;
+        const cursor = `${textEditor.document.uri.fsPath}:${String(line)}:${String(character)}`;
+        const moved = cursor !== this.#cursor;
+        this.#cursor = cursor;
         if (
-          kind === TextEditorSelectionChangeKind.Keyboard ||
-          kind === TextEditorSelectionChangeKind.Mouse
+          moved &&
+          textEditor === window.activeTextEditor &&
+          Date.now() - this.#editedAt > EDIT_TIME
         ) {
           clearTimeout(this.#cursorTimer);
           this.#cursorTimer = setTimeout(() => {
@@ -205,6 +226,7 @@ export class DeckSync implements Disposable {
 
   dispose(): void {
     clearTimeout(this.#cursorTimer);
+    clearTimeout(this.#dimmingTimer);
     clearTimeout(this.#highlightTimer);
     clearTimeout(this.#sourceHighlightTimer);
     for (const disposable of this.#disposables) {
@@ -381,7 +403,12 @@ export class DeckSync implements Disposable {
       'seminar.deckOpen',
       this.activePath !== undefined || this.#hasPreviewTab(),
     );
-    this.#updateDimming();
+    // Steppers first tell how they appear before they have their places, so
+    // wait for that, or a new slide would flash.
+    clearTimeout(this.#dimmingTimer);
+    this.#dimmingTimer = setTimeout(() => {
+      this.#updateDimming();
+    }, DIMMING_DELAY);
     this.#changed.fire(undefined);
   }
 
