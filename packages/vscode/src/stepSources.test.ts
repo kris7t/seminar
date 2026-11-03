@@ -4,6 +4,7 @@ import type { StepSource } from './sidebarPage.ts';
 import {
   hiddenSources,
   sourceOfStep,
+  stepOnSlide,
   sourcesIn,
   stepOfCursor,
 } from './stepSources.ts';
@@ -97,6 +98,32 @@ describe('stepOfCursor with a single step in a paragraph', () => {
 
   it('fades it', () => {
     expect(hiddenSources(sources)).toHaveLength(2);
+  });
+});
+
+describe('stepOnSlide', () => {
+  it('finds the step of the innermost stepper', () => {
+    const sources = [
+      source(3, 1, 9, 4, [1], true),
+      source(5, 1, 5, 9, [1, 2], false),
+    ];
+    expect(stepOnSlide(sources, at(5, 2))).toEqual([1, 2]);
+    expect(stepOnSlide(sources, at(7, 1))).toEqual([1]);
+  });
+
+  it('prefers the step in a paragraph with the same range', () => {
+    expect(
+      stepOnSlide(
+        [source(5, 1, 5, 9, [3], true), source(5, 1, 5, 9, [3, 1], false)],
+        at(5, 2),
+      ),
+    ).toEqual([3, 1]);
+  });
+
+  it('says nothing for what the slide always shows, or no stepper', () => {
+    const sources = [source(3, 1, 3, 5, [], true)];
+    expect(stepOnSlide(sources, at(3, 2))).toBeUndefined();
+    expect(stepOnSlide(sources, at(9, 1))).toBeUndefined();
   });
 });
 

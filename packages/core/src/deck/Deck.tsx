@@ -494,8 +494,9 @@ function InteractiveDeck({
     hasSteps,
     hasState,
     stateChanged,
-    goToSlide: (index) => {
-      goTo(index, 'restore');
+    probed,
+    goToSlide: (index, path) => {
+      goTo(index, path ?? 'restore');
     },
     resetSlide,
   });

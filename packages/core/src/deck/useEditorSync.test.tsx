@@ -6,7 +6,7 @@ import {
   screen,
 } from '@testing-library/react';
 import type { JSX } from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DevChannel } from '../host/devChannel.ts';
 import { __seminarAt } from '../host/sourceRanges.ts';
@@ -267,6 +267,58 @@ describe('useEditorSync', () => {
     expect(lastSteps().current).toEqual([2]);
   });
 
+  it('goes right to a step of another slide', async () => {
+    render(
+      <Deck>
+        <Slide id="first" title="First" />
+        <Slide id="second" title="Second">
+          <Step>One</Step>
+          <Step>Two</Step>
+        </Slide>
+      </Deck>,
+    );
+    goToSlide({ slideId: 'second', path: [2] });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(window.location.hash).toBe('#second&step=2');
+    expect(lastSteps()).toMatchObject({ slideIndex: 1, current: [2] });
+  });
+
+  it('goes to a step of the slide it is on', () => {
+    render(stepsDeck());
+    goToSlide({ slideId: 'first', path: [1] });
+    expect(window.location.hash).toBe('#first&step=1');
+  });
+
+  it('tells where the steps of all slides are, once they are probed', async () => {
+    render(
+      <Deck>
+        <Slide id="first" title="First">
+          {__seminarAt(<Step>One</Step>, '3:1-3:5')}
+        </Slide>
+        <Slide id="second" title="Second">
+          {__seminarAt(<Step>Two</Step>, '7:1-7:5')}
+          {__seminarAt(<Step>Three</Step>, '9:1-9:5')}
+        </Slide>
+      </Deck>,
+    );
+    await vi.waitFor(() => {
+      expect(messages('probe').at(-1)).toMatchObject({
+        slides: [
+          [{ start: { line: 3, column: 1 }, path: [1] }],
+          [
+            { start: { line: 7, column: 1 }, path: [1] },
+            { start: { line: 9, column: 1 }, path: [2] },
+          ],
+        ],
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+  });
+
   it('tells the steps of the new slide', () => {
     render(stepsDeck());
     goToSlide({ slideId: 'second' });
@@ -439,6 +491,15 @@ describe('useEditorSync', () => {
       await settled();
       expect(sources().map(({ visible }) => visible)).toEqual([false, true]);
     });
+  });
+
+  it('tells when the presenter uses the page', () => {
+    render(deck());
+    expect(messages('input')).toEqual([]);
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.pointerDown(window);
+    fireEvent.wheel(window);
+    expect(messages('input')).toHaveLength(3);
   });
 
   it('ignores slides that do not exist, and other versions', () => {

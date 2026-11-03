@@ -10,7 +10,7 @@ import {
 import { getDevChannel } from '../host/devChannel.ts';
 import { findSourceRangeOf, type SourceRange } from '../host/sourceRanges.ts';
 import type { StepPath } from '../steps/StepNode.ts';
-import type { StepStore } from '../steps/StepStore.ts';
+import type { StepSource, StepStore } from '../steps/StepStore.ts';
 import type { StepTreeEntry } from '../steps/stepTree.ts';
 import { phaseOf } from '../sidebar/StepTree.tsx';
 import { findCurrentEntry, type ResolvedTocEntry } from './tableOfContents.ts';
@@ -22,6 +22,8 @@ interface GoToSlide {
   version?: unknown;
   slideId?: unknown;
   slideIndex?: unknown;
+  /** The step to go to, instead of the one last shown on the slide. */
+  path?: unknown;
 }
 
 interface GoToStep {
@@ -120,8 +122,10 @@ export interface EditorSyncOptions extends SlideMarks {
   toc: readonly ResolvedTocEntry[];
   /** The steps of the current slide. */
   stepStore: StepStore;
-  /** Goes to a slide, keeping its steps. */
-  goToSlide: (slideIndex: number) => void;
+  /** Where the steppers of each slide are, once the slides are probed. */
+  probed: readonly { sources: readonly StepSource[] }[];
+  /** Goes to a slide, keeping its steps, or to the step at `path` on it. */
+  goToSlide: (slideIndex: number, path: StepPath | undefined) => void;
   /** Resets the state of a slide. */
   resetSlide: (slideIndex: number) => void;
 }
@@ -139,6 +143,7 @@ export function useEditorSync({
   slideIndex,
   toc,
   stepStore,
+  probed,
   goToSlide,
   resetSlide,
   ...marks
@@ -164,6 +169,26 @@ export function useEditorSync({
   useEffect(() => {
     getDevChannel()?.send('contents', JSON.parse(contents));
   }, [contents]);
+
+  // Tells where the steps of all slides are, so that the editor can go right to
+  // a step on another slide. What is visible there depends on its step.
+  const probedSources = JSON.stringify(
+    probed.map(({ sources }) =>
+      sources.map(({ start, end, file, path, last }) => ({
+        start,
+        end,
+        file,
+        path,
+        last,
+      })),
+    ),
+  );
+  useEffect(() => {
+    getDevChannel()?.send('probe', {
+      version: VERSION,
+      slides: JSON.parse(probedSources) as unknown,
+    });
+  }, [probedSources]);
 
   // What the editor last heard of the steps, which change more often than what
   // it shows, e.g., while the slide renders.
@@ -240,6 +265,27 @@ export function useEditorSync({
     };
   }, []);
 
+  // Tells that the presenter is using the page, so that the editor doesn't move
+  // it anymore for a cursor that moved before that.
+  useEffect(() => {
+    const channel = getDevChannel();
+    if (channel === undefined) {
+      return undefined;
+    }
+    const onInput = () => {
+      channel.send('input', { version: VERSION });
+    };
+    const options = { capture: true, passive: true };
+    window.addEventListener('keydown', onInput, options);
+    window.addEventListener('pointerdown', onInput, options);
+    window.addEventListener('wheel', onInput, options);
+    return () => {
+      window.removeEventListener('keydown', onInput, options);
+      window.removeEventListener('pointerdown', onInput, options);
+      window.removeEventListener('wheel', onInput, options);
+    };
+  }, []);
+
   // The slide that was asked for, which there's no need to tell about.
   const requestedRef = useRef<number>(undefined);
   useEffect(() => {
@@ -250,7 +296,7 @@ export function useEditorSync({
   }, [slideIndex]);
 
   const onGoToSlide = useEffectEvent(
-    ({ version, slideId, slideIndex: index }: GoToSlide) => {
+    ({ version, slideId, slideIndex: index, path }: GoToSlide) => {
       if (version !== VERSION) {
         return;
       }
@@ -258,14 +304,15 @@ export function useEditorSync({
       const byId = typeof slideId === 'string' ? slideIds.indexOf(slideId) : -1;
       const target =
         byId >= 0 ? byId : typeof index === 'number' ? index : undefined;
-      if (
-        target !== undefined &&
-        target !== slideIndex &&
-        target >= 0 &&
-        target < slideIds.length
-      ) {
+      if (target === undefined || target < 0 || target >= slideIds.length) {
+        return;
+      }
+      const step = isStepPath(path) ? path : undefined;
+      if (target !== slideIndex) {
         requestedRef.current = target;
-        goToSlide(target);
+        goToSlide(target, step);
+      } else if (step !== undefined) {
+        stepStore.reset(step);
       }
     },
   );

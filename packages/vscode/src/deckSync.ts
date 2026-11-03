@@ -22,6 +22,8 @@ import {
   sourceOfStep,
   sourcesIn,
   stepOfCursor,
+  stepOnSlide,
+  type Placed,
 } from './stepSources.ts';
 import type { ChannelMessage } from './devServers.ts';
 import {
@@ -37,6 +39,9 @@ const VERSION = 1;
 
 /** How long to wait for the cursor to settle before moving the preview. */
 const CURSOR_DELAY = 150;
+
+/** How long a new slide may still change where steps are, in milliseconds. */
+const SETTLE_TIME = 1500;
 
 /** How long the start of the shown slide stays highlighted. */
 const HIGHLIGHT_TIME = 1000;
@@ -58,6 +63,8 @@ export interface SyncedDeck {
   current: number | undefined;
   contents: DeckContents | undefined;
   steps: SlideSteps | undefined;
+  /** Where the steppers of each slide are, once they are probed. */
+  probed: Placed[][];
 }
 
 /** Where a clicked element is, as a page tells it, from 1. */
@@ -103,8 +110,14 @@ export class DeckSync implements Disposable {
   readonly #disposables: Disposable[];
   /** The deck that was last in front. */
   #active: string | undefined;
-  /** The cursor whose slide doesn't have its steps yet. */
-  #waitingCursor: { synced: SyncedDeck; editor: TextEditor } | undefined;
+  /**
+   * The cursor that moved a preview to another slide, whose steps may still
+   * find their places, or which the probe of the slide didn't know yet, e.g.,
+   * callouts pointing at parts of diagrams, which render later. Ends when the
+   * presenter moves the preview, so that it isn't moved back.
+   */
+  #settling:
+    { synced: SyncedDeck; editor: TextEditor; until: number } | undefined;
   #cursorTimer: ReturnType<typeof setTimeout> | undefined;
   #highlightTimer: ReturnType<typeof setTimeout> | undefined;
   #sourceHighlightTimer: ReturnType<typeof setTimeout> | undefined;
@@ -140,7 +153,19 @@ export class DeckSync implements Disposable {
         if (synced !== undefined) {
           synced.table = shiftTable(synced.table, changes);
         }
-        for (const [deck, { steps }] of this.#decks) {
+        for (const [deck, deckSync] of this.#decks) {
+          deckSync.probed = deckSync.probed.map((sources) => {
+            const moved = new Set(sourcesIn(sources, file, deck));
+            return moved.size === 0
+              ? sources
+              : sources.map(
+                  (source) =>
+                    (moved.has(source)
+                      ? shiftRanges([source], changes)[0]
+                      : undefined) ?? source,
+                );
+          });
+          const { steps } = deckSync;
           if (steps !== undefined) {
             const changed = new Set(sourcesIn(steps.sources, file, deck));
             if (changed.size > 0) {
@@ -221,6 +246,7 @@ export class DeckSync implements Disposable {
 
   /** Moves the previews of the active deck to a slide. */
   goToSlide(slideIndex: number): void {
+    this.#settling = undefined;
     const deck = this.activePath;
     const synced = this.activeDeck;
     if (deck !== undefined && synced !== undefined) {
@@ -237,6 +263,7 @@ export class DeckSync implements Disposable {
 
   /** Moves the previews of the active deck to a step of their slide. */
   goToStep(path: readonly number[]): void {
+    this.#settling = undefined;
     const synced = this.activeDeck;
     if (synced?.steps !== undefined) {
       this.#sendTo(synced, 'goToStep', {
@@ -259,7 +286,7 @@ export class DeckSync implements Disposable {
     const deck = deckOfPage(root, message.page);
     const data = message.data as {
       version?: unknown;
-      slides?: SlideSource[];
+      slides?: SlideSource[] | Placed[][];
       slideIndex?: unknown;
       entries?: unknown;
       range?: PageRange;
@@ -275,6 +302,7 @@ export class DeckSync implements Disposable {
       current: undefined,
       contents: undefined,
       steps: undefined,
+      probed: [],
     };
     this.#decks.set(deck, synced);
     if (message.event === 'pageClosed') {
@@ -283,14 +311,20 @@ export class DeckSync implements Disposable {
       return;
     }
     synced.live = true;
-    if (message.event === 'goToSource') {
+    if (message.event === 'input') {
+      if (this.#settling?.synced === synced) {
+        this.#settling = undefined;
+      }
+    } else if (message.event === 'probe' && Array.isArray(data.slides)) {
+      synced.probed = data.slides as unknown as Placed[][];
+    } else if (message.event === 'goToSource') {
       this.#goToSource(deck, project, data.range).catch((error: unknown) => {
         void window.showErrorMessage(
           error instanceof Error ? error.message : String(error),
         );
       });
     } else if (message.event === 'slides' && Array.isArray(data.slides)) {
-      synced.table = data.slides;
+      synced.table = data.slides as SlideSource[];
     } else if (message.event === 'contents' && Array.isArray(data.entries)) {
       synced.contents = data as unknown as DeckContents;
     } else if (message.event === 'steps' && Array.isArray(data.entries)) {
@@ -369,9 +403,14 @@ export class DeckSync implements Disposable {
     ) {
       this.#showStep(deck, steps);
     }
-    const waiting = this.#waitingCursor;
-    if (waiting !== undefined && this.#decks.get(deck) === waiting.synced) {
-      this.#followStep(deck, waiting.synced, waiting.editor);
+    // Also after going to a step, which the slide may not have had yet.
+    const settling = this.#settling;
+    if (settling?.synced === synced) {
+      if (Date.now() > settling.until) {
+        this.#settling = undefined;
+      } else {
+        this.#followStep(deck, synced, settling.editor);
+      }
     }
   }
 
@@ -403,32 +442,23 @@ export class DeckSync implements Disposable {
   /**
    * Goes to the step of the stepper that the cursor is in, if it can't be read
    * now. Blank lines say nothing, even in a stepper, so that going through them
-   * doesn't jump. If the steps of the slide of the cursor aren't known yet, it
-   * waits for them, unless the cursor moves.
+   * doesn't jump.
    */
   #followStep(deck: string, synced: SyncedDeck, editor: TextEditor): void {
+    const { steps } = synced;
     const { document, selection } = editor;
     const { active } = selection;
-    this.#waitingCursor = undefined;
-    const { steps } = synced;
-    const sources =
-      steps?.slideIndex === synced.current && steps !== undefined
-        ? sourcesIn(steps.sources, document.uri.fsPath, deck)
-        : [];
-    if (sources.length === 0) {
-      this.#waitingCursor = { synced, editor };
-      return;
-    }
     if (
       steps === undefined ||
+      steps.slideIndex !== synced.current ||
       document.lineAt(active.line).isEmptyOrWhitespace
     ) {
       return;
     }
-    const path = stepOfCursor(sources, {
-      line: active.line + 1,
-      column: active.character + 1,
-    });
+    const path = stepOfCursor(
+      sourcesIn(steps.sources, document.uri.fsPath, deck),
+      { line: active.line + 1, column: active.character + 1 },
+    );
     if (path !== undefined && !samePath(path, steps.current)) {
       this.#sendTo(synced, 'goToStep', {
         slideIndex: steps.slideIndex,
@@ -438,14 +468,10 @@ export class DeckSync implements Disposable {
   }
 
   #followCursor(editor: TextEditor): void {
+    this.#settling = undefined;
     const file = editor.document.uri.fsPath;
-    this.#waitingCursor = undefined;
     // The cursor may be in a deck that the deck in front includes a slide of.
-    const active = this.activeDeck;
-    const deck =
-      this.#decks.has(file) || active === undefined
-        ? file
-        : (this.activePath ?? file);
+    const deck = this.#decks.has(file) ? file : (this.activePath ?? file);
     const synced = this.#decks.get(deck);
     const mode = syncMode(deck);
     if (synced === undefined || mode === 'off' || mode === 'previewToEditor') {
@@ -460,17 +486,31 @@ export class DeckSync implements Disposable {
       editor.selection.active.line,
       synced.current,
     );
-    if (slideIndex !== undefined && slideIndex !== synced.current) {
-      synced.current = slideIndex;
-      this.#sendTo(synced, 'goToSlide', {
-        slideId: synced.table[slideIndex]?.id,
-        slideIndex,
-      });
-      this.#update();
+    if (slideIndex === undefined) {
+      return;
     }
-    if (slideIndex !== undefined) {
+    if (slideIndex === synced.current) {
       this.#followStep(deck, synced, editor);
+      return;
     }
+    // Nothing on another slide is in view, so go right to the step of what the
+    // cursor is on, in one change, if the probe of the slide knows it.
+    const { document, selection } = editor;
+    const { active } = selection;
+    const path = document.lineAt(active.line).isEmptyOrWhitespace
+      ? undefined
+      : stepOnSlide(sourcesIn(synced.probed[slideIndex] ?? [], file, deck), {
+          line: active.line + 1,
+          column: active.character + 1,
+        });
+    synced.current = slideIndex;
+    this.#sendTo(synced, 'goToSlide', {
+      slideId: synced.table[slideIndex]?.id,
+      slideIndex,
+      path,
+    });
+    this.#settling = { synced, editor, until: Date.now() + SETTLE_TIME };
+    this.#update();
   }
 
   /** Fades what can't be read at the current step in the editors of decks. */

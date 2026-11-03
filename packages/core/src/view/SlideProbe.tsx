@@ -16,7 +16,8 @@ import {
   StateStoresContext,
   useStateStores,
 } from '../state/StateStoresContext.ts';
-import { StepStore } from '../steps/StepStore.ts';
+import { getDevChannel } from '../host/devChannel.ts';
+import { StepStore, type StepSource } from '../steps/StepStore.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { SlideViewProvider } from './SlideViewProvider.tsx';
 import { probeSlideBackground } from './slideBackground.ts';
@@ -32,6 +33,11 @@ export interface ProbedSlide {
   state: boolean;
   /** Background color of the master, if it supplies one. */
   backgroundColor: string | undefined;
+  /**
+   * Where the steppers of the slide are in the source of the deck, and the steps
+   * that show them, if known, see `StepStore`. Only the dev server knows this.
+   */
+  sources: readonly StepSource[];
 }
 
 const NO_SLIDES: readonly ProbedSlide[] = [];
@@ -55,13 +61,19 @@ class ProbeBoundary extends Component<
 interface SlideProbeProps {
   slides: readonly ReactNode[];
   onProbe: (probed: ProbedSlide[]) => void;
+  /** Called once the places of steps are final, with what the slides have. */
+  onSettled: (sources: (readonly StepSource[])[]) => void;
 }
 
 /**
  * Renders `slides` in probe views (see `SlideViewKind`) in a document without
  * a window, and reports what they have once they are rendered.
  */
-function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
+function SlideProbe({
+  slides,
+  onProbe,
+  onSettled,
+}: SlideProbeProps): JSX.Element {
   // Elements of a document without a window don't load anything.
   const [container] = useState(
     () => document.implementation.createHTMLDocument('').body,
@@ -87,6 +99,7 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
         return {
           steps: store.getTree().length > 0,
           state: stores.slides.hasState(index),
+          sources: store.getSources(),
           backgroundColor:
             frame === undefined || frame === null
               ? undefined
@@ -95,6 +108,19 @@ function SlideProbe({ slides, onProbe }: SlideProbeProps): JSX.Element {
       }),
     );
   }, [probes, stores, onProbe]);
+  // Some steps only find their place after that, e.g., callouts nested in the
+  // step of the element they point at, which their state tells. Only editors
+  // need that, so the probe doesn't stay around for it otherwise.
+  useEffect(() => {
+    const read = () => {
+      onSettled(probes.map(({ store }) => store.getSources()));
+    };
+    if (getDevChannel() === undefined) {
+      read();
+      return undefined;
+    }
+    return whenIdle(read);
+  }, [probes, onSettled]);
   return createPortal(
     <StateStoresContext value={stores}>
       {probes.map(({ slide, store }, index) => (
@@ -158,6 +184,7 @@ export function useSlideProbe(slides: readonly ReactNode[]): SlideProbeResult {
   }>();
   const [due, setDue] = useState<readonly ReactNode[]>();
   const probed = result?.slides === slides;
+  const [settled, setSettled] = useState<readonly ReactNode[]>();
   useEffect(() => {
     if (probed) {
       return undefined;
@@ -172,11 +199,27 @@ export function useSlideProbe(slides: readonly ReactNode[]): SlideProbeResult {
     },
     [slides],
   );
+  const onSettled = useMemo(
+    () => (sources: (readonly StepSource[])[]) => {
+      setSettled(slides);
+      setResult(
+        (previous) =>
+          previous && {
+            ...previous,
+            probed: previous.probed.map((slide, index) => ({
+              ...slide,
+              sources: sources[index] ?? slide.sources,
+            })),
+          },
+      );
+    },
+    [slides],
+  );
   return {
     probed: result?.probed ?? NO_SLIDES,
     probe:
-      due === slides && !probed ? (
-        <SlideProbe slides={slides} onProbe={onProbe} />
+      due === slides && settled !== slides ? (
+        <SlideProbe slides={slides} onProbe={onProbe} onSettled={onSettled} />
       ) : null,
   };
 }

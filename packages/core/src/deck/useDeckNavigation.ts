@@ -30,7 +30,7 @@ import {
 } from './spareSlides.ts';
 
 /** Which steps of a slide to show when going to it. See `goTo`. */
-export type GoToSteps = 'start' | 'end' | 'restore';
+export type GoToSteps = 'start' | 'end' | 'restore' | StepPath;
 
 /** How to go to a slide. */
 export interface GoToOptions {
@@ -89,6 +89,7 @@ export interface DeckNavigation {
    * - `'end'`: all of them.
    * - `'restore'`: those last shown on the slide, or none if it hasn't been
    *   shown yet.
+   * - A path: those up to that step.
    */
   goTo: (slideIndex: number, steps?: GoToSteps, options?: GoToOptions) => void;
   /** Goes to the next step, or to the next slide after the last step. */
@@ -254,7 +255,11 @@ export function useDeckNavigation(
           setRequestedIndex(newIndex);
           // The position of each slide is kept, so restoring needs nothing
           // else.
-          if (steps !== 'restore') {
+          if (typeof steps === 'object') {
+            stepPositions
+              .stepPosition(newIndex)
+              .set({ path: steps, toEnd: false });
+          } else if (steps !== 'restore') {
             stepPositions
               .stepPosition(newIndex)
               .set({ path: [], toEnd: steps === 'end', inRange: true });
