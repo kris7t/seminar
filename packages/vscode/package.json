@@ -120,12 +120,14 @@
           "type": "webview",
           "id": "seminar.contents",
           "name": "Contents",
+          "icon": "$(list-tree)",
           "when": "seminar.deckOpen"
         },
         {
           "type": "webview",
           "id": "seminar.steps",
           "name": "Steps",
+          "icon": "$(list-ordered)",
           "when": "seminar.deckOpen"
         }
       ]
