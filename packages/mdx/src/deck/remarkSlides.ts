@@ -18,10 +18,7 @@ import {
   SLIDE_ELEMENT,
   THEME,
 } from '../utils/jsx.ts';
-import {
-  attributeValue,
-  type AttributeValue,
-} from '../directives/attributeValues.ts';
+import { directiveAttributeValue } from '../directives/attributeValues.ts';
 import {
   createEsm,
   createExpressionAttribute,
@@ -125,30 +122,6 @@ function collectBindings(nodes: RootContent[]): Set<string> {
     }
   }
   return bindings;
-}
-
-/**
- * Props of slides that stay strings even if they look like numbers, like
- * step paths, e.g., `from=2`, and ids.
- */
-const STRING_PROPS: ReadonlySet<string> = new Set([
-  ...STEP_BOUNDS,
-  'id',
-  'className',
-]);
-
-/** Returns the value of the prop `name` of a slide, see `attributeValue`. */
-function slideProp(
-  name: string,
-  value: string,
-  quoted: ReadonlySet<string> | undefined,
-): AttributeValue {
-  if (STRING_PROPS.has(name)) {
-    return value;
-  }
-  const typed = attributeValue(value, quoted?.has(name) === true);
-  // A `split` of a single step is still a list of step paths.
-  return name === 'split' && typeof typed === 'number' ? value : typed;
 }
 
 function createSlideElement(
@@ -256,7 +229,15 @@ function createSlideElement(
         ? []
         : [createExpressionAttribute('aliases', JSON.stringify(aliases))]),
       ...[...props].map(([name, value]) =>
-        createValueAttribute(name, slideProp(name, value, quotedAttributes)),
+        createValueAttribute(
+          name,
+          directiveAttributeValue(
+            'slide',
+            name,
+            value,
+            quotedAttributes?.has(name) === true,
+          ),
+        ),
       ),
     ],
     children: [...titleElement, ...(children as MdxJsxFlowElement['children'])],

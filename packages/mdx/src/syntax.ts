@@ -12,8 +12,10 @@ import {
 export { findPackage } from './config/packages.ts';
 export { readDeckTheme } from './config/deckSetup.ts';
 export { bareAttributeWords } from './directives/attributeWords.ts';
+export { IMAGE_ATTRIBUTES } from './directives/remarkHeadingAttributes.ts';
 export {
   attributeValue,
+  directiveAttributeValue,
   getAttributeValue,
   remarkDirectiveQuotes,
 } from './directives/attributeValues.ts';

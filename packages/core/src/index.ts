@@ -6,6 +6,15 @@ export type {
   ModuleExportConfig,
   SeminarConfig,
 } from './SeminarConfig.ts';
+export type {
+  ImageDirectiveAttributes,
+  IncludeDirectiveAttributes,
+  NotesDirectiveAttributes,
+  RecapDirectiveAttributes,
+  SlideDirectiveAttributes,
+  SlideMasterShorthands,
+  StepDirectiveAttributes,
+} from './directiveAttributes.ts';
 export { Deck, type DeckProps } from './deck/Deck.tsx';
 export { DeckDocument, type DeckDocumentProps } from './deck/DeckDocument.tsx';
 export { useDeck, type DeckState } from './deck/DeckContext.ts';
@@ -35,10 +44,14 @@ export {
 } from './deck/SeminarOptionsContext.ts';
 export type { GoToOptions, GoToSteps } from './deck/useDeckNavigation.ts';
 export { INTERACTIVE_ATTRIBUTE } from './interaction/interaction.ts';
-export type {
-  SlideMaster,
-  SlideMasterProps,
-  SlideMasters,
+export {
+  findSlideMaster,
+  type BuiltInSlideMasters,
+  type SlideMaster,
+  type SlideMasterName,
+  type SlideMasterOverrides,
+  type SlideMasterProps,
+  type SlideMasters,
 } from './masters/SlideMaster.ts';
 export type { CutProp, FadeProps, FadeSide } from './transitions/fades.ts';
 export {

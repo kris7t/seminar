@@ -1,9 +1,10 @@
 import { createContext, use, type Context, type JSX } from 'react';
 
-import type {
-  SlideMaster,
-  SlideMasterProps,
-  SlideMasters,
+import {
+  findSlideMaster,
+  type SlideMaster,
+  type SlideMasterProps,
+  type SlideMasters,
 } from './SlideMaster.ts';
 
 /** What the masters of a slide in a `document` view link to. */
@@ -101,7 +102,9 @@ export function getDocumentMaster(
   const name =
     typeof master === 'string'
       ? master
-      : Object.keys(DOCUMENT_MASTERS).find((key) => masters[key] === master);
+      : Object.keys(DOCUMENT_MASTERS).find(
+          (key) => findSlideMaster(masters, key) === master,
+        );
   return name !== undefined && Object.hasOwn(DOCUMENT_MASTERS, name)
     ? DOCUMENT_MASTERS[name as keyof typeof DOCUMENT_MASTERS]
     : ContentDocumentMaster;

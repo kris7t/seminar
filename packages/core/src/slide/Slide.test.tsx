@@ -4,10 +4,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Deck } from '../deck/Deck.tsx';
 import { sectionMasterClasses } from '../masters/SectionMaster.tsx';
-import type { SlideMasterProps } from '../masters/SlideMaster.ts';
+import type {
+  SlideMasterName,
+  SlideMasterProps,
+} from '../masters/SlideMaster.ts';
 import { subsectionMasterClasses } from '../masters/SubsectionMaster.tsx';
 import { Slide } from './Slide.tsx';
 import { createSlideTheme } from '../theme/createSlideTheme.ts';
+
+declare module '../masters/SlideMaster.ts' {
+  interface SlideMasterOverrides {
+    custom: true;
+  }
+}
 
 function CustomMaster({ title, children }: SlideMasterProps) {
   return (
@@ -54,8 +63,8 @@ describe('Slide', () => {
   });
 
   it.each([
-    ['section', sectionMasterClasses.root],
-    ['subsection', subsectionMasterClasses.root],
+    ['section' as const, sectionMasterClasses.root],
+    ['subsection' as const, subsectionMasterClasses.root],
   ])('uses the %s master', (master, className) => {
     renderSlide(
       <Slide master={master} title="Part">
@@ -78,7 +87,7 @@ describe('Slide', () => {
 
   it('rejects unknown masters', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    renderSlide(<Slide master="missing" />);
+    renderSlide(<Slide master={'missing' as SlideMasterName} />);
     expect(screen.getByRole('alert').textContent).toContain(
       'Unknown slide master: missing',
     );

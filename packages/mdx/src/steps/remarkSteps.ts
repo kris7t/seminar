@@ -48,18 +48,6 @@ export function getWith(
 }
 
 /**
- * Props of steps that name groups or elements, which stay strings even if
- * they look like numbers, e.g., `group=1`.
- */
-const NAME_PROPS: ReadonlySet<string> = new Set([
-  'group',
-  'in',
-  'after',
-  'title',
-  'component',
-]);
-
-/**
  * Converts the attributes of a `:step` directive to the props of a step,
  * with the types they're written as (see `attributeValue`), e.g., `true`
  * for `only` and `500` for `fade=500`, except for names, like `group=1`.
@@ -83,9 +71,7 @@ export function getStepProps(
       .filter(([name]) => name !== 'with')
       .map(([name, value]): [string, AttributeValue] => [
         name,
-        NAME_PROPS.has(name)
-          ? value
-          : (attributeValueOf(attributes, name) ?? value),
+        attributeValueOf('step', attributes, name) ?? value,
       ]),
   ];
 }

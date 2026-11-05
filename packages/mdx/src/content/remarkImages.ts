@@ -142,7 +142,10 @@ function convertImage(
       ? []
       : [createStringAttribute('className', classes.join(' '))]),
     ...[...others.keys()].map((name) =>
-      createValueAttribute(name, attributeValueOf(imageAttributes, name) ?? ''),
+      createValueAttribute(
+        name,
+        attributeValueOf(IMAGE_ATTRIBUTES, imageAttributes, name) ?? '',
+      ),
     ),
   ];
   const element = {

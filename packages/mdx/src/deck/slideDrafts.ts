@@ -252,7 +252,7 @@ export function createRecap(
   slide.recap = label.slice(1);
   slide.place = node.position;
   slide.tocTitle = attributes.get('title');
-  slide.spareAttribute = attributeValueOf(parsed, 'spare');
+  slide.spareAttribute = attributeValueOf('recap', parsed, 'spare');
   for (const bound of STEP_BOUNDS) {
     const value = attributes.get(bound);
     if (value !== undefined) {
@@ -283,9 +283,17 @@ export const FLAGS: ReadonlySet<string> = new Set(['spare', 'noslide']);
 
 /**
  * Props of slides that may be bare words, e.g., `cut`, rather than masters,
- * which are passed as empty strings.
+ * which are passed as `true`.
  */
 export const BARE_PROPS: ReadonlySet<string> = new Set(['cut', 'split']);
+
+/**
+ * Whether the bare word `name` in the attributes of a slide sets its master,
+ * like `section`, rather than a flag or a prop, like `spare` or `cut`.
+ */
+export function isMasterWord(name: string): boolean {
+  return !FLAGS.has(name) && !BARE_PROPS.has(name);
+}
 
 const SPLIT_MODES: ReadonlySet<string> = new Set(['auto', 'none', 'each']);
 
@@ -326,12 +334,10 @@ export function applyAttributes(slide: SlideDraft, parsed: Attributes): void {
   slide.id = id ?? slide.id;
   // Flags rather than masters.
   const bareWords = [...attributes]
-    .filter(
-      ([key, value]) => value === '' && !FLAGS.has(key) && !BARE_PROPS.has(key),
-    )
+    .filter(([key, value]) => value === '' && isMasterWord(key))
     .map(([key]) => key);
-  slide.spareAttribute = attributeValueOf(parsed, 'spare');
-  slide.noSlide = attributeValueOf(parsed, 'noslide') === true;
+  slide.spareAttribute = attributeValueOf('slide', parsed, 'spare');
+  slide.noSlide = attributeValueOf('slide', parsed, 'noslide') === true;
   slide.quotedAttributes = quoted;
   const master = attributes.get('master');
   const bareWord = bareWords.at(-1);

@@ -142,18 +142,18 @@ describe('createDeckLanguagePlugin', () => {
     ).toEqual([[`${file}.directives.tsx`, typescript.ScriptKind.TSX]]);
   });
 
-  it('has no TypeScript for directives until they are known', () => {
+  it('checks the directives of Seminar before components are known', () => {
     const plugin = createDeckLanguagePlugin(false, 'react', {
       typescript,
       registry: () => undefined,
     });
-    const code = generate(file, '::note{level=2}\n', plugin);
-    expect(code?.embeddedCodes?.map(({ id }) => id)).not.toContain(
-      'directives',
+    const code = generate(file, '::note{level=2}\n\n::step[A]{only}\n', plugin);
+    const directives = code?.embeddedCodes?.find(
+      ({ id }) => id === 'directives',
     );
-    expect(
-      plugin.typescript?.getExtraServiceScripts?.(file, code as never),
-    ).toEqual([]);
+    const text = directives?.snapshot.getText(0, 1000);
+    expect(text).toContain('<_SeminarStepDirective only />');
+    expect(text).not.toContain('level');
   });
 
   it('only parses math if the plugin that adds it is installed', () => {

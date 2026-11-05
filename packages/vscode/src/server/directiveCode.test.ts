@@ -65,6 +65,48 @@ export {};
 `);
   });
 
+  it('renders the directives of Seminar with the types of their attributes', () => {
+    expect(
+      generate(`# Title {#intro .wide section spare from=2}
+
+A :step{only fade=300} and ![Diagram](d.svg){width=600}
+
+::recap[#intro]{to=1}
+
+::include[./other.deck.mdx]{copy}
+
+:::notes
+Note
+:::
+`).text,
+    )
+      .toBe(`declare function _SeminarSlideDirective(props: import("@seminar/core").SlideDirectiveAttributes): null;
+declare function _SeminarStepDirective(props: import("@seminar/core").StepDirectiveAttributes): null;
+declare function _SeminarImageDirective(props: import("@seminar/core").ImageDirectiveAttributes): null;
+declare function _SeminarRecapDirective(props: import("@seminar/core").RecapDirectiveAttributes): null;
+declare function _SeminarIncludeDirective(props: import("@seminar/core").IncludeDirectiveAttributes): null;
+declare function _SeminarNotesDirective(props: import("@seminar/core").NotesDirectiveAttributes): null;
+<_SeminarSlideDirective id={"intro"} section spare from={"2"} />;
+<_SeminarStepDirective only fade={300} />;
+<_SeminarImageDirective width={600} />;
+<_SeminarRecapDirective to={"1"} />;
+<_SeminarIncludeDirective copy />;
+<_SeminarNotesDirective />;
+export {};
+`);
+  });
+
+  it('maps the attributes of headings to the deck', () => {
+    expect(mapped('## Title {#a steps=dim}')).toEqual([
+      ['', '_SeminarSlideDirective'],
+      ['#', 'id'],
+      ['a', '{"a"}'],
+      ['steps', 'steps'],
+      ['dim', '{"dim"}'],
+      ['', ''],
+    ]);
+  });
+
   it('maps names and values to the deck', () => {
     expect(mapped('::callout[Text]{#note for=arch angle=35 step}')).toEqual([
       ['callout', '_SeminarDirective0'],

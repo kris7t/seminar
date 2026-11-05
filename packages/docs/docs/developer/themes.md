@@ -51,8 +51,21 @@ function SectionMaster({ title, className, children }: SlideMasterProps) {
 
 `master` in the theme options replaces the built-in `content`, `title`,
 `section`, and `subsection` masters, or adds new ones, which slides select by
-name, e.g., `## Results {wide}`. A deck can also import a master and pass it
-to a slide, e.g., `{master=ClosingMaster}`.
+name, e.g., `## Results {wide}`. Declare new masters in
+`SlideMasterOverrides`, so that TypeScript and the editor know them:
+
+```ts
+declare module '@seminar/core' {
+  interface SlideMasterOverrides {
+    wide: true;
+  }
+}
+
+createSlideTheme({ master: { wide: WideMaster } });
+```
+
+A deck can also import a master and pass it to a slide, e.g.,
+`{master=ClosingMaster}`.
 
 ## Theming components
 

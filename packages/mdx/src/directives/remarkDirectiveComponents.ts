@@ -129,13 +129,11 @@ function attributesOf(directive: Directive): MdxJsxAttribute[] {
     if (value === null || value === undefined) {
       return [];
     }
-    if (name === 'id' || name === 'class') {
-      return [
-        createStringAttribute(name === 'class' ? 'className' : name, value),
-      ];
-    }
     return [
-      createValueAttribute(name, getAttributeValue(directive, name) ?? value),
+      createValueAttribute(
+        name === 'class' ? 'className' : name,
+        getAttributeValue(directive, name) ?? value,
+      ),
     ];
   });
 }

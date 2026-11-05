@@ -11,6 +11,12 @@ Language support for the `.deck.mdx` files of
   actual syntax errors are reported where they are.
 - Provides hover, go to definition, completion, and rename in the JavaScript
   of decks, and the outline of their headings.
+- Checks the attributes of directives against their types, with hover and
+  completion: of `:step`, `::slide`, `::recap`, `::include`, `:::notes`, and
+  the attribute blocks of headings and images against the types in
+  `@seminar/core`, and of the directives of plugins and themes against the
+  props of their components, as the Vite config of the deck registers them.
+  `Seminar: Restart Language Server` reloads them.
 - Previews the open deck next to its editor, updating it as you save, and
   presents it, with the buttons in the title bar of its editor or the commands
   starting with `Seminar:`. They run `seminar`, so `@seminar/cli` has to be
@@ -48,7 +54,9 @@ the JavaScript of decks.
 Step behaviors, like `only` in `::Box{only}` or `%% step only`, are colored with
 semantic tokens, which are turned on for decks. Behaviors from
 `StepBehaviorOverrides` are recognized if the augmentation is part of the
-TypeScript project of the deck.
+TypeScript project of the deck. Likewise, the attributes of slides are
+checked against the masters from `SlideMasterOverrides`, like `wide` in
+`## Results {wide}`, if the augmentation is part of that project.
 
 ## Previewing
 

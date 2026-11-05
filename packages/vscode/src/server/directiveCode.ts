@@ -1,4 +1,4 @@
-import { attributeValue } from '@seminar/mdx/syntax';
+import { directiveAttributeValue, IMAGE_ATTRIBUTES } from '@seminar/mdx/syntax';
 import type { CodeInformation, CodeMapping } from '@volar/language-server';
 import type { Nodes, Root } from 'mdast';
 import type {
@@ -20,6 +20,20 @@ const FORMS: Record<Directive['type'], string> = {
   textDirective: 'text',
   leafDirective: 'leaf',
   containerDirective: 'container',
+};
+
+/**
+ * The types in `@seminar/core` of the attributes of the directives that
+ * Seminar handles itself, which take precedence over components. The
+ * attribute blocks of headings and images are directives, too.
+ */
+const BUILT_IN: Readonly<Record<string, string>> = {
+  step: 'StepDirectiveAttributes',
+  slide: 'SlideDirectiveAttributes',
+  recap: 'RecapDirectiveAttributes',
+  include: 'IncludeDirectiveAttributes',
+  notes: 'NotesDirectiveAttributes',
+  [IMAGE_ATTRIBUTES]: 'ImageDirectiveAttributes',
 };
 
 /** What the code that is mapped to the deck supports. */
@@ -89,7 +103,11 @@ class Builder {
   }
 }
 
-function addAttribute(code: Builder, attribute: DirectiveAttribute): void {
+function addAttribute(
+  code: Builder,
+  directive: string,
+  attribute: DirectiveAttribute,
+): void {
   const { name, nameStart, nameEnd, value, valueStart, valueEnd, quoted } =
     attribute;
   code.add(' ');
@@ -98,7 +116,10 @@ function addAttribute(code: Builder, attribute: DirectiveAttribute): void {
   } else {
     code.map(name === 'class' ? 'className' : name, nameStart, nameEnd);
   }
-  const parsed = name === '#' ? value : attributeValue(value, quoted);
+  const parsed =
+    name === '#'
+      ? value
+      : directiveAttributeValue(directive, name, value, quoted);
   if (parsed === true && value === undefined) {
     return;
   }
@@ -106,12 +127,20 @@ function addAttribute(code: Builder, attribute: DirectiveAttribute): void {
   code.map(`{${JSON.stringify(parsed)}}`, valueStart, valueEnd, VALUE);
 }
 
+/** The name of the function for the type of the attributes `type`. */
+function builtInName(type: string): string {
+  return `_Seminar${type.replace(/Attributes$/, '')}`;
+}
+
 /**
  * Generates TypeScript for the directives of the deck `source` that have
  * components, which renders each directive with the props that compiling the
  * deck would give it, so that TypeScript checks them against the types of the
- * props of the components. The names of the directives and their attributes
- * are mapped to the deck. The content of directives is left out.
+ * props of the components. The directives of Seminar, like `:step` and the
+ * attribute blocks of headings, are checked against the types of their
+ * attributes in `@seminar/core` the same way. The names of the directives and
+ * their attributes are mapped to the deck. The content of directives is left
+ * out.
  *
  * Classes, e.g., `.wide`, are left out, since components get them joined as
  * `className`.
@@ -122,38 +151,49 @@ export function generateDirectiveCode(
   directives: Readonly<Record<string, DirectiveComponent>>,
 ): DirectiveCode {
   const imports = new Map<DirectiveComponent, string>();
+  const builtIns = new Set<string>();
   const code = new Builder();
   const visit = (node: Nodes): void => {
-    if (isDirective(node)) {
-      const component = directives[node.name];
-      const start = node.position?.start.offset;
-      if (component !== undefined && start !== undefined) {
-        let local = imports.get(component);
+    const start = node.position?.start.offset;
+    if (isDirective(node) && start !== undefined) {
+      const builtIn = Object.hasOwn(BUILT_IN, node.name)
+        ? BUILT_IN[node.name]
+        : undefined;
+      const component =
+        builtIn === undefined ? directives[node.name] : undefined;
+      let local: string | undefined;
+      if (builtIn !== undefined) {
+        builtIns.add(builtIn);
+        local = builtInName(builtIn);
+      } else if (component !== undefined) {
+        local = imports.get(component);
         if (local === undefined) {
           local = `_SeminarDirective${String(imports.size)}`;
           imports.set(component, local);
         }
+      }
+      if (local !== undefined) {
         const syntax = readDirectiveSyntax(source, start);
         code.add('<');
         code.map(local, syntax.nameStart, syntax.nameEnd);
-        if (component.formProp !== undefined) {
+        if (component?.formProp !== undefined) {
           code.add(
             ` ${component.formProp}=${JSON.stringify(FORMS[node.type])}`,
           );
         }
         if (
           node.type === 'containerDirective' &&
-          component.labelProp !== undefined &&
+          component?.labelProp !== undefined &&
           isLabel(node.children[0])
         ) {
           code.add(` ${component.labelProp}=""`);
         }
         for (const attribute of syntax.attributes) {
           if (attribute.name !== '.') {
-            addAttribute(code, attribute);
+            addAttribute(code, node.name, attribute);
           }
         }
-        if (hasChildren(node, component)) {
+        if (component !== undefined && hasChildren(node, component)) {
           code.add(' children={null!}');
         }
         code.add(' ');
@@ -171,12 +211,16 @@ export function generateDirectiveCode(
     }
   };
   visit(root);
-  const header = [...imports]
-    .map(
+  const header = [
+    ...[...imports].map(
       ([{ source: module, exportName }, local]) =>
         `import { ${exportName} as ${local} } from ${JSON.stringify(module)};\n`,
-    )
-    .join('');
+    ),
+    ...[...builtIns].map(
+      (type) =>
+        `declare function ${builtInName(type)}(props: import("@seminar/core").${type}): null;\n`,
+    ),
+  ].join('');
   return {
     text: `${header}${code.text}export {};\n`,
     mappings: code.mappings.map((mapping) => ({

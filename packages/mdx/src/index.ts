@@ -75,6 +75,7 @@ export { parseAttributeWords } from './directives/attributeWords.ts';
 export {
   attributeValue,
   attributeValueOf,
+  directiveAttributeValue,
   getAttributeValue,
   remarkDirectiveQuotes,
   type AttributeValue,

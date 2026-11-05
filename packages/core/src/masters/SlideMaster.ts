@@ -33,9 +33,8 @@ export type SlideMaster = ComponentType<SlideMasterProps> & {
   fadeAfter?: number | undefined;
 };
 
-/** Slide masters of a theme, selectable by name with `<Slide master="…">`. */
-export interface SlideMasters {
-  [name: string]: SlideMaster;
+/** The slide masters that every theme has. */
+export interface BuiltInSlideMasters {
   /** Default master for slides with a title and body. */
   content: SlideMaster;
   /** Master for the title slide of a presentation. */
@@ -44,6 +43,37 @@ export interface SlideMasters {
   section: SlideMaster;
   /** Master for slides that start a subsection. */
   subsection: SlideMaster;
+}
+
+/**
+ * Further slide masters. Add them by module augmentation, e.g.,
+ * `interface SlideMasterOverrides { wide: true }`, and give them components
+ * with `master` in the theme.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- Augmented by themes.
+export interface SlideMasterOverrides {}
+
+/** The name of a slide master of the theme (see {@link SlideMasters}). */
+export type SlideMasterName =
+  | keyof BuiltInSlideMasters
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- Empty unless augmented.
+  | keyof SlideMasterOverrides;
+
+/**
+ * Slide masters of a theme, selectable by name with `<Slide master="…">`: the
+ * built-in ones, and those added to {@link SlideMasterOverrides}.
+ */
+export type SlideMasters = BuiltInSlideMasters &
+  Record<keyof SlideMasterOverrides, SlideMaster>;
+
+/** Returns the master called `name` among `masters`, if there is one. */
+export function findSlideMaster(
+  masters: SlideMasters,
+  name: string,
+): SlideMaster | undefined {
+  return Object.hasOwn(masters, name)
+    ? masters[name as SlideMasterName]
+    : undefined;
 }
 
 declare module '@mui/material/styles' {

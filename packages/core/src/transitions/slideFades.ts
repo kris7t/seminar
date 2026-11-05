@@ -1,6 +1,10 @@
 import { isValidElement, type ReactNode } from 'react';
 
-import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
+import {
+  findSlideMaster,
+  type SlideMaster,
+  type SlideMasters,
+} from '../masters/SlideMaster.ts';
 import {
   fadesOf,
   NO_CUTS,
@@ -27,7 +31,7 @@ function propsOf(
     props: slide.props,
     master:
       typeof master === 'string'
-        ? masters[master]
+        ? findSlideMaster(masters, master)
         : (master as SlideMaster | undefined),
   };
 }

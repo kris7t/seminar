@@ -365,7 +365,7 @@ export function includeSlides(
   const { slides: source, exports, depth, lang: deckLang } = structure;
   const parsed = getAttributes(directive);
   const { id, classes, attributes } = parsed;
-  const isCopy = attributeValueOf(parsed, 'copy') === true;
+  const isCopy = attributeValueOf('include', parsed, 'copy') === true;
 
   // Imports each component once.
   const imported = new Map<number, string>();
@@ -566,7 +566,7 @@ export function includeSlides(
         copyRange(draft, attributes, END_BOUNDS);
       }
       draft.tocTitle = attributes.get('title');
-      draft.spareAttribute = attributeValueOf(parsed, 'spare');
+      draft.spareAttribute = attributeValueOf('include', parsed, 'spare');
       const lang = attributes.get('lang');
       if (lang !== undefined && !isRecap) {
         draft.attributes.set('lang', lang);
@@ -588,7 +588,7 @@ export function includeSlides(
       division.id = id ?? division.id;
       division.tocTitle = attributes.get('title') ?? division.tocTitle;
       // The division is spare like a slide of this deck.
-      division.spareAttribute = attributeValueOf(parsed, 'spare');
+      division.spareAttribute = attributeValueOf('include', parsed, 'spare');
     }
     return included;
   }
@@ -764,7 +764,7 @@ function expandSelfInclude(
   const targetId = hash < 0 ? undefined : label.slice(hash + 1);
   const parsed = getAttributes(directive);
   const { id, classes, attributes } = parsed;
-  const isCopy = attributeValueOf(parsed, 'copy') === true;
+  const isCopy = attributeValueOf('include', parsed, 'copy') === true;
   const report = (allowed: ReadonlySet<string>, form: string) => {
     for (const attribute of [
       ...classes.map((name) => `.${name}`),
@@ -874,7 +874,7 @@ function expandSelfInclude(
         copyRange(draft, attributes, END_BOUNDS);
       }
       draft.tocTitle = attributes.get('title') ?? draft.tocTitle;
-      draft.spareAttribute = attributeValueOf(parsed, 'spare');
+      draft.spareAttribute = attributeValueOf('include', parsed, 'spare');
       draft.level = undefined;
       draft.division = false;
       draft.place = place;
@@ -896,7 +896,7 @@ function expandSelfInclude(
         division.id = id;
       }
       division.tocTitle = attributes.get('title') ?? division.tocTitle;
-      division.spareAttribute = attributeValueOf(parsed, 'spare');
+      division.spareAttribute = attributeValueOf('include', parsed, 'spare');
     }
     return included;
   }

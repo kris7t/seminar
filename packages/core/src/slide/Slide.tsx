@@ -11,7 +11,12 @@ import {
 import { DeckContext } from '../deck/DeckContext.ts';
 import type { FadeProps } from '../transitions/fades.ts';
 import { getDocumentMaster } from '../masters/DocumentMasters.tsx';
-import type { SlideMaster, SlideMasters } from '../masters/SlideMaster.ts';
+import {
+  findSlideMaster,
+  type SlideMaster,
+  type SlideMasterName,
+  type SlideMasters,
+} from '../masters/SlideMaster.ts';
 import type { StepBehavior } from '../steps/Step.tsx';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import { StepBehaviorContext } from '../steps/StepBehaviorContext.ts';
@@ -61,7 +66,7 @@ export interface SlideProps extends FadeProps {
    * The master that lays out the slide: either the name of a master in
    * `theme.master` or a master component. Defaults to `'content'`.
    */
-  master?: string | SlideMaster;
+  master?: SlideMasterName | SlideMaster;
   /** Title of the slide passed to the master. */
   title?: ReactNode;
   /** Classes of the slide passed to the master. */
@@ -131,7 +136,7 @@ function resolveMaster(
   if (typeof master !== 'string') {
     return master;
   }
-  const resolved = masters[master];
+  const resolved = findSlideMaster(masters, master);
   if (resolved === undefined) {
     throw new Error(`Unknown slide master: ${master}`);
   }
