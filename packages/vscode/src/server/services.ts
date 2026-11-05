@@ -3,6 +3,7 @@ import type { LanguageServicePlugin } from '@volar/language-server';
 import { create as createMarkdownServicePlugin } from 'volar-service-markdown';
 import { create as createTypeScriptServicePlugin } from 'volar-service-typescript';
 
+import { createDirectiveNamePlugin } from './directiveNameCompletion.ts';
 import { createShorthandTokenPlugin } from './shorthandTokens.ts';
 import { createUnknownDirectivePlugin } from './unknownDirectiveDiagnostics.ts';
 
@@ -31,5 +32,6 @@ export function createDeckServicePlugins(
     ...createTypeScriptServicePlugin(typescript, {}),
     createShorthandTokenPlugin(typescript),
     createUnknownDirectivePlugin(),
+    createDirectiveNamePlugin(),
   ];
 }

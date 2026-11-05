@@ -21,6 +21,10 @@ Language support for the `.deck.mdx` files of
   config of the deck registers them.
 - Warns about directives that neither Seminar nor the plugins and theme of the
   deck handle, like compiling the deck does, once the Vite config is loaded.
+- Completes the names of directives after `:`, `::`, and `:::`: those of
+  Seminar in the forms they're written in, and those of the plugins and theme
+  of the deck once the Vite config is loaded. Container directives get a
+  closing fence of as many colons.
   `Seminar: Restart Language Server` reloads them.
 - Previews the open deck next to its editor, updating it as you save, and
   presents it, with the buttons in the title bar of its editor or the commands
