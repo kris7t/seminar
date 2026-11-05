@@ -2,28 +2,36 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { compile } from '@mdx-js/mdx';
-import { emptyMdxPlugins, seminarMdxOptions } from '@seminar/mdx';
-import { rehypeShiki } from '@seminar/plugin-shiki/rehype';
+import { seminarMdxOptions, type LoadedCodeBlock } from '@seminar/mdx';
+import { shikiCodeBlocks } from '@seminar/plugin-shiki/code';
 import { describe, expect, it } from 'vitest';
 
-import { rehypePele } from './rehypePele.ts';
+import { peleCodeBlocks } from './codeBlocks.ts';
 
 const { seminar } = JSON.parse(
   readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'),
 ) as { seminar: unknown };
 
-async function compileDeck(
-  source: string,
-  after: [] | [typeof rehypeShiki] = [],
-) {
+const SHIKI: LoadedCodeBlock = {
+  handler: shikiCodeBlocks,
+  component: { source: '@seminar/plugin-shiki', exportName: 'Code' },
+};
+
+async function compileDeck(source: string, others?: LoadedCodeBlock) {
   const file = await compile(
     { value: source, path: path.join(import.meta.dirname, 'deck.mdx') },
     {
       ...seminarMdxOptions({
         defaultTheme: undefined,
-        mdxPlugins: {
-          ...emptyMdxPlugins(),
-          rehypePlugins: { before: [rehypePele], after },
+        codeBlocks: {
+          mermaid: {
+            handler: peleCodeBlocks,
+            component: {
+              source: '@seminar/plugin-pele',
+              exportName: 'Diagram',
+            },
+          },
+          ...(others === undefined ? {} : { '*': others }),
         },
         seminarConfigs: [
           {
@@ -45,27 +53,27 @@ async function compileDeck(
 
 const FLOWCHART = '```mermaid\nflowchart LR\n  A --> B\n```';
 
-describe('rehypePele', () => {
+describe('peleCodeBlocks', () => {
   it('renders diagrams with the Diagram component', async () => {
     const { code, messages } = await compileDeck(FLOWCHART);
     expect(messages).toEqual([]);
     expect(code).toContain(
-      'import {Diagram as _SeminarPeleDiagram} from "@seminar/plugin-pele";',
+      'import {Diagram as _SeminarCode0} from "@seminar/plugin-pele";',
     );
     expect(code).toContain(
-      'import _SeminarPele_flowchart from "pele/diagrams/flowchart";',
+      'import {default as _SeminarCode1} from "pele/diagrams/flowchart";',
     );
     expect(code).toContain('source: "flowchart LR\\n  A --> B"');
-    expect(code).toContain('diagrams: [_SeminarPele_flowchart]');
+    expect(code).toContain('diagram: _SeminarCode1');
   });
 
   it('imports each type of diagram once', async () => {
     const { code } = await compileDeck(
       `${FLOWCHART}\n\n${FLOWCHART}\n\n\`\`\`mermaid\nsequenceDiagram\n  A->>B: hi\n\`\`\``,
     );
-    expect(code.match(/import _SeminarPele_flowchart /g)).toHaveLength(1);
+    expect(code.match(/from "pele\/diagrams\/flowchart"/g)).toHaveLength(1);
     expect(code).toContain(
-      'import _SeminarPele_sequence from "pele/diagrams/sequence";',
+      'import {default as _SeminarCode2} from "pele/diagrams/sequence";',
     );
   });
 
@@ -122,16 +130,16 @@ describe('rehypePele', () => {
     );
     expect(messages).toHaveLength(1);
     expect(messages[0]).toMatch(/^6:\d+ Cannot render diagram: .*Parse error/);
-    expect(code).not.toContain('_SeminarPeleDiagram');
+    expect(code).not.toContain('Diagram as');
     expect(code).toContain('"language-mermaid"');
   });
 
   it('leaves other code blocks to syntax highlighting', async () => {
     const { code } = await compileDeck(
       `${FLOWCHART}\n\n\`\`\`ts\nconst x = 1;\n\`\`\``,
-      [rehypeShiki],
+      SHIKI,
     );
-    expect(code).toContain('diagrams: [_SeminarPele_flowchart]');
-    expect(code.match(/_SeminarShikiCode, \{/g)).toHaveLength(1);
+    expect(code).toContain('diagram: _SeminarCode1');
+    expect(code.match(/_SeminarCode2, \{/g)).toHaveLength(1);
   });
 });

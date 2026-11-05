@@ -64,7 +64,7 @@ function addDirectives(
     source,
     code.ast,
     registry?.directives ?? {},
-    registry?.codeBlocks ?? {},
+    registry?.codeBlocks,
   );
   code.embeddedCodes = [
     ...(code.embeddedCodes ?? []),

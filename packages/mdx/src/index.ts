@@ -85,10 +85,20 @@ export { getStepProps } from './steps/remarkSteps.ts';
 export {
   collectCodeBlocks,
   parseCodeBlocks,
+  type CodeBlock,
+  type CodeBlockHandler,
+  type CodeBlockHandlerFactory,
   type CodeBlockRegistration,
   type CodeBlockRegistrations,
   type CodeBlockReporter,
+  type CodeBlockResult,
+  type LoadedCodeBlock,
+  type ModuleExport,
 } from './config/codeBlocks.ts';
+export {
+  rehypeCodeBlocks,
+  type RehypeCodeBlocksOptions,
+} from './content/rehypeCodeBlocks.ts';
 export {
   createEsm,
   createExpressionAttribute,

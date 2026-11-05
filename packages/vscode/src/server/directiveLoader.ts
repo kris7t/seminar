@@ -17,16 +17,22 @@ export interface DirectiveComponent {
   wrapIn?: string | undefined;
 }
 
-/** The type of the attributes of code blocks, see `@seminar/mdx`. */
-export interface CodeBlockRegistration {
+/** A named export of a module. */
+export interface ModuleExport {
   source: string;
-  attributes: string;
+  exportName: string;
+}
+
+/** What renders the code blocks of a language, see `@seminar/mdx`. */
+export interface CodeBlockRegistration {
+  handler: ModuleExport;
+  component: ModuleExport;
+  attributes?: ModuleExport | undefined;
 }
 
 /**
- * The directive components of a deck, and the types of the attributes of its
- * code blocks, as `directiveComponents` of `@seminar/rollup-plugin` tells
- * them.
+ * The directive components of a deck, and the components of its code blocks,
+ * as `directiveComponents` of `@seminar/rollup-plugin` tells them.
  */
 export interface DeckDirectiveComponents {
   directives: Record<string, DirectiveComponent>;

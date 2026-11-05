@@ -15,6 +15,10 @@ export function Step(): null {
   return null;
 }
 
+export function CodeBlock(): null {
+  return null;
+}
+
 export function Image(): null {
   return null;
 }

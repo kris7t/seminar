@@ -6,20 +6,16 @@
   "license": "Apache-2.0",
   "type": "module",
   "seminar": {
-    "mdx": {
-      "rehypePlugins": {
-        "after": [
-          {
-            "source": "@seminar/plugin-shiki/rehype",
-            "exportName": "rehypeShiki"
-          }
-        ]
-      }
-    },
     "codeBlocks": {
       "*": {
-        "source": "@seminar/plugin-shiki",
-        "attributes": "CodeBlockAttributes"
+        "handler": {
+          "source": "@seminar/plugin-shiki/code",
+          "exportName": "shikiCodeBlocks"
+        },
+        "component": {
+          "source": "@seminar/plugin-shiki",
+          "exportName": "Code"
+        }
       }
     }
   },
@@ -29,10 +25,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./rehype": {
-      "@seminar/source": "./src/rehypeShiki.ts",
-      "types": "./dist/rehypeShiki.d.ts",
-      "default": "./dist/rehypeShiki.js"
+    "./code": {
+      "@seminar/source": "./src/codeBlocks.ts",
+      "types": "./dist/codeBlocks.d.ts",
+      "default": "./dist/codeBlocks.js"
     }
   },
   "files": [

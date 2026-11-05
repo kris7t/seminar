@@ -14,6 +14,7 @@ import type {
 import type {
   CodeBlockRegistration,
   DirectiveComponent,
+  ModuleExport,
 } from './directiveLoader.ts';
 import {
   readDirectiveSyntax,
@@ -99,19 +100,44 @@ function addAttributeWords(code: Builder, text: string, offset: number): void {
   }
 }
 
-/** Returns the registration of the code blocks of the language of `node`. */
-function codeBlockOf(
+/** The component of code blocks that no handler renders. */
+const DEFAULT_CODE_BLOCK: ModuleExport = {
+  source: '@seminar/core',
+  exportName: 'CodeBlock',
+};
+
+/**
+ * The props of the components of code blocks that compiling decks sets, which
+ * aren't written after the language.
+ */
+const CODE_BLOCK_PROPS = '"lang" | "code" | "meta" | "children"';
+
+function exportType({ source, exportName }: ModuleExport): string {
+  return `import(${JSON.stringify(source)}).${exportName}`;
+}
+
+/**
+ * Returns the type of the attributes of the code block `node`, as the
+ * registration of its language, of `*`, or the default tells it: its
+ * `attributes`, or else the props of its component that compiling the deck
+ * doesn't set. Handlers may leave blocks to the next one, which only
+ * compiling the deck tells.
+ */
+function attributesOf(
   node: Code,
   codeBlocks: Readonly<Record<string, CodeBlockRegistration>>,
-): CodeBlockRegistration | undefined {
+): string | undefined {
   if (node.lang === null || node.lang === undefined) {
     return undefined;
   }
-  return Object.hasOwn(codeBlocks, node.lang)
+  const registration = Object.hasOwn(codeBlocks, node.lang)
     ? codeBlocks[node.lang]
     : Object.hasOwn(codeBlocks, '*')
       ? codeBlocks['*']
       : undefined;
+  return registration?.attributes === undefined
+    ? `Omit<import("react").ComponentProps<typeof ${exportType(registration?.component ?? DEFAULT_CODE_BLOCK)}>, ${CODE_BLOCK_PROPS}>`
+    : exportType(registration.attributes);
 }
 
 /**
@@ -235,10 +261,10 @@ export function generateDirectiveCode(
   source: string,
   root: Root,
   directives: Readonly<Record<string, DirectiveComponent>>,
-  codeBlocks: Readonly<Record<string, CodeBlockRegistration>> = {},
+  codeBlocks?: Readonly<Record<string, CodeBlockRegistration>>,
 ): DirectiveCode {
   const imports = new Map<DirectiveComponent, string>();
-  const codeTypes = new Map<CodeBlockRegistration, string>();
+  const codeComponents = new Map<string, string>();
   // The functions declared for the types of attributes, by their names.
   const declarations = new Map<string, string>();
   const declare = (local: string, module: string, type: string) => {
@@ -299,14 +325,22 @@ export function generateDirectiveCode(
         code.add('/>;\n');
       }
     }
-    if (node.type === 'code' && start !== undefined) {
-      const registration = codeBlockOf(node, codeBlocks);
-      if (registration !== undefined) {
-        let local = codeTypes.get(registration);
+    // Code blocks are checked once their components are known.
+    if (
+      node.type === 'code' &&
+      start !== undefined &&
+      codeBlocks !== undefined
+    ) {
+      const type = attributesOf(node, codeBlocks);
+      if (type !== undefined) {
+        let local = codeComponents.get(type);
         if (local === undefined) {
-          local = `_SeminarCodeBlock${String(codeTypes.size)}`;
-          codeTypes.set(registration, local);
-          declare(local, registration.source, registration.attributes);
+          local = `_SeminarCodeBlock${String(codeComponents.size)}`;
+          codeComponents.set(type, local);
+          declarations.set(
+            local,
+            `declare function ${local}(props: ${type}): null;\n`,
+          );
         }
         addCodeBlock(code, source, start, node, local);
       }

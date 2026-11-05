@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { compile } from '@mdx-js/mdx';
-import { emptyMdxPlugins, seminarMdxOptions } from '@seminar/mdx';
+import { seminarMdxOptions } from '@seminar/mdx';
 import { describe, expect, it } from 'vitest';
 
-import { rehypeShiki } from './rehypeShiki.ts';
+import { shikiCodeBlocks } from './codeBlocks.ts';
 
 const { seminar } = JSON.parse(
   readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'),
@@ -19,9 +19,11 @@ async function compileDeck(source: string, theme: unknown = {}) {
     {
       ...seminarMdxOptions({
         defaultTheme: undefined,
-        mdxPlugins: {
-          ...emptyMdxPlugins(),
-          rehypePlugins: { before: [], after: [rehypeShiki] },
+        codeBlocks: {
+          '*': {
+            handler: shikiCodeBlocks,
+            component: { source: '@seminar/plugin-shiki', exportName: 'Code' },
+          },
         },
         seminarConfigs: [
           {
@@ -41,12 +43,12 @@ async function compileDeck(source: string, theme: unknown = {}) {
   return { code: String(file), messages: file.messages.map((m) => m.reason) };
 }
 
-describe('rehypeShiki', () => {
+describe('shikiCodeBlocks', () => {
   it('highlights code blocks in the Code component', async () => {
     const { code, messages } = await compileDeck('```ts\nconst x = 1;\n```');
     expect(messages).toEqual([]);
     expect(code).toContain(
-      'import {Code as _SeminarShikiCode} from "@seminar/plugin-shiki";',
+      'import {Code as _SeminarCode0} from "@seminar/plugin-shiki";',
     );
     expect(code).toContain('lang: "ts"');
     expect(code).toContain('className: "shiki github-dark"');

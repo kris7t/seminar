@@ -76,7 +76,7 @@ describe('Diagram', () => {
     render(
       <Deck>
         <Slide title="Diagram">
-          <Diagram source={SOURCE} diagrams={[flowchart]} id="steps" />
+          <Diagram source={SOURCE} diagram={flowchart} id="steps" />
         </Slide>
       </Deck>,
     );
@@ -95,7 +95,7 @@ describe('Diagram', () => {
     render(
       <Deck>
         <Slide title="Diagram">
-          <Diagram source={SOURCE} diagrams={[flowchart]} id="steps" />
+          <Diagram source={SOURCE} diagram={flowchart} id="steps" />
           <ClassOf name="steps.B" />
         </Slide>
       </Deck>,
@@ -113,7 +113,7 @@ describe('Diagram', () => {
         <Slide title="Diagram">
           <Diagram
             source={'flowchart LR\n  A[Parse] --> B[Render]'}
-            diagrams={[flowchart]}
+            diagram={flowchart}
             steps={[{ items: ['B', 'L_A_B_0'], props: { title: 'Render' } }]}
           />
         </Slide>
@@ -140,7 +140,7 @@ describe('Diagram', () => {
         <Slide title="Diagram">
           <Diagram
             source={'flowchart LR\n  A[Parse] --> B[Render] --> C[Show]'}
-            diagrams={[flowchart]}
+            diagram={flowchart}
             id="pipeline"
             steps={[{ items: ['B'] }, { items: ['C'] }]}
           />
@@ -190,7 +190,7 @@ describe('Diagram', () => {
           <Pointer />
           <Diagram
             source={'flowchart LR\n  A[Parse] --> B[Render] --> C[Show]'}
-            diagrams={[flowchart]}
+            diagram={flowchart}
             id="pipeline"
             steps={[{ items: ['B'] }, { items: ['C'] }]}
           />
@@ -220,7 +220,7 @@ describe('Diagram', () => {
         <Slide title="Diagram">
           <Diagram
             source={'flowchart LR\n  A[Parse] --> B[Render] --> C[Show]'}
-            diagrams={[flowchart]}
+            diagram={flowchart}
             id="pipeline"
             steps={[{ items: ['B'], props: { only: true } }, { items: ['C'] }]}
           />
@@ -242,7 +242,7 @@ describe('Diagram', () => {
         <Slide title="Diagram">
           <Diagram
             source={'flowchart LR\n  A["$$x$$"]'}
-            diagrams={[flowchart]}
+            diagram={flowchart}
             formulas={{
               x: { svg: '<svg data-formula="x"></svg>', width: 2, height: 1 },
             }}
@@ -266,7 +266,7 @@ describe('Diagram', () => {
     render(
       <Deck>
         <Slide title="Diagram">
-          <Diagram source={WIDE} diagrams={[flowchart]} scale={1.5} />
+          <Diagram source={WIDE} diagram={flowchart} scale={1.5} />
         </Slide>
       </Deck>,
     );
@@ -288,7 +288,7 @@ describe('Diagram', () => {
     render(
       <Deck>
         <Slide title="Diagram">
-          <Diagram source={WIDE} diagrams={[flowchart]} width={2000} />
+          <Diagram source={WIDE} diagram={flowchart} width={2000} />
         </Slide>
       </Deck>,
     );
@@ -308,7 +308,7 @@ describe('Diagram', () => {
     render(
       <Deck>
         <Slide title="Diagram">
-          <Diagram source={SOURCE} diagrams={[flowchart]} fontSize={10} />
+          <Diagram source={SOURCE} diagram={flowchart} fontSize={10} />
         </Slide>
       </Deck>,
     );
@@ -325,7 +325,7 @@ describe('Diagram', () => {
     render(
       <Deck>
         <Slide title="Diagram">
-          <Diagram source={SOURCE} diagrams={[flowchart]} />
+          <Diagram source={SOURCE} diagram={flowchart} />
         </Slide>
       </Deck>,
     );
@@ -363,10 +363,7 @@ describe('Diagram', () => {
       <DeckDocument>
         <Deck>
           <Slide title="Diagram">
-            <Diagram
-              source={'flowchart LR\n  A --> B'}
-              diagrams={[flowchart]}
-            />
+            <Diagram source={'flowchart LR\n  A --> B'} diagram={flowchart} />
           </Slide>
         </Deck>
       </DeckDocument>,

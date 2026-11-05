@@ -3,6 +3,11 @@ import path from 'node:path';
 import type { Pluggable } from 'unified';
 import { parse as parseYaml } from 'yaml';
 
+import {
+  codeBlocksOf,
+  type CodeBlockHandlerFactory,
+  type LoadedCodeBlock,
+} from './codeBlocks.ts';
 import type { LoadedSeminarConfigEntry } from './remarkSeminarConfig.ts';
 import {
   importWithNode,
@@ -35,6 +40,11 @@ export interface DeckSetup {
   seminarConfigs: LoadedSeminarConfigEntry[];
   /** The plugins of unified that the configs add. */
   mdxPlugins: MdxPlugins;
+  /**
+   * The handlers of code blocks that the configs register, by the languages,
+   * or `*` for the rest, where later configs replace earlier ones.
+   */
+  codeBlocks: Record<string, LoadedCodeBlock>;
   /** Files that the setup was loaded from, to watch for changes. */
   dependencies: string[];
   /** Problems with the configs, e.g., plugins that can't be loaded. */
@@ -58,9 +68,10 @@ export interface DeckSetupOptions {
    */
   importModule?: ModuleImporter | undefined;
   /**
-   * Imports the plugins of unified that configs add. Defaults to importing
-   * with Node, since the plugins run long after they're imported, e.g., to
-   * load more modules, so they must be built to JavaScript.
+   * Imports the plugins of unified and the handlers of code blocks that
+   * configs add. Defaults to importing with Node, since the plugins run long
+   * after they're imported, e.g., to load more modules, so they must be built
+   * to JavaScript.
    */
   importPlugin?: ModuleImporter | undefined;
 }
@@ -117,6 +128,7 @@ export async function loadDeckSetup({
   const setup: DeckSetup = {
     seminarConfigs: [],
     mdxPlugins: emptyMdxPlugins(),
+    codeBlocks: {},
     dependencies: [],
     warnings: [],
   };
@@ -165,6 +177,7 @@ export async function loadDeckSetup({
   }
   for (const entry of setup.seminarConfigs) {
     await importMdxPlugins(entry, setup, importPlugin, resolveModule);
+    await importCodeBlocks(entry, setup, importPlugin, resolveModule);
   }
   return setup;
 }
@@ -223,6 +236,37 @@ async function importMdxPlugins(
   }
 }
 
+/** Imports the handlers of code blocks that the config of `entry` adds. */
+async function importCodeBlocks(
+  entry: LoadedSeminarConfigEntry,
+  setup: DeckSetup,
+  importModule: ModuleImporter,
+  resolveModule: ModuleResolver,
+): Promise<void> {
+  const registrations = codeBlocksOf(entry, {
+    message(reason) {
+      setup.warnings.push(reason);
+    },
+  });
+  for (const [lang, { handler, component }] of Object.entries(registrations)) {
+    const factory = await importFunction(
+      handler.source,
+      handler.exportName,
+      'the handler of code blocks',
+      entry.base,
+      setup,
+      importModule,
+      resolveModule,
+    );
+    if (factory !== undefined) {
+      setup.codeBlocks[lang] = {
+        handler: factory as CodeBlockHandlerFactory,
+        component,
+      };
+    }
+  }
+}
+
 async function importPlugin(
   plugin: unknown,
   configSource: string,
@@ -243,23 +287,43 @@ async function importPlugin(
     );
     return undefined;
   }
-  const { source, exportName } = plugin;
+  return (await importFunction(
+    plugin['source'],
+    plugin['exportName'],
+    'the plugin',
+    base,
+    setup,
+    importModule,
+    resolveModule,
+  )) as Pluggable | undefined;
+}
+
+/** Imports the function `exportName` of `source`, reporting problems. */
+async function importFunction(
+  source: string,
+  exportName: string,
+  what: string,
+  base: string,
+  setup: DeckSetup,
+  importModule: ModuleImporter,
+  resolveModule: ModuleResolver,
+): Promise<unknown> {
   try {
     const { module, dependencies = [] } = await importModule(
       await resolveModule(source, base),
       base,
     );
     setup.dependencies.push(...dependencies);
-    const attacher = module[exportName];
-    if (typeof attacher !== 'function') {
+    const exported = module[exportName];
+    if (typeof exported !== 'function') {
       setup.warnings.push(
-        `Expected ${source} to export the plugin \`${exportName}\``,
+        `Expected ${source} to export ${what} \`${exportName}\``,
       );
       return undefined;
     }
-    return attacher as Pluggable;
+    return exported;
   } catch (error) {
-    setup.warnings.push(`Cannot load the plugin ${source}: ${String(error)}`);
+    setup.warnings.push(`Cannot load ${what} ${source}: ${String(error)}`);
     return undefined;
   }
 }

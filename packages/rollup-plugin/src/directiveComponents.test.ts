@@ -40,17 +40,9 @@ describe('directiveComponents', () => {
           note: { source: 'notes', exportName: 'Note' },
           box: { source: 'boxes', exportName: 'Box', wrapIn: 'boxes' },
         },
-        codeBlocks: {
-          '*': { source: 'code', attributes: 'CodeAttributes' },
-          dot: { source: 'graphs', attributes: 'GraphAttributes' },
-        },
       },
       [path.join(root, 'decks/theme.tsx')]: {
         directives: { note: { source: './Note.tsx', exportName: 'ThemeNote' } },
-        codeBlocks: {
-          dot: { source: './graphs.ts', attributes: 'ThemeGraphAttributes' },
-          bad: { source: 'bad' },
-        },
       },
     });
     const deck = path.join(root, 'decks/talk.deck.mdx');
@@ -65,19 +57,60 @@ describe('directiveComponents', () => {
         note: { source: './Note.tsx', exportName: 'ThemeNote' },
         box: { source: 'boxes', exportName: 'Box', wrapIn: 'boxes' },
       },
-      codeBlocks: {
-        '*': { source: 'code', attributes: 'CodeAttributes' },
-        dot: { source: './graphs.ts', attributes: 'ThemeGraphAttributes' },
-      },
+      codeBlocks: {},
       dependencies: [
         path.join(root, 'plugin.ts'),
         path.join(root, 'decks/theme.tsx'),
       ],
       warnings: [
         'The `box` directive is wrapped in the `boxes` directive, which has no component',
-        'Expected the code blocks of `bad` in the config of ./theme.tsx to have nonempty `source` and `attributes` strings',
       ],
     });
+  });
+
+  it('collects the code blocks of the plugins and the theme', async () => {
+    const plugin = setUp({
+      [path.join(root, 'plugin.ts')]: {
+        codeBlocks: {
+          '*': {
+            handler: { source: 'code/compile', exportName: 'codeBlocks' },
+            component: { source: 'code', exportName: 'Code' },
+          },
+          dot: {
+            handler: { source: 'graphs/compile', exportName: 'graphBlocks' },
+            component: { source: 'graphs', exportName: 'Graph' },
+          },
+        },
+      },
+      [path.join(root, 'decks/theme.tsx')]: {
+        codeBlocks: {
+          dot: {
+            handler: { source: './graphs.ts', exportName: 'graphBlocks' },
+            component: { source: './Graph.tsx', exportName: 'Graph' },
+            attributes: { source: './Graph.tsx', exportName: 'GraphBlock' },
+          },
+          bad: { handler: { source: 'bad' } },
+        },
+      },
+    });
+    const { codeBlocks, warnings } = await plugin.directiveComponents(
+      '---\ntheme: ./theme.tsx\n---\n\n# Talk',
+      path.join(root, 'decks/talk.deck.mdx'),
+    );
+    expect(codeBlocks).toEqual({
+      '*': {
+        handler: { source: 'code/compile', exportName: 'codeBlocks' },
+        component: { source: 'code', exportName: 'Code' },
+      },
+      dot: {
+        handler: { source: './graphs.ts', exportName: 'graphBlocks' },
+        component: { source: './Graph.tsx', exportName: 'Graph' },
+        attributes: { source: './Graph.tsx', exportName: 'GraphBlock' },
+      },
+    });
+    expect(warnings.filter((warning) => warning.includes('`bad`'))).toEqual([
+      'Expected the code blocks of `bad` in the config of ./theme.tsx to have a `handler` and a `component` with nonempty `source` and `exportName` strings',
+    ]);
   });
 
   it('tells which configs cannot be loaded', async () => {

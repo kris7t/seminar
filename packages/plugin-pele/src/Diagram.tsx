@@ -66,7 +66,7 @@ export interface DiagramFormula {
 /**
  * What ` ```mermaid ` code blocks take after the language, e.g.,
  * ` ```mermaid #pipeline step width=600 `: the attributes of `:step`, and
- * the size of the diagram.
+ * the size of the diagram. The other props are set when compiling the deck.
  */
 export type DiagramBlockAttributes = Omit<UseStepsOptions, 'defaults'> &
   Pick<DiagramProps, 'width' | 'scale' | 'fontSize'>;
@@ -78,8 +78,8 @@ export interface DiagramProps extends Omit<
 > {
   /** The Mermaid source of the diagram. */
   source: string;
-  /** The types of diagrams that `source` may use, which are registered with Pele. */
-  diagrams?: readonly PeleDiagram[] | undefined;
+  /** The type of the diagram of `source`, which is registered with Pele. */
+  diagram?: PeleDiagram | undefined;
   /** The steps of the items of the diagram, in order. */
   steps?: readonly DiagramStep[] | undefined;
   /** The formulas in the labels of the diagram, like `$$x^2$$`, by their TeX. */
@@ -560,7 +560,7 @@ function ItemSteps({ steps, target, name }: ItemStepsProps): JSX.Element {
 export function Diagram(inProps: DiagramProps): JSX.Element {
   const {
     source,
-    diagrams = [],
+    diagram,
     steps = [],
     formulas = NO_FORMULAS,
     width,
@@ -591,7 +591,9 @@ export function Diagram(inProps: DiagramProps): JSX.Element {
       </Step>
     );
   }
-  register(...diagrams);
+  if (diagram !== undefined) {
+    register(diagram);
+  }
   return (
     <DiagramRoot
       component="div"

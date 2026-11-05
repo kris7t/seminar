@@ -77,7 +77,8 @@ export const answer = 42;
 They're shown as plain text, unless a plugin highlights them, like
 [`@seminar/plugin-shiki`](../plugins/shiki/index.md). With
 [`@seminar/plugin-pele`](../plugins/pele/index.md), ` ```mermaid ` blocks are
-diagrams.
+diagrams. Like paragraphs, code blocks appear with the step before them. The
+attributes of `:step` after the language change that, like ` ```ts #fib step `.
 
 ## Presenter notes
 

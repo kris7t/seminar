@@ -6,20 +6,20 @@
   "license": "Apache-2.0",
   "type": "module",
   "seminar": {
-    "mdx": {
-      "rehypePlugins": {
-        "before": [
-          {
-            "source": "@seminar/plugin-pele/rehype",
-            "exportName": "rehypePele"
-          }
-        ]
-      }
-    },
     "codeBlocks": {
       "mermaid": {
-        "source": "@seminar/plugin-pele",
-        "attributes": "DiagramBlockAttributes"
+        "handler": {
+          "source": "@seminar/plugin-pele/code",
+          "exportName": "peleCodeBlocks"
+        },
+        "component": {
+          "source": "@seminar/plugin-pele",
+          "exportName": "Diagram"
+        },
+        "attributes": {
+          "source": "@seminar/plugin-pele",
+          "exportName": "DiagramBlockAttributes"
+        }
       }
     }
   },
@@ -29,10 +29,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./rehype": {
-      "@seminar/source": "./src/rehypePele.ts",
-      "types": "./dist/rehypePele.d.ts",
-      "default": "./dist/rehypePele.js"
+    "./code": {
+      "@seminar/source": "./src/codeBlocks.ts",
+      "types": "./dist/codeBlocks.d.ts",
+      "default": "./dist/codeBlocks.js"
     }
   },
   "files": [

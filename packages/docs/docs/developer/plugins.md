@@ -111,7 +111,9 @@ key of its config:
   "seminar": {
     "mdx": {
       "rehypePlugins": {
-        "after": [{ "source": "my-code/rehype", "exportName": "rehypeMyCode" }]
+        "after": [
+          { "source": "my-links/rehype", "exportName": "rehypeMyLinks" }
+        ]
       }
     }
   }
@@ -155,25 +157,64 @@ adds to the deck.
 `@seminar/plugin-mathjax` does this, since it merges macros, and gives
 components functions that import the font of the deck.
 
-### Attributes of code blocks
+### Code blocks
 
-A plugin that renders code blocks reads the words after their language
-itself, usually with `parseAttributeWords`. To have the editor check them,
-the config names the type of the attributes in `codeBlocks`, by the
-language, or `*` for the other languages:
+To render code blocks, a plugin doesn't need a compiler plugin. It registers
+a handler and a component for their language in `codeBlocks`, or for `*`,
+the other languages:
 
 ```json
 "codeBlocks": {
-  "dot": { "source": "my-graphs", "attributes": "GraphBlockAttributes" }
+  "dot": {
+    "handler": { "source": "my-graphs/code", "exportName": "graphBlocks" },
+    "component": { "source": "my-graphs", "exportName": "Graph" }
+  }
 }
 ```
 
-As with directives, the last config wins for each language, and a
-language of its own wins over `*`. The compiler doesn't read `codeBlocks`, so
-it has to say what the plugin actually does. Words that aren't attributes,
-like `{1-3}`, aren't checked. For example, `@seminar/plugin-shiki`
-registers `*`, and `@seminar/plugin-pele` registers `mermaid`, which it
-renders before syntax highlighting.
+The compiler finds the code blocks and reads the words after their
+language. It gives each block to the handler of its language, or else to
+the handler of `*`, and renders it with the component of the handler.
+Blocks without one are plain `CodeBlock`s of `@seminar/core`. As with
+directives, the last config wins for each language.
+
+The handler is a function that the compiler calls once for each deck, with
+its `file`, and that returns a function for the blocks of the deck:
+
+```ts
+import type { CodeBlockHandlerFactory } from '@seminar/mdx';
+
+export const graphBlocks: CodeBlockHandlerFactory =
+  ({ file }) =>
+  async ({ code, lang, meta, place }) => {
+    if (!isGraph(code)) {
+      file.message('Cannot render the graph', { place });
+      return undefined;
+    }
+    return {
+      props: { source: code, layout: await layOut(code) },
+      imports: {
+        engine: { source: 'my-graphs/engine', exportName: 'default' },
+      },
+    };
+  };
+```
+
+- `props` are JSON, and `imports` are props whose values the deck imports.
+  `children` are elements of the HTML syntax tree, like highlighted code.
+- The attributes after the language, like `#graph step`, are passed to the
+  component like those of `:step`, so the component should pass them on to a
+  `Step`. `meta` has the other words, like `{1-3}`.
+- Returning `undefined` leaves the block to the handler of `*`. For example,
+  `@seminar/plugin-pele` registers `mermaid`, and leaves diagrams that it
+  can't parse to `@seminar/plugin-shiki`, which registers `*`.
+
+The editor checks the attributes against the props of the component, other
+than `lang`, `code`, `meta`, and `children`. If the handler sets other props,
+like the `source` of a diagram, name the type of what can be written after
+the language in `attributes`, like `"attributes": { "source": "my-graphs",
+"exportName": "GraphBlockAttributes" }`. Like compiler plugins, handlers are
+loaded in Node, and must be built to JavaScript.
 
 ### Utilities
 

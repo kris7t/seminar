@@ -28,6 +28,8 @@ import {
   remarkDirectiveComponents,
   type DirectiveComponents,
 } from './directives/remarkDirectiveComponents.ts';
+import type { LoadedCodeBlock } from './config/codeBlocks.ts';
+import { rehypeCodeBlocks } from './content/rehypeCodeBlocks.ts';
 import {
   remarkSeminarConfig,
   type LoadedSeminarConfigEntry,
@@ -43,6 +45,8 @@ export interface SeminarMdxOptions extends RemarkSlidesOptions {
   seminarConfigs?: readonly LoadedSeminarConfigEntry[] | undefined;
   /** Plugins of unified that the configs add, see `loadDeckSetup`. */
   mdxPlugins?: MdxPlugins | undefined;
+  /** Handlers of code blocks that the configs register, see `loadDeckSetup`. */
+  codeBlocks?: Readonly<Record<string, LoadedCodeBlock>> | undefined;
   /**
    * Whether the deck tells where its elements are in its source, for editors in
    * the dev server, see `__seminarAt` in `@seminar/core`.
@@ -67,6 +71,7 @@ export function seminarMdxOptions({
   directives,
   seminarConfigs,
   mdxPlugins = emptyMdxPlugins(),
+  codeBlocks,
   sourcePositions = false,
   ...options
 }: SeminarMdxOptions = {}): Pick<
@@ -99,6 +104,7 @@ export function seminarMdxOptions({
     ],
     rehypePlugins: [
       ...mdxPlugins.rehypePlugins.before,
+      [rehypeCodeBlocks, { codeBlocks, importSource: options.importSource }],
       rehypeListSteps,
       rehypeSlideElements,
       ...mdxPlugins.rehypePlugins.after,
@@ -181,6 +187,7 @@ export async function deckMdxOptions(
       ...options,
       seminarConfigs: setup.seminarConfigs,
       mdxPlugins: setup.mdxPlugins,
+      codeBlocks: setup.codeBlocks,
     }),
     setup,
   };

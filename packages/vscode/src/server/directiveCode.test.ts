@@ -16,22 +16,38 @@ const DIRECTIVES = {
   column: { source: './Column.tsx', exportName: 'Column' },
 };
 
+/** A registration of code blocks rendered by `exportName` of `source`. */
+function rendered(source: string, exportName: string) {
+  return {
+    handler: { source: `${source}/code`, exportName: 'handler' },
+    component: { source, exportName },
+  };
+}
+
 const CODE_BLOCKS = {
-  '*': { source: '@seminar/plugin-shiki', attributes: 'CodeBlockAttributes' },
-  dot: { source: 'graphs', attributes: 'GraphAttributes' },
+  '*': rendered('@seminar/plugin-shiki', 'Code'),
+  dot: rendered('graphs', 'Graph'),
   mermaid: {
-    source: '@seminar/plugin-pele',
-    attributes: 'DiagramBlockAttributes',
+    ...rendered('@seminar/plugin-pele', 'Diagram'),
+    attributes: {
+      source: '@seminar/plugin-pele',
+      exportName: 'DiagramBlockAttributes',
+    },
   },
 };
 
-function generate(source: string) {
+function generate(
+  source: string,
+  options: {
+    codeBlocks?: Parameters<typeof generateDirectiveCode>[3];
+  } = { codeBlocks: CODE_BLOCKS },
+) {
   const root = unified()
     .use(remarkParse)
     .use(remarkMdx)
     .use(deckSyntaxPlugins([]))
     .parse(source);
-  return generateDirectiveCode(source, root, DIRECTIVES, CODE_BLOCKS);
+  return generateDirectiveCode(source, root, DIRECTIVES, options.codeBlocks);
 }
 
 /** Returns what of the generated code maps to which source. */
@@ -134,17 +150,21 @@ export {};
     ]);
   });
 
-  it('renders the attributes of code blocks with the types of their languages', () => {
+  it('renders the attributes of code blocks with their components', () => {
     const source =
       '```ts #fib {1-3} step group=1 .wide\ncode\n```\n\n```dot width=3\ngraph\n```\n\n```\nplain\n```\n';
     expect(generate(source).text).toBe(
-      `declare function _SeminarCodeBlock0(props: import("@seminar/plugin-shiki").CodeBlockAttributes): null;
-declare function _SeminarCodeBlock1(props: import("graphs").GraphAttributes): null;
+      `declare function _SeminarCodeBlock0(props: Omit<import("react").ComponentProps<typeof import("@seminar/plugin-shiki").Code>, "lang" | "code" | "meta" | "children">): null;
+declare function _SeminarCodeBlock1(props: Omit<import("react").ComponentProps<typeof import("graphs").Graph>, "lang" | "code" | "meta" | "children">): null;
 <_SeminarCodeBlock0 id={"fib"} step group={"1"} />;
 <_SeminarCodeBlock1 width={3} />;
 export {};
 `,
     );
+    expect(
+      generate('```ts step\ncode\n```', { codeBlocks: {} }).text,
+    ).toContain('typeof import("@seminar/core").CodeBlock');
+    expect(generate('```ts step\ncode\n```', {}).text).toBe('export {};\n');
     expect(mapped('```ts step\ncode\n```')).toEqual([
       ['ts', '_SeminarCodeBlock0'],
       ['step', 'step'],

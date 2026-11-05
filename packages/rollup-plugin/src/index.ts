@@ -184,6 +184,7 @@ export default function seminar({
       directives,
       seminarConfigs: setup.seminarConfigs,
       mdxPlugins: setup.mdxPlugins,
+      codeBlocks: setup.codeBlocks,
       // Vite tells more than the types of the MDX plugin say.
       sourcePositions:
         (configured?.env as { command?: string } | undefined)?.command ===
@@ -320,18 +321,20 @@ export default function seminar({
     async directiveComponents(source: string, deckPath: string) {
       const { setup } = await getCompiler(source, deckPath);
       const warnings = [...setup.warnings];
-      const reporter = {
-        message(reason: string) {
-          warnings.push(reason);
-        },
-      };
       return {
         directives: collectDirectiveComponents(
           directives ?? {},
           setup.seminarConfigs,
-          reporter,
+          {
+            message(reason) {
+              warnings.push(reason);
+            },
+          },
         ),
-        codeBlocks: collectCodeBlocks(setup.seminarConfigs, reporter),
+        // Loading the setup already reported problems with them.
+        codeBlocks: collectCodeBlocks(setup.seminarConfigs, {
+          message: () => undefined,
+        }),
         dependencies: [...setup.dependencies],
         warnings,
       };
