@@ -154,7 +154,7 @@ export const deck = Deck;
     [
       '--input-type=module',
       '-e',
-      `for (const name of ['@seminar/core', '@seminar/elements', '@seminar/mdx', '@seminar/rollup-plugin', '@seminar/vite-plugin', '@seminar/plugin-mathjax/compile', '@seminar/plugin-mathjax/render', '@seminar/plugin-pele/rehype', '@seminar/plugin-shiki/rehype']) await import(name);`,
+      `for (const name of ['@seminar/core', '@seminar/elements', '@seminar/mdx', '@seminar/rollup-plugin', '@seminar/vite-plugin', '@seminar/plugin-mathjax/compile', '@seminar/plugin-mathjax/render', '@seminar/plugin-pele/code', '@seminar/plugin-shiki/code']) await import(name);`,
     ],
     { cwd: directory, stdio: 'inherit' },
   );
