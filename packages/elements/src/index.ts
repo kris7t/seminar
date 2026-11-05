@@ -28,6 +28,12 @@ export {
   type ColumnProps,
 } from './columns/Column.tsx';
 export {
+  ColumnDirective,
+  ColumnsDirective,
+  type ColumnDirectiveProps,
+  type ColumnsDirectiveProps,
+} from './columns/ColumnsDirective.tsx';
+export {
   Columns,
   columnsClasses,
   type ColumnsAlign,

@@ -18,7 +18,7 @@ Components reach decks in three ways:
 - A deck imports them, e.g., `import { Chart } from './Chart.tsx'`, and uses
   them as JSX.
 - A plugin or theme maps a [directive](directives.md) to them, e.g.,
-  `:::column` to `Column`.
+  `:::column` to `ColumnDirective`.
 - A theme uses them as [masters](themes.md#masters), which lay out slides.
 
 ## Features

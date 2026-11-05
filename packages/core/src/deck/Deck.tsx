@@ -85,6 +85,7 @@ import {
   useSwipeNavigation,
 } from '../interaction/useSwipeNavigation.ts';
 import { DeckMenu } from '../menu/DeckMenu.tsx';
+import { getDevChannel } from '../host/devChannel.ts';
 import { getSeminarHost } from '../host/SeminarHost.ts';
 import { getSourceRange } from '../host/sourceRanges.ts';
 import { PrintDialog } from '../print/PrintDialog.tsx';
@@ -1166,6 +1167,12 @@ function InteractiveDeck({
                                       cache={thumbnails}
                                       overview={showOverview}
                                       onFrame={setPresenterFrame}
+                                      editable={
+                                        getDevChannel() !== undefined &&
+                                        !presenting &&
+                                        !presentation.contained
+                                      }
+                                      scale={slideFit.scale}
                                       frameProps={{
                                         sx: FITTED_SLIDE_FRAME_STYLES,
                                         style: {

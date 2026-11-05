@@ -9,6 +9,8 @@ import {
 } from 'react';
 
 import { DeckContext, useDeck, type DeckState } from '../deck/DeckContext.ts';
+import { useEditing } from '../editing/EditLayer.tsx';
+import { EditingContext } from '../editing/EditingContext.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import type { StepStore } from '../steps/StepStore.ts';
 import {
@@ -20,6 +22,10 @@ import {
   SelectionFrame,
   type SelectionFrameProps,
 } from '../view/SelectionFrame.tsx';
+import {
+  FITTED_SLIDE_FRAME_STYLES,
+  slideScaleStyles,
+} from '../view/slideFrame.ts';
 import {
   SLIDE_VIEW_ATTRIBUTE,
   type SlideView,
@@ -45,6 +51,10 @@ interface PresentedSlidesProps {
   overview: boolean;
   frameProps: SelectionFrameProps;
   onFrame: (frame: HTMLElement | null) => void;
+  /** Whether the slide can be edited, e.g., in the preview of an editor. */
+  editable?: boolean | undefined;
+  /** The scale of the slide, which its handles are drawn at while editing. */
+  scale?: number | undefined;
 }
 
 function PresentedLayer({
@@ -54,6 +64,8 @@ function PresentedLayer({
   frameProps,
   onFrame,
   onCaptured,
+  editable,
+  scale,
 }: {
   layer: Layer;
   current: boolean;
@@ -61,8 +73,13 @@ function PresentedLayer({
   frameProps: SelectionFrameProps;
   onFrame: PresentedSlidesProps['onFrame'];
   onCaptured: (key: number) => void;
+  editable: boolean;
+  scale: number;
 }): JSX.Element {
   const [frame, setFrame] = useState<HTMLDivElement | null>(null);
+  const [editLayer, setEditLayer] = useState<HTMLDivElement | null>(null);
+  const edited = editable && active;
+  const editing = useEditing(edited, frame, editLayer, scale);
   const view = useMemo(
     () => ({ ...layer.view, interactive: active }),
     [layer.view, active],
@@ -78,36 +95,54 @@ function PresentedLayer({
     if (!current) onCaptured(layer.key);
   }, [current, layer.key, onCaptured]);
   return (
-    <SelectionFrame
-      {...frameProps}
-      ref={ref}
-      {...{ [SLIDE_VIEW_ATTRIBUTE]: layer.view.kind }}
-      data-seminar-retained={current ? undefined : ''}
-      inert={!active}
-      aria-hidden={active ? undefined : true}
-      style={{
-        ...frameProps.style,
-        zIndex: current ? 1 : 0,
-        pointerEvents: active ? undefined : 'none',
-      }}
-    >
-      <DeckContext value={layer.deck}>
-        <StepStoreContext value={layer.steps}>
-          <ThumbnailCapture
-            cache={layer.cache}
-            index={layer.view.index}
-            kind={layer.view.kind}
-            frame={frame}
-            active={active}
-            current={current}
-            onCaptured={done}
-          />
-          <StateStoresContext value={layer.stateStores}>
-            <SlideViewProvider view={view}>{layer.slide}</SlideViewProvider>
-          </StateStoresContext>
-        </StepStoreContext>
-      </DeckContext>
-    </SelectionFrame>
+    <>
+      <SelectionFrame
+        {...frameProps}
+        ref={ref}
+        {...{ [SLIDE_VIEW_ATTRIBUTE]: layer.view.kind }}
+        data-seminar-retained={current ? undefined : ''}
+        inert={!active}
+        aria-hidden={active ? undefined : true}
+        style={{
+          ...frameProps.style,
+          zIndex: current ? 1 : 0,
+          pointerEvents: active ? undefined : 'none',
+        }}
+      >
+        <DeckContext value={layer.deck}>
+          <StepStoreContext value={layer.steps}>
+            <ThumbnailCapture
+              cache={layer.cache}
+              index={layer.view.index}
+              kind={layer.view.kind}
+              frame={frame}
+              active={active}
+              current={current}
+              onCaptured={done}
+            />
+            <StateStoresContext value={layer.stateStores}>
+              <EditingContext value={editing}>
+                <SlideViewProvider view={view}>{layer.slide}</SlideViewProvider>
+              </EditingContext>
+            </StateStoresContext>
+          </StepStoreContext>
+        </DeckContext>
+      </SelectionFrame>
+      {/* Beside the slide, so that it isn't captured, clipped, or observed. */}
+      {edited && (
+        <Box
+          ref={setEditLayer}
+          sx={FITTED_SLIDE_FRAME_STYLES}
+          style={{
+            ...slideScaleStyles(scale),
+            zIndex: 2,
+            overflow: 'visible',
+            background: 'none',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -119,6 +154,8 @@ export function PresentedSlides({
   overview,
   frameProps,
   onFrame,
+  editable = false,
+  scale = 1,
 }: PresentedSlidesProps): JSX.Element {
   const steps = use(StepStoreContext);
   const deck = useDeck();
@@ -188,6 +225,8 @@ export function PresentedSlides({
           frameProps={frameProps}
           onFrame={onFrame}
           onCaptured={onCaptured}
+          editable={editable}
+          scale={scale}
         />
       ))}
     </Box>

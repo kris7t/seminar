@@ -37,6 +37,11 @@ export interface AttributeEdit {
 export interface PendingAttributes {
   range: SavedRange;
   wrapper?: string | undefined;
+  /**
+   * The attributes in the saved source, so that pages can tell whether they
+   * compiled it before or after the edits.
+   */
+  saved: Record<string, AttributeValue>;
   attributes: Record<string, AttributeValue>;
 }
 
@@ -45,6 +50,7 @@ interface Tracked {
   range: SavedRange;
   wrapper: string | undefined;
   name: string;
+  saved: Record<string, AttributeValue>;
 }
 
 /** What is known of a source since it was saved. */
@@ -228,16 +234,19 @@ export class SourceEdits {
             range: edit.range,
             wrapper: edit.wrapper,
             name: edit.wrapper,
+            saved: {},
           });
         }
       } else {
         const [start] = this.#unchanged(state, text, edit.range, true);
         const change = editAttributes(text, start, edit.changes);
         textChanges.push(...(change === undefined ? [] : [change]));
+        const read = readAttributes(text, start);
         tracked.push({
           range: edit.range,
           wrapper: undefined,
-          name: readAttributes(text, start)?.name ?? '',
+          name: read?.name ?? '',
+          saved: read?.attributes ?? {},
         });
       }
     }
@@ -260,9 +269,9 @@ export class SourceEdits {
    */
   pending(file: string, text: string): PendingAttributes[] {
     const state = this.#sources.get(file);
-    return (state?.tracked ?? []).flatMap(({ range, wrapper, name }) => {
-      const offset =
-        state && this.#locate(state, text, { range, wrapper, name });
+    return (state?.tracked ?? []).flatMap((tracked) => {
+      const { range, wrapper, saved } = tracked;
+      const offset = state && this.#locate(state, text, tracked);
       const read =
         offset === undefined ? undefined : readAttributes(text, offset);
       return read === undefined
@@ -271,6 +280,7 @@ export class SourceEdits {
             {
               range,
               ...(wrapper === undefined ? {} : { wrapper }),
+              saved,
               attributes: read.attributes,
             },
           ];

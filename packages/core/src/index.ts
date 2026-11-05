@@ -82,6 +82,7 @@ export {
 export { Notes, type NotesProps } from './notes/Notes.tsx';
 export { Slide, type SlideProps } from './slide/Slide.tsx';
 export {
+  measureInSlide,
   parseSlidePoint,
   resolveSlidePoint,
   SLIDE_BOX,
@@ -188,6 +189,20 @@ export {
   type SourcePosition,
   type SourceRange,
 } from './host/sourceRanges.ts';
+export {
+  DragHandle,
+  EditLayer,
+  useSlideScale,
+  type Drag,
+  type DragHandleProps,
+} from './editing/EditLayer.tsx';
+export type { AttributeChanges, AttributeValue } from './editing/editStore.ts';
+export {
+  useEditable,
+  useEditedProps,
+  type Editable,
+  type EditTarget,
+} from './editing/useEditable.ts';
 export type {
   PagesPerSheet,
   PrintedDocument,

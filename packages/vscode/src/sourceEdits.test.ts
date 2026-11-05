@@ -78,7 +78,11 @@ describe('SourceEdits', () => {
       '# Slide\n\nMore text\n\nText:callout[A]{angle=40 offset=60} here\n',
     );
     expect(source.pending).toEqual([
-      { range: callout, attributes: { angle: 40, offset: 60 } },
+      {
+        range: callout,
+        saved: { angle: 35 },
+        attributes: { angle: 40, offset: 60 },
+      },
     ]);
   });
 
@@ -93,7 +97,7 @@ describe('SourceEdits', () => {
       '35',
     );
     expect(source.pending).toEqual([
-      { range: callout, attributes: { angle: 35 } },
+      { range: callout, saved: { angle: 35 }, attributes: { angle: 35 } },
     ]);
   });
 
@@ -157,9 +161,14 @@ describe('SourceEdits', () => {
         '::::columns{gap=32}\n:::column{grow=2}\nA\n:::\n\n:::column{grow=3}\nB\n:::\n::::\n',
       );
       expect(source.pending).toEqual([
-        { range: wrapper, wrapper: 'columns', attributes: { gap: 32 } },
-        { range: first, attributes: { grow: 2 } },
-        { range: second, attributes: { grow: 3 } },
+        {
+          range: wrapper,
+          wrapper: 'columns',
+          saved: {},
+          attributes: { gap: 32 },
+        },
+        { range: first, saved: {}, attributes: { grow: 2 } },
+        { range: second, saved: {}, attributes: { grow: 3 } },
       ]);
     });
 

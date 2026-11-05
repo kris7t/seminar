@@ -16,7 +16,7 @@
       },
       "columns": {
         "source": "@seminar/elements",
-        "exportName": "Columns",
+        "exportName": "ColumnsDirective",
         "forms": [
           "container"
         ],
@@ -24,7 +24,7 @@
       },
       "column": {
         "source": "@seminar/elements",
-        "exportName": "Column",
+        "exportName": "ColumnDirective",
         "labelProp": "heading",
         "wrapIn": "columns",
         "forms": [

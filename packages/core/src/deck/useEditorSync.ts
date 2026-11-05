@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { getEditStore } from '../editing/editStore.ts';
 import { getDevChannel } from '../host/devChannel.ts';
 import { findSourceRangeOf, type SourceRange } from '../host/sourceRanges.ts';
 import type { StepPath } from '../steps/StepNode.ts';
@@ -156,6 +157,8 @@ export function useEditorSync({
     })),
   );
   useEffect(() => {
+    // Hears the edits that the editor tells pages about once they start.
+    getEditStore();
     getDevChannel()?.send('slides', {
       version: VERSION,
       slides: JSON.parse(table) as unknown,

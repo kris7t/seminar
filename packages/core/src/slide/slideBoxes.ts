@@ -72,9 +72,10 @@ export function resolveSlidePoint(
 
 /**
  * Measures `element` in the logical pixels of the slide view it's in, which
- * may be scaled, e.g., in the overview, or `undefined` if it isn't in one.
+ * may be scaled, e.g., in the overview, or returns `undefined` if it isn't in
+ * one.
  */
-function measureInSlide(element: Element): SlideBox | undefined {
+export function measureInSlide(element: Element): SlideBox | undefined {
   const frame = element.closest(`[${SLIDE_VIEW_ATTRIBUTE}]`);
   if (frame === null) return undefined;
   const frameRect = frame.getBoundingClientRect();

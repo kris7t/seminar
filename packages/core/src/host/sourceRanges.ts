@@ -76,20 +76,23 @@ export function withSourceOf<T extends ReactElement<object>>(
   return element;
 }
 
-/** Returns the range of the closest fiber with one, from `first` up. */
-function findInFibers(
+/** Returns what `find` finds for the props of the closest fiber, from `first` up. */
+function findInFibers<T>(
   first: Fiber | null | undefined,
-): SourceRange | undefined {
+  find: (props: object) => T | undefined,
+): T | undefined {
   for (let fiber = first; fiber; fiber = fiber.return) {
-    const range =
-      (fiber.pendingProps && ranges.get(fiber.pendingProps)) ??
-      (fiber.memoizedProps && ranges.get(fiber.memoizedProps));
-    if (range) {
-      return range;
+    const found =
+      (fiber.pendingProps && find(fiber.pendingProps)) ??
+      (fiber.memoizedProps && find(fiber.memoizedProps));
+    if (found !== undefined && found !== null) {
+      return found;
     }
   }
   return undefined;
 }
+
+const findRange = (props: object) => ranges.get(props);
 
 /** What we need from the fibers of React. */
 interface Fiber {
@@ -121,7 +124,7 @@ function currentFiber(): Fiber | null | undefined {
  * Only works while rendering, and only in the development build of React.
  */
 export function findSourceRange(): SourceRange | undefined {
-  return findInFibers(currentFiber());
+  return findInFibers(currentFiber(), findRange);
 }
 
 /** Prefix of the property of DOM nodes with their fibers, which is internal. */
@@ -133,10 +136,25 @@ const FIBER_PREFIX = '__reactFiber$';
  * {@link findSourceRange}.
  */
 export function findSourceRangeOf(element: Element): SourceRange | undefined {
+  return findPropsOf(element, findRange);
+}
+
+/**
+ * Returns what `find` finds for the props of the closest element around
+ * `element` that it finds anything for, from the fibers that React keeps on
+ * it, like {@link findSourceRangeOf}.
+ */
+export function findPropsOf<T>(
+  element: Element,
+  find: (props: object) => T | undefined,
+): T | undefined {
   for (let node: Element | null = element; node; node = node.parentElement) {
     const key = Object.keys(node).find((name) => name.startsWith(FIBER_PREFIX));
     if (key !== undefined) {
-      return findInFibers((node as unknown as Record<string, Fiber>)[key]);
+      return findInFibers(
+        (node as unknown as Record<string, Fiber>)[key],
+        find,
+      );
     }
   }
   return undefined;
