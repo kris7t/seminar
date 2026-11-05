@@ -72,7 +72,7 @@ export interface CalloutHandlesProps {
  * The handles of the callout around it, while it's edited: its body, which
  * turns and stretches its stem, the base of its stem, which moves along the
  * edge of the body, also turning the stem, its tip, which moves what it
- * points at, and an edge of the body, which resizes it. Double-clicking a
+ * points at, and the sides of the body, which resize it. Double-clicking a
  * handle removes what it sets.
  */
 export function CalloutHandles({
@@ -89,18 +89,18 @@ export function CalloutHandles({
   const bodyX = options.anchorX + geometry.x;
   const bodyY = options.anchorY + geometry.y;
   const horizontalEdge = geometry.edge === 'top' || geometry.edge === 'bottom';
-  // On the side of the body without the stem.
-  const resizeLeft = geometry.edge === 'right';
 
   const handle = (
     label: string,
     box: SlideBox,
-    shape: 'point' | 'vertical' | 'area',
+    shape: 'point' | 'area',
     changesOf: (start: DragStart, drag: Drag) => AttributeChanges,
     reset: AttributeChanges,
     cursor?: string,
+    key: string = label,
   ) => (
     <DragHandle
+      key={key}
       editable={editable}
       box={box}
       shape={shape}
@@ -168,28 +168,43 @@ export function CalloutHandles({
         },
         { angle: null, offset: null },
       )}
-      {handle(
-        'Resize the callout',
-        {
-          x: resizeLeft ? bodyX : bodyX + geometry.width,
-          y: bodyY,
-          width: 0,
-          height: geometry.height,
-        },
-        'vertical',
-        (start, { dx }) => ({
-          width: Math.round(
-            Math.min(
-              Math.max(
-                start.geometry.width + (resizeLeft ? -dx : dx),
-                MIN_WIDTH,
+      {(['left', 'right'] as const).map((side) =>
+        handle(
+          `Resize the callout from the ${side}`,
+          {
+            x: side === 'left' ? bodyX : bodyX + geometry.width,
+            y: bodyY,
+            width: 0,
+            height: geometry.height,
+          },
+          'area',
+          (start, { dx }) => {
+            const width = Math.round(
+              Math.min(
+                Math.max(
+                  start.geometry.width + (side === 'left' ? -dx : dx),
+                  MIN_WIDTH,
+                ),
+                SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN * 2,
               ),
-              SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN * 2,
-            ),
-          ),
-        }),
-        { width: null },
-        'ew-resize',
+            );
+            // The other side stays where it is, and so does the tip.
+            const body = bodyOf(start);
+            return {
+              width,
+              ...calloutPlacementAt(
+                { ...start.options, width },
+                side === 'left'
+                  ? body.x + start.geometry.width - width
+                  : body.x,
+                body.y,
+              ),
+            };
+          },
+          { width: null },
+          'ew-resize',
+          side,
+        ),
       )}
       {handle(
         'Move the stem of the callout along its edge',

@@ -1,4 +1,4 @@
-import { styled, useTheme } from '@mui/material/styles';
+import { alpha, styled, useTheme } from '@mui/material/styles';
 import {
   use,
   useEffect,
@@ -60,8 +60,9 @@ export interface DragHandleProps {
   box: SlideBox;
   /**
    * How the handle is drawn: a line across a `vertical` or `horizontal`
-   * box, along which it's dragged, a `point` in its middle, or the outline
-   * of an `area`, e.g., of what is moved by dragging it.
+   * box, along which it's dragged, a `point` in its middle, or not at all
+   * for an `area`, e.g., what is moved by dragging it, or a side of it that
+   * resizes it.
    */
   shape: 'vertical' | 'horizontal' | 'point' | 'area';
   /** What the handle does, for assistive technologies. */
@@ -87,6 +88,9 @@ const MIN_HIT_SIZE = 12;
 const LINE_WIDTH = 2;
 const POINT_SIZE = 10;
 
+/** Screen pixels of the light and the dark outline around them. */
+const OUTLINE_WIDTH = 1;
+
 const DEFAULT_CURSORS = {
   vertical: 'col-resize',
   horizontal: 'row-resize',
@@ -111,20 +115,6 @@ const HandleMark = styled('div', {
   slot: 'Mark',
 })(({ theme }) => ({
   background: theme.palette.primary.main,
-  boxShadow: `0 0 0 1px ${theme.palette.background.paper}`,
-  transition: theme.transitions.create('opacity', {
-    duration: theme.transitions.duration.shorter,
-  }),
-}));
-
-const HandleOutline = styled('div', {
-  name: 'SeminarDragHandle',
-  slot: 'Outline',
-})(({ theme }) => ({
-  alignSelf: 'stretch',
-  flex: 1,
-  outlineStyle: 'dashed',
-  outlineColor: theme.palette.primary.main,
   transition: theme.transitions.create('opacity', {
     duration: theme.transitions.duration.shorter,
   }),
@@ -262,19 +252,14 @@ export function DragHandle({
           onReset?.();
         }}
       >
-        {shape === 'area' ? (
-          <HandleOutline
-            style={{
-              outlineWidth: LINE_WIDTH / scale,
-              opacity: visible ? 1 : 0,
-            }}
-          />
-        ) : (
+        {shape !== 'area' && (
           <HandleMark
             style={{
               width: shape === 'horizontal' ? '100%' : thickness,
               height: shape === 'vertical' ? '100%' : thickness,
               borderRadius: shape === 'point' ? '50%' : thickness / 2,
+              // Seen on light and dark backgrounds alike.
+              boxShadow: `0 0 0 ${String(OUTLINE_WIDTH / scale)}px ${theme.palette.common.white}, 0 0 0 ${String((OUTLINE_WIDTH * 2) / scale)}px ${alpha(theme.palette.common.black, 0.6)}`,
               opacity: visible ? 1 : 0,
             }}
           />

@@ -71,10 +71,7 @@ describe('CalloutHandles', () => {
 
   /** Drags the handle labeled `name` by `dx`, `dy`, and releases it. */
   function drag(name: string, dx: number, dy: number) {
-    const handle = screen.getByRole(
-      name === 'Resize the callout' ? 'separator' : 'button',
-      { name },
-    );
+    const handle = screen.getByRole('button', { name });
     fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0, clientY: 0 });
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: dx, clientY: dy });
     fireEvent.pointerUp(handle, { pointerId: 1, clientX: dx, clientY: dy });
@@ -127,10 +124,17 @@ describe('CalloutHandles', () => {
     expect(edited()).toEqual([{ at: '60%,40%' }]);
   });
 
-  it('resizes the body', () => {
-    renderCallout({ width: 200, angle: 90 });
-    drag('Resize the callout', 50, 0);
-    expect(edited()).toEqual([{ width: 250 }]);
+  it.each([
+    ['right', 50],
+    ['left', -50],
+  ])('resizes the body from the %s, keeping the other side', (side, dx) => {
+    renderCallout({ width: 200, angle: 90, offset: 40 });
+    drag(`Resize the callout from the ${side}`, dx, 0);
+    const [changes] = edited();
+    expect(changes).toMatchObject({ width: 250 });
+    // The stem turns, so that the body stays put on the other side.
+    expect(changes).toHaveProperty('angle');
+    expect(changes).toHaveProperty('offset');
   });
 
   it('removes what a handle sets when it is double-clicked', () => {
