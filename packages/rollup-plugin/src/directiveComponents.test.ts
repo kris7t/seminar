@@ -72,24 +72,14 @@ describe('directiveComponents', () => {
     const plugin = setUp({
       [path.join(root, 'plugin.ts')]: {
         codeBlocks: {
-          '*': {
-            handler: { source: 'code/compile', exportName: 'codeBlocks' },
-            component: { source: 'code', exportName: 'Code' },
-          },
-          dot: {
-            handler: { source: 'graphs/compile', exportName: 'graphBlocks' },
-            component: { source: 'graphs', exportName: 'Graph' },
-          },
+          '*': { source: 'code/compile', exportName: 'codeBlocks' },
+          dot: { source: 'graphs/compile', exportName: 'graphBlocks' },
         },
       },
       [path.join(root, 'decks/theme.tsx')]: {
         codeBlocks: {
-          dot: {
-            handler: { source: './graphs.ts', exportName: 'graphBlocks' },
-            component: { source: './Graph.tsx', exportName: 'Graph' },
-            attributes: { source: './Graph.tsx', exportName: 'GraphBlock' },
-          },
-          bad: { handler: { source: 'bad' } },
+          dot: { source: './graphs.ts', exportName: 'graphBlocks' },
+          bad: { source: 'bad' },
         },
       },
     });
@@ -98,18 +88,11 @@ describe('directiveComponents', () => {
       path.join(root, 'decks/talk.deck.mdx'),
     );
     expect(codeBlocks).toEqual({
-      '*': {
-        handler: { source: 'code/compile', exportName: 'codeBlocks' },
-        component: { source: 'code', exportName: 'Code' },
-      },
-      dot: {
-        handler: { source: './graphs.ts', exportName: 'graphBlocks' },
-        component: { source: './Graph.tsx', exportName: 'Graph' },
-        attributes: { source: './Graph.tsx', exportName: 'GraphBlock' },
-      },
+      '*': { source: 'code/compile', exportName: 'codeBlocks' },
+      dot: { source: './graphs.ts', exportName: 'graphBlocks' },
     });
     expect(warnings.filter((warning) => warning.includes('`bad`'))).toEqual([
-      'Expected the code blocks of `bad` in the config of ./theme.tsx to have a `handler` and a `component` with nonempty `source` and `exportName` strings',
+      'Expected the handler of the code blocks of `bad` in the config of ./theme.tsx to have nonempty `source` and `exportName` strings',
     ]);
   });
 

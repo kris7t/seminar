@@ -24,6 +24,16 @@ export interface CodeProps extends Omit<
   children?: ReactNode;
 }
 
+/**
+ * The attributes of the code blocks that {@link Code} renders, after the
+ * language, e.g., ` ```ts #fib step `, which are those of `:step`. The other
+ * props are set when compiling the deck.
+ */
+export type CodeAttributes = Omit<
+  CodeProps,
+  'lang' | 'meta' | 'code' | 'children'
+>;
+
 export type CodeClassKey = 'root';
 
 export const codeClasses: Record<CodeClassKey, string> = generateUtilityClasses(

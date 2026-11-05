@@ -8,18 +8,8 @@
   "seminar": {
     "codeBlocks": {
       "mermaid": {
-        "handler": {
-          "source": "@seminar/plugin-pele/code",
-          "exportName": "peleCodeBlocks"
-        },
-        "component": {
-          "source": "@seminar/plugin-pele",
-          "exportName": "Diagram"
-        },
-        "attributes": {
-          "source": "@seminar/plugin-pele",
-          "exportName": "DiagramBlockAttributes"
-        }
+        "source": "@seminar/plugin-pele/code",
+        "exportName": "peleCodeBlocks"
       }
     }
   },

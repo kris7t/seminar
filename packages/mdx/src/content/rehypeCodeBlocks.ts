@@ -8,8 +8,8 @@ import type { VFile } from 'vfile';
 import type {
   CodeBlock,
   CodeBlockHandler,
+  CodeBlockHandlerFactory,
   CodeBlockResult,
-  LoadedCodeBlock,
   ModuleExport,
 } from '../config/codeBlocks.ts';
 import { parseAttributeWords } from '../directives/attributeWords.ts';
@@ -43,6 +43,7 @@ function textOf(node: ElementContent): string {
 /** Finds the code blocks of Markdown: `pre` elements with a `code` element. */
 function findBlocks(
   parent: { children: (RootContent | ElementContent)[] },
+  file: VFile,
   found: FoundBlock[],
 ): void {
   parent.children.forEach((child, index) => {
@@ -71,7 +72,8 @@ function findBlocks(
             lang: language?.slice('language-'.length),
             code: textOf(code).replace(/\n$/, ''),
             meta: rest,
-            attributes,
+            // Like the attributes of `:step`, e.g., `#id .class step group=…`.
+            props: Object.fromEntries(getStepProps(attributes, file)),
             place: child.position,
           },
         });
@@ -79,7 +81,7 @@ function findBlocks(
       }
     }
     if ('children' in child) {
-      findBlocks(child, found);
+      findBlocks(child, file, found);
     }
   });
 }
@@ -110,25 +112,12 @@ function jsonAttribute(name: string, value: unknown): MdxJsxAttribute {
       createExpressionAttribute(name, `(${JSON.stringify(value)})`);
 }
 
-/** Creates the element of a code block rendered by `component`. */
+/** Creates the element of a code block that a handler renders. */
 function createElement(
-  { pre, block }: FoundBlock,
-  component: ModuleExport,
-  { props = {}, imports = {}, children = [] }: CodeBlockResult,
-  file: VFile,
+  { pre }: FoundBlock,
+  { component, props = {}, imports = {}, children = [] }: CodeBlockResult,
   locals: Imports,
 ): MdxJsxFlowElementHast {
-  const own = new Set([...Object.keys(props), ...Object.keys(imports)]);
-  const stepProps = getStepProps(block.attributes, file).filter(([name]) => {
-    if (!own.has(name)) {
-      return true;
-    }
-    file.message(
-      `Ignoring \`${name}\` on the code block, which its handler sets`,
-      { place: block.place },
-    );
-    return false;
-  });
   const element: MdxJsxFlowElementHast = {
     type: 'mdxJsxFlowElement',
     name: locals.local(component),
@@ -139,8 +128,6 @@ function createElement(
       ...Object.entries(imports).map(([name, module]) =>
         createExpressionAttribute(name, locals.local(module)),
       ),
-      // Like the attributes of `:step`, e.g., `#id .class step group=…`.
-      ...stepProps.map(([name, value]) => createValueAttribute(name, value)),
     ],
     children,
     data: EXPLICIT_JSX_HAST,
@@ -151,10 +138,15 @@ function createElement(
   return element;
 }
 
-/** The props of the plain `CodeBlock` of `@seminar/core`. */
-function defaultResult({ pre, block }: FoundBlock): CodeBlockResult {
+/** Renders a block with the plain `CodeBlock` of `importSource`. */
+function defaultResult(
+  { pre, block }: FoundBlock,
+  importSource: string,
+): CodeBlockResult {
   return {
+    component: { source: importSource, exportName: 'CodeBlock' },
     props: {
+      ...block.props,
       ...(block.lang === undefined ? {} : { lang: block.lang }),
       ...(block.meta === undefined ? {} : { meta: block.meta }),
       code: block.code,
@@ -168,7 +160,7 @@ export interface RehypeCodeBlocksOptions {
    * The handlers of code blocks by their languages, or `*` for the rest, see
    * `loadDeckSetup`.
    */
-  codeBlocks?: Readonly<Record<string, LoadedCodeBlock>> | undefined;
+  codeBlocks?: Readonly<Record<string, CodeBlockHandlerFactory>> | undefined;
   /**
    * The module that the `CodeBlock` of blocks that no handler renders is
    * imported from. Defaults to `@seminar/core`.
@@ -182,10 +174,9 @@ export interface RehypeCodeBlocksOptions {
  * plain `CodeBlock` of `@seminar/core`.
  *
  * The handler of the language of a block renders it, or else the handler of
- * `*`, if they don't return `undefined`. The attributes after the language,
- * e.g., ` ```ts #fib step `, are passed to the component like those of
- * `:step`, unless the handler sets the same props. Display math of
- * `remark-math` isn't a code block.
+ * `*`, if they don't return `undefined`. Handlers get the attributes after the
+ * language, e.g., ` ```ts #fib step `, parsed like those of `:step`, and pass
+ * them to their components. Display math of `remark-math` isn't a code block.
  */
 export function rehypeCodeBlocks({
   codeBlocks = {},
@@ -196,7 +187,7 @@ export function rehypeCodeBlocks({
 ) => Promise<void> | undefined {
   return (tree, file) => {
     const found: FoundBlock[] = [];
-    findBlocks(tree, found);
+    findBlocks(tree, file, found);
     if (found.length === 0) {
       return undefined;
     }
@@ -213,9 +204,7 @@ export function rehypeCodeBlocks({
     const renderDefault = (entry: FoundBlock) => {
       entry.parent.children[entry.index] = createElement(
         entry,
-        { source: importSource, exportName: 'CodeBlock' },
-        defaultResult(entry),
-        file,
+        defaultResult(entry, importSource),
         locals,
       );
     };
@@ -226,12 +215,12 @@ export function rehypeCodeBlocks({
       return undefined;
     }
     return (async () => {
-      const handlers = new Map<LoadedCodeBlock, CodeBlockHandler>();
-      const handlerOf = (registration: LoadedCodeBlock) => {
-        let handler = handlers.get(registration);
+      const handlers = new Map<CodeBlockHandlerFactory, CodeBlockHandler>();
+      const handlerOf = (factory: CodeBlockHandlerFactory) => {
+        let handler = handlers.get(factory);
         if (handler === undefined) {
-          handler = registration.handler({ file });
-          handlers.set(registration, handler);
+          handler = factory({ file });
+          handlers.set(factory, handler);
         }
         return handler;
       };
@@ -243,14 +232,14 @@ export function rehypeCodeBlocks({
             : undefined,
           Object.hasOwn(codeBlocks, '*') ? codeBlocks['*'] : undefined,
         ].filter(
-          (candidate, index, all): candidate is LoadedCodeBlock =>
+          (candidate, index, all): candidate is CodeBlockHandlerFactory =>
             candidate !== undefined && all.indexOf(candidate) === index,
         );
         let rendered = false;
-        for (const registration of candidates) {
+        for (const factory of candidates) {
           let result: CodeBlockResult | undefined;
           try {
-            result = await handlerOf(registration)(block);
+            result = await handlerOf(factory)(block);
           } catch (error) {
             file.message(`Cannot render the code block: ${String(error)}`, {
               place: block.place,
@@ -259,9 +248,7 @@ export function rehypeCodeBlocks({
           if (result !== undefined) {
             entry.parent.children[entry.index] = createElement(
               entry,
-              registration.component,
               result,
-              file,
               locals,
             );
             rendered = true;

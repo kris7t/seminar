@@ -88,11 +88,9 @@ export {
   type CodeBlock,
   type CodeBlockHandler,
   type CodeBlockHandlerFactory,
-  type CodeBlockRegistration,
   type CodeBlockRegistrations,
   type CodeBlockReporter,
   type CodeBlockResult,
-  type LoadedCodeBlock,
   type ModuleExport,
 } from './config/codeBlocks.ts';
 export {

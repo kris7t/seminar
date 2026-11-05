@@ -20,10 +20,7 @@ async function compileDeck(source: string, theme: unknown = {}) {
       ...seminarMdxOptions({
         defaultTheme: undefined,
         codeBlocks: {
-          '*': {
-            handler: shikiCodeBlocks,
-            component: { source: '@seminar/plugin-shiki', exportName: 'Code' },
-          },
+          '*': shikiCodeBlocks,
         },
         seminarConfigs: [
           {

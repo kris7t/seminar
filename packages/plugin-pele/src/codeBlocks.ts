@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import type { CodeBlockHandlerFactory } from '@seminar/mdx';
+import type { CodeBlockHandlerFactory, ModuleExport } from '@seminar/mdx';
 import {
   createFormulaTypesetter,
   type FormulaTypesetter,
@@ -10,10 +10,15 @@ import {
 import { detectType, parse, PeleError, render } from 'pele';
 import type { VFile } from 'vfile';
 
-import type { DiagramFormula } from './Diagram.tsx';
+import type { DiagramBlockAttributes, DiagramFormula } from './Diagram.tsx';
 import { findSteps } from './steps/index.ts';
 
 const require = createRequire(import.meta.url);
+
+const DIAGRAM: ModuleExport = {
+  source: '@seminar/plugin-pele',
+  exportName: 'Diagram',
+};
 
 /**
  * Returns the module specifier of the diagram type `type` of Pele for the deck
@@ -54,7 +59,8 @@ function formulasOf(source: string): Set<string> {
 /**
  * Renders the Mermaid diagrams of decks, written in ` ```mermaid ` code blocks,
  * with the `Diagram` component of `@seminar/plugin-pele`, which renders them
- * with Pele in the browser. Decks only import the types of diagrams that they
+ * with Pele in the browser, with the attributes after the language (see
+ * {@link DiagramBlockAttributes}). Decks only import the types of diagrams that they
  * use. Steps of the items of diagrams are found in their source (see
  * `findSteps`).
  *
@@ -66,9 +72,11 @@ function formulasOf(source: string): Set<string> {
  * Registered for ` ```mermaid ` code blocks by the config of
  * `@seminar/plugin-pele`.
  */
-export const peleCodeBlocks: CodeBlockHandlerFactory = ({ file }) => {
+export const peleCodeBlocks: CodeBlockHandlerFactory<
+  DiagramBlockAttributes
+> = ({ file }) => {
   let typesetter: Promise<FormulaTypesetter> | undefined;
-  return async ({ code: source, place }) => {
+  return async ({ code: source, props, place }) => {
     // The source starts on the line after the fence.
     const start = place?.start;
     try {
@@ -105,7 +113,9 @@ export const peleCodeBlocks: CodeBlockHandlerFactory = ({ file }) => {
       }
     }
     return {
+      component: DIAGRAM,
       props: {
+        ...props,
         source,
         ...(steps.length === 0 ? {} : { steps }),
         ...(Object.keys(formulas).length === 0 ? {} : { formulas }),

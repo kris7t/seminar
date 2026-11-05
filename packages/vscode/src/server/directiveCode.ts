@@ -11,11 +11,7 @@ import type {
   TextDirective,
 } from 'mdast-util-directive';
 
-import type {
-  CodeBlockRegistration,
-  DirectiveComponent,
-  ModuleExport,
-} from './directiveLoader.ts';
+import type { DirectiveComponent, ModuleExport } from './directiveLoader.ts';
 import {
   readDirectiveSyntax,
   type DirectiveAttribute,
@@ -100,44 +96,37 @@ function addAttributeWords(code: Builder, text: string, offset: number): void {
   }
 }
 
-/** The component of code blocks that no handler renders. */
-const DEFAULT_CODE_BLOCK: ModuleExport = {
-  source: '@seminar/core',
-  exportName: 'CodeBlock',
-};
+/** The type of the attributes of code blocks that no handler renders. */
+const DEFAULT_ATTRIBUTES = 'import("@seminar/core").CodeBlockAttributes';
 
 /**
- * The props of the components of code blocks that compiling decks sets, which
- * aren't written after the language.
+ * Returns the type of the props that the handler `handler` of code blocks
+ * takes, see `CodeBlockHandlerFactory` of `@seminar/mdx`, without depending
+ * on it.
  */
-const CODE_BLOCK_PROPS = '"lang" | "code" | "meta" | "children"';
-
-function exportType({ source, exportName }: ModuleExport): string {
-  return `import(${JSON.stringify(source)}).${exportName}`;
+function handlerProps({ source, exportName }: ModuleExport): string {
+  return `Parameters<ReturnType<typeof import(${JSON.stringify(source)}).${exportName}>>[0]["props"]`;
 }
 
 /**
- * Returns the type of the attributes of the code block `node`, as the
- * registration of its language, of `*`, or the default tells it: its
- * `attributes`, or else the props of its component that compiling the deck
- * doesn't set. Handlers may leave blocks to the next one, which only
- * compiling the deck tells.
+ * Returns the type of the attributes of the code block `node`: the props that
+ * the handler of its language, or else of `*`, takes, or those of the plain
+ * `CodeBlock` of `@seminar/core`. Handlers may leave blocks to the next one,
+ * which only compiling the deck tells.
  */
 function attributesOf(
   node: Code,
-  codeBlocks: Readonly<Record<string, CodeBlockRegistration>>,
+  codeBlocks: Readonly<Record<string, ModuleExport>>,
 ): string | undefined {
   if (node.lang === null || node.lang === undefined) {
     return undefined;
   }
-  const registration = Object.hasOwn(codeBlocks, node.lang)
+  const handler = Object.hasOwn(codeBlocks, node.lang)
     ? codeBlocks[node.lang]
     : Object.hasOwn(codeBlocks, '*')
       ? codeBlocks['*']
       : undefined;
-  return registration?.attributes === undefined
-    ? `Omit<import("react").ComponentProps<typeof ${exportType(registration?.component ?? DEFAULT_CODE_BLOCK)}>, ${CODE_BLOCK_PROPS}>`
-    : exportType(registration.attributes);
+  return handler === undefined ? DEFAULT_ATTRIBUTES : handlerProps(handler);
 }
 
 /**
@@ -261,7 +250,7 @@ export function generateDirectiveCode(
   source: string,
   root: Root,
   directives: Readonly<Record<string, DirectiveComponent>>,
-  codeBlocks?: Readonly<Record<string, CodeBlockRegistration>>,
+  codeBlocks?: Readonly<Record<string, ModuleExport>>,
 ): DirectiveCode {
   const imports = new Map<DirectiveComponent, string>();
   const codeComponents = new Map<string, string>();

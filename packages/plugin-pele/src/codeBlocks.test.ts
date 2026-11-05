@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { compile } from '@mdx-js/mdx';
-import { seminarMdxOptions, type LoadedCodeBlock } from '@seminar/mdx';
+import { seminarMdxOptions, type CodeBlockHandlerFactory } from '@seminar/mdx';
 import { shikiCodeBlocks } from '@seminar/plugin-shiki/code';
 import { describe, expect, it } from 'vitest';
 
@@ -12,25 +12,14 @@ const { seminar } = JSON.parse(
   readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'),
 ) as { seminar: unknown };
 
-const SHIKI: LoadedCodeBlock = {
-  handler: shikiCodeBlocks,
-  component: { source: '@seminar/plugin-shiki', exportName: 'Code' },
-};
-
-async function compileDeck(source: string, others?: LoadedCodeBlock) {
+async function compileDeck(source: string, others?: CodeBlockHandlerFactory) {
   const file = await compile(
     { value: source, path: path.join(import.meta.dirname, 'deck.mdx') },
     {
       ...seminarMdxOptions({
         defaultTheme: undefined,
         codeBlocks: {
-          mermaid: {
-            handler: peleCodeBlocks,
-            component: {
-              source: '@seminar/plugin-pele',
-              exportName: 'Diagram',
-            },
-          },
+          mermaid: peleCodeBlocks,
           ...(others === undefined ? {} : { '*': others }),
         },
         seminarConfigs: [
@@ -137,7 +126,7 @@ describe('peleCodeBlocks', () => {
   it('leaves other code blocks to syntax highlighting', async () => {
     const { code } = await compileDeck(
       `${FLOWCHART}\n\n\`\`\`ts\nconst x = 1;\n\`\`\``,
-      SHIKI,
+      shikiCodeBlocks,
     );
     expect(code).toContain('diagram: _SeminarCode1');
     expect(code.match(/_SeminarCode2, \{/g)).toHaveLength(1);

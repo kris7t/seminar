@@ -19,6 +19,16 @@ export interface CodeBlockProps extends Omit<
 }
 
 /**
+ * The attributes of code blocks that {@link CodeBlock} renders, after the
+ * language, e.g., ` ```ts #fib step `, which are those of `:step`. The other
+ * props are set when compiling the deck.
+ */
+export type CodeBlockAttributes = Omit<
+  CodeBlockProps,
+  'lang' | 'meta' | 'code' | 'children'
+>;
+
+/**
  * A code block of a deck that no plugin renders, e.g., without syntax
  * highlighting. It's shown with the previous step, like paragraphs, unless
  * it's placed otherwise, e.g., with `step` after the language.

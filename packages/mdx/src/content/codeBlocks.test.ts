@@ -4,15 +4,15 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   CodeBlock,
+  CodeBlockHandlerFactory,
   CodeBlockResult,
-  LoadedCodeBlock,
 } from '../config/codeBlocks.ts';
 import { emptyMdxPlugins } from '../config/deckSetup.ts';
 import { seminarMdxOptions } from '../options.ts';
 
 async function compileDeck(
   source: string,
-  codeBlocks?: Record<string, LoadedCodeBlock>,
+  codeBlocks?: Record<string, CodeBlockHandlerFactory>,
 ) {
   const mdxPlugins = emptyMdxPlugins();
   mdxPlugins.remarkPlugins.before.push(remarkMath);
@@ -25,19 +25,20 @@ async function compileDeck(
   };
 }
 
-/** A registration whose handler records the blocks it gets. */
+/** A handler that records the blocks it gets. */
 function recording(
-  exportName: string,
   render: (block: CodeBlock) => CodeBlockResult | undefined,
   blocks: CodeBlock[] = [],
-): LoadedCodeBlock {
-  return {
-    handler: () => (block) => {
-      blocks.push(block);
-      return render(block);
-    },
-    component: { source: 'blocks', exportName },
+): CodeBlockHandlerFactory {
+  return () => (block) => {
+    blocks.push(block);
+    return render(block);
   };
+}
+
+/** The component `exportName` of the module `blocks`. */
+function component(exportName: string) {
+  return { source: 'blocks', exportName };
 }
 
 describe('rehypeCodeBlocks', () => {
@@ -59,20 +60,23 @@ describe('rehypeCodeBlocks', () => {
       '```dot width=2 {x}\ngraph\n```\n\n```ts\nx\n```\n\n```\nplain\n```',
       {
         dot: recording(
-          'Graph',
-          ({ code: source }) => ({
-            props: { source, options: { layout: 'dot' } },
+          ({ code: source, props }) => ({
+            component: component('Graph'),
+            props: { ...props, source, options: { layout: 'dot' } },
             imports: { engine: { source: 'engines', exportName: 'default' } },
           }),
           blocks,
         ),
-        '*': recording('Code', ({ lang }) => ({ props: { lang } }), blocks),
+        '*': recording(
+          ({ lang }) => ({ component: component('Code'), props: { lang } }),
+          blocks,
+        ),
       },
     );
-    expect(blocks.map(({ lang, meta }) => [lang, meta])).toEqual([
-      ['dot', '{x}'],
-      ['ts', undefined],
-      [undefined, undefined],
+    expect(blocks.map(({ lang, meta, props }) => [lang, meta, props])).toEqual([
+      ['dot', '{x}', { width: 2 }],
+      ['ts', undefined, {}],
+      [undefined, undefined, {}],
     ]);
     expect(code).toContain('import {Graph as _SeminarCode0} from "blocks";');
     expect(code).toContain('import {default as _SeminarCode1} from "engines";');
@@ -85,12 +89,9 @@ describe('rehypeCodeBlocks', () => {
 
   it('leaves blocks that handlers return nothing for to the next', async () => {
     const { code, messages } = await compileDeck('```dot\ngraph\n```', {
-      dot: recording('Graph', () => undefined),
-      '*': {
-        handler: () => () => {
-          throw new Error('Broken');
-        },
-        component: { source: 'blocks', exportName: 'Code' },
+      dot: recording(() => undefined),
+      '*': () => () => {
+        throw new Error('Broken');
       },
     });
     expect(messages).toEqual(['Cannot render the code block: Error: Broken']);
@@ -98,22 +99,28 @@ describe('rehypeCodeBlocks', () => {
     expect(code).not.toContain('from "blocks"');
   });
 
-  it('ignores attributes that handlers set', async () => {
-    const { code, messages } = await compileDeck(
-      '```dot source=x step\ngraph\n```',
-      { dot: recording('Graph', () => ({ props: { source: 'graph' } })) },
+  it('gives handlers the attributes parsed like those of :step', async () => {
+    const blocks: CodeBlock[] = [];
+    await compileDeck(
+      '```dot #g .wide step with=parent fade=300 {1}\ngraph\n```',
+      {
+        dot: recording(() => undefined, blocks),
+      },
     );
-    expect(messages).toEqual([
-      'Ignoring `source` on the code block, which its handler sets',
+    expect(blocks.map(({ props }) => props)).toEqual([
+      {
+        with: 'parent',
+        id: 'g',
+        className: 'wide',
+        step: true,
+        fade: 300,
+      },
     ]);
-    expect(code).toContain('source: "graph"');
-    expect(code).not.toContain('source: "x"');
-    expect(code).toContain('step: true');
   });
 
   it('leaves display math alone', async () => {
     const { code } = await compileDeck('$$\nx\n$$', {
-      '*': recording('Code', () => ({})),
+      '*': recording(() => ({ component: component('Code') })),
     });
     expect(code).not.toContain('import {Code');
     expect(code).toContain('math-display');

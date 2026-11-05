@@ -2,7 +2,6 @@ import type { ElementContent } from 'hast';
 import type { Position } from 'unist';
 import type { VFile } from 'vfile';
 
-import type { Attributes } from '../directives/directives.ts';
 import type { LoadedSeminarConfigEntry } from './remarkSeminarConfig.ts';
 
 /** A named export of a module. */
@@ -12,27 +11,14 @@ export interface ModuleExport {
 }
 
 /**
- * What a Seminar config registers for the code blocks of a language, see
- * `CodeBlockConfig` of `@seminar/core`.
+ * The handlers of code blocks that a Seminar config registers, by their
+ * languages, or `*` for the rest, see `CodeBlockConfig` of `@seminar/core`.
+ * Each is a {@link CodeBlockHandlerFactory} that compiling decks imports.
  */
-export interface CodeBlockRegistration {
-  /** The {@link CodeBlockHandlerFactory} that compiling decks imports. */
-  handler: ModuleExport;
-  /** The component that decks import to render the code blocks. */
-  component: ModuleExport;
-  /**
-   * The exported type of the attributes after the language, for editors to
-   * check them. Defaults to the props of `component`, other than `lang`,
-   * `code`, `meta`, and `children`.
-   */
-  attributes?: ModuleExport | undefined;
-}
-
-/** Registrations of code blocks by their languages, or `*` for the rest. */
-export type CodeBlockRegistrations = Record<string, CodeBlockRegistration>;
+export type CodeBlockRegistrations = Record<string, ModuleExport>;
 
 /** A code block of a deck, as a {@link CodeBlockHandler} gets it. */
-export interface CodeBlock {
+export interface CodeBlock<Props = Record<string, unknown>> {
   /** The language of the block, e.g., `ts`, if it has one. */
   lang: string | undefined;
   /** The text of the block. */
@@ -43,17 +29,23 @@ export interface CodeBlock {
    */
   meta: string | undefined;
   /**
-   * The attributes after the language, e.g., `#fib step`, which compiling
-   * the deck passes to the component as the props of a step.
+   * The attributes after the language, parsed like those of `:step`, e.g.,
+   * `{ id: 'fib', step: true, className: 'wide' }` for `#fib step .wide`.
+   * Editors check them against `Props`, but they're whatever the deck says.
    */
-  attributes: Attributes;
+  props: Props;
   /** Where the block is in the deck. */
   place: Position | undefined;
 }
 
 /** What a {@link CodeBlockHandler} renders a code block with. */
 export interface CodeBlockResult {
-  /** Props of the component, which have to be JSON. */
+  /** The component that renders the block, which decks import. */
+  component: ModuleExport;
+  /**
+   * Props of the component, which have to be JSON, e.g., the `props` of the
+   * {@link CodeBlock}, so that it can be a step.
+   */
   props?: Record<string, unknown> | undefined;
   /**
    * Props of the component whose values are imported, e.g., by the deck,
@@ -65,28 +57,22 @@ export interface CodeBlockResult {
 }
 
 /**
- * Renders a code block with the component of its registration, or returns
- * `undefined` to leave it to the registration of `*`, and then to the plain
- * `CodeBlock` of `@seminar/core`.
+ * Renders a code block, or returns `undefined` to leave it to the handler of
+ * `*`, and then to the plain `CodeBlock` of `@seminar/core`.
  */
-export type CodeBlockHandler = (
-  block: CodeBlock,
+export type CodeBlockHandler<Props = Record<string, unknown>> = (
+  block: CodeBlock<Props>,
 ) => Promise<CodeBlockResult | undefined> | CodeBlockResult | undefined;
 
 /**
  * Creates the {@link CodeBlockHandler} for the code blocks of a deck, once
  * for each deck, e.g., to read options of the deck. Registered in the
- * `codeBlocks` of a Seminar config.
+ * `codeBlocks` of a Seminar config. Editors check the attributes of code
+ * blocks against `Props`.
  */
-export type CodeBlockHandlerFactory = (deck: {
+export type CodeBlockHandlerFactory<Props = Record<string, unknown>> = (deck: {
   file: VFile;
-}) => CodeBlockHandler;
-
-/** A registration of code blocks with its imported handler. */
-export interface LoadedCodeBlock {
-  handler: CodeBlockHandlerFactory;
-  component: ModuleExport;
-}
+}) => CodeBlockHandler<Props>;
 
 /** Reports problems with registrations, like a `VFile`. */
 export interface CodeBlockReporter {
@@ -121,37 +107,14 @@ export function parseCodeBlocks(
     return {};
   }
   const result: CodeBlockRegistrations = {};
-  for (const [lang, descriptor] of Object.entries(value)) {
-    const handler = isRecord(descriptor) ? descriptor['handler'] : undefined;
-    const component = isRecord(descriptor)
-      ? descriptor['component']
-      : undefined;
-    const attributes = isRecord(descriptor)
-      ? descriptor['attributes']
-      : undefined;
-    if (!isModuleExport(handler) || !isModuleExport(component)) {
+  for (const [lang, handler] of Object.entries(value)) {
+    if (!isModuleExport(handler)) {
       file.message(
-        `Expected the code blocks of \`${lang}\` in ${source} to have a \`handler\` and a \`component\` with nonempty \`source\` and \`exportName\` strings`,
+        `Expected the handler of the code blocks of \`${lang}\` in ${source} to have nonempty \`source\` and \`exportName\` strings`,
       );
       continue;
     }
-    if (attributes !== undefined && !isModuleExport(attributes)) {
-      file.message(
-        `Expected \`attributes\` of the code blocks of \`${lang}\` in ${source} to have nonempty \`source\` and \`exportName\` strings`,
-      );
-    }
-    result[lang] = {
-      handler: { source: handler.source, exportName: handler.exportName },
-      component: { source: component.source, exportName: component.exportName },
-      ...(isModuleExport(attributes)
-        ? {
-            attributes: {
-              source: attributes.source,
-              exportName: attributes.exportName,
-            },
-          }
-        : {}),
-    };
+    result[lang] = { source: handler.source, exportName: handler.exportName };
   }
   return result;
 }

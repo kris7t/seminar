@@ -28,7 +28,7 @@ import {
   remarkDirectiveComponents,
   type DirectiveComponents,
 } from './directives/remarkDirectiveComponents.ts';
-import type { LoadedCodeBlock } from './config/codeBlocks.ts';
+import type { CodeBlockHandlerFactory } from './config/codeBlocks.ts';
 import { rehypeCodeBlocks } from './content/rehypeCodeBlocks.ts';
 import {
   remarkSeminarConfig,
@@ -46,7 +46,7 @@ export interface SeminarMdxOptions extends RemarkSlidesOptions {
   /** Plugins of unified that the configs add, see `loadDeckSetup`. */
   mdxPlugins?: MdxPlugins | undefined;
   /** Handlers of code blocks that the configs register, see `loadDeckSetup`. */
-  codeBlocks?: Readonly<Record<string, LoadedCodeBlock>> | undefined;
+  codeBlocks?: Readonly<Record<string, CodeBlockHandlerFactory>> | undefined;
   /**
    * Whether the deck tells where its elements are in its source, for editors in
    * the dev server, see `__seminarAt` in `@seminar/core`.

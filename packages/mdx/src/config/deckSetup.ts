@@ -3,11 +3,7 @@ import path from 'node:path';
 import type { Pluggable } from 'unified';
 import { parse as parseYaml } from 'yaml';
 
-import {
-  codeBlocksOf,
-  type CodeBlockHandlerFactory,
-  type LoadedCodeBlock,
-} from './codeBlocks.ts';
+import { codeBlocksOf, type CodeBlockHandlerFactory } from './codeBlocks.ts';
 import type { LoadedSeminarConfigEntry } from './remarkSeminarConfig.ts';
 import {
   importWithNode,
@@ -44,7 +40,7 @@ export interface DeckSetup {
    * The handlers of code blocks that the configs register, by the languages,
    * or `*` for the rest, where later configs replace earlier ones.
    */
-  codeBlocks: Record<string, LoadedCodeBlock>;
+  codeBlocks: Record<string, CodeBlockHandlerFactory>;
   /** Files that the setup was loaded from, to watch for changes. */
   dependencies: string[];
   /** Problems with the configs, e.g., plugins that can't be loaded. */
@@ -248,7 +244,7 @@ async function importCodeBlocks(
       setup.warnings.push(reason);
     },
   });
-  for (const [lang, { handler, component }] of Object.entries(registrations)) {
+  for (const [lang, handler] of Object.entries(registrations)) {
     const factory = await importFunction(
       handler.source,
       handler.exportName,
@@ -259,10 +255,7 @@ async function importCodeBlocks(
       resolveModule,
     );
     if (factory !== undefined) {
-      setup.codeBlocks[lang] = {
-        handler: factory as CodeBlockHandlerFactory,
-        component,
-      };
+      setup.codeBlocks[lang] = factory as CodeBlockHandlerFactory;
     }
   }
 }

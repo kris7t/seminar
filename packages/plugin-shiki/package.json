@@ -8,14 +8,8 @@
   "seminar": {
     "codeBlocks": {
       "*": {
-        "handler": {
-          "source": "@seminar/plugin-shiki/code",
-          "exportName": "shikiCodeBlocks"
-        },
-        "component": {
-          "source": "@seminar/plugin-shiki",
-          "exportName": "Code"
-        }
+        "source": "@seminar/plugin-shiki/code",
+        "exportName": "shikiCodeBlocks"
       }
     }
   },

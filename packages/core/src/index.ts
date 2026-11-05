@@ -157,7 +157,11 @@ export {
   type StepBehaviorOverrides,
   type StepBehaviorShorthands,
 } from './steps/Step.tsx';
-export { CodeBlock, type CodeBlockProps } from './content/CodeBlock.tsx';
+export {
+  CodeBlock,
+  type CodeBlockAttributes,
+  type CodeBlockProps,
+} from './content/CodeBlock.tsx';
 export {
   Image,
   imageClasses,

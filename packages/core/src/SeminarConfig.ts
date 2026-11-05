@@ -50,24 +50,24 @@ export interface SeminarConfig {
    */
   directives?: Record<string, DirectiveComponentConfig> | undefined;
   /**
-   * What the code blocks of decks take after their language, by the language,
-   * or `*` for the other languages, for editors to check. The compiler
-   * doesn't read it: the plugins that render code blocks read their
-   * attributes themselves.
+   * The handlers that render the code blocks of decks, by their language, or
+   * `*` for the other languages. Blocks that no handler renders are rendered
+   * by `CodeBlock`.
    */
   codeBlocks?: Record<string, CodeBlockConfig> | undefined;
 }
 
 /**
- * The type of the attributes of the code blocks of a language, e.g., of
- * ` ```ts #fib step ` after the language, for editors to check them. Words
- * that aren't attributes, e.g., `{1-3}`, aren't checked.
+ * A handler of code blocks, a `CodeBlockHandlerFactory` of `@seminar/mdx`
+ * that compiling decks imports in Node. Editors check the attributes after
+ * the language, e.g., of ` ```ts #fib step `, against the type of the props
+ * that it takes.
  */
 export interface CodeBlockConfig {
-  /** Module that exports the type. */
+  /** Module that exports the handler. */
   source: string;
-  /** Name of the exported type. */
-  attributes: string;
+  /** Name of the handler's export. */
+  exportName: string;
 }
 
 /**

@@ -23,20 +23,13 @@ export interface ModuleExport {
   exportName: string;
 }
 
-/** What renders the code blocks of a language, see `@seminar/mdx`. */
-export interface CodeBlockRegistration {
-  handler: ModuleExport;
-  component: ModuleExport;
-  attributes?: ModuleExport | undefined;
-}
-
 /**
- * The directive components of a deck, and the components of its code blocks,
- * as `directiveComponents` of `@seminar/rollup-plugin` tells them.
+ * The directive components of a deck, and the handlers of its code blocks, as
+ * `directiveComponents` of `@seminar/rollup-plugin` tells them.
  */
 export interface DeckDirectiveComponents {
   directives: Record<string, DirectiveComponent>;
-  codeBlocks: Record<string, CodeBlockRegistration>;
+  codeBlocks: Record<string, ModuleExport>;
   /** Files that the registrations were loaded from. */
   dependencies: string[];
   warnings: string[];
