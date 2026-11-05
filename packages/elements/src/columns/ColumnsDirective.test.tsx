@@ -150,6 +150,32 @@ describe('ColumnsDirective', () => {
     expect(sent.some(([event]) => event === 'editAttributes')).toBe(false);
   });
 
+  it('has no divider next to a column that is a hidden step', () => {
+    render(
+      <Deck>
+        <Slide>
+          {__seminarAt(
+            <ColumnsDirective>
+              {__seminarAt(
+                <ColumnDirective>A</ColumnDirective>,
+                '1:1-3:4',
+                FILE,
+              )}
+              {__seminarAt(
+                <ColumnDirective step>B</ColumnDirective>,
+                '5:1-7:4',
+                FILE,
+              )}
+            </ColumnsDirective>,
+            '1:1-7:4',
+            FILE,
+          )}
+        </Slide>
+      </Deck>,
+    );
+    expect(screen.queryByRole('separator')).toBeNull();
+  });
+
   it('has no handles without an editor', () => {
     Reflect.deleteProperty(globalThis, CHANNEL);
     renderColumns();

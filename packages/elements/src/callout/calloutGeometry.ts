@@ -8,10 +8,19 @@ const DEFAULT_MIRRORED_STEM_OFFSET = 0.7;
 const DEFAULT_STEM_ANGLE = 20;
 
 export interface CalloutGeometryOptions {
-  /** Position of the directive anchor in logical slide pixels. */
+  /**
+   * Position of the directive anchor in logical slide pixels, the middle of
+   * the box it points at, if any.
+   */
   anchorX: number;
   anchorY: number;
-  /** Height of the character box around the directive anchor. */
+  /**
+   * Size of the box around the directive anchor, e.g., of the character or
+   * the element it points at, whose edge the stem ends at, where a ray from
+   * the anchor towards the body leaves the box. Without a width, it ends at
+   * the top or the bottom of the box.
+   */
+  anchorWidth?: number | undefined;
   anchorHeight?: number | undefined;
   /** Size of the rounded rectangular body in logical slide pixels. */
   width: number;
@@ -35,6 +44,15 @@ export interface CalloutGeometry {
   height: number;
   /** Direction from the body attachment to the anchor. */
   angle: number;
+  /** The edge of the body that the stem is attached to. */
+  edge: CalloutEdge;
+  /** Length of the stem. */
+  offset: number;
+  /** Attachment position along `edge`, from 0 to 1. */
+  stemOffset: number;
+  /** Middle of the base of the stem relative to the body. */
+  baseX: number;
+  baseY: number;
   /** Tip of the stem relative to the body, which may lie outside of it. */
   tipX: number;
   tipY: number;
@@ -47,7 +65,10 @@ interface Point {
   y: number;
 }
 
-type Edge = 'top' | 'right' | 'bottom' | 'left';
+/** An edge of the body of a callout. */
+export type CalloutEdge = 'top' | 'right' | 'bottom' | 'left';
+
+type Edge = CalloutEdge;
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(Math.max(value, minimum), maximum);
@@ -137,15 +158,39 @@ interface Placement {
   position: Point;
 }
 
-function anchorForEdge(anchor: Point, anchorHeight: number, edge: Edge): Point {
-  if (edge === 'bottom') return { x: anchor.x, y: anchor.y - anchorHeight / 2 };
-  if (edge === 'top') return { x: anchor.x, y: anchor.y + anchorHeight / 2 };
-  return anchor;
+interface Size {
+  width: number;
+  height: number;
+}
+
+/**
+ * Returns where the stem with `angle` ends on the box of `size` around
+ * `anchor`: where a ray from the anchor towards the body leaves the box.
+ */
+function tipFor(anchor: Point, { width, height }: Size, angle: number): Point {
+  const toward = direction(angle);
+  const exits = [
+    // Rays along an axis, without the rounding errors of cosines.
+    width > 0 && Math.abs(toward.x) > 1e-9
+      ? width / 2 / Math.abs(toward.x)
+      : Infinity,
+    height > 0 && Math.abs(toward.y) > 1e-9
+      ? height / 2 / Math.abs(toward.y)
+      : Infinity,
+  ];
+  const distance = Math.min(...exits);
+  if (!Number.isFinite(distance)) {
+    return anchor;
+  }
+  return {
+    x: anchor.x - clamp(toward.x * distance, -width / 2, width / 2),
+    y: anchor.y - clamp(toward.y * distance, -height / 2, height / 2),
+  };
 }
 
 function placementFor(
   anchor: Point,
-  anchorHeight: number,
+  anchorSize: Size,
   width: number,
   height: number,
   radius: number,
@@ -155,7 +200,7 @@ function placementFor(
   requestedStemOffset: number | undefined,
 ): Placement {
   const edge = edgeForAngle(angle);
-  const target = anchorForEdge(anchor, anchorHeight, edge);
+  const target = tipFor(anchor, anchorSize, angle);
   const stemOffset = clamp(
     requestedStemOffset ?? automaticStemOffset(anchor, edge),
     0,
@@ -181,7 +226,7 @@ function placementFor(
 
 function automaticPlacement(
   anchor: Point,
-  anchorHeight: number,
+  anchorSize: Size,
   width: number,
   height: number,
   radius: number,
@@ -199,7 +244,7 @@ function automaticPlacement(
   const place = (angle: number): Placement =>
     placementFor(
       anchor,
-      anchorHeight,
+      anchorSize,
       width,
       height,
       radius,
@@ -281,18 +326,18 @@ function speechBubblePath(
  * explicit angle, offset, or stem offset is a hard geometric constraint;
  * automatic placement prefers above and right, reflecting to minimize overflow.
  */
-export function calloutGeometry({
+function normalize({
   anchorX,
   anchorY,
-  anchorHeight: requestedAnchorHeight = 0,
+  anchorWidth = 0,
+  anchorHeight = 0,
   width: requestedWidth,
   height: requestedHeight,
   radius: requestedRadius,
   stemSize: requestedStemSize,
-  angle: requestedAngle,
   offset,
-  stemOffset: requestedStemOffset,
-}: CalloutGeometryOptions): CalloutGeometry {
+  stemOffset,
+}: CalloutGeometryOptions) {
   const width = clamp(
     requestedWidth,
     1,
@@ -305,18 +350,40 @@ export function calloutGeometry({
   );
   const radius = clamp(requestedRadius, 0, Math.min(width, height) / 2);
   const stemSize = Math.max(0, requestedStemSize);
-  const stemLength = Math.max(0, offset ?? stemSize);
-  const anchor = { x: anchorX, y: anchorY };
-  const anchorHeight = Math.max(0, requestedAnchorHeight);
-  const normalizedStemOffset =
-    requestedStemOffset === undefined
-      ? undefined
-      : clamp(requestedStemOffset, 0, 1);
+  return {
+    anchor: { x: anchorX, y: anchorY },
+    anchorSize: {
+      width: Math.max(0, anchorWidth),
+      height: Math.max(0, anchorHeight),
+    },
+    width,
+    height,
+    radius,
+    stemSize,
+    stemLength: Math.max(0, offset ?? stemSize),
+    stemOffset: stemOffset === undefined ? undefined : clamp(stemOffset, 0, 1),
+  };
+}
+
+export function calloutGeometry(
+  options: CalloutGeometryOptions,
+): CalloutGeometry {
+  const { angle: requestedAngle } = options;
+  const {
+    anchor,
+    anchorSize,
+    width,
+    height,
+    radius,
+    stemSize,
+    stemLength,
+    stemOffset: normalizedStemOffset,
+  } = normalize(options);
   const placement =
     requestedAngle === undefined
       ? automaticPlacement(
           anchor,
-          anchorHeight,
+          anchorSize,
           width,
           height,
           radius,
@@ -326,7 +393,7 @@ export function calloutGeometry({
         )
       : placementFor(
           anchor,
-          anchorHeight,
+          anchorSize,
           width,
           height,
           radius,
@@ -345,6 +412,11 @@ export function calloutGeometry({
     width,
     height,
     angle: placement.angle,
+    edge: placement.edge,
+    offset: stemLength,
+    stemOffset: placement.stemOffset,
+    baseX: placement.base.x,
+    baseY: placement.base.y,
     tipX: tip.x,
     tipY: tip.y,
     path: speechBubblePath(
@@ -385,4 +457,95 @@ export function calloutBounds({
     width: Math.max(width, tipX) - left,
     height: Math.max(height, tipY) - top,
   };
+}
+
+const round = (value: number, step: number): number =>
+  Number((Math.round(value / step) * step).toFixed(4));
+
+/** Returns `angle` in degrees between -180, exclusive, and 180. */
+function normalizeAngle(angle: number): number {
+  const turned = ((((angle + 180) % 360) + 360) % 360) - 180;
+  return turned === -180 ? 180 : turned;
+}
+
+/**
+ * Returns the `angle` and `offset` that place the top left corner of the
+ * body of the callout of `options` closest to `x`, `y`, in the coordinates
+ * of its anchor, which stays where it is: exactly, unless the stem can't
+ * reach there. The angle is a multiple of `angleStep` degrees, the nearest to
+ * the angle of `options` of those that place the body as close, and the
+ * offset is rounded to whole pixels.
+ */
+export function calloutPlacementAt(
+  options: CalloutGeometryOptions,
+  x: number,
+  y: number,
+  angleStep = 1,
+): { angle: number; offset: number } {
+  const { anchor, anchorSize, width, height, radius, stemSize, stemOffset } =
+    normalize(options);
+  const preferred = options.angle ?? 0;
+  const turnFrom = (angle: number) =>
+    Math.abs(normalizeAngle(angle - preferred));
+  const candidates: { angle: number; offset: number; error: number }[] = [];
+  for (let step = 1; step * angleStep <= 360; step += 1) {
+    const angle = normalizeAngle(step * angleStep);
+    const edge = edgeForAngle(angle);
+    const tip = tipFor(anchor, anchorSize, angle);
+    const base = attachmentPoint(
+      edge,
+      width,
+      height,
+      radius,
+      stemSize,
+      stemOffset ?? automaticStemOffset(anchor, edge),
+    );
+    const vector = direction(angle);
+    const offset = Math.max(
+      0,
+      Math.round(
+        (tip.x - x - base.x) * vector.x + (tip.y - y - base.y) * vector.y,
+      ),
+    );
+    const position = positionFor(tip, base, offset, angle);
+    candidates.push({
+      angle,
+      offset,
+      error: Math.hypot(position.x - x, position.y - y),
+    });
+  }
+  const closest = Math.min(...candidates.map(({ error }) => error));
+  const best = candidates
+    .filter(({ error }) => error < closest + 0.01)
+    .reduce<(typeof candidates)[number] | undefined>(
+      (nearest, candidate) =>
+        nearest === undefined ||
+        turnFrom(candidate.angle) < turnFrom(nearest.angle)
+          ? candidate
+          : nearest,
+      undefined,
+    );
+  return { angle: best?.angle ?? preferred, offset: best?.offset ?? 0 };
+}
+
+/**
+ * Returns the `stemOffset` that moves the base of the stem of the callout of
+ * `options` with `geometry` by `distance` along its edge, as far as it can be
+ * attached there, rounded to `step`.
+ */
+export function calloutStemOffsetAt(
+  options: CalloutGeometryOptions,
+  { edge, stemOffset }: CalloutGeometry,
+  distance: number,
+  step = 0.05,
+): number {
+  const { width, height, radius, stemSize } = normalize(options);
+  const length = edge === 'top' || edge === 'bottom' ? width : height;
+  const inset = radius + stemHalfBase(edge, width, height, radius, stemSize);
+  const lowest = Math.min(inset / length, 0.5);
+  return clamp(
+    round(stemOffset + distance / length, step),
+    round(Math.ceil(lowest / step) * step, step),
+    round(Math.floor((1 - lowest) / step) * step, step),
+  );
 }

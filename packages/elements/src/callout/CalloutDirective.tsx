@@ -1,8 +1,9 @@
 import { styled } from '@mui/material/styles';
-import type { DirectiveForm } from '@seminar/core';
+import { useEditable, useEditedProps, type DirectiveForm } from '@seminar/core';
 import { useState, type JSX, type ReactNode } from 'react';
 
 import { Callout, calloutClasses, type CalloutProps } from './Callout.tsx';
+import { CalloutHandles } from './CalloutHandles.tsx';
 import { CalloutTitle } from './CalloutTitle.tsx';
 
 /** Props of the `callout` directive in MDX. */
@@ -49,14 +50,21 @@ const CalloutInlineAnchor = styled('span', {
  *   the title, and is placed on the slide with `at`.
  *
  * With `for`, they point at an element on the slide instead.
+ *
+ * While the slide is edited, dragging the body of a callout turns and
+ * stretches its stem, dragging the base of the stem moves it along the edge
+ * of the body, dragging the tip moves what it points at, and dragging the
+ * side of the body resizes it.
  */
-export function CalloutDirective({
-  directive = 'text',
-  for: target,
-  label,
-  children,
-  ...props
-}: CalloutDirectiveProps): JSX.Element {
+export function CalloutDirective(inProps: CalloutDirectiveProps): JSX.Element {
+  const editable = useEditable(inProps);
+  const {
+    directive = 'text',
+    for: target,
+    label,
+    children,
+    ...props
+  } = useEditedProps(inProps);
   const [inlineAnchor, setInlineAnchor] = useState<HTMLSpanElement | null>(
     null,
   );
@@ -76,6 +84,12 @@ export function CalloutDirective({
       >
         {label !== undefined && <CalloutTitle>{label}</CalloutTitle>}
         {children}
+        {editable !== undefined && (
+          <CalloutHandles
+            editable={editable}
+            tip={inline ? 'shift' : target === undefined ? 'slide' : 'anchor'}
+          />
+        )}
       </Callout>
     </>
   );

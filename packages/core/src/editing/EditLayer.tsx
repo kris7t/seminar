@@ -1,4 +1,4 @@
-import { styled } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 import {
   use,
   useEffect,
@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom';
 import { findPropsOf } from '../host/sourceRanges.ts';
 import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
 import type { SlideBox } from '../slide/slideBoxes.ts';
+import { rankOf, useStepAppearance } from '../steps/stepAppearance.ts';
 import { EditingContext, type Editing } from './EditingContext.ts';
 import { editableKeyOf, type Editable } from './useEditable.ts';
 
@@ -59,9 +60,10 @@ export interface DragHandleProps {
   box: SlideBox;
   /**
    * How the handle is drawn: a line across a `vertical` or `horizontal`
-   * box, along which it's dragged, or a `point` in its middle.
+   * box, along which it's dragged, a `point` in its middle, or the outline
+   * of an `area`, e.g., of what is moved by dragging it.
    */
-  shape: 'vertical' | 'horizontal' | 'point';
+  shape: 'vertical' | 'horizontal' | 'point' | 'area';
   /** What the handle does, for assistive technologies. */
   label: string;
   /** Defaults to a cursor that moves in the direction of the `shape`. */
@@ -89,6 +91,7 @@ const DEFAULT_CURSORS = {
   vertical: 'col-resize',
   horizontal: 'row-resize',
   point: 'move',
+  area: 'move',
 };
 
 const HandleRoot = styled('div', {
@@ -114,10 +117,24 @@ const HandleMark = styled('div', {
   }),
 }));
 
+const HandleOutline = styled('div', {
+  name: 'SeminarDragHandle',
+  slot: 'Outline',
+})(({ theme }) => ({
+  alignSelf: 'stretch',
+  flex: 1,
+  outlineStyle: 'dashed',
+  outlineColor: theme.palette.primary.main,
+  transition: theme.transitions.create('opacity', {
+    duration: theme.transitions.duration.shorter,
+  }),
+}));
+
 /**
  * A handle of an editable directive in the {@link EditLayer}, which the
  * directive shows while it's {@link Editable.active}, and which tells how far
- * it's dragged. It looks the same, and is as large on the screen, whatever
+ * it's dragged. It's left out while the step around it can't be read, as the
+ * `legibleStepAppearance` of the theme tells. It looks the same, and is as large on the screen, whatever
  * the scale of the slide.
  */
 export function DragHandle({
@@ -133,6 +150,11 @@ export function DragHandle({
   onReset,
 }: DragHandleProps): JSX.Element | null {
   const editing = use(EditingContext);
+  // Only what can be read is edited, as `legibleStepAppearance` tells.
+  const theme = useTheme();
+  const legible =
+    useStepAppearance().rank <=
+    rankOf(theme, theme.legibleStepAppearance ?? 'dimmed');
   // Slides that aren't laid out yet have no scale.
   const scale = editing !== undefined && editing.scale > 0 ? editing.scale : 1;
   const startRef = useRef<{ x: number; y: number; pointer: number }>(undefined);
@@ -157,7 +179,7 @@ export function DragHandle({
       window.removeEventListener('keydown', onKeyDown, true);
     };
   }, [dragging, editing, onCancel]);
-  if (editing === undefined) {
+  if (editing === undefined || (!legible && !dragging)) {
     return null;
   }
   const dragOf = (event: PointerEvent): Drag => ({
@@ -172,12 +194,14 @@ export function DragHandle({
   const width = Math.max(box.width, minSize);
   const height = Math.max(box.height, minSize);
   const thickness = (shape === 'point' ? POINT_SIZE : LINE_WIDTH) / scale;
+  const visible = editable.active || dragging;
   return (
     <EditLayer>
       <HandleRoot
-        role="separator"
+        {...(shape === 'vertical' || shape === 'horizontal'
+          ? { role: 'separator', 'aria-orientation': shape }
+          : { role: 'button' })}
         aria-label={label}
-        aria-orientation={shape === 'horizontal' ? 'horizontal' : 'vertical'}
         {...{ [INTERACTIVE_ATTRIBUTE]: '' }}
         style={{
           left: box.x + (box.width - width) / 2,
@@ -189,9 +213,10 @@ export function DragHandle({
         onPointerEnter={() => {
           editing.setHovered(editable.key);
         }}
-        onPointerLeave={() => {
+        onPointerLeave={(event) => {
+          // Onto the slide, or another handle, which tells itself.
           if (startRef.current === undefined) {
-            editing.setHovered(undefined);
+            editing.setHovered(editableAt(event.relatedTarget));
           }
         }}
         onPointerDown={(event) => {
@@ -237,14 +262,23 @@ export function DragHandle({
           onReset?.();
         }}
       >
-        <HandleMark
-          style={{
-            width: shape === 'horizontal' ? '100%' : thickness,
-            height: shape === 'vertical' ? '100%' : thickness,
-            borderRadius: shape === 'point' ? '50%' : thickness / 2,
-            opacity: editable.active || dragging ? 1 : 0,
-          }}
-        />
+        {shape === 'area' ? (
+          <HandleOutline
+            style={{
+              outlineWidth: LINE_WIDTH / scale,
+              opacity: visible ? 1 : 0,
+            }}
+          />
+        ) : (
+          <HandleMark
+            style={{
+              width: shape === 'horizontal' ? '100%' : thickness,
+              height: shape === 'vertical' ? '100%' : thickness,
+              borderRadius: shape === 'point' ? '50%' : thickness / 2,
+              opacity: visible ? 1 : 0,
+            }}
+          />
+        )}
       </HandleRoot>
     </EditLayer>
   );

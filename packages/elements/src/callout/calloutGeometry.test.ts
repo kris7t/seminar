@@ -5,6 +5,8 @@ import {
   CALLOUT_SLIDE_MARGIN,
   calloutBounds,
   calloutGeometry,
+  calloutPlacementAt,
+  calloutStemOffsetAt,
 } from './calloutGeometry.ts';
 
 const BASE = {
@@ -179,4 +181,90 @@ describe('calloutBounds', () => {
       expect(outside).toBe(true);
     },
   );
+});
+
+describe('the tip of the stem', () => {
+  const box = { ...BASE, anchorWidth: 200, anchorHeight: 100 };
+  const tipOf = (angle: number) => {
+    const { x, y, tipX, tipY } = calloutGeometry({ ...box, angle });
+    return [x + tipX, y + tipY].map((value) => Math.round(value));
+  };
+
+  it('ends where a ray from the anchor towards the body leaves its box', () => {
+    // The body is above and to the right, so the stem ends on the top edge.
+    expect(tipOf(135)).toEqual([50, -50]);
+    // Lower, it ends on the right edge.
+    expect(tipOf(170)).toEqual([100, -18]);
+    expect(tipOf(-90)).toEqual([0, 50]);
+    expect(tipOf(0)).toEqual([-100, 0]);
+  });
+
+  it('ends at the top or bottom of a box without a width', () => {
+    const character = { ...BASE, anchorHeight: 20 };
+    for (const [angle, y] of [
+      [30, -10],
+      [-150, 10],
+    ] as const) {
+      const geometry = calloutGeometry({ ...character, angle });
+      expect(geometry.x + geometry.tipX).toBeCloseTo(0);
+      expect(geometry.y + geometry.tipY).toBeCloseTo(y);
+    }
+  });
+});
+
+describe('calloutPlacementAt', () => {
+  /** Where the top left corner of the body is on the slide. */
+  const bodyOf = (options: Parameters<typeof calloutGeometry>[0]) => {
+    const { x, y } = calloutGeometry(options);
+    return [options.anchorX + x, options.anchorY + y] as const;
+  };
+
+  it.each([
+    [30, 50],
+    [110, 36],
+    [-120, 80],
+    [180, 0],
+    [-45 + 1, 20],
+  ])(
+    'finds angle %i and offset %i where they place the body',
+    (angle, offset) => {
+      const options = { ...BASE, anchorWidth: 80, anchorHeight: 30 };
+      const [x, y] = bodyOf({ ...options, angle, offset });
+      expect(calloutPlacementAt(options, x, y)).toEqual({
+        angle,
+        offset,
+      });
+    },
+  );
+
+  it('keeps the stem offset that is set', () => {
+    const options = { ...BASE, angle: 70, offset: 60, stemOffset: 0.9 };
+    const [x, y] = bodyOf(options);
+    expect(calloutPlacementAt(options, x, y)).toEqual({
+      angle: 70,
+      offset: 60,
+    });
+  });
+
+  it('rounds the angle to steps', () => {
+    const [x, y] = bodyOf({ ...BASE, angle: 97, offset: 80 });
+    expect(calloutPlacementAt(BASE, x, y, 15).angle).toBe(90);
+  });
+});
+
+describe('calloutStemOffsetAt', () => {
+  it('moves the base of the stem along its edge', () => {
+    const options = { ...BASE, angle: 90, stemOffset: 0.5 };
+    const geometry = calloutGeometry(options);
+    expect(calloutStemOffsetAt(options, geometry, 60)).toBe(0.7);
+    expect(calloutStemOffsetAt(options, geometry, -31, 0.01)).toBe(0.4);
+  });
+
+  it('keeps the stem where it can be attached', () => {
+    const options = { ...BASE, angle: 90, stemOffset: 0.5 };
+    const geometry = calloutGeometry(options);
+    // The inset is the radius and half the stem, 40 of 300.
+    expect(calloutStemOffsetAt(options, geometry, 1000)).toBe(0.85);
+    expect(calloutStemOffsetAt(options, geometry, -1000)).toBe(0.15);
+  });
 });

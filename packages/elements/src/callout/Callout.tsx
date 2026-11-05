@@ -36,7 +36,9 @@ import {
   calloutBounds,
   calloutGeometry,
   type CalloutGeometry,
+  type CalloutGeometryOptions,
 } from './calloutGeometry.ts';
+import { CalloutLayoutContext, type CalloutLayout } from './calloutLayout.ts';
 import { calloutTitleClasses } from './CalloutTitle.tsx';
 import {
   clampElevation,
@@ -93,8 +95,9 @@ export interface CalloutProps extends Omit<
   /**
    * What the callout points at: an element, the name of an element on the
    * slide, e.g., `arch` for an image with `{#arch}` in MDX, or nothing, to
-   * place it on the slide with `at`. It points at the middle of the top or
-   * bottom edge of the element, or at `at` in its box. Unless `in` or `after`
+   * place it on the slide with `at`. It points at the edge of the element
+   * that faces it, where a ray from the middle of the element towards the
+   * stem leaves it, or at `at` in its box. Unless `in` or `after`
    * is set, or it joins a group with other elements, the callout is a step
    * nested in the step of the element, or the step enclosing it, if any, and
    * `with` only chooses when it's shown in that step. The callout itself takes
@@ -530,35 +533,38 @@ export function Callout(inProps: CalloutProps): JSX.Element {
         : [positioner.offsetWidth, positioner.offsetHeight],
     );
   });
+  // Without `at`, callouts point at the edge of their anchor that faces them,
+  // e.g., the top or bottom of a character in the text.
+  const onEdge =
+    targetElement !== undefined && parseSlidePoint(at) === undefined;
+  const options: CalloutGeometryOptions | undefined = anchored && {
+    anchorX: anchored.point[0],
+    anchorY: anchored.point[1],
+    anchorWidth: onEdge ? anchored.box.width : 0,
+    anchorHeight: onEdge ? anchored.box.height : 0,
+    width: width ?? (size === undefined || size[0] === 0 ? maxWidth : size[0]),
+    height: size === undefined || size[1] === 0 ? INITIAL_HEIGHT : size[1],
+    radius,
+    stemSize,
+    angle: preferredAngle,
+    offset: preferredOffset,
+    stemOffset: preferredStemOffset,
+  };
+  const placed = options && calloutGeometry(options);
   const geometry =
-    anchored === undefined || originBox === undefined
+    anchored === undefined || originBox === undefined || placed === undefined
       ? initialGeometry(ownerState)
       : fromAnchorOrigin(
-          calloutGeometry({
-            anchorX: anchored.point[0],
-            anchorY: anchored.point[1],
-            // Without `at`, callouts point at the top or bottom edge of their
-            // anchor, as if it was a character.
-            anchorHeight:
-              targetElement !== undefined && parseSlidePoint(at) === undefined
-                ? anchored.box.height
-                : 0,
-            width:
-              width ??
-              (size === undefined || size[0] === 0 ? maxWidth : size[0]),
-            height:
-              size === undefined || size[1] === 0 ? INITIAL_HEIGHT : size[1],
-            radius,
-            stemSize,
-            angle: preferredAngle,
-            offset: preferredOffset,
-            stemOffset: preferredStemOffset,
-          }),
+          placed,
           anchored.point[0],
           anchored.point[1],
           originBox.x,
           originBox.y,
         );
+  const layout: CalloutLayout | undefined =
+    anchored === undefined || options === undefined || placed === undefined
+      ? undefined
+      : { options, geometry: placed, box: anchored.box };
 
   // Callouts with blocks are blocks themselves.
   const element = block ? 'div' : 'span';
@@ -640,36 +646,38 @@ export function Callout(inProps: CalloutProps): JSX.Element {
       : content(children);
 
   return (
-    <CalloutOrigin
-      as={element}
-      ref={setOrigin}
-      className={calloutClasses.origin}
-      ownerState={ownerState}
-    >
-      <CalloutPositioner
+    <CalloutLayoutContext value={layout}>
+      <CalloutOrigin
         as={element}
-        ref={setPositioner}
-        className={calloutClasses.positioner}
+        ref={setOrigin}
+        className={calloutClasses.origin}
         ownerState={ownerState}
-        style={{
-          transform: `translate(${String(geometry.x)}px, ${String(geometry.y)}px)`,
-        }}
       >
-        <CalloutRoot
-          component={element}
-          // Callouts are nested in the step of the element they point at.
-          defaults={
-            targetElement === undefined
-              ? OWN_DEFAULTS
-              : { ...OWN_DEFAULTS, in: targetElement }
-          }
-          className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
+        <CalloutPositioner
+          as={element}
+          ref={setPositioner}
+          className={calloutClasses.positioner}
           ownerState={ownerState}
-          {...stepProps}
+          style={{
+            transform: `translate(${String(geometry.x)}px, ${String(geometry.y)}px)`,
+          }}
         >
-          {stepChildren}
-        </CalloutRoot>
-      </CalloutPositioner>
-    </CalloutOrigin>
+          <CalloutRoot
+            component={element}
+            // Callouts are nested in the step of the element they point at.
+            defaults={
+              targetElement === undefined
+                ? OWN_DEFAULTS
+                : { ...OWN_DEFAULTS, in: targetElement }
+            }
+            className={`${calloutClasses.root}${className === undefined ? '' : ` ${className}`}`}
+            ownerState={ownerState}
+            {...stepProps}
+          >
+            {stepChildren}
+          </CalloutRoot>
+        </CalloutPositioner>
+      </CalloutOrigin>
+    </CalloutLayoutContext>
   );
 }

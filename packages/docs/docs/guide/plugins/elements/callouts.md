@@ -30,8 +30,9 @@ with `for`:
 
 `at=x,y` chooses a point in the box of the element, in logical slide pixels,
 like `120,80`, or in percentages of its size, like `30%,40%`. Without it, the
-callout points at the middle of the top or bottom edge of the element.
-Without `for`, `at` is a point on the slide, defaulting to its middle.
+callout points at the edge of the element that faces it: where a line from the
+middle of the element in the direction of the stem leaves the element. Without
+`for`, `at` is a point on the slide, defaulting to its middle.
 
 ## With Markdown content
 

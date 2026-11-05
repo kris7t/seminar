@@ -28,13 +28,19 @@ export type ColumnsDirectiveProps = ColumnsProps;
 /** Props of the `column` directive in MDX. */
 export type ColumnDirectiveProps = ColumnProps;
 
+/** Where a column is in its row, in logical slide pixels. */
+interface ColumnBox extends SlideBox {
+  /** Whether it's shown, rather than a step that is hidden. */
+  shown: boolean;
+}
+
 /** Where the columns of a row are, in logical slide pixels. */
 interface RowLayout {
   row: SlideBox;
-  columns: SlideBox[];
+  columns: ColumnBox[];
 }
 
-function sameBoxes(a: readonly SlideBox[], b: readonly SlideBox[]): boolean {
+function sameBoxes(a: readonly ColumnBox[], b: readonly ColumnBox[]): boolean {
   return (
     a.length === b.length &&
     a.every(
@@ -42,14 +48,16 @@ function sameBoxes(a: readonly SlideBox[], b: readonly SlideBox[]): boolean {
         box.x === b[index]?.x &&
         box.y === b[index].y &&
         box.width === b[index].width &&
-        box.height === b[index].height,
+        box.height === b[index].height &&
+        box.shown === b[index].shown,
     )
   );
 }
 
 /**
  * Returns where the columns in `root` are while `measured`: when it's
- * rendered, moved, or resized, and when the columns are resized.
+ * rendered, moved, or resized, and when the columns are resized, or their
+ * steps are shown or hidden.
  */
 function useRowLayout(
   root: HTMLElement | null,
@@ -58,7 +66,7 @@ function useRowLayout(
   const element = measured ? (root ?? undefined) : undefined;
   const row = useSlideBox(element);
   // Relative to the row, so that they only change when the columns do.
-  const [columns, setColumns] = useState<SlideBox[]>([]);
+  const [columns, setColumns] = useState<ColumnBox[]>([]);
   const measure = () => {
     const rowBox = element && measureInSlide(element);
     const next =
@@ -68,7 +76,14 @@ function useRowLayout(
             const box = measureInSlide(child);
             return box === undefined
               ? []
-              : [{ ...box, x: box.x - rowBox.x, y: box.y - rowBox.y }];
+              : [
+                  {
+                    ...box,
+                    x: box.x - rowBox.x,
+                    y: box.y - rowBox.y,
+                    shown: getComputedStyle(child).visibility !== 'hidden',
+                  },
+                ];
           });
     setColumns((previous) => (sameBoxes(previous, next) ? previous : next));
   };
@@ -81,11 +96,17 @@ function useRowLayout(
     const observer = new ResizeObserver(() => {
       onResize();
     });
+    // Steps are shown and hidden by their classes.
+    const steps = new MutationObserver(() => {
+      onResize();
+    });
     for (const child of element.children) {
       observer.observe(child);
+      steps.observe(child, { attributes: true, attributeFilter: ['class'] });
     }
     return () => {
       observer.disconnect();
+      steps.disconnect();
     };
   }, [element, columns.length]);
   return row === undefined
@@ -136,10 +157,13 @@ export function ColumnsDirective(props: ColumnsDirectiveProps): JSX.Element {
           const left = layout.columns[index];
           const leftColumn = columns[index];
           const rightColumn = columns[index + 1];
+          // Hidden columns keep their room, but aren't edited.
           if (
             left === undefined ||
             leftColumn === undefined ||
-            rightColumn === undefined
+            rightColumn === undefined ||
+            !left.shown ||
+            !right.shown
           ) {
             return null;
           }
