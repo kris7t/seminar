@@ -11,7 +11,10 @@ import type {
   TextDirective,
 } from 'mdast-util-directive';
 
-import type { DirectiveComponent } from './directiveLoader.ts';
+import type {
+  CodeBlockRegistration,
+  DirectiveComponent,
+} from './directiveLoader.ts';
 import {
   readDirectiveSyntax,
   type DirectiveAttribute,
@@ -76,6 +79,70 @@ function isDirective(node: Nodes): node is Directive {
     node.type === 'leafDirective' ||
     node.type === 'containerDirective'
   );
+}
+
+/**
+ * Appends the attributes in the line of words `text` at `offset` in the deck,
+ * e.g., after the language of a code block, which are those of `:step`.
+ */
+function addAttributeWords(code: Builder, text: string, offset: number): void {
+  for (const attribute of readAttributeWords(text)) {
+    if (attribute.name !== '.') {
+      addAttribute(code, 'step', {
+        ...attribute,
+        nameStart: offset + attribute.nameStart,
+        nameEnd: offset + attribute.nameEnd,
+        valueStart: offset + attribute.valueStart,
+        valueEnd: offset + attribute.valueEnd,
+      });
+    }
+  }
+}
+
+/** Returns the registration of the code blocks of the language of `node`. */
+function codeBlockOf(
+  node: Code,
+  codeBlocks: Readonly<Record<string, CodeBlockRegistration>>,
+): CodeBlockRegistration | undefined {
+  if (node.lang === null || node.lang === undefined) {
+    return undefined;
+  }
+  return Object.hasOwn(codeBlocks, node.lang)
+    ? codeBlocks[node.lang]
+    : Object.hasOwn(codeBlocks, '*')
+      ? codeBlocks['*']
+      : undefined;
+}
+
+/**
+ * Renders the attributes after the language of the code block `node` that
+ * starts at `start` as an element `local`, with the language mapped to its
+ * name, like those of `:step`.
+ */
+function addCodeBlock(
+  code: Builder,
+  source: string,
+  start: number,
+  node: Code,
+  local: string,
+): void {
+  const line = /^.*/.exec(source.slice(start))?.[0] ?? '';
+  const lang = node.lang ?? '';
+  const langStart = line.indexOf(lang);
+  const meta = node.meta ?? '';
+  const metaStart = meta === '' ? -1 : line.lastIndexOf(meta);
+  if (langStart === -1) {
+    return;
+  }
+  code.add('<');
+  code.map(local, start + langStart, start + langStart + lang.length);
+  if (metaStart !== -1) {
+    addAttributeWords(code, meta, start + metaStart);
+  }
+  code.add(' ');
+  // Where new attributes are completed.
+  code.map('', start + line.trimEnd().length, start + line.trimEnd().length);
+  code.add('/>;\n');
 }
 
 /** Whether `node` is a Mermaid diagram, whose steps `plugin-pele` reads. */
@@ -168,8 +235,10 @@ export function generateDirectiveCode(
   source: string,
   root: Root,
   directives: Readonly<Record<string, DirectiveComponent>>,
+  codeBlocks: Readonly<Record<string, CodeBlockRegistration>> = {},
 ): DirectiveCode {
   const imports = new Map<DirectiveComponent, string>();
+  const codeTypes = new Map<CodeBlockRegistration, string>();
   // The functions declared for the types of attributes, by their names.
   const declarations = new Map<string, string>();
   const declare = (local: string, module: string, type: string) => {
@@ -230,6 +299,18 @@ export function generateDirectiveCode(
         code.add('/>;\n');
       }
     }
+    if (node.type === 'code' && start !== undefined) {
+      const registration = codeBlockOf(node, codeBlocks);
+      if (registration !== undefined) {
+        let local = codeTypes.get(registration);
+        if (local === undefined) {
+          local = `_SeminarCodeBlock${String(codeTypes.size)}`;
+          codeTypes.set(registration, local);
+          declare(local, registration.source, registration.attributes);
+        }
+        addCodeBlock(code, source, start, node, local);
+      }
+    }
     if (isDiagram(node) && start !== undefined) {
       const end = node.position?.end.offset ?? source.length;
       for (const match of source.slice(start, end).matchAll(MERMAID_STEP)) {
@@ -241,17 +322,7 @@ export function generateDirectiveCode(
         const offset = start + words[0];
         code.add('<');
         code.map(DIAGRAM_STEP.local, start + name[0], start + name[1]);
-        for (const attribute of readAttributeWords(match[2] ?? '')) {
-          if (attribute.name !== '.') {
-            addAttribute(code, 'step', {
-              ...attribute,
-              nameStart: offset + attribute.nameStart,
-              nameEnd: offset + attribute.nameEnd,
-              valueStart: offset + attribute.valueStart,
-              valueEnd: offset + attribute.valueEnd,
-            });
-          }
-        }
+        addAttributeWords(code, match[2] ?? '', offset);
         code.add(' ');
         // Where new attributes are completed.
         code.map('', start + words[1], start + words[1]);

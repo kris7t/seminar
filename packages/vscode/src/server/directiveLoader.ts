@@ -17,12 +17,20 @@ export interface DirectiveComponent {
   wrapIn?: string | undefined;
 }
 
+/** The type of the attributes of code blocks, see `@seminar/mdx`. */
+export interface CodeBlockRegistration {
+  source: string;
+  attributes: string;
+}
+
 /**
- * The directive components of a deck, as `directiveComponents` of
- * `@seminar/rollup-plugin` tells them.
+ * The directive components of a deck, and the types of the attributes of its
+ * code blocks, as `directiveComponents` of `@seminar/rollup-plugin` tells
+ * them.
  */
 export interface DeckDirectiveComponents {
   directives: Record<string, DirectiveComponent>;
+  codeBlocks: Record<string, CodeBlockRegistration>;
   /** Files that the registrations were loaded from. */
   dependencies: string[];
   warnings: string[];

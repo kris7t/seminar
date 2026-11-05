@@ -63,6 +63,14 @@ export interface DiagramFormula {
   height: number;
 }
 
+/**
+ * What ` ```mermaid ` code blocks take after the language, e.g.,
+ * ` ```mermaid #pipeline step width=600 `: the attributes of `:step`, and
+ * the size of the diagram.
+ */
+export type DiagramBlockAttributes = Omit<UseStepsOptions, 'defaults'> &
+  Pick<DiagramProps, 'width' | 'scale' | 'fontSize'>;
+
 /** Props of a {@link Diagram}. */
 export interface DiagramProps extends Omit<
   StepProps,

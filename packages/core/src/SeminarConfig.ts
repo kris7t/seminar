@@ -49,6 +49,25 @@ export interface SeminarConfig {
    * component export.
    */
   directives?: Record<string, DirectiveComponentConfig> | undefined;
+  /**
+   * What the code blocks of decks take after their language, by the language,
+   * or `*` for the other languages, for editors to check. The compiler
+   * doesn't read it: the plugins that render code blocks read their
+   * attributes themselves.
+   */
+  codeBlocks?: Record<string, CodeBlockConfig> | undefined;
+}
+
+/**
+ * The type of the attributes of the code blocks of a language, e.g., of
+ * ` ```ts #fib step ` after the language, for editors to check them. Words
+ * that aren't attributes, e.g., `{1-3}`, aren't checked.
+ */
+export interface CodeBlockConfig {
+  /** Module that exports the type. */
+  source: string;
+  /** Name of the exported type. */
+  attributes: string;
 }
 
 /**

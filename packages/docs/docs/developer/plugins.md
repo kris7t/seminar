@@ -155,6 +155,26 @@ adds to the deck.
 `@seminar/plugin-mathjax` does this, since it merges macros, and gives
 components functions that import the font of the deck.
 
+### Attributes of code blocks
+
+A plugin that renders code blocks reads the words after their language
+itself, usually with `parseAttributeWords`. To have the editor check them,
+the config names the type of the attributes in `codeBlocks`, by the
+language, or `*` for the other languages:
+
+```json
+"codeBlocks": {
+  "dot": { "source": "my-graphs", "attributes": "GraphBlockAttributes" }
+}
+```
+
+As with directives, the last config wins for each language, and a
+language of its own wins over `*`. The compiler doesn't read `codeBlocks`, so
+it has to say what the plugin actually does. Words that aren't attributes,
+like `{1-3}`, aren't checked. For example, `@seminar/plugin-shiki`
+registers `*`, and `@seminar/plugin-pele` registers `mermaid`, which it
+renders before syntax highlighting.
+
 ### Utilities
 
 `@seminar/mdx` exports utilities for compiler plugins:

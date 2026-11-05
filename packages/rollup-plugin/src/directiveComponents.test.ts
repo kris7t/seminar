@@ -40,9 +40,17 @@ describe('directiveComponents', () => {
           note: { source: 'notes', exportName: 'Note' },
           box: { source: 'boxes', exportName: 'Box', wrapIn: 'boxes' },
         },
+        codeBlocks: {
+          '*': { source: 'code', attributes: 'CodeAttributes' },
+          dot: { source: 'graphs', attributes: 'GraphAttributes' },
+        },
       },
       [path.join(root, 'decks/theme.tsx')]: {
         directives: { note: { source: './Note.tsx', exportName: 'ThemeNote' } },
+        codeBlocks: {
+          dot: { source: './graphs.ts', attributes: 'ThemeGraphAttributes' },
+          bad: { source: 'bad' },
+        },
       },
     });
     const deck = path.join(root, 'decks/talk.deck.mdx');
@@ -57,12 +65,17 @@ describe('directiveComponents', () => {
         note: { source: './Note.tsx', exportName: 'ThemeNote' },
         box: { source: 'boxes', exportName: 'Box', wrapIn: 'boxes' },
       },
+      codeBlocks: {
+        '*': { source: 'code', attributes: 'CodeAttributes' },
+        dot: { source: './graphs.ts', attributes: 'ThemeGraphAttributes' },
+      },
       dependencies: [
         path.join(root, 'plugin.ts'),
         path.join(root, 'decks/theme.tsx'),
       ],
       warnings: [
         'The `box` directive is wrapped in the `boxes` directive, which has no component',
+        'Expected the code blocks of `bad` in the config of ./theme.tsx to have nonempty `source` and `attributes` strings',
       ],
     });
   });

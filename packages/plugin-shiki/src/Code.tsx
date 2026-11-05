@@ -6,8 +6,15 @@ import {
   JOINS_CONTENT,
   type ComponentTheme,
   type StepProps,
+  type UseStepsOptions,
 } from '@seminar/core';
 import type { JSX, ReactNode } from 'react';
+
+/**
+ * What code blocks take after their language, e.g., ` ```ts #fib step `, the
+ * attributes of `:step`. Other words, like `{1-3}`, are passed as `meta`.
+ */
+export type CodeBlockAttributes = Omit<UseStepsOptions, 'defaults'>;
 
 /** Props of a {@link Code} block. */
 export interface CodeProps extends Omit<

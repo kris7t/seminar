@@ -16,13 +16,22 @@ const DIRECTIVES = {
   column: { source: './Column.tsx', exportName: 'Column' },
 };
 
+const CODE_BLOCKS = {
+  '*': { source: '@seminar/plugin-shiki', attributes: 'CodeBlockAttributes' },
+  dot: { source: 'graphs', attributes: 'GraphAttributes' },
+  mermaid: {
+    source: '@seminar/plugin-pele',
+    attributes: 'DiagramBlockAttributes',
+  },
+};
+
 function generate(source: string) {
   const root = unified()
     .use(remarkParse)
     .use(remarkMdx)
     .use(deckSyntaxPlugins([]))
     .parse(source);
-  return generateDirectiveCode(source, root, DIRECTIVES);
+  return generateDirectiveCode(source, root, DIRECTIVES, CODE_BLOCKS);
 }
 
 /** Returns what of the generated code maps to which source. */
@@ -100,13 +109,17 @@ export {};
     const source =
       '```mermaid\nflowchart LR\n  %% step only group=1\n  A --> B\n  %% step[B] #b fade=300 .x\n```\n';
     expect(generate(source).text).toBe(
-      `declare function _SeminarDiagramStep(props: import("@seminar/plugin-pele").DiagramStepProps): null;
+      `declare function _SeminarCodeBlock0(props: import("@seminar/plugin-pele").DiagramBlockAttributes): null;
+declare function _SeminarDiagramStep(props: import("@seminar/plugin-pele").DiagramStepProps): null;
+<_SeminarCodeBlock0 />;
 <_SeminarDiagramStep only group={"1"} />;
 <_SeminarDiagramStep id={"b"} fade={300} />;
 export {};
 `,
     );
     expect(mapped(source)).toEqual([
+      ['mermaid', '_SeminarCodeBlock0'],
+      ['', ''],
       ['step', '_SeminarDiagramStep'],
       ['only', 'only'],
       ['group', 'group'],
@@ -117,6 +130,24 @@ export {};
       ['b', '{"b"}'],
       ['fade', 'fade'],
       ['300', '{300}'],
+      ['', ''],
+    ]);
+  });
+
+  it('renders the attributes of code blocks with the types of their languages', () => {
+    const source =
+      '```ts #fib {1-3} step group=1 .wide\ncode\n```\n\n```dot width=3\ngraph\n```\n\n```\nplain\n```\n';
+    expect(generate(source).text).toBe(
+      `declare function _SeminarCodeBlock0(props: import("@seminar/plugin-shiki").CodeBlockAttributes): null;
+declare function _SeminarCodeBlock1(props: import("graphs").GraphAttributes): null;
+<_SeminarCodeBlock0 id={"fib"} step group={"1"} />;
+<_SeminarCodeBlock1 width={3} />;
+export {};
+`,
+    );
+    expect(mapped('```ts step\ncode\n```')).toEqual([
+      ['ts', '_SeminarCodeBlock0'],
+      ['step', 'step'],
       ['', ''],
     ]);
   });

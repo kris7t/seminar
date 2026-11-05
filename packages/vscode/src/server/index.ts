@@ -58,7 +58,7 @@ const directiveRegistry: DirectiveRegistry = (file, source) => {
       load.then(updateDecks, () => undefined);
     }
   }
-  return loaded?.directives;
+  return loaded;
 };
 
 /**

@@ -15,6 +15,12 @@
           }
         ]
       }
+    },
+    "codeBlocks": {
+      "mermaid": {
+        "source": "@seminar/plugin-pele",
+        "attributes": "DiagramBlockAttributes"
+      }
     }
   },
   "exports": {

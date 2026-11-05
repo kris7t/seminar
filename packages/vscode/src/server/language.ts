@@ -7,7 +7,7 @@ import type ts from 'typescript';
 import type { URI } from 'vscode-uri';
 
 import { generateDirectiveCode } from './directiveCode.ts';
-import type { DirectiveComponent } from './directiveLoader.ts';
+import type { DeckDirectiveComponents } from './directiveLoader.ts';
 
 /** The language of decks in the editor. */
 export const DECK_LANGUAGE = 'seminar-deck';
@@ -19,12 +19,13 @@ const DIRECTIVES = 'directives';
 
 /**
  * Returns the components of the directives of the deck at `file` with
- * `source`, if they are known.
+ * `source`, and the types of the attributes of its code blocks, if they are
+ * known.
  */
 export type DirectiveRegistry = (
   file: string,
   source: string,
-) => Readonly<Record<string, DirectiveComponent>> | undefined;
+) => Pick<DeckDirectiveComponents, 'directives' | 'codeBlocks'> | undefined;
 
 /** What checks the directives of decks against the props of components. */
 export interface DirectiveChecking {
@@ -58,10 +59,12 @@ function addDirectives(
     return;
   }
   // The directives of Seminar are checked before the components are known.
+  const registry = directives(file, source);
   const { text, mappings } = generateDirectiveCode(
     source,
     code.ast,
-    directives(file, source) ?? {},
+    registry?.directives ?? {},
+    registry?.codeBlocks ?? {},
   );
   code.embeddedCodes = [
     ...(code.embeddedCodes ?? []),

@@ -125,7 +125,12 @@ describe('createDeckLanguagePlugin', () => {
       typescript,
       registry: (deck, source) =>
         deck === file && source.includes('::note')
-          ? { note: { source: './Note.tsx', exportName: 'Note' } }
+          ? {
+              directives: {
+                note: { source: './Note.tsx', exportName: 'Note' },
+              },
+              codeBlocks: {},
+            }
           : undefined,
     });
     const code = generate(file, '# Slide\n\n::note{level=2}\n', plugin);

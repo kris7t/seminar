@@ -83,6 +83,13 @@ export {
 export { getAttributes, type Attributes } from './directives/directives.ts';
 export { getStepProps } from './steps/remarkSteps.ts';
 export {
+  collectCodeBlocks,
+  parseCodeBlocks,
+  type CodeBlockRegistration,
+  type CodeBlockRegistrations,
+  type CodeBlockReporter,
+} from './config/codeBlocks.ts';
+export {
   createEsm,
   createExpressionAttribute,
   createStringAttribute,

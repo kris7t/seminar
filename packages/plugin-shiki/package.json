@@ -15,6 +15,12 @@
           }
         ]
       }
+    },
+    "codeBlocks": {
+      "*": {
+        "source": "@seminar/plugin-shiki",
+        "attributes": "CodeBlockAttributes"
+      }
     }
   },
   "exports": {

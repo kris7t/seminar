@@ -3,12 +3,14 @@ import path from 'node:path';
 import mdx, { type Options as MdxOptions } from '@mdx-js/rollup';
 import { createFilter } from '@rollup/pluginutils';
 import {
+  collectCodeBlocks,
   collectDirectiveComponents,
   loadDeckSetup,
   readDeckTheme,
   resolveThemeKey,
   seminarMdxOptions,
   type DeckSetup,
+  type CodeBlockRegistrations,
   type DirectiveComponents,
   type ModuleImporter,
   type ModuleResolver,
@@ -70,6 +72,8 @@ export interface SeminarPluginOptions
 export interface DeckDirectiveComponents {
   /** The components by the names of their directives. */
   directives: DirectiveComponents;
+  /** The types of the attributes of code blocks by their languages. */
+  codeBlocks: CodeBlockRegistrations;
   /** Files that the registrations were loaded from, to watch for changes. */
   dependencies: string[];
   /** Problems with the configs and the registrations. */
@@ -87,7 +91,8 @@ export type SeminarPlugin = ReturnType<typeof mdx> & {
   syntaxPlugins(source: string, deckPath: string): Promise<PluggableList>;
   /**
    * Returns the directive components of the deck at `deckPath` with `source`,
-   * as compiling it would register them, e.g., for editors.
+   * as compiling it would register them, and the types of the attributes of
+   * its code blocks, e.g., for editors.
    */
   directiveComponents(
     source: string,
@@ -315,16 +320,18 @@ export default function seminar({
     async directiveComponents(source: string, deckPath: string) {
       const { setup } = await getCompiler(source, deckPath);
       const warnings = [...setup.warnings];
+      const reporter = {
+        message(reason: string) {
+          warnings.push(reason);
+        },
+      };
       return {
         directives: collectDirectiveComponents(
           directives ?? {},
           setup.seminarConfigs,
-          {
-            message(reason) {
-              warnings.push(reason);
-            },
-          },
+          reporter,
         ),
+        codeBlocks: collectCodeBlocks(setup.seminarConfigs, reporter),
         dependencies: [...setup.dependencies],
         warnings,
       };
