@@ -157,13 +157,13 @@ export function ColumnsDirective(props: ColumnsDirectiveProps): JSX.Element {
           const left = layout.columns[index];
           const leftColumn = columns[index];
           const rightColumn = columns[index + 1];
-          // Hidden columns keep their room, but aren't edited.
+          // Hidden columns keep their room, so they're resized along with
+          // the columns next to them, but not between themselves.
           if (
             left === undefined ||
             leftColumn === undefined ||
             rightColumn === undefined ||
-            !left.shown ||
-            !right.shown
+            (!left.shown && !right.shown)
           ) {
             return null;
           }
