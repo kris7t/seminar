@@ -404,6 +404,8 @@ export class DeckSync implements Disposable {
       );
     } else if (message.event === 'slides' && Array.isArray(data.slides)) {
       synced.table = data.slides as SlideSource[];
+      // Pages only edit their decks once they know there is an editor.
+      this.#sendTo(synced, 'editor', {});
       // Also when a page starts, or compiles the deck again.
       for (const file of this.#edits.files) {
         const document = workspace.textDocuments.find(

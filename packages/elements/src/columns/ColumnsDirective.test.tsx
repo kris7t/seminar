@@ -44,6 +44,10 @@ describe('ColumnsDirective', () => {
         sent.push([event, data]);
       },
       on: (event, listener) => {
+        // The editor tells pages that it's there.
+        if (event === 'editor') {
+          listener({ version: 1 });
+        }
         listeners.set(event, listener);
         return () => {
           listeners.delete(event);
@@ -182,7 +186,18 @@ describe('ColumnsDirective', () => {
     },
   );
 
-  it('has no handles without an editor', () => {
+  it('has no handles when no editor tells that it is there', () => {
+    Object.assign(globalThis, {
+      [CHANNEL]: {
+        send: () => undefined,
+        on: () => () => undefined,
+      } satisfies DevChannel,
+    });
+    renderColumns();
+    expect(screen.queryByRole('separator')).toBeNull();
+  });
+
+  it('has no handles without a channel', () => {
     Reflect.deleteProperty(globalThis, CHANNEL);
     renderColumns();
     expect(screen.queryByRole('separator')).toBeNull();

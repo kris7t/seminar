@@ -85,7 +85,7 @@ import {
   useSwipeNavigation,
 } from '../interaction/useSwipeNavigation.ts';
 import { DeckMenu } from '../menu/DeckMenu.tsx';
-import { getDevChannel } from '../host/devChannel.ts';
+import { useHasEditor } from '../editing/editStore.ts';
 import { getSeminarHost } from '../host/SeminarHost.ts';
 import { getSourceRange } from '../host/sourceRanges.ts';
 import { PrintDialog } from '../print/PrintDialog.tsx';
@@ -767,6 +767,8 @@ function InteractiveDeck({
     };
   }, [printReady, closePrint]);
   const presentation = usePresentation(presenterView);
+  // Slides are edited in the previews of an editor, which tells it's there.
+  const hasEditor = useHasEditor();
   // An application that shows the deck may start the presentation right away,
   // but only once, even if effects run twice, as in strict mode, where a
   // second start would stop the presentation, or fail to enter full screen
@@ -1168,7 +1170,7 @@ function InteractiveDeck({
                                       overview={showOverview}
                                       onFrame={setPresenterFrame}
                                       editable={
-                                        getDevChannel() !== undefined &&
+                                        hasEditor &&
                                         !presenting &&
                                         !presentation.contained
                                       }

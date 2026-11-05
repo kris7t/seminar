@@ -34,7 +34,13 @@ describe('CalloutHandles', () => {
       send: (event, data) => {
         sent.push([event, data]);
       },
-      on: () => () => undefined,
+      // The editor tells pages that it's there.
+      on: (event, listener) => {
+        if (event === 'editor') {
+          listener({ version: 1 });
+        }
+        return () => undefined;
+      },
     };
     Object.assign(globalThis, { [CHANNEL]: channel });
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(

@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 import { getDevChannel, type DevChannel } from '../host/devChannel.ts';
 import type { SourceRange } from '../host/sourceRanges.ts';
 
@@ -79,13 +81,26 @@ export class EditStore {
   readonly #sent = new Map<string, string>();
   readonly #listeners = new Set<() => void>();
   #version = 0;
+  #editor = false;
 
   constructor(channel: DevChannel) {
     this.#channel = channel;
     channel.on('pendingAttributes', (data) => {
       this.#receive(data);
     });
+    channel.on('editor', (data) => {
+      if ((data as { version?: unknown } | null)?.version === VERSION) {
+        this.#editor = true;
+        this.#changed();
+      }
+    });
   }
+
+  /**
+   * Whether an editor that edits the source of the deck has told the page
+   * that it's there, unlike, e.g., the dev server of `seminar preview`.
+   */
+  readonly hasEditor = (): boolean => this.#editor;
 
   readonly subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
@@ -225,4 +240,21 @@ export function getEditStore(): EditStore | undefined {
     stores.set(channel, store);
   }
   return store;
+}
+
+const noEditor = () => false;
+
+const subscribeToNothing = () => () => undefined;
+
+/**
+ * Returns whether an editor edits the source of the deck of the page, and
+ * renders again when it tells that it's there.
+ */
+export function useHasEditor(): boolean {
+  const store = getEditStore();
+  return useSyncExternalStore(
+    store?.subscribe ?? subscribeToNothing,
+    store?.hasEditor ?? noEditor,
+    noEditor,
+  );
 }

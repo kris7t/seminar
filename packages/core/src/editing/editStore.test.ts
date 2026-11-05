@@ -17,8 +17,10 @@ function createStore() {
     send: (event, data) => {
       sent.push([event, data]);
     },
-    on: (_event, listener) => {
-      receive = listener;
+    on: (event, listener) => {
+      if (event === 'pendingAttributes') {
+        receive = listener;
+      }
       return () => undefined;
     },
   };
@@ -70,6 +72,20 @@ describe('EditStore', () => {
     expect(store.apply({ grow: 2 }, directive)).toEqual({ grow: 3 });
     tell({ grow: 2 }, { grow: 5 });
     expect(store.apply({ grow: 2 }, directive)).toEqual({ grow: 5 });
+  });
+
+  it('tells whether an editor is there once it tells so', () => {
+    const listeners = new Map<string, (data: unknown) => void>();
+    const store = new EditStore({
+      send: () => undefined,
+      on: (event, listener) => {
+        listeners.set(event, listener);
+        return () => undefined;
+      },
+    });
+    expect(store.hasEditor()).toBe(false);
+    listeners.get('editor')?.({ version: 1 });
+    expect(store.hasEditor()).toBe(true);
   });
 
   it('stops showing cancelled previews', () => {
