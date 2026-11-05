@@ -67,6 +67,11 @@
         "command": "seminar.showDevServerOutput",
         "title": "Show Dev Server Output",
         "category": "Seminar"
+      },
+      {
+        "command": "seminar.restartLanguageServer",
+        "title": "Restart Language Server",
+        "category": "Seminar"
       }
     ],
     "menus": {
@@ -90,6 +95,10 @@
         {
           "command": "seminar.showDevServerOutput",
           "when": "seminar.deckOpen"
+        },
+        {
+          "command": "seminar.restartLanguageServer",
+          "when": "editorLangId == seminar-deck"
         }
       ],
       "editor/title": [

@@ -7,7 +7,9 @@ import {
   createTypeScriptProject,
   loadTsdkByPath,
 } from '@volar/language-server/node.js';
+import { URI } from 'vscode-uri';
 
+import { DirectiveLoader } from './directiveLoader.ts';
 import { createDeckLanguagePlugin } from './language.ts';
 import { createDeckServicePlugins } from './services.ts';
 
@@ -15,6 +17,27 @@ process.title = 'seminar-language-server';
 
 const connection = createConnection();
 const server = createServer(connection);
+const directives = new DirectiveLoader();
+
+/**
+ * Returns the directive components of the deck at `uri`, as the Vite config of
+ * its project registers them, or why they can't be loaded.
+ */
+connection.onRequest(
+  'seminar/directiveComponents',
+  async ({ uri }: { uri: string }) => {
+    const parsed = URI.parse(uri);
+    const source = server.documents.get(parsed)?.getText();
+    if (source === undefined) {
+      return { error: `${uri} isn't open.` };
+    }
+    try {
+      return await directives.load(parsed.fsPath, source);
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : String(error) };
+    }
+  },
+);
 
 connection.onInitialize((parameters) => {
   const { tsdk } = (
@@ -70,6 +93,15 @@ connection.onInitialized(() => {
   void server.fileWatcher.watchFiles([
     '**/*.{mdx,cjs,cts,js,jsx,json,mjs,mts,ts,tsx}',
   ]);
+  server.fileWatcher.onDidChangeWatchedFiles(({ changes }) => {
+    for (const { uri } of changes) {
+      directives.invalidate(URI.parse(uri).fsPath);
+    }
+  });
+});
+
+connection.onShutdown(() => {
+  directives.dispose();
 });
 
 connection.listen();

@@ -3,11 +3,13 @@ import path from 'node:path';
 import mdx, { type Options as MdxOptions } from '@mdx-js/rollup';
 import { createFilter } from '@rollup/pluginutils';
 import {
+  collectDirectiveComponents,
   loadDeckSetup,
   readDeckTheme,
   resolveThemeKey,
   seminarMdxOptions,
   type DeckSetup,
+  type DirectiveComponents,
   type ModuleImporter,
   type ModuleResolver,
   type SeminarMdxOptions,
@@ -64,6 +66,16 @@ export interface SeminarPluginOptions
   plugins?: readonly string[] | undefined;
 }
 
+/** The directive components of a deck, and what they were found from. */
+export interface DeckDirectiveComponents {
+  /** The components by the names of their directives. */
+  directives: DirectiveComponents;
+  /** Files that the registrations were loaded from, to watch for changes. */
+  dependencies: string[];
+  /** Problems with the configs and the registrations. */
+  warnings: string[];
+}
+
 /** The plugin, which works with both Rollup and Vite. */
 export type SeminarPlugin = ReturnType<typeof mdx> & {
   enforce: 'pre';
@@ -73,6 +85,14 @@ export type SeminarPlugin = ReturnType<typeof mdx> & {
    * `deckPath` with `source`, e.g., to parse it without compiling it.
    */
   syntaxPlugins(source: string, deckPath: string): Promise<PluggableList>;
+  /**
+   * Returns the directive components of the deck at `deckPath` with `source`,
+   * as compiling it would register them, e.g., for editors.
+   */
+  directiveComponents(
+    source: string,
+    deckPath: string,
+  ): Promise<DeckDirectiveComponents>;
 };
 
 /** Compiles the decks of a theme. */
@@ -114,6 +134,7 @@ export default function seminar({
   importModule,
   resolveModule,
   plugins = [],
+  directives,
   remarkPlugins = [],
   rehypePlugins = [],
   recmaPlugins = [],
@@ -155,6 +176,7 @@ export default function seminar({
       defaultTheme: resolvedDefaultTheme(root),
       defaultMouseNavigation,
       defaultMirrorPointer,
+      directives,
       seminarConfigs: setup.seminarConfigs,
       mdxPlugins: setup.mdxPlugins,
       // Vite tells more than the types of the MDX plugin say.
@@ -289,6 +311,23 @@ export default function seminar({
     async syntaxPlugins(source: string, deckPath: string) {
       return (await getCompiler(source, deckPath)).setup.mdxPlugins
         .remarkPlugins.before;
+    },
+    async directiveComponents(source: string, deckPath: string) {
+      const { setup } = await getCompiler(source, deckPath);
+      const warnings = [...setup.warnings];
+      return {
+        directives: collectDirectiveComponents(
+          directives ?? {},
+          setup.seminarConfigs,
+          {
+            message(reason) {
+              warnings.push(reason);
+            },
+          },
+        ),
+        dependencies: [...setup.dependencies],
+        warnings,
+      };
     },
   };
   return plugin;

@@ -28,7 +28,11 @@ await writeFile(
 
 await build({
   absWorkingDir: import.meta.dirname,
-  entryPoints: { extension: 'src/extension.ts', server: 'src/server/index.ts' },
+  entryPoints: {
+    extension: 'src/extension.ts',
+    server: 'src/server/index.ts',
+    directiveWorker: 'src/server/directiveWorker.ts',
+  },
   outdir: 'dist',
   outExtension: { '.js': '.cjs' },
   bundle: true,
@@ -39,5 +43,10 @@ await build({
   conditions: ['@seminar/source', 'module'],
   mainFields: ['module', 'main'],
   external: ['vscode'],
+  // Modules find the scripts next to them, like the worker of the server.
+  define: { 'import.meta.url': 'importMetaUrl' },
+  banner: {
+    js: "const importMetaUrl = require('url').pathToFileURL(__filename).href;",
+  },
   logLevel: 'warning',
 });

@@ -70,6 +70,11 @@ export async function activate(context: ExtensionContext) {
   context.subscriptions.push(
     registerPresentCommand(),
     new DeckPreviews(context),
+    // E.g., for changes to the configs of decks that the editor doesn't
+    // tell, like those of installed packages.
+    commands.registerCommand('seminar.restartLanguageServer', async () => {
+      await client?.restart();
+    }),
   );
   // It provides the TypeScript that the language server loads.
   await extensions

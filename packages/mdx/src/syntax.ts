@@ -9,6 +9,7 @@ import {
 } from './directives/remarkHeadingAttributes.ts';
 
 export { findPackage } from './config/packages.ts';
+export { readDeckTheme } from './config/deckSetup.ts';
 export { bareAttributeWords } from './directives/attributeWords.ts';
 
 /** A location of the parser of JavaScript, with a column from 0. */

@@ -14,7 +14,10 @@ import type { VFile } from 'vfile';
 
 import { createEsm, createStringAttribute } from '../utils/estree.ts';
 import { EXPLICIT_JSX } from '../utils/jsx.ts';
-import { getSeminarConfigs } from '../config/remarkSeminarConfig.ts';
+import {
+  getSeminarConfigs,
+  type LoadedSeminarConfigEntry,
+} from '../config/remarkSeminarConfig.ts';
 
 /** A React component used to render a Remark directive. */
 export interface DirectiveComponent {
@@ -43,6 +46,11 @@ export interface RemarkDirectiveComponentsOptions {
 
 type Directive = ContainerDirective | LeafDirective | TextDirective;
 
+/** Where problems with registrations are reported, e.g., a `VFile`. */
+export interface DirectiveReporter {
+  message: (reason: string) => unknown;
+}
+
 /** Values of the `formProp` of directive components, see `DirectiveForm`. */
 const FORMS: Record<Directive['type'], string> = {
   textDirective: 'text',
@@ -62,7 +70,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parseDirectiveComponents(
   value: unknown,
   source: string,
-  file: VFile,
+  file: DirectiveReporter,
 ): DirectiveComponents {
   if (value === undefined) {
     return {};
@@ -234,12 +242,17 @@ function replaceDirectives(
   }
 }
 
-function applyDirectiveComponents(
-  tree: Root,
-  file: VFile,
+/**
+ * Returns the directive components of a deck: `defaults`, and those that the
+ * configs of its plugins and theme register, in order, so that later ones
+ * replace earlier ones. Reports problems with the registrations to `file`,
+ * e.g., the file of the deck.
+ */
+export function collectDirectiveComponents(
   defaults: DirectiveComponents,
-  entries: NonNullable<ReturnType<typeof getSeminarConfigs>>,
-): void {
+  entries: readonly LoadedSeminarConfigEntry[],
+  file: DirectiveReporter,
+): DirectiveComponents {
   const components: DirectiveComponents = { ...defaults };
   for (const entry of entries) {
     Object.assign(
@@ -258,6 +271,16 @@ function applyDirectiveComponents(
       );
     }
   }
+  return components;
+}
+
+function applyDirectiveComponents(
+  tree: Root,
+  file: VFile,
+  defaults: DirectiveComponents,
+  entries: readonly LoadedSeminarConfigEntry[],
+): void {
+  const components = collectDirectiveComponents(defaults, entries, file);
   wrapDirectives(tree, components);
   const imports = new Map<
     string,

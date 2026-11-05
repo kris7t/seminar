@@ -7,10 +7,12 @@ export {
   type RemarkSeminarConfigOptions,
 } from './config/remarkSeminarConfig.ts';
 export {
+  collectDirectiveComponents,
   parseDirectiveComponents,
   remarkDirectiveComponents,
   type DirectiveComponent,
   type DirectiveComponents,
+  type DirectiveReporter,
   type RemarkDirectiveComponentsOptions,
 } from './directives/remarkDirectiveComponents.ts';
 export { getContentUiLocale, type UiLocaleSource } from './deck/uiLocales.ts';
