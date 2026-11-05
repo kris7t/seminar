@@ -102,6 +102,21 @@ export interface DirectiveComponentConfig {
    * wrapper has no attributes, so it's written explicitly to set them.
    */
   wrapIn?: string | undefined;
+  /**
+   * The forms that the directive can be written in, e.g., `['text',
+   * 'container']`. Others are reported, and left out of the completions of
+   * editors. Without it, the directive can be written in any form.
+   */
+  forms?: DirectiveForm[] | undefined;
+  /**
+   * Whether the directive takes content, which becomes the children of the
+   * component: the label of text and leaf directives, e.g., `:name[content]`,
+   * and the body of container directives, without the label if there is a
+   * `labelProp`. If `true`, directives without content are reported, and
+   * editors complete the label of text and leaf directives. If `false`,
+   * directives with content are reported. Without it, content is optional.
+   */
+  content?: boolean | undefined;
 }
 
 /** A named export of a module, e.g., a component or a function. */

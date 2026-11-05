@@ -213,6 +213,82 @@ describe('remarkDirectiveComponents', () => {
     ]);
   });
 
+  it('reads the forms and the content of directives', () => {
+    const file = new VFile();
+    expect(
+      parseDirectiveComponents(
+        {
+          mark: {
+            source: 'pkg',
+            exportName: 'Mark',
+            forms: ['text', 'text'],
+            content: true,
+          },
+          box: { source: 'pkg', exportName: 'Box', forms: [], content: 'no' },
+          bad: { source: 'pkg', exportName: 'Bad', forms: ['inline'] },
+        },
+        'the test config',
+        file,
+      ),
+    ).toEqual({
+      mark: {
+        source: 'pkg',
+        exportName: 'Mark',
+        forms: ['text'],
+        content: true,
+      },
+      box: { source: 'pkg', exportName: 'Box' },
+      bad: { source: 'pkg', exportName: 'Bad' },
+    });
+    expect(file.messages.map(({ reason }) => reason)).toEqual([
+      'Expected `forms` of the `box` directive in the test config to be a nonempty array of `text`, `leaf`, and `container`',
+      'Expected `content` of the `box` directive in the test config to be a boolean',
+      'Expected `forms` of the `bad` directive in the test config to be a nonempty array of `text`, `leaf`, and `container`',
+    ]);
+  });
+
+  it('warns about directives in other forms, or with content they need or take not', async () => {
+    const file = await mdxCompile(
+      [
+        ':mark[ok] ::mark[x] and :mark',
+        '::mark[leaf]',
+        ':::panel[Title]\n:::',
+        ':::panel[Title]\nBody\n:::',
+        ':rule ::rule and :rule[x]',
+      ].join('\n\n'),
+      {
+        ...seminarMdxOptions({
+          importSource: STUB_URL,
+          directives: {
+            mark: {
+              source: STUB_URL,
+              exportName: 'Highlighter',
+              forms: ['text', 'container'],
+              content: true,
+            },
+            panel: {
+              source: STUB_URL,
+              exportName: 'PluginCallout',
+              labelProp: 'title',
+              content: true,
+            },
+            rule: {
+              source: STUB_URL,
+              exportName: 'Highlighter',
+              content: false,
+            },
+          },
+        }),
+      },
+    );
+    expect(file.messages.map(({ reason }) => reason)).toEqual([
+      'The `:mark` directive needs content',
+      "The `mark` directive can't be written as `::mark`; write `:mark` or `:::mark`",
+      'The `:::panel` directive needs content',
+      'The `:rule` directive takes no content',
+    ]);
+  });
+
   it('lets the theme override components registered by plugins', async () => {
     const importModule = vi.fn((): Promise<ImportedModule> =>
       Promise.resolve({

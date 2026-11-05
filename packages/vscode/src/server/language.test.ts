@@ -59,7 +59,7 @@ function generate(
   ) as
     | {
         error?: { message: string };
-        seminarUnknownDirectives?: { message: string }[];
+        seminarDirectiveProblems?: { message: string }[];
         embeddedCodes?: {
           id: string;
           snapshot: { getText: (start: number, end: number) => string };
@@ -160,7 +160,7 @@ describe('createDeckLanguagePlugin', () => {
     const text = directives?.snapshot.getText(0, 1000);
     expect(text).toContain('<_SeminarStepDirective only />');
     expect(text).not.toContain('level');
-    expect(code?.seminarUnknownDirectives).toBeUndefined();
+    expect(code?.seminarDirectiveProblems).toBeUndefined();
   });
 
   it('finds unknown directives once components are known', () => {
@@ -176,7 +176,7 @@ describe('createDeckLanguagePlugin', () => {
         file,
         '::note{level=2}\n\n::step[A]{only}\n\n::nope\n',
         plugin,
-      )?.seminarUnknownDirectives?.map(({ message }) => message),
+      )?.seminarDirectiveProblems?.map(({ message }) => message),
     ).toEqual([
       'Unknown directive `::nope`, keeping it as text; write `\\:` for a literal colon',
     ]);

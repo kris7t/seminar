@@ -1,4 +1,7 @@
-import { unknownDirectiveMessage } from '@seminar/mdx/syntax';
+import {
+  directiveUsageMessages,
+  unknownDirectiveMessage,
+} from '@seminar/mdx/syntax';
 import type { Nodes, Root } from 'mdast';
 
 import { BUILT_IN } from './directiveCode.ts';
@@ -14,9 +17,11 @@ export interface DirectiveProblem {
 
 /**
  * Finds the directives of the deck `source` that neither Seminar nor a
- * component in `directives` handles, which compiling the deck warns about.
+ * component in `directives` handles, or that aren't written in the forms or
+ * with the content that their components take, which compiling the deck warns
+ * about.
  */
-export function findUnknownDirectives(
+export function findDirectiveProblems(
   source: string,
   root: Root,
   directives: Readonly<Record<string, DirectiveComponent>>,
@@ -29,13 +34,22 @@ export function findUnknownDirectives(
         node.type === 'leafDirective' ||
         node.type === 'containerDirective') &&
       start !== undefined &&
-      !Object.hasOwn(BUILT_IN, node.name) &&
-      !Object.hasOwn(directives, node.name)
+      !Object.hasOwn(BUILT_IN, node.name)
     ) {
-      const message = unknownDirectiveMessage(node);
-      if (message !== undefined) {
+      const component = Object.hasOwn(directives, node.name)
+        ? directives[node.name]
+        : undefined;
+      const messages =
+        component === undefined
+          ? [unknownDirectiveMessage(node)].filter(
+              (message) => message !== undefined,
+            )
+          : directiveUsageMessages(node, component);
+      if (messages.length > 0) {
         const { nameStart, nameEnd } = readDirectiveSyntax(source, start);
-        problems.push({ start: nameStart, end: nameEnd, message });
+        for (const message of messages) {
+          problems.push({ start: nameStart, end: nameEnd, message });
+        }
       }
     }
     if ('children' in node) {

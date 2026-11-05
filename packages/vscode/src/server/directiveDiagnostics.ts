@@ -5,11 +5,14 @@ import type {
 } from '@volar/language-server';
 import { URI } from 'vscode-uri';
 
-import type { DirectiveProblem } from './unknownDirectives.ts';
+import type { DirectiveProblem } from './directiveProblems.ts';
 
-/** The virtual code of a deck, with its unknown directives once they're known. */
-export type CodeWithUnknownDirectives = VirtualCode & {
-  seminarUnknownDirectives?: DirectiveProblem[] | undefined;
+/**
+ * The virtual code of a deck, with the problems with its directives once their
+ * components are known.
+ */
+export type CodeWithDirectiveProblems = VirtualCode & {
+  seminarDirectiveProblems?: DirectiveProblem[] | undefined;
 };
 
 /** Severity of warnings in the protocol. */
@@ -17,15 +20,18 @@ const WARNING = 2;
 
 /**
  * Creates the plugin that warns about the directives of decks that nothing
- * handles, like compiling them does, which the language plugin finds once the
- * directive components of the deck are known.
+ * handles, or that aren't written as their components take them, like
+ * compiling them does, which the language plugin finds once the directive
+ * components of the deck are known.
  */
-export function createUnknownDirectivePlugin(): LanguageServicePlugin {
+export function createDirectiveDiagnosticPlugin(): LanguageServicePlugin {
   return {
-    name: 'seminar-unknown-directives',
+    name: 'seminar-directive-diagnostics',
     capabilities: {
       diagnosticProvider: {
-        interFileDependencies: false,
+        // They depend on the components that the Vite config registers, and
+        // otherwise, Volar keeps them until the deck changes.
+        interFileDependencies: true,
         workspaceDiagnostics: false,
       },
     },
@@ -35,12 +41,12 @@ export function createUnknownDirectivePlugin(): LanguageServicePlugin {
           const decoded = context.decodeEmbeddedDocumentUri(
             URI.parse(document.uri),
           );
-          const code: CodeWithUnknownDirectives | undefined =
+          const code: CodeWithDirectiveProblems | undefined =
             decoded &&
             context.language.scripts
               .get(decoded[0])
               ?.generated?.embeddedCodes.get(decoded[1]);
-          return code?.seminarUnknownDirectives?.map(
+          return code?.seminarDirectiveProblems?.map(
             ({ start, end, message }): Diagnostic => ({
               range: {
                 start: document.positionAt(start),

@@ -9,7 +9,17 @@ import { completeDirectiveName } from './directiveNames.ts';
 
 const DIRECTIVES = {
   callout: { source: '@seminar/elements', exportName: 'CalloutDirective' },
-  column: { source: '@seminar/elements', exportName: 'Column' },
+  column: {
+    source: '@seminar/elements',
+    exportName: 'Column',
+    forms: ['container' as const],
+  },
+  mark: {
+    source: './Mark.tsx',
+    exportName: 'Mark',
+    forms: ['text' as const, 'leaf' as const],
+    content: true,
+  },
 };
 
 /**
@@ -45,7 +55,7 @@ describe('completeDirectiveName', () => {
   it('completes text directives with their names', () => {
     expect(complete('A :|')).toEqual({
       replaced: '',
-      items: { step: 'step', callout: 'callout', column: 'column' },
+      items: { step: 'step', callout: 'callout', mark: 'mark[$1]' },
     });
     expect(complete('A :ca|')?.replaced).toBe('ca');
     expect(complete('A :ca|llout{x}')?.replaced).toBe('callout');
@@ -68,7 +78,7 @@ describe('completeDirectiveName', () => {
         recap: 'recap[$1]',
         include: 'include[$1]',
         callout: 'callout',
-        column: 'column',
+        mark: 'mark[$1]',
       },
     });
   });

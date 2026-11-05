@@ -26,4 +26,12 @@ describe('createDeckServicePlugins', () => {
       expect.arrayContaining([STEP_BEHAVIOR_TOKEN, SLIDE_MASTER_TOKEN]),
     );
   });
+
+  it('provides the diagnostics of directives again once components load', () => {
+    const plugins = createDeckServicePlugins(typescript, {} as never);
+    expect(
+      plugins.find(({ name }) => name === 'seminar-directive-diagnostics')
+        ?.capabilities.diagnosticProvider?.interFileDependencies,
+    ).toBe(true);
+  });
 });

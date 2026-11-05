@@ -17,6 +17,12 @@ export {
   type AttributeWord,
 } from './directives/attributeWords.ts';
 export { unknownDirectiveMessage } from './directives/directiveHandlers.ts';
+export {
+  directiveUsageMessages,
+  FORM_PREFIXES,
+  type DirectiveForm,
+  type DirectiveUsage,
+} from './directives/directiveUsage.ts';
 export { IMAGE_ATTRIBUTES } from './directives/remarkHeadingAttributes.ts';
 export {
   attributeValue,

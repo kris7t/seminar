@@ -18,6 +18,11 @@ import {
   createValueAttribute,
 } from '../utils/estree.ts';
 import { getAttributeValue } from './attributeValues.ts';
+import {
+  DIRECTIVE_FORMS,
+  directiveUsageMessages,
+  type DirectiveForm,
+} from './directiveUsage.ts';
 import { EXPLICIT_JSX } from '../utils/jsx.ts';
 import {
   getSeminarConfigs,
@@ -39,6 +44,10 @@ export interface DirectiveComponent {
    * they are in one already.
    */
   wrapIn?: string | undefined;
+  /** Forms that the directive can be written in, or else any. */
+  forms?: DirectiveForm[] | undefined;
+  /** Whether the directive takes content, or else either. */
+  content?: boolean | undefined;
 }
 
 /** Directive names and the React components that render them. */
@@ -56,13 +65,6 @@ export interface DirectiveReporter {
   message: (reason: string) => unknown;
 }
 
-/** Values of the `formProp` of directive components, see `DirectiveForm`. */
-const FORMS: Record<Directive['type'], string> = {
-  textDirective: 'text',
-  leafDirective: 'leaf',
-  containerDirective: 'container',
-};
-
 interface MutableParent {
   children: Nodes[];
 }
@@ -70,6 +72,12 @@ interface MutableParent {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+const FORM_NAMES: Readonly<Record<DirectiveForm, true>> = {
+  text: true,
+  leaf: true,
+  container: true,
+};
 
 /** Reads directive component registrations from an untrusted Seminar config. */
 export function parseDirectiveComponents(
@@ -114,6 +122,30 @@ export function parseDirectiveComponents(
         continue;
       }
       component[key] = prop;
+    }
+    const forms = descriptor['forms'];
+    if (forms !== undefined) {
+      if (
+        !Array.isArray(forms) ||
+        forms.length === 0 ||
+        !forms.every((form) => Object.hasOwn(FORM_NAMES, String(form)))
+      ) {
+        file.message(
+          `Expected \`forms\` of the \`${name}\` directive in ${source} to be a nonempty array of \`text\`, \`leaf\`, and \`container\``,
+        );
+      } else {
+        component.forms = [...new Set(forms as DirectiveForm[])];
+      }
+    }
+    const content = descriptor['content'];
+    if (content !== undefined) {
+      if (typeof content !== 'boolean') {
+        file.message(
+          `Expected \`content\` of the \`${name}\` directive in ${source} to be a boolean`,
+        );
+      } else {
+        component.content = content;
+      }
     }
     result[name] = component;
   }
@@ -198,10 +230,11 @@ function replaceDirectives(
   parent: MutableParent,
   components: DirectiveComponents,
   imports: Map<string, { local: string; component: DirectiveComponent }>,
+  file: VFile,
 ): void {
   for (const [index, node] of parent.children.entries()) {
     if ('children' in node) {
-      replaceDirectives(node, components, imports);
+      replaceDirectives(node, components, imports, file);
     }
     if (
       node.type !== 'textDirective' &&
@@ -213,6 +246,12 @@ function replaceDirectives(
     const component = components[node.name];
     if (component === undefined) {
       continue;
+    }
+    // Wrappers that `wrapDirectives` adds aren't written in the deck.
+    if (node.position !== undefined) {
+      for (const message of directiveUsageMessages(node, component)) {
+        file.message(message, { place: node.position });
+      }
     }
     const key = `${component.source}\0${component.exportName}`;
     let imported = imports.get(key);
@@ -226,7 +265,7 @@ function replaceDirectives(
     const attributes = attributesOf(node);
     if (component.formProp !== undefined) {
       attributes.push(
-        createStringAttribute(component.formProp, FORMS[node.type]),
+        createStringAttribute(component.formProp, DIRECTIVE_FORMS[node.type]),
       );
     }
     let children: Nodes[] = node.children;
@@ -301,7 +340,7 @@ function applyDirectiveComponents(
     string,
     { local: string; component: DirectiveComponent }
   >();
-  replaceDirectives(tree, components, imports);
+  replaceDirectives(tree, components, imports, file);
   const esm: RootContent[] = [...imports.values()].map(({ local, component }) =>
     createEsm(
       `import { ${component.exportName} as ${local} } from ${JSON.stringify(component.source)};`,

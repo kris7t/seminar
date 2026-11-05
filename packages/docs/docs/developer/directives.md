@@ -67,6 +67,20 @@ editor extension checks attributes against the types of the props of the
 component, so declare the props that a directive may set with the types
 they get.
 
+## Forms and content
+
+Two keys tell how a directive can be written. The compiler and the editor
+warn about directives written otherwise, and the editor only completes the
+directive where it fits:
+
+- `forms` lists the forms that the directive can be written in, like
+  `["text", "container"]`. Without it, all forms are allowed.
+- `content` is `true` if the directive needs content, and `false` if it takes
+  none. Content is the label of a text or leaf directive, and the body of a
+  container, without the label if it goes to `labelProp`. The editor
+  completes text and leaf directives that need content with a label, like
+  `:note[]`. Without `content`, content is optional.
+
 ## Wrapping consecutive directives
 
 `wrapIn` wraps consecutive directives of this kind in a container directive,

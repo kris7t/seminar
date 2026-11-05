@@ -1,16 +1,14 @@
+import type { DirectiveForm } from '@seminar/mdx/syntax';
 import type { Nodes, Root } from 'mdast';
 
 import type { DirectiveComponent } from './directiveLoader.ts';
 import { readDirectiveSyntax } from './directiveSyntax.ts';
 
-/** How a directive is written: `:name`, `::name`, or `:::name`. */
-type DirectiveForm = 'text' | 'leaf' | 'container';
-
 /** A directive that Seminar handles itself. */
 interface BuiltInDirective {
   forms: readonly DirectiveForm[];
-  /** Whether it needs a label, which is completed as `[]`. */
-  label?: boolean;
+  /** Whether it needs content, a label in its forms. */
+  content?: boolean;
   documentation: string;
 }
 
@@ -26,12 +24,12 @@ const BUILT_IN: Readonly<Record<string, BuiltInDirective>> = {
   },
   recap: {
     forms: ['leaf'],
-    label: true,
+    content: true,
     documentation: 'Shows the slide in its label, e.g., `#id`, again.',
   },
   include: {
     forms: ['leaf'],
-    label: true,
+    content: true,
     documentation:
       'Includes the deck in its label, or a slide or a division of it, e.g., `./deck.deck.mdx#id`.',
   },
@@ -139,15 +137,23 @@ interface Fence {
   colons: string;
 }
 
+/**
+ * Returns the snippet of the directive `name` in `form`: with the label of
+ * text and leaf directives that need content, and with the closing `fence` of
+ * container directives.
+ */
 function insertText(
   name: string,
-  label: boolean,
+  form: DirectiveForm,
+  content: boolean | undefined,
   fence: Fence | undefined,
 ): string {
-  if (fence !== undefined) {
-    return `${name}\n${fence.prefix}$0\n${fence.prefix}${fence.colons}`;
+  if (form === 'container') {
+    return fence === undefined
+      ? name
+      : `${name}\n${fence.prefix}$0\n${fence.prefix}${fence.colons}`;
   }
-  return label ? `${name}[$1]` : name;
+  return content === true ? `${name}[$1]` : name;
 }
 
 /**
@@ -177,7 +183,8 @@ function isClosed(
  * Returns the names of the directives that can be completed at `offset` of
  * the deck `source`, as the colons before it tell the form: the directives of
  * Seminar in the forms that they're written in, and the directives that have
- * components in `directives`, in any form.
+ * components in `directives`, in the forms that they declare, or else any.
+ * Text and leaf directives that need content are completed with a label.
  *
  * Text directives are completed after a colon that doesn't follow a colon,
  * like the parser reads them, e.g., `this:callout`, but right after the
@@ -232,20 +239,24 @@ export function completeDirectiveName(
     if (directive.forms.includes(form)) {
       items.push({
         name,
-        insertText: insertText(name, directive.label === true, fence),
+        insertText: insertText(name, form, directive.content, fence),
         detail: 'Seminar',
         documentation: directive.documentation,
         builtIn: true,
       });
     }
   }
-  for (const [name, { source: module, exportName }] of Object.entries(
-    directives,
-  )) {
-    if (!Object.hasOwn(BUILT_IN, name)) {
+  for (const [
+    name,
+    { source: module, exportName, forms, content },
+  ] of Object.entries(directives)) {
+    if (
+      !Object.hasOwn(BUILT_IN, name) &&
+      (forms === undefined || forms.includes(form))
+    ) {
       items.push({
         name,
-        insertText: insertText(name, false, fence),
+        insertText: insertText(name, form, content, fence),
         detail: `${exportName} from ${module}`,
         builtIn: false,
       });

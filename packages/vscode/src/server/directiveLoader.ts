@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { readDeckTheme } from '@seminar/mdx/syntax';
+import { readDeckTheme, type DirectiveForm } from '@seminar/mdx/syntax';
 
 import { findProject } from '../cli.ts';
 
@@ -15,6 +15,8 @@ export interface DirectiveComponent {
   formProp?: string | undefined;
   labelProp?: string | undefined;
   wrapIn?: string | undefined;
+  forms?: DirectiveForm[] | undefined;
+  content?: boolean | undefined;
 }
 
 /** A named export of a module. */

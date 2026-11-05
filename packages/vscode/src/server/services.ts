@@ -5,7 +5,7 @@ import { create as createTypeScriptServicePlugin } from 'volar-service-typescrip
 
 import { createDirectiveNamePlugin } from './directiveNameCompletion.ts';
 import { createShorthandTokenPlugin } from './shorthandTokens.ts';
-import { createUnknownDirectivePlugin } from './unknownDirectiveDiagnostics.ts';
+import { createDirectiveDiagnosticPlugin } from './directiveDiagnostics.ts';
 
 /**
  * Creates the language service plugins of decks.
@@ -31,7 +31,7 @@ export function createDeckServicePlugins(
     },
     ...createTypeScriptServicePlugin(typescript, {}),
     createShorthandTokenPlugin(typescript),
-    createUnknownDirectivePlugin(),
+    createDirectiveDiagnosticPlugin(),
     createDirectiveNamePlugin(),
   ];
 }
