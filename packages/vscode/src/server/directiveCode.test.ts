@@ -96,6 +96,31 @@ export {};
 `);
   });
 
+  it('renders the steps of diagrams with the types of their props', () => {
+    const source =
+      '```mermaid\nflowchart LR\n  %% step only group=1\n  A --> B\n  %% step[B] #b fade=300 .x\n```\n';
+    expect(generate(source).text).toBe(
+      `declare function _SeminarDiagramStep(props: import("@seminar/plugin-pele").DiagramStepProps): null;
+<_SeminarDiagramStep only group={"1"} />;
+<_SeminarDiagramStep id={"b"} fade={300} />;
+export {};
+`,
+    );
+    expect(mapped(source)).toEqual([
+      ['step', '_SeminarDiagramStep'],
+      ['only', 'only'],
+      ['group', 'group'],
+      ['1', '{"1"}'],
+      ['', ''],
+      ['step', '_SeminarDiagramStep'],
+      ['#', 'id'],
+      ['b', '{"b"}'],
+      ['fade', 'fade'],
+      ['300', '{300}'],
+      ['', ''],
+    ]);
+  });
+
   it('maps the attributes of headings to the deck', () => {
     expect(mapped('## Title {#a steps=dim}')).toEqual([
       ['', '_SeminarSlideDirective'],

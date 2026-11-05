@@ -14,6 +14,7 @@ import {
   type ComponentTheme,
   type RankedAppearance,
   type StepProps,
+  type UseStepsOptions,
 } from '@seminar/core';
 import { register } from 'pele/core';
 import {
@@ -37,11 +38,17 @@ export type PeleDiagram = Parameters<typeof register>[number];
  * A step of the items of a diagram, e.g., of nodes and edges, which shows the
  * elements with their ids as their `data-id`.
  */
+/**
+ * The props of a step of the items of a diagram, like those of `:step`,
+ * e.g., `group` or `only`, written in the diagram, like `%% step only`.
+ */
+export type DiagramStepProps = Omit<UseStepsOptions, 'id' | 'defaults'>;
+
 export interface DiagramStep {
   /** The ids of the items that the step shows. */
   items: readonly string[];
-  /** The props of the step, like those of `Step`, e.g., `group` or `only`. */
-  props?: Readonly<Record<string, string | number | boolean>> | undefined;
+  /** The props of the step. */
+  props?: Readonly<DiagramStepProps> | undefined;
   /** The steps nested in this step, e.g., of the items in a cluster. */
   steps?: readonly DiagramStep[] | undefined;
 }
@@ -209,12 +216,10 @@ function groupOf(
   name: string | undefined,
 ): string | undefined {
   const [first] = step.items;
-  const group = step.props?.['group'];
-  return typeof group === 'string'
-    ? group
-    : name === undefined || first === undefined
-      ? undefined
-      : `${name}.${first}`;
+  return (
+    step.props?.group ??
+    (name === undefined || first === undefined ? undefined : `${name}.${first}`)
+  );
 }
 
 /** Returns the groups of the steps that show each item of `steps`. */

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { bareAttributeWords, parseAttributeWords } from './attributeWords.ts';
+import {
+  bareAttributeWords,
+  parseAttributeWords,
+  readAttributeWords,
+} from './attributeWords.ts';
 
 describe('bareAttributeWords', () => {
   it('finds only the bare words, with their offsets', () => {
@@ -9,6 +13,29 @@ describe('bareAttributeWords', () => {
     ).toEqual([
       { word: 'only', index: 11 },
       { word: 'swap', index: 44 },
+    ]);
+  });
+});
+
+describe('readAttributeWords', () => {
+  it('reads attributes with their offsets', () => {
+    const text = '{1-3} #fib .wide step group=impl title="Two words"';
+    expect(
+      readAttributeWords(text).map(
+        ({ name, nameStart, nameEnd, value, valueStart, valueEnd, quoted }) => [
+          name,
+          text.slice(nameStart, nameEnd),
+          value,
+          text.slice(valueStart, valueEnd),
+          quoted,
+        ],
+      ),
+    ).toEqual([
+      ['#', '#', 'fib', 'fib', false],
+      ['.', '.', 'wide', 'wide', false],
+      ['step', 'step', undefined, '', false],
+      ['group', 'group', 'impl', 'impl', false],
+      ['title', 'title', 'Two words', '"Two words"', true],
     ]);
   });
 });

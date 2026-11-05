@@ -2,7 +2,7 @@ import { getStepProps, parseAttributeWords } from '@seminar/mdx';
 import { parse, type DiagramModel } from 'pele';
 import type { VFile } from 'vfile';
 
-import type { DiagramStep } from '../Diagram.tsx';
+import type { DiagramStep, DiagramStepProps } from '../Diagram.tsx';
 import { architectureAdapter } from './architecture.ts';
 import { blockAdapter } from './block.ts';
 import { c4Adapter } from './c4.ts';
@@ -435,8 +435,8 @@ function stepsOf(
       }
       const props = Object.fromEntries(
         getStepProps({ ...parsed, id: undefined, classes: [] }, file),
-      );
-      props['title'] ??= stepped
+      ) as DiagramStepProps;
+      props.title ??= stepped
         .map((item) => items.labels.get(item) ?? item)
         .join(', ');
       return {

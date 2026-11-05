@@ -14,7 +14,8 @@ Language support for the `.deck.mdx` files of
 - Checks the attributes of directives against their types, with hover and
   completion: of `:step`, `::slide`, `::recap`, `::include`, `:::notes`, and
   the attribute blocks of headings and images against the types in
-  `@seminar/core`, and of the directives of plugins and themes against the
+  `@seminar/core`, of `%% step` comments in Mermaid diagrams against those
+  of `@seminar/plugin-pele`, and of the directives of plugins and themes against the
   props of their components, as the Vite config of the deck registers them.
   `Seminar: Restart Language Server` reloads them.
 - Previews the open deck next to its editor, updating it as you save, and

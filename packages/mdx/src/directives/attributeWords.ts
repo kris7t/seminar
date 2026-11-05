@@ -28,6 +28,75 @@ export function bareAttributeWords(
     .map(({ 0: word, index }) => ({ word, index }));
 }
 
+/** An attribute in a line of words, with its offsets in the line. */
+export interface AttributeWord {
+  /** `#` for `#id`, `.` for `.class`, or the name of the attribute. */
+  name: string;
+  nameStart: number;
+  nameEnd: number;
+  /** The value, without quotes, or `undefined` for a bare word. */
+  value: string | undefined;
+  /** Offsets of the value, with its quotes. */
+  valueStart: number;
+  valueEnd: number;
+  quoted: boolean;
+}
+
+/**
+ * Returns the attributes in a line of words, like {@link parseAttributeWords}
+ * reads them, with their offsets in `text`.
+ */
+export function readAttributeWords(text: string): AttributeWord[] {
+  return [...text.matchAll(WORD)].flatMap(
+    ({ 0: word, index }): AttributeWord[] => {
+      if (!ATTRIBUTE.test(word)) {
+        return [];
+      }
+      if (word.startsWith('#') || word.startsWith('.')) {
+        return [
+          {
+            name: word.charAt(0),
+            nameStart: index,
+            nameEnd: index + 1,
+            value: word.slice(1),
+            valueStart: index + 1,
+            valueEnd: index + word.length,
+            quoted: false,
+          },
+        ];
+      }
+      const separator = word.indexOf('=');
+      const end = index + word.length;
+      if (separator === -1) {
+        return [
+          {
+            name: word,
+            nameStart: index,
+            nameEnd: end,
+            value: undefined,
+            valueStart: end,
+            valueEnd: end,
+            quoted: false,
+          },
+        ];
+      }
+      const raw = word.slice(separator + 1);
+      const value = unquote(raw);
+      return [
+        {
+          name: word.slice(0, separator),
+          nameStart: index,
+          nameEnd: index + separator,
+          value,
+          valueStart: index + separator + 1,
+          valueEnd: end,
+          quoted: value !== raw,
+        },
+      ];
+    },
+  );
+}
+
 /**
  * Reads the attributes in a line of words, e.g., the rest of the first line
  * of a code block after its language, like `#fib .wide step group=impl`,

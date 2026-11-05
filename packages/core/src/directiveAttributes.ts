@@ -3,16 +3,17 @@ import type { JSX } from 'react';
 import type { ImageProps } from './content/Image.tsx';
 import type { SlideMasterName, SlideMasters } from './masters/SlideMaster.ts';
 import type { SlideProps } from './slide/Slide.tsx';
-import type { StepProps } from './steps/Step.tsx';
+import type { UseStepsOptions } from './steps/useSteps.ts';
 
 /**
  * Attributes of `:step`, `::step`, and `:::step` in MDX, the props of the
  * step, e.g., `:step{with=initial group=parse}` or `:step{only}`. `#id`
- * sets the `id`, and classes the `className`.
+ * sets the `id`, and classes the `className`. Attributes like `data-…` are
+ * passed to the element.
  */
 export interface StepDirectiveAttributes extends Omit<
-  StepProps,
-  'children' | 'component' | 'defaults' | 'sx'
+  UseStepsOptions,
+  'defaults'
 > {
   /**
    * The element that renders the content of `:step[…]`, `::step[…]`, or

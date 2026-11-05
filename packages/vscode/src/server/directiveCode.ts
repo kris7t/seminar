@@ -1,6 +1,10 @@
-import { directiveAttributeValue, IMAGE_ATTRIBUTES } from '@seminar/mdx/syntax';
+import {
+  directiveAttributeValue,
+  IMAGE_ATTRIBUTES,
+  readAttributeWords,
+} from '@seminar/mdx/syntax';
 import type { CodeInformation, CodeMapping } from '@volar/language-server';
-import type { Nodes, Root } from 'mdast';
+import type { Code, Nodes, Root } from 'mdast';
 import type {
   ContainerDirective,
   LeafDirective,
@@ -36,6 +40,16 @@ const BUILT_IN: Readonly<Record<string, string>> = {
   [IMAGE_ATTRIBUTES]: 'ImageDirectiveAttributes',
 };
 
+/** The type of the props of the steps of diagrams, like `%% step only`. */
+const DIAGRAM_STEP = {
+  type: 'DiagramStepProps',
+  module: '@seminar/plugin-pele',
+  local: '_SeminarDiagramStep',
+};
+
+/** Matches the comments of steps in diagrams, see `plugin-pele`. */
+const MERMAID_STEP = /^[> \t]*%%[ \t]*(step)(?:\[[^\]\r\n]*\])?[ \t]+(.*)$/dgm;
+
 /** What the code that is mapped to the deck supports. */
 const MAPPED: CodeInformation = {
   verification: true,
@@ -62,6 +76,11 @@ function isDirective(node: Nodes): node is Directive {
     node.type === 'leafDirective' ||
     node.type === 'containerDirective'
   );
+}
+
+/** Whether `node` is a Mermaid diagram, whose steps `plugin-pele` reads. */
+function isDiagram(node: Nodes): node is Code {
+  return node.type === 'code' && node.lang?.toLowerCase() === 'mermaid';
 }
 
 /** Whether `node` is the label of a container directive. */
@@ -151,7 +170,14 @@ export function generateDirectiveCode(
   directives: Readonly<Record<string, DirectiveComponent>>,
 ): DirectiveCode {
   const imports = new Map<DirectiveComponent, string>();
-  const builtIns = new Set<string>();
+  // The functions declared for the types of attributes, by their names.
+  const declarations = new Map<string, string>();
+  const declare = (local: string, module: string, type: string) => {
+    declarations.set(
+      local,
+      `declare function ${local}(props: import(${JSON.stringify(module)}).${type}): null;\n`,
+    );
+  };
   const code = new Builder();
   const visit = (node: Nodes): void => {
     const start = node.position?.start.offset;
@@ -163,8 +189,8 @@ export function generateDirectiveCode(
         builtIn === undefined ? directives[node.name] : undefined;
       let local: string | undefined;
       if (builtIn !== undefined) {
-        builtIns.add(builtIn);
         local = builtInName(builtIn);
+        declare(local, '@seminar/core', builtIn);
       } else if (component !== undefined) {
         local = imports.get(component);
         if (local === undefined) {
@@ -204,6 +230,34 @@ export function generateDirectiveCode(
         code.add('/>;\n');
       }
     }
+    if (isDiagram(node) && start !== undefined) {
+      const end = node.position?.end.offset ?? source.length;
+      for (const match of source.slice(start, end).matchAll(MERMAID_STEP)) {
+        const [name, words] = [match.indices?.[1], match.indices?.[2]];
+        if (name === undefined || words === undefined) {
+          continue;
+        }
+        declare(DIAGRAM_STEP.local, DIAGRAM_STEP.module, DIAGRAM_STEP.type);
+        const offset = start + words[0];
+        code.add('<');
+        code.map(DIAGRAM_STEP.local, start + name[0], start + name[1]);
+        for (const attribute of readAttributeWords(match[2] ?? '')) {
+          if (attribute.name !== '.') {
+            addAttribute(code, 'step', {
+              ...attribute,
+              nameStart: offset + attribute.nameStart,
+              nameEnd: offset + attribute.nameEnd,
+              valueStart: offset + attribute.valueStart,
+              valueEnd: offset + attribute.valueEnd,
+            });
+          }
+        }
+        code.add(' ');
+        // Where new attributes are completed.
+        code.map('', start + words[1], start + words[1]);
+        code.add('/>;\n');
+      }
+    }
     if ('children' in node) {
       for (const child of node.children) {
         visit(child);
@@ -216,10 +270,7 @@ export function generateDirectiveCode(
       ([{ source: module, exportName }, local]) =>
         `import { ${exportName} as ${local} } from ${JSON.stringify(module)};\n`,
     ),
-    ...[...builtIns].map(
-      (type) =>
-        `declare function ${builtInName(type)}(props: import("@seminar/core").${type}): null;\n`,
-    ),
+    ...declarations.values(),
   ].join('');
   return {
     text: `${header}${code.text}export {};\n`,

@@ -166,7 +166,7 @@ describe('findSteps', () => {
     ]);
     const ids = elementIds(source);
     expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
-    expect(steps[0]?.props?.['title']).toBe('go');
+    expect(steps[0]?.props?.title).toBe('go');
   });
 
   it('steps the participants, messages, and blocks of sequence diagrams', () => {
@@ -283,7 +283,7 @@ describe('findSteps', () => {
     ]);
     const ids = elementIds(source);
     expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
-    expect(steps[1]?.props?.['title']).toBe('extends');
+    expect(steps[1]?.props?.title).toBe('extends');
     const nested =
       'classDiagram\n  namespace A {\n    %% step\n    namespace B {\n      class X\n    }\n  }';
     expect(itemsOf(stepsOf(nested).steps)).toEqual([['A.B', 'X']]);
@@ -320,7 +320,7 @@ describe('findSteps', () => {
     ]);
     const ids = elementIds(source);
     expect(allItems(steps).filter((id) => !ids.has(id))).toEqual([]);
-    expect(steps[2]?.props?.['title']).toBe('Person');
+    expect(steps[2]?.props?.title).toBe('Person');
   });
   it('steps the services, groups, and edges of architecture diagrams', () => {
     const source = [

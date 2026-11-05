@@ -32,11 +32,8 @@ import {
 } from './stepAppearance.ts';
 import type { StepPhase } from './StepNode.ts';
 import { StepBehaviorContext } from './StepBehaviorContext.ts';
-import type { StepDefaults } from './stepDefaults.ts';
-import type { OverlayProp, SplitProp } from './stepSplit.ts';
-import type { FadeProps } from '../transitions/fades.ts';
 import { SlideViewContext } from '../view/SlideViewContext.ts';
-import { useStep, type StepState, type StepWith } from './useSteps.ts';
+import { useStep, type StepState, type UseStepsOptions } from './useSteps.ts';
 
 interface DocumentStepProps extends HTMLAttributes<HTMLElement> {
   component: ElementType;
@@ -129,71 +126,8 @@ export type StepBehaviorShorthands = Partial<
 
 export interface StepProps
   extends
-    Omit<HTMLAttributes<HTMLElement>, 'children'>,
-    StepBehaviorShorthands,
-    FadeProps {
-  /**
-   * See {@link StepWith}.
-   */
-  with?: StepWith | undefined;
-  /**
-   * Name of the element of the step on the slide, which gets an id unique in
-   * the document (see `useSlideElementId`). The step joins the group of the
-   * same name, unless `group` is set.
-   */
-  id?: string | undefined;
-  /** See the `group` option of `useSteps`. Defaults to `id`. */
-  group?: string | undefined;
-  /**
-   * Name of the group to nest the step in, as if it was inside the elements of
-   * the group, or an element whose step to nest it in. See the `in` option of
-   * `useSteps`.
-   */
-  in?: string | Element | undefined;
-  /** See the `after` option of `useSteps`. */
-  after?: string | undefined;
-  /**
-   * Shows the step with a step of its own, like `with="self"`, e.g., `step`
-   * in a directive, or makes it not a step if `false`, like `with="parent"`,
-   * e.g., `step=false` in a directive. Ignored if `with` is set.
-   */
-  step?: boolean | undefined;
-  /**
-   * Shows the step as soon as what encloses it is shown, like
-   * `with="initial"`, e.g., `initial` in a directive. Takes precedence over
-   * `step`, and is ignored if `with` is set.
-   */
-  initial?: boolean | undefined;
-  /**
-   * What the step does unless the user says otherwise (see
-   * {@link StepDefaults}), which wrapper components can use to choose their
-   * usual place and behavior.
-   */
-  defaults?: StepDefaults | undefined;
-  /**
-   * Title of the step in the tree of steps, instead of its text. Unlike the
-   * HTML attribute, it isn't shown as a tooltip.
-   */
-  title?: string | undefined;
-  /**
-   * How the step behaves across its phases. Defaults to a shorthand like
-   * `only` (see {@link StepBehaviorShorthands}), then to `defaults`, the
-   * `steps` of the slide, the `defaultProps` of the theme, and finally
-   * `'reveal'`.
-   */
-  behavior?: StepBehavior | undefined;
-  /**
-   * How the step asks for pages when the slide is split into pages, e.g., for
-   * a PDF (see {@link SplitProp}). Its mode defaults to `defaults`, then to
-   * the mode of the step it is nested in, and then to the `split` of the
-   * slide.
-   */
-  split?: SplitProp | undefined;
-  /**
-   * Whether the step may cover other content, which then also needs a page
-   * without it when the slide is split into pages. Defaults to `defaults`.
-   */
-  overlay?: OverlayProp | undefined;
+    Omit<HTMLAttributes<HTMLElement>, 'children' | 'id' | 'title'>,
+    UseStepsOptions {
   /** The element to render. Defaults to `'div'`. */
   component?: ElementType;
   children?: ReactNode | ((state: StepState) => ReactNode);
