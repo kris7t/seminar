@@ -67,6 +67,56 @@ describe('remarkDirectiveComponents', () => {
     );
   });
 
+  it('gives components values of the types they are written as', async () => {
+    const module = await compile(
+      `::mark[Text]{#007 .x9 angle=35 offset=-0.5 label="35" flag=false step quoted="" at=30%,40%}\n\n:mark[Inline]{scale='2' size=2}`,
+      {
+        directives: { mark: { source: STUB_URL, exportName: 'Highlighter' } },
+      },
+    );
+    const deck = renderDeck(module);
+    const props = [deck.props.children]
+      .flat()
+      .map(renderSlideExport)
+      .flatMap(function find(node: unknown): Record<string, unknown>[] {
+        if (typeof node !== 'object' || node === null) {
+          return [];
+        }
+        if (Array.isArray(node)) {
+          return node.flatMap(find);
+        }
+        const { type, props: elementProps } = node as {
+          type?: { name?: string };
+          props?: Record<string, unknown>;
+        };
+        return [
+          ...(type?.name === 'Highlighter' && elementProps !== undefined
+            ? [elementProps]
+            : []),
+          ...find(elementProps?.['children']),
+        ];
+      })
+      .map((found) =>
+        Object.fromEntries(
+          Object.entries(found).filter(([name]) => name !== 'children'),
+        ),
+      );
+    expect(props).toEqual([
+      {
+        id: '007',
+        className: 'x9',
+        angle: 35,
+        offset: -0.5,
+        label: '35',
+        flag: false,
+        step: true,
+        quoted: '',
+        at: '30%,40%',
+      },
+      { scale: '2', size: 2 },
+    ]);
+  });
+
   it('tells components the form and the label of the directive', async () => {
     const module = await compile(
       ':callout[Inline]\n\n::callout[Leaf]\n\n:::callout[Title]{side=left}\nLong *content*\n:::\n\n:::note[Kept]\nBody\n:::',
@@ -127,7 +177,7 @@ describe('remarkDirectiveComponents', () => {
         '<PluginCallout title="B"><Paragraph>Two</Paragraph></PluginCallout></Highlighter>' +
         '<Paragraph>Between</Paragraph>' +
         '<Highlighter><PluginCallout title="C"><Paragraph>Three</Paragraph></PluginCallout></Highlighter>' +
-        '<Highlighter gap="8"><PluginCallout title="D"><Paragraph>Four</Paragraph></PluginCallout></Highlighter>',
+        '<Highlighter gap=8><PluginCallout title="D"><Paragraph>Four</Paragraph></PluginCallout></Highlighter>',
     );
   });
 

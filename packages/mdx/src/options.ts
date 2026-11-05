@@ -6,6 +6,7 @@ import { recmaSeminarOptions } from './config/seminarOptions.ts';
 import { recmaSlideExports } from './deck/recmaSlideExports.ts';
 import { recmaSlideTitles } from './deck/recmaSlideTitles.ts';
 import { remarkHeadingAttributes } from './directives/remarkHeadingAttributes.ts';
+import { remarkDirectiveQuotes } from './directives/attributeValues.ts';
 import { remarkImages } from './content/remarkImages.ts';
 import { remarkNotes } from './deck/remarkNotes.ts';
 import { directiveHandlers } from './directives/directiveHandlers.ts';
@@ -79,6 +80,7 @@ export function seminarMdxOptions({
       remarkFrontmatter,
       ...mdxPlugins.remarkPlugins.before,
       remarkDirective,
+      remarkDirectiveQuotes,
       remarkNotes,
       remarkStepDirectives,
       remarkImages,

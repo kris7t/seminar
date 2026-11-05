@@ -1,3 +1,4 @@
+import { attributeValue } from '@seminar/mdx/syntax';
 import type { CodeInformation, CodeMapping } from '@volar/language-server';
 import type { Nodes, Root } from 'mdast';
 import type {
@@ -39,29 +40,6 @@ const VALUE: CodeInformation = { ...MAPPED, completion: false };
 export interface DirectiveCode {
   text: string;
   mappings: CodeMapping[];
-}
-
-const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
-
-/**
- * Returns the value of an attribute of a directive written as `value`: `true`
- * without a value, a number or a boolean if it looks like one and isn't quoted,
- * and a string otherwise.
- */
-export function attributeValue(
-  value: string | undefined,
-  quoted: boolean,
-): string | number | boolean {
-  if (value === undefined) {
-    return true;
-  }
-  if (quoted) {
-    return value;
-  }
-  if (NUMBER.test(value)) {
-    return Number(value);
-  }
-  return value === 'true' ? true : value === 'false' ? false : value;
 }
 
 function isDirective(node: Nodes): node is Directive {

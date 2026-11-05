@@ -54,10 +54,18 @@ A directive turns into its component with these props:
 - With `labelProp`, the label of a container, `:::note[Title]`, goes to that
   prop as plain text. Otherwise, it's the first paragraph of the children.
 
-Attribute values are always strings. Bare flags like `{step}` are empty
-strings. So props that a directive may set should accept strings: numbers
-like `width` as `number | string`, and flags as `boolean | ''`, where `''`
-means `true`.
+Attribute values have the types they're written as, like in JSX:
+
+- Bare flags, like `{step}`, are `true`.
+- Unquoted numbers, like `angle=35`, are numbers, and `true` and `false` are
+  booleans.
+- Quoted values, like `label="35"`, and all other values, like `at=30%,40%`,
+  are strings. So are `id` and `className`.
+
+So `{angle=35 step}` gives the same props as `angle={35} step` in JSX. The
+editor extension checks attributes against the types of the props of the
+component, so declare the props that a directive may set with the types
+they get.
 
 ## Wrapping consecutive directives
 

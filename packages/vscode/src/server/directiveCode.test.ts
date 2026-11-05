@@ -4,7 +4,7 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { describe, expect, it } from 'vitest';
 
-import { attributeValue, generateDirectiveCode } from './directiveCode.ts';
+import { generateDirectiveCode } from './directiveCode.ts';
 
 const DIRECTIVES = {
   callout: {
@@ -41,17 +41,6 @@ function mapped(source: string) {
     ],
   );
 }
-
-describe('attributeValue', () => {
-  it('reads values like compiling decks would', () => {
-    expect(attributeValue(undefined, false)).toBe(true);
-    expect(attributeValue('35', false)).toBe(35);
-    expect(attributeValue('-0.5', false)).toBe(-0.5);
-    expect(attributeValue('35', true)).toBe('35');
-    expect(attributeValue('false', false)).toBe(false);
-    expect(attributeValue('30%,40%', false)).toBe('30%,40%');
-  });
-});
 
 describe('generateDirectiveCode', () => {
   it('renders directives with components as JSX', () => {

@@ -3,6 +3,7 @@ import remarkDirective from 'remark-directive';
 import remarkFrontmatter from 'remark-frontmatter';
 import type { PluggableList, Processor } from 'unified';
 
+import { remarkDirectiveQuotes } from './directives/attributeValues.ts';
 import {
   rewriteHeadingAttributes,
   sourceOffsets,
@@ -11,6 +12,11 @@ import {
 export { findPackage } from './config/packages.ts';
 export { readDeckTheme } from './config/deckSetup.ts';
 export { bareAttributeWords } from './directives/attributeWords.ts';
+export {
+  attributeValue,
+  getAttributeValue,
+  remarkDirectiveQuotes,
+} from './directives/attributeValues.ts';
 
 /** A location of the parser of JavaScript, with a column from 0. */
 interface AcornLocation {
@@ -135,5 +141,6 @@ export function deckSyntaxPlugins(
     remarkFrontmatter,
     ...syntaxPlugins,
     remarkDirective,
+    remarkDirectiveQuotes,
   ];
 }

@@ -72,6 +72,11 @@ export {
   type SeminarOptionsLayer,
 } from './config/seminarOptions.ts';
 export { parseAttributeWords } from './directives/attributeWords.ts';
+export {
+  attributeValue,
+  getAttributeValue,
+  remarkDirectiveQuotes,
+} from './directives/attributeValues.ts';
 export { getAttributes, type Attributes } from './directives/directives.ts';
 export { getStepProps } from './steps/remarkSteps.ts';
 export {

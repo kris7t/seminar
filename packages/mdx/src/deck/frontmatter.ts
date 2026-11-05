@@ -8,6 +8,7 @@ import { unified, type PluggableList } from 'unified';
 import { VFile } from 'vfile';
 import { parse as parseYaml } from 'yaml';
 
+import { remarkDirectiveQuotes } from '../directives/attributeValues.ts';
 import { hasDirective } from '../directives/directives.ts';
 import { remarkHeadingAttributes } from '../directives/remarkHeadingAttributes.ts';
 
@@ -171,6 +172,7 @@ export function parseDeck(
     .use(remarkFrontmatter)
     .use(syntaxPlugins)
     .use(remarkDirective)
+    .use(remarkDirectiveQuotes)
     .parse(file);
   return { tree, file };
 }

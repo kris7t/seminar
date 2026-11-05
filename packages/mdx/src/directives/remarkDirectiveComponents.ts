@@ -12,7 +12,12 @@ import type {
 import { toString } from 'mdast-util-to-string';
 import type { VFile } from 'vfile';
 
-import { createEsm, createStringAttribute } from '../utils/estree.ts';
+import {
+  createEsm,
+  createExpressionAttribute,
+  createStringAttribute,
+} from '../utils/estree.ts';
+import { getAttributeValue } from './attributeValues.ts';
 import { EXPLICIT_JSX } from '../utils/jsx.ts';
 import {
   getSeminarConfigs,
@@ -115,12 +120,27 @@ export function parseDirectiveComponents(
   return result;
 }
 
+/**
+ * Returns the props of a directive, with values of the types they are written
+ * as (see {@link getAttributeValue}), except for the id and the classes.
+ */
 function attributesOf(directive: Directive): MdxJsxAttribute[] {
-  return Object.entries(directive.attributes ?? {}).flatMap(([name, value]) =>
-    value === null || value === undefined
-      ? []
-      : [createStringAttribute(name === 'class' ? 'className' : name, value)],
-  );
+  return Object.entries(directive.attributes ?? {}).flatMap(([name, value]) => {
+    if (value === null || value === undefined) {
+      return [];
+    }
+    if (name === 'id' || name === 'class') {
+      return [
+        createStringAttribute(name === 'class' ? 'className' : name, value),
+      ];
+    }
+    const typed = getAttributeValue(directive, name);
+    return [
+      typeof typed === 'string'
+        ? createStringAttribute(name, typed)
+        : createExpressionAttribute(name, JSON.stringify(typed)),
+    ];
+  });
 }
 
 /**
