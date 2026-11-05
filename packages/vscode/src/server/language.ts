@@ -55,7 +55,8 @@ function snapshotOf(text: string): VirtualCode['snapshot'] {
 /**
  * Adds the virtual TypeScript of the directives of a deck to its `code`,
  * with those that have components once they're known, and then the components,
- * to complete their names, and the problems with the directives.
+ * to complete their names, with the names that the code imports them as for
+ * their documentation, and the problems with the directives.
  */
 function addDirectives(
   code: (CodeWithDirectiveProblems & CodeWithDirectiveComponents) | undefined,
@@ -68,12 +69,13 @@ function addDirectives(
   }
   // The directives of Seminar are checked before the components are known.
   const registry = directives(file, source);
-  const { text, mappings } = generateDirectiveCode(
+  const { text, mappings, documented } = generateDirectiveCode(
     source,
     code.ast,
     registry?.directives ?? {},
     registry?.codeBlocks,
   );
+  code.seminarDocumented = documented;
   if (registry !== undefined) {
     code.seminarDirectiveComponents = registry.directives;
     code.seminarDirectiveProblems = findDirectiveProblems(

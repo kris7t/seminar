@@ -26,6 +26,8 @@ Language support for the `.deck.mdx` files of
   Seminar, and those of the plugins and theme of the deck once the Vite config
   is loaded, in the forms they can be written in. Directives that need content
   get a label, and container directives a closing fence of as many colons.
+  The completions show the doc comments of the components of the directives,
+  and of the types of the attributes of those of Seminar.
   `Seminar: Restart Language Server` reloads them.
 - Previews the open deck next to its editor, updating it as you save, and
   presents it, with the buttons in the title bar of its editor or the commands

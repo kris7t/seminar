@@ -32,6 +32,6 @@ export function createDeckServicePlugins(
     ...createTypeScriptServicePlugin(typescript, {}),
     createShorthandTokenPlugin(typescript),
     createDirectiveDiagnosticPlugin(),
-    createDirectiveNamePlugin(),
+    createDirectiveNamePlugin(typescript),
   ];
 }

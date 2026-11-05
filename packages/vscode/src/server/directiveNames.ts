@@ -9,33 +9,25 @@ interface BuiltInDirective {
   forms: readonly DirectiveForm[];
   /** Whether it needs content, a label in its forms. */
   content?: boolean;
-  documentation: string;
 }
 
 const BUILT_IN: Readonly<Record<string, BuiltInDirective>> = {
   step: {
     forms: ['text', 'leaf', 'container'],
-    documentation:
-      'Shows its content in a step of the slide, or, without content, the paragraph or list item that it starts.',
   },
   slide: {
     forms: ['leaf'],
-    documentation: 'Starts a slide, with the title in its label, if any.',
   },
   recap: {
     forms: ['leaf'],
     content: true,
-    documentation: 'Shows the slide in its label, e.g., `#id`, again.',
   },
   include: {
     forms: ['leaf'],
     content: true,
-    documentation:
-      'Includes the deck in its label, or a slide or a division of it, e.g., `./deck.deck.mdx#id`.',
   },
   notes: {
     forms: ['container'],
-    documentation: 'Notes of the speaker, shown in the presenter view.',
   },
 };
 
@@ -60,7 +52,6 @@ export interface DirectiveNameItem {
   insertText: string;
   /** Where the component comes from, or that Seminar handles it. */
   detail: string;
-  documentation?: string | undefined;
   builtIn: boolean;
 }
 
@@ -241,7 +232,6 @@ export function completeDirectiveName(
         name,
         insertText: insertText(name, form, directive.content, fence),
         detail: 'Seminar',
-        documentation: directive.documentation,
         builtIn: true,
       });
     }

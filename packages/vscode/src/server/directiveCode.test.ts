@@ -30,6 +30,14 @@ function handlerProps(source: string, exportName: string): string {
   return `Parameters<ReturnType<typeof import("${source}").${exportName}>>[0]["props"]`;
 }
 
+/** Leaves out the imports for the documentation of directives. */
+function withoutDocumented(text: string): string {
+  return text.replace(
+    /^import type \{ \w+ as _SeminarDocumented\d+ \}.*\n/gm,
+    '',
+  );
+}
+
 function generate(
   source: string,
   options: {
@@ -41,7 +49,13 @@ function generate(
     .use(remarkMdx)
     .use(deckSyntaxPlugins([]))
     .parse(source);
-  return generateDirectiveCode(source, root, DIRECTIVES, options.codeBlocks);
+  const code = generateDirectiveCode(
+    source,
+    root,
+    DIRECTIVES,
+    options.codeBlocks,
+  );
+  return { ...code, text: withoutDocumented(code.text) };
 }
 
 /** Returns what of the generated code maps to which source. */
@@ -164,6 +178,33 @@ export {};
       ['step', 'step'],
       ['', ''],
     ]);
+  });
+
+  it('imports the directives for their documentation', () => {
+    const root = unified()
+      .use(remarkParse)
+      .use(remarkMdx)
+      .use(deckSyntaxPlugins([]))
+      .parse('');
+    const { text, documented } = generateDirectiveCode('', root, DIRECTIVES);
+    expect(documented).toEqual({
+      step: '_SeminarDocumented0',
+      slide: '_SeminarDocumented1',
+      recap: '_SeminarDocumented2',
+      include: '_SeminarDocumented3',
+      notes: '_SeminarDocumented4',
+      callout: '_SeminarDocumented5',
+      column: '_SeminarDocumented6',
+    });
+    expect(text).toContain(
+      'import type { StepDirectiveAttributes as _SeminarDocumented0 } from "@seminar/core";\n',
+    );
+    expect(text).toContain(
+      'import type { CalloutDirective as _SeminarDocumented5 } from "@seminar/elements";\n',
+    );
+    expect(text).toMatch(
+      /_SeminarDocumented6 } from "\.\/Column\.tsx";\nexport \{\};\n$/,
+    );
   });
 
   it('maps the attributes of headings to the deck', () => {

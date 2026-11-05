@@ -1,54 +1,19 @@
-import { fileURLToPath } from 'node:url';
-
 import typescript from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { findOverrideShorthands } from './overrideShorthands.ts';
-
-const CONFIG = fileURLToPath(
-  new URL('../../tsconfig.test.json', import.meta.url),
-);
-
-const FILE = fileURLToPath(new URL('deck.directives.tsx', import.meta.url));
+import { VIRTUAL_FILE, workspaceProgram } from './test/workspaceProgram.ts';
 
 /**
  * Returns the shorthands found in a file with `source`, as their names and
  * kinds, with the types of the `@seminar/core` of the workspace.
  */
 function find(source: string): string[] {
-  const { options } =
-    typescript.getParsedCommandLineOfConfigFile(
-      CONFIG,
-      {},
-      {
-        ...typescript.sys,
-        onUnRecoverableConfigFileDiagnostic: () => undefined,
-      },
-    ) ?? {};
-  const compilerOptions: typescript.CompilerOptions = {
-    ...options,
-    jsx: typescript.JsxEmit.Preserve,
-    customConditions: ['@seminar/source'],
-    noEmit: true,
-  };
-  const host = typescript.createCompilerHost(compilerOptions);
-  const getSourceFile = host.getSourceFile.bind(host);
-  const fileExists = host.fileExists.bind(host);
-  host.getSourceFile = (fileName, ...rest) =>
-    fileName === FILE
-      ? typescript.createSourceFile(
-          fileName,
-          source,
-          typescript.ScriptTarget.Latest,
-          true,
-          typescript.ScriptKind.TSX,
-        )
-      : getSourceFile(fileName, ...rest);
-  host.fileExists = (fileName) => fileName === FILE || fileExists(fileName);
-  const program = typescript.createProgram([FILE], compilerOptions, host);
-  return findOverrideShorthands(typescript, program, FILE).map(
-    ({ start, end, kind }) => `${kind}:${source.slice(start, end)}`,
-  );
+  return findOverrideShorthands(
+    typescript,
+    workspaceProgram(source),
+    VIRTUAL_FILE,
+  ).map(({ start, end, kind }) => `${kind}:${source.slice(start, end)}`);
 }
 
 const AUGMENTATION = `export {};

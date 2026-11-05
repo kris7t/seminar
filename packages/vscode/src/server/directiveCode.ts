@@ -68,6 +68,12 @@ const VALUE: CodeInformation = { ...MAPPED, completion: false };
 export interface DirectiveCode {
   text: string;
   mappings: CodeMapping[];
+  /**
+   * The names that the code imports the directives as, for their
+   * documentation: the components of directives, and the types of the
+   * attributes of the directives of Seminar.
+   */
+  documented: Record<string, string>;
 }
 
 function isDirective(node: Nodes): node is Directive {
@@ -366,8 +372,30 @@ export function generateDirectiveCode(
     ),
     ...declarations.values(),
   ].join('');
+  // Imported only for the documentation of the directives, e.g., to complete
+  // their names, after the code so that its mappings stay the same.
+  const documented: Record<string, string> = {};
+  let documentation = '';
+  const document = (name: string, module: string, exportName: string) => {
+    const local = `_SeminarDocumented${String(Object.keys(documented).length)}`;
+    documented[name] = local;
+    documentation += `import type { ${exportName} as ${local} } from ${JSON.stringify(module)};\n`;
+  };
+  for (const [name, type] of Object.entries(BUILT_IN)) {
+    if (name !== IMAGE_ATTRIBUTES) {
+      document(name, '@seminar/core', type);
+    }
+  }
+  for (const [name, { source: module, exportName }] of Object.entries(
+    directives,
+  )) {
+    if (!Object.hasOwn(BUILT_IN, name)) {
+      document(name, module, exportName);
+    }
+  }
   return {
-    text: `${header}${code.text}export {};\n`,
+    text: `${header}${code.text}${documentation}export {};\n`,
+    documented,
     mappings: code.mappings.map((mapping) => ({
       ...mapping,
       generatedOffsets: mapping.generatedOffsets.map(
