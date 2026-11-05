@@ -11,17 +11,25 @@
         "source": "@seminar/elements",
         "exportName": "CalloutDirective",
         "formProp": "directive",
-        "labelProp": "label"
+        "labelProp": "label",
+        "content": true
       },
       "columns": {
         "source": "@seminar/elements",
-        "exportName": "Columns"
+        "exportName": "Columns",
+        "forms": [
+          "container"
+        ],
+        "content": true
       },
       "column": {
         "source": "@seminar/elements",
         "exportName": "Column",
         "labelProp": "heading",
-        "wrapIn": "columns"
+        "wrapIn": "columns",
+        "forms": [
+          "container"
+        ]
       }
     }
   },
