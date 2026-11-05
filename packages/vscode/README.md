@@ -3,36 +3,10 @@
 Language support for the `.deck.mdx` files of
 [Seminar](https://seminar.run) in VS Code and VSCodium:
 
-- Highlights directives, the attribute blocks of headings and images, and TeX
-  in inline and display math.
-- Highlights Mermaid diagrams with their `%% step` comments, and the props of
-  code blocks.
-- Knows the syntax of decks, so `{#id}` and `$x^{2}$` aren't errors, while
-  actual syntax errors are reported where they are.
-- Provides hover, go to definition, completion, and rename in the JavaScript
-  of decks, and the outline of their headings.
-- Checks the attributes of directives against their types, with hover and
-  completion: of `:step`, `::slide`, `::recap`, `::include`, `:::notes`, and
-  the attribute blocks of headings and images against the types in
-  `@seminar/core`, of `%% step` comments in Mermaid diagrams against those
-  of `@seminar/plugin-pele`, of the first lines of code blocks against the
-  types that plugins register for their languages, and of the directives of
-  plugins and themes against the props of their components, as the Vite
-  config of the deck registers them.
-- Warns about directives that neither Seminar nor the plugins and theme of the
-  deck handle, or that are written in a form or with content that they don't
-  take, like compiling the deck does, once the Vite config is loaded.
-- Completes the names of directives after `:`, `::`, and `:::`: those of
-  Seminar, and those of the plugins and theme of the deck once the Vite config
-  is loaded, in the forms they can be written in. Directives that need content
-  get a label, and container directives a closing fence of as many colons.
-  The completions show the doc comments of the components of the directives,
-  and of the types of the attributes of those of Seminar.
-  `Seminar: Restart Language Server` reloads them.
-- Previews the open deck next to its editor, updating it as you save, and
-  presents it, with the buttons in the title bar of its editor or the commands
-  starting with `Seminar:`. They run `seminar`, so `@seminar/cli` has to be
-  installed in the project of the deck, and Node has to be on the `PATH`.
+- Highlighting of directives, attributes, math, and Mermaid diagrams.
+- Checks, hover, and completion for directives and their attributes, code
+  blocks, and the JavaScript of decks.
+- A preview next to the editor that follows the cursor, and presenting.
 
 ## Installing
 
@@ -45,82 +19,62 @@ codium --install-extension packages/vscode/dist/seminar.vsix
 
 Use `code` for VS Code. Reload the window afterwards.
 
-## Good to know
+## Setting up projects
 
-Decks have their own language, `Seminar Deck`, so that the MDX extension
-doesn't report errors in them. Settings and extensions for the `mdx` language
-don't apply to decks. Prettier needs to be told about them:
+Decks have their own language, `Seminar Deck`, so settings and extensions for
+`mdx` don't apply to them. Prettier needs to be told about them:
 
 ```json
 { "prettier.documentSelectors": ["**/*.deck.mdx"] }
 ```
 
-`$` starts math if `@seminar/plugin-mathjax` is installed for the deck, since
-reading the configs of decks would run code of the workspace. Other plugins that
-add syntax to the compiler aren't supported yet. The grammar doesn't check this,
-so it always highlights `$…$` as math, and only on a single line.
+The extension only runs in trusted workspaces, since it runs code of the
+workspace: it loads the Vite config of a deck to check and complete the
+directives of its plugins and theme, and its code blocks. It loads the config
+again when it changes. Run `Seminar: Restart Language Server` to load it
+again otherwise, e.g., after installing a plugin.
+
+Augmentations of `StepBehaviorOverrides` and `SlideMasterOverrides` are only
+known if they're part of the TypeScript project of the deck.
+
+`$` starts math only if `@seminar/plugin-mathjax` is installed for the deck.
+Other plugins that add syntax aren't supported yet.
 
 Set `"mdx": { "checkMdx": true }` in `tsconfig.json` to report type errors in
 the JavaScript of decks.
 
-Step behaviors, like `only` in `::Box{only}` or `%% step only`, and slide
-masters, like `section` in `## Part {section}`, are colored with semantic
-tokens, which are turned on for decks. The built-in ones are colored wherever
-they're written. Behaviors from `StepBehaviorOverrides` and masters from
-`SlideMasterOverrides` are only colored where the props have them, e.g., not on
-components that aren't steps, once the components of the deck are known, if
-the augmentation is part of the TypeScript project of the deck. Likewise, the
-attributes of slides are checked against the masters from
-`SlideMasterOverrides`, like `wide` in `## Results {wide}`, if the
-augmentation is part of that project.
-
 ## Previewing
 
-The `Seminar: Preview Deck` command and its button show the deck in the panel
-or the window that `seminar.preview.location` chooses. The commands
+`Seminar: Preview Deck` and `Seminar: Present Deck`, also on the title bar of
+the editor, run `seminar`, so `@seminar/cli` has to be installed in the project
+of the deck, and Node has to be on the `PATH`.
+
+- `seminar.preview.location`: `editor`, the default, shows the preview in a
+  panel, where P fills the panel with the slides and Shift+P shows the
+  presenter view. `window` opens it in the app of `seminar preview`, with all
+  of its features.
+- `seminar.preview.sync`: `both`, the default, `editorToPreview`,
+  `previewToEditor`, or `off`, whether previews follow the cursor, and editors
+  follow the slide and step of the preview.
+- `seminar.preview.dimHidden`: whether editors fade what can't be read at the
+  current step of the preview, on by default.
+
 `Seminar: Preview Deck in the Editor` and `Seminar: Preview Deck in a Window`
-choose it themselves.
+choose the location themselves. Ctrl+click, or Cmd+click, in a preview goes to
+the source. The Seminar sidebar shows the contents of the previewed deck.
 
-- `editor`, the default, shows it in a panel. Panels can't open windows, go full
-  screen, or print, so P fills the panel with the slides, and Shift+P shows the
-  presenter view without an audience window. While the deck has the focus, it
-  gets the keys, including most shortcuts of the editor.
-- `window` opens it in the app of `seminar preview`, with all of its features.
-
-Previews start at the cursor, and follow it to the slide that it's on and to the step that shows
-what it's on. Once on the slide, they stay on their step if what the cursor is on
-can be read there.
-Editors scroll to the slide and step that a preview goes to, and highlight the
-start of a new slide, without moving the cursor. `seminar.preview.sync` turns
-either off, or both. Editors also fade the source of what can't be read at the
-current step of a preview, as much as unused code, except in high contrast themes,
-unless `seminar.preview.dimHidden` is off. What can be read follows `legibleStepAppearance` of the theme, by default up to dimmed steps.
-
-Ctrl+click, or Cmd+click, on a slide in a preview goes to what you clicked in the
-source, including in the decks that it's included from.
-
-The Seminar sidebar shows the table of contents of a deck and the steps of its
-slide like the sidebar of the deck does, and goes to what you click. It needs a
-preview, since only that knows the steps, and it's there while a deck is open
-in an editor or a preview.
-
-Previews in a project share a dev server, which stops a minute after the last
-preview closes. Build errors, and the errors and warnings of the pages of decks,
-are in the `Seminar Dev Server` output channel, which opens with the first of
-them, or with the `Seminar: Show Dev Server Output` command.
-
-In remote workspaces, the dev server runs on the remote machine, with its port
-forwarded to the editor. A preview in a window opens in your browser instead of
-the app, and the button to present isn't shown, since the app would run on the
-remote machine. In editors running in a browser, the dev server has to answer
-requests for any host name, which turns off the protection of Vite against DNS
-rebinding. Remote workspaces haven't been tested yet.
+Previews of a project share a dev server. Its errors and warnings are in the
+`Seminar Dev Server` output channel, see `Seminar: Show Dev Server Output`. In
+remote workspaces, it runs on the remote machine, and previews in a window
+open in the browser. Remote workspaces haven't been tested yet.
 
 ## Colors
 
-Themes don't know about decks, so the syntax uses the common scopes of programming
-languages for its colors. Every token also has a scope of its own, which takes
-precedence, for themes and for `editor.tokenColorCustomizations`:
+Syntax gets the common scopes of programming languages, so that themes color
+it. Every token also has a scope of its own, which takes precedence, for
+themes and for `editor.tokenColorCustomizations`. Step behaviors and slide
+masters are semantic tokens, `seminarStepBehavior` and `seminarSlideMaster`,
+which fall back to the scopes below.
 
 | Scope                               | Syntax                                                                                 |
 | ----------------------------------- | -------------------------------------------------------------------------------------- |
