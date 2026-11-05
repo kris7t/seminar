@@ -11,7 +11,9 @@ import {
   ViewColumn,
   window,
   workspace,
+  WorkspaceEdit,
   type Disposable,
+  type TextDocument,
   type TextEditor,
 } from 'vscode';
 
@@ -33,6 +35,7 @@ import {
   type SlideSource,
   type SourcePosition,
 } from './slideTable.ts';
+import { parseAttributeEdits, SourceEdits } from './sourceEdits.ts';
 
 /** The version of the messages, which both sides ignore if it isn't theirs. */
 const VERSION = 1;
@@ -119,6 +122,8 @@ export class DeckSync implements Disposable {
       opacity: 'var(--monaco-editor-unnecessary-decoration-opacity, 0.667)',
     },
   });
+  /** The attributes that previews edited since their sources were saved. */
+  readonly #edits = new SourceEdits();
   readonly #changed = new EventEmitter<undefined>();
   /** Fires when what is known of the active deck may have changed. */
   readonly onDidChange = this.#changed.event;
@@ -146,6 +151,9 @@ export class DeckSync implements Disposable {
     this.#send = send;
     const activeEditor = window.activeTextEditor;
     this.#active = activeEditor && deckOfUri(activeEditor.document.uri);
+    for (const document of workspace.textDocuments) {
+      this.#opened(document);
+    }
     this.#disposables = [
       this.#highlight,
       this.#sourceHighlight,
@@ -160,6 +168,20 @@ export class DeckSync implements Disposable {
       window.tabGroups.onDidChangeTabs(() => {
         this.#update();
       }),
+      workspace.onDidOpenTextDocument((document) => {
+        this.#opened(document);
+      }),
+      workspace.onDidSaveTextDocument((document) => {
+        // Pages show the edits until they compile the saved deck.
+        if (deckOfUri(document.uri) !== undefined) {
+          this.#edits.saved(document.uri.fsPath, document.getText());
+        }
+      }),
+      workspace.onDidCloseTextDocument((document) => {
+        if (this.#edits.closed(document.uri.fsPath)) {
+          this.#sendEdits(document.uri.fsPath, '');
+        }
+      }),
       workspace.onDidChangeTextDocument(({ document, contentChanges }) => {
         const file = document.uri.fsPath;
         const changes = contentChanges.map(({ range, text }) => ({
@@ -169,6 +191,17 @@ export class DeckSync implements Disposable {
           endColumn: range.end.character,
           text,
         }));
+        // Saving tells that the document is no longer dirty without changes.
+        if (
+          deckOfUri(document.uri) !== undefined &&
+          changes.length > 0 &&
+          (document.isDirty
+            ? this.#edits.changed(file, changes)
+            : // E.g., undone or reverted to what is saved.
+              this.#edits.saved(file, document.getText()))
+        ) {
+          this.#sendEdits(file, document.getText());
+        }
         const synced = this.#decks.get(file);
         if (synced !== undefined) {
           synced.table = shiftTable(synced.table, changes);
@@ -327,6 +360,7 @@ export class DeckSync implements Disposable {
       initial?: unknown;
       restored?: unknown;
       range?: PageRange;
+      edits?: unknown;
     } | null;
     if (deck === undefined || data?.version !== VERSION) {
       return;
@@ -360,8 +394,28 @@ export class DeckSync implements Disposable {
           error instanceof Error ? error.message : String(error),
         );
       });
+    } else if (message.event === 'editAttributes') {
+      this.#editAttributes(deck, project, data.edits).catch(
+        (error: unknown) => {
+          void window.showWarningMessage(
+            error instanceof Error ? error.message : String(error),
+          );
+        },
+      );
     } else if (message.event === 'slides' && Array.isArray(data.slides)) {
       synced.table = data.slides as SlideSource[];
+      // Also when a page starts, or compiles the deck again.
+      for (const file of this.#edits.files) {
+        const document = workspace.textDocuments.find(
+          ({ uri }) => uri.fsPath === file,
+        );
+        if (document !== undefined) {
+          this.#sendTo(synced, 'pendingAttributes', {
+            file,
+            entries: this.#edits.pending(file, document.getText()),
+          });
+        }
+      }
     } else if (message.event === 'contents' && Array.isArray(data.entries)) {
       synced.contents = data as unknown as DeckContents;
     } else if (message.event === 'steps' && Array.isArray(data.entries)) {
@@ -378,6 +432,76 @@ export class DeckSync implements Disposable {
       }
     }
     this.#update();
+  }
+
+  /** Starts keeping track of the changes of a deck that is saved. */
+  #opened(document: TextDocument): void {
+    if (deckOfUri(document.uri) !== undefined && !document.isDirty) {
+      this.#edits.saved(document.uri.fsPath, document.getText());
+    }
+  }
+
+  /** Tells the pages of decks the attributes edited in `file`, now `text`. */
+  #sendEdits(file: string, text: string): void {
+    const entries = this.#edits.pending(file, text);
+    for (const synced of this.#decks.values()) {
+      if (synced.live && isInside(synced.project, file)) {
+        this.#sendTo(synced, 'pendingAttributes', { file, entries });
+      }
+    }
+  }
+
+  /**
+   * Edits the attributes of directives of `deck` in `project`, or of the decks
+   * it includes, as a page asks for, in the sources of the editor, and tells
+   * the pages what they are now, also if they couldn't be edited.
+   */
+  async #editAttributes(
+    deck: string,
+    project: string,
+    data: unknown,
+  ): Promise<void> {
+    const edits = parseAttributeEdits(data);
+    if (edits === undefined) {
+      return;
+    }
+    const files = new Map<string, typeof edits>();
+    for (const edit of edits) {
+      const file = edit.file ?? deck;
+      if (!isInside(project, file)) {
+        return;
+      }
+      files.set(file, [...(files.get(file) ?? []), edit]);
+    }
+    const documents: TextDocument[] = [];
+    try {
+      const workspaceEdit = new WorkspaceEdit();
+      for (const [file, fileEdits] of files) {
+        const document = await workspace.openTextDocument(Uri.file(file));
+        documents.push(document);
+        if (!document.isDirty) {
+          this.#edits.saved(file, document.getText());
+        }
+        for (const { start, end, text } of this.#edits.edit(
+          file,
+          document.getText(),
+          fileEdits,
+        )) {
+          workspaceEdit.replace(
+            document.uri,
+            new Range(document.positionAt(start), document.positionAt(end)),
+            text,
+          );
+        }
+      }
+      if (!(await workspace.applyEdit(workspaceEdit))) {
+        throw new Error('The edits of the preview could not be made');
+      }
+    } finally {
+      for (const document of documents) {
+        this.#sendEdits(document.uri.fsPath, document.getText());
+      }
+    }
   }
 
   #close(synced: SyncedDeck): void {

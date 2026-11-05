@@ -29,6 +29,7 @@ export {
   directiveAttributeValue,
   getAttributeValue,
   remarkDirectiveQuotes,
+  type AttributeValue,
 } from './directives/attributeValues.ts';
 
 /** A location of the parser of JavaScript, with a column from 0. */

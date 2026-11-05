@@ -150,6 +150,15 @@ describe('shiftThrough', () => {
     });
   });
 
+  it('moves with text added at a position, unless it sticks to the start', () => {
+    expect(shiftThrough(second, [on(4, 11, 11, 'ab')])).toEqual({
+      line: 5,
+      column: 14,
+    });
+    expect(shiftThrough(second, [on(4, 11, 11, 'ab')], true)).toEqual(second);
+    expect(shiftThrough(second, [on(4, 11, 13, 'a')], true)).toEqual(second);
+  });
+
   it('applies changes in order', () => {
     expect(shiftThrough(second, [on(4, 8, 8, 'a'), on(4, 0, 0, 'b')])).toEqual({
       line: 5,

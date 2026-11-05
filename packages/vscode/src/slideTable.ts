@@ -57,15 +57,21 @@ export function slideAtLine(
 
 /**
  * Returns `position`, from 1, in the source with `change` applied: after the
- * change, it moves with what follows it, and inside of it, to its start.
+ * change, it moves with what follows it, and inside of it, to its start. Where
+ * text is added, it moves with what follows, unless it `sticksToStart`.
  */
 function shiftPosition(
   position: SourcePosition,
   { startLine, startColumn, endLine, endColumn, text }: SourceChange,
+  sticksToStart = false,
 ): SourcePosition {
   const line = position.line - 1;
   const column = position.column - 1;
-  if (line < startLine || (line === startLine && column < startColumn)) {
+  if (
+    line < startLine ||
+    (line === startLine &&
+      (column < startColumn || (sticksToStart && column === startColumn)))
+  ) {
     return position;
   }
   if (line < endLine || (line === endLine && column < endColumn)) {
@@ -84,12 +90,19 @@ function shiftPosition(
     : { line: line + newEndLine - endLine + 1, column: position.column };
 }
 
-/** Returns `position` in the source with `changes` applied, in order. */
+/**
+ * Returns `position` in the source with `changes` applied, in order, see
+ * `shiftPosition`.
+ */
 export function shiftThrough(
   position: SourcePosition,
   changes: readonly SourceChange[],
+  sticksToStart = false,
 ): SourcePosition {
-  return changes.reduce(shiftPosition, position);
+  return changes.reduce(
+    (shifted, change) => shiftPosition(shifted, change, sticksToStart),
+    position,
+  );
 }
 
 /**
