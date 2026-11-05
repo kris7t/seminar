@@ -59,6 +59,7 @@ function generate(
   ) as
     | {
         error?: { message: string };
+        seminarUnknownDirectives?: { message: string }[];
         embeddedCodes?: {
           id: string;
           snapshot: { getText: (start: number, end: number) => string };
@@ -159,6 +160,26 @@ describe('createDeckLanguagePlugin', () => {
     const text = directives?.snapshot.getText(0, 1000);
     expect(text).toContain('<_SeminarStepDirective only />');
     expect(text).not.toContain('level');
+    expect(code?.seminarUnknownDirectives).toBeUndefined();
+  });
+
+  it('finds unknown directives once components are known', () => {
+    const plugin = createDeckLanguagePlugin(false, 'react', {
+      typescript,
+      registry: () => ({
+        directives: { note: { source: './Note.tsx', exportName: 'Note' } },
+        codeBlocks: {},
+      }),
+    });
+    expect(
+      generate(
+        file,
+        '::note{level=2}\n\n::step[A]{only}\n\n::nope\n',
+        plugin,
+      )?.seminarUnknownDirectives?.map(({ message }) => message),
+    ).toEqual([
+      'Unknown directive `::nope`, keeping it as text; write `\\:` for a literal colon',
+    ]);
   });
 
   it('only parses math if the plugin that adds it is installed', () => {

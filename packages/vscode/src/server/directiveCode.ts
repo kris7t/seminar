@@ -35,7 +35,7 @@ const FORMS: Record<Directive['type'], string> = {
  * Seminar handles itself, which take precedence over components. The
  * attribute blocks of headings and images are directives, too.
  */
-const BUILT_IN: Readonly<Record<string, string>> = {
+export const BUILT_IN: Readonly<Record<string, string>> = {
   step: 'StepDirectiveAttributes',
   slide: 'SlideDirectiveAttributes',
   recap: 'RecapDirectiveAttributes',

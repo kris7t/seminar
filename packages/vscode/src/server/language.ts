@@ -8,6 +8,8 @@ import type { URI } from 'vscode-uri';
 
 import { generateDirectiveCode } from './directiveCode.ts';
 import type { DeckDirectiveComponents } from './directiveLoader.ts';
+import type { CodeWithUnknownDirectives } from './unknownDirectiveDiagnostics.ts';
+import { findUnknownDirectives } from './unknownDirectives.ts';
 
 /** The language of decks in the editor. */
 export const DECK_LANGUAGE = 'seminar-deck';
@@ -47,10 +49,11 @@ function snapshotOf(text: string): VirtualCode['snapshot'] {
 
 /**
  * Adds the virtual TypeScript of the directives of a deck to its `code`,
- * with those that have components once they're known.
+ * with those that have components once they're known, and then the directives
+ * that nothing handles.
  */
 function addDirectives(
-  code: (VirtualCode & { ast?: Root | undefined }) | undefined,
+  code: (CodeWithUnknownDirectives & { ast?: Root | undefined }) | undefined,
   file: string,
   source: string,
   directives: DirectiveRegistry,
@@ -66,6 +69,13 @@ function addDirectives(
     registry?.directives ?? {},
     registry?.codeBlocks,
   );
+  if (registry !== undefined) {
+    code.seminarUnknownDirectives = findUnknownDirectives(
+      source,
+      code.ast,
+      registry.directives,
+    );
+  }
   code.embeddedCodes = [
     ...(code.embeddedCodes ?? []),
     {

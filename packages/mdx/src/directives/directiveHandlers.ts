@@ -37,6 +37,28 @@ function sourceOf(state: State, node: Directive): string {
     : String(value).slice(start, end);
 }
 
+/**
+ * Returns the warning about the directive `node` if nothing handles its name:
+ * the content of container directives is kept, other directives are kept as
+ * text. Returns `undefined` for text directives without a label or
+ * attributes, like `:30` in `10:30`, which are probably not meant as
+ * directives.
+ */
+export function unknownDirectiveMessage(node: Directive): string | undefined {
+  const syntax = `${PREFIXES[node.type]}${node.name}`;
+  if (node.type === 'containerDirective') {
+    return `Ignoring the unknown directive \`${syntax}\``;
+  }
+  if (
+    node.type === 'leafDirective' ||
+    node.children.length > 0 ||
+    Object.keys(node.attributes ?? {}).length > 0
+  ) {
+    return `Unknown directive \`${syntax}\`, keeping it as text; write \`\\:\` for a literal colon`;
+  }
+  return undefined;
+}
+
 function handleDirective(
   state: State,
   node: Directive,
@@ -67,21 +89,12 @@ function handleDirective(
     });
     return node.type === 'containerDirective' ? state.all(node) : undefined;
   }
-  if (node.type === 'containerDirective') {
-    file?.message(`Ignoring the unknown directive \`${syntax}\``, { place });
-    return state.all(node);
+  const message = unknownDirectiveMessage(node);
+  if (message !== undefined) {
+    file?.message(message, { place });
   }
-  // A colon followed by a word, like in `10:30`, is probably not meant as a
-  // directive, unless it has a label or attributes.
-  if (
-    node.type === 'leafDirective' ||
-    node.children.length > 0 ||
-    Object.keys(node.attributes ?? {}).length > 0
-  ) {
-    file?.message(
-      `Unknown directive \`${syntax}\`, keeping it as text; write \`\\:\` for a literal colon`,
-      { place },
-    );
+  if (node.type === 'containerDirective') {
+    return state.all(node);
   }
   const text: ElementContent = { type: 'text', value: sourceOf(state, node) };
   return node.type === 'leafDirective'

@@ -16,6 +16,7 @@ export {
   readAttributeWords,
   type AttributeWord,
 } from './directives/attributeWords.ts';
+export { unknownDirectiveMessage } from './directives/directiveHandlers.ts';
 export { IMAGE_ATTRIBUTES } from './directives/remarkHeadingAttributes.ts';
 export {
   attributeValue,
