@@ -28,7 +28,7 @@ const DIRECTIVES = {
  */
 function complete(deck: string, invoked = false) {
   const offset = deck.indexOf('|');
-  const source = deck.replace('|', '');
+  const source = deck.slice(0, offset) + deck.slice(offset + 1);
   const root = unified()
     .use(remarkParse)
     .use(remarkMdx)

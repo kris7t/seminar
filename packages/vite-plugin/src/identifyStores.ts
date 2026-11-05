@@ -84,7 +84,7 @@ export function identifyStores(code: string, id: string): string | undefined {
   const root = program as unknown as AstNode;
   const names = definitionNames(root);
   if (names.size === 0) return undefined;
-  const module = id.replace(/\?.*$/, '');
+  const module = id.split('?', 1)[0] ?? id;
   const counts = new Map<string, number>();
   const edits: { start: number; end: number; text: string }[] = [];
   walk(root, (node, parent) => {
