@@ -89,8 +89,12 @@ interface Worker {
 interface Loaded {
   project: string;
   components: Promise<DeckDirectiveComponents>;
+  /** The components, once they are loaded. */
+  result?: DeckDirectiveComponents | undefined;
   /** The files that they were loaded from, once they are loaded. */
   dependencies: string[];
+  /** Whether they couldn't be loaded, until a file changes. */
+  failed: boolean;
 }
 
 /**
@@ -120,9 +124,7 @@ export class DirectiveLoader {
     if (project === undefined) {
       return Promise.reject(new Error(`${deck} isn't in a Vite project.`));
     }
-    const key = [project, path.dirname(deck), readDeckTheme(source) ?? ''].join(
-      '\0',
-    );
+    const key = this.#key(project, deck, source);
     const existing = this.#loaded.get(key);
     if (existing !== undefined) {
       return existing.components;
@@ -131,28 +133,48 @@ export class DirectiveLoader {
       project,
       components: this.#request(project, deck, source),
       dependencies: [],
+      failed: false,
     };
     this.#loaded.set(key, loaded);
     loaded.components.then(
-      ({ dependencies }) => {
-        loaded.dependencies = dependencies.map(realPath);
+      (result) => {
+        loaded.result = result;
+        loaded.dependencies = result.dependencies.map(realPath);
       },
       () => {
-        // Tries again the next time, e.g., once the config is fixed.
-        if (this.#loaded.get(key) === loaded) {
-          this.#loaded.delete(key);
-        }
+        loaded.failed = true;
       },
     );
     return loaded.components;
   }
 
   /**
+   * Returns the directive components of the deck at `deck` with `source`, if
+   * they are loaded, without loading them.
+   */
+  loaded(deck: string, source: string): DeckDirectiveComponents | undefined {
+    const project = findProject(deck);
+    return project === undefined
+      ? undefined
+      : this.#loaded.get(this.#key(project, deck, source))?.result;
+  }
+
+  #key(project: string, deck: string, source: string): string {
+    return [project, path.dirname(deck), readDeckTheme(source) ?? ''].join(
+      '\0',
+    );
+  }
+
+  /**
    * Forgets what was loaded from `file`, e.g., when it changes, and stops the
    * worker of its project, which may have cached it. If `file` is the Vite
    * config, or one it was loaded from, forgets everything of the project.
+   * Forgets what couldn't be loaded on any change, e.g., to try again once the
+   * config is fixed.
+   *
+   * @returns Whether it forgot anything.
    */
-  invalidate(changedFile: string): void {
+  invalidate(changedFile: string): boolean {
     const file = realPath(changedFile);
     const changed = new Set<string>();
     for (const [project, worker] of this.#workers) {
@@ -160,12 +182,15 @@ export class DirectiveLoader {
         changed.add(project);
       }
     }
-    for (const [key, { project, dependencies }] of this.#loaded) {
-      if (changed.has(project)) {
+    let forgot = false;
+    for (const [key, { project, dependencies, failed }] of this.#loaded) {
+      if (failed || changed.has(project)) {
         this.#loaded.delete(key);
+        forgot = true;
       } else if (dependencies.includes(file)) {
         this.#loaded.delete(key);
         changed.add(project);
+        forgot = true;
       }
     }
     for (const project of changed) {
@@ -174,6 +199,7 @@ export class DirectiveLoader {
         this.#stop(project, worker);
       }
     }
+    return forgot;
   }
 
   /** Stops the workers. */

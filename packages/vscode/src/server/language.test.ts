@@ -2,6 +2,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import typescript from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { createDeckLanguagePlugin, DECK_LANGUAGE } from './language.ts';
@@ -41,8 +42,11 @@ afterAll(() => {
   rmSync(directory, { recursive: true });
 });
 
-function generate(file: string, source: string) {
-  const plugin = createDeckLanguagePlugin();
+function generate(
+  file: string,
+  source: string,
+  plugin = createDeckLanguagePlugin(),
+) {
   const code = plugin.createVirtualCode?.(
     file,
     plugin.getLanguageId(file) ?? '',
@@ -114,6 +118,42 @@ describe('createDeckLanguagePlugin', () => {
       ({ id }) => id === 'md',
     );
     expect(markdown?.snapshot.getText(0, source.length)).toBe(source);
+  });
+
+  it('checks the directives of decks with TypeScript', () => {
+    const plugin = createDeckLanguagePlugin(false, 'react', {
+      typescript,
+      registry: (deck, source) =>
+        deck === file && source.includes('::note')
+          ? { note: { source: './Note.tsx', exportName: 'Note' } }
+          : undefined,
+    });
+    const code = generate(file, '# Slide\n\n::note{level=2}\n', plugin);
+    const directives = code?.embeddedCodes?.find(
+      ({ id }) => id === 'directives',
+    );
+    expect(directives?.snapshot.getText(0, 200)).toContain(
+      '<_SeminarDirective0 level={2} />',
+    );
+    expect(
+      plugin.typescript
+        ?.getExtraServiceScripts?.(file, code as never)
+        .map(({ fileName, scriptKind }) => [fileName, scriptKind]),
+    ).toEqual([[`${file}.directives.tsx`, typescript.ScriptKind.TSX]]);
+  });
+
+  it('has no TypeScript for directives until they are known', () => {
+    const plugin = createDeckLanguagePlugin(false, 'react', {
+      typescript,
+      registry: () => undefined,
+    });
+    const code = generate(file, '::note{level=2}\n', plugin);
+    expect(code?.embeddedCodes?.map(({ id }) => id)).not.toContain(
+      'directives',
+    );
+    expect(
+      plugin.typescript?.getExtraServiceScripts?.(file, code as never),
+    ).toEqual([]);
   });
 
   it('only parses math if the plugin that adds it is installed', () => {

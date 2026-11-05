@@ -123,11 +123,32 @@ describe('DirectiveLoader', () => {
     ).toEqual(['2']);
   });
 
+  it('tells which directives are loaded without loading them', async () => {
+    await vite();
+    const deck = path.join(project, 'talk.deck.mdx');
+    expect(loader.loaded(deck, '# Talk')).toBeUndefined();
+    const loading = loader.load(deck, '# Talk');
+    expect(loader.loaded(deck, '# Talk')).toBeUndefined();
+    const components = await loading;
+    expect(loader.loaded(deck, '# Changed')).toBe(components);
+  });
+
   it('tells why the config cannot be loaded', async () => {
     await vite('throw new Error("Broken config");');
     await expect(
       loader.load(path.join(project, 'talk.deck.mdx'), '# Talk'),
     ).rejects.toThrow('Broken config');
+  });
+
+  it('tries again to load the config once a file changes', async () => {
+    await vite('throw new Error("Broken config");');
+    const deck = path.join(project, 'talk.deck.mdx');
+    const failed = loader.load(deck, '# Talk');
+    await expect(failed).rejects.toThrow('Broken config');
+    expect(loader.load(deck, '# Talk')).toBe(failed);
+    await vite();
+    loader.invalidate(path.join(project, 'vite.config.js'));
+    expect((await loader.load(deck, '# Talk')).warnings).toEqual(['1']);
   });
 
   it('rejects decks outside of Vite projects', async () => {

@@ -2,6 +2,8 @@ import { bareAttributeWords } from '@seminar/mdx/syntax';
 import type { Code, Nodes } from 'mdast';
 import type { ContainerDirective, TextDirective } from 'mdast-util-directive';
 
+import { skipLabel } from './directiveSyntax.ts';
+
 /** A bare word among the props of something that can be a step. */
 export interface BareProp {
   word: string;
@@ -28,27 +30,6 @@ const ATTRIBUTE_BLOCK = /\{((?:"[^"]*"|'[^']*'|[^{}"'])*)\}/dy;
 
 /** Matches the comments of steps in diagrams, see `plugin-pele`. */
 const MERMAID_STEP = /^[> \t]*%%[ \t]*step(?:\[[^\]\r\n]*\])?[ \t]+(.*)$/dgm;
-
-/** Returns the offset after the label of a directive at `offset`, if any. */
-function skipLabel(source: string, offset: number): number {
-  if (source[offset] !== '[') {
-    return offset;
-  }
-  let depth = 0;
-  for (let index = offset; index < source.length; index += 1) {
-    if (source[index] === '\\') {
-      index += 1;
-    } else if (source[index] === '[') {
-      depth += 1;
-    } else if (source[index] === ']') {
-      depth -= 1;
-      if (depth === 0) {
-        return index + 1;
-      }
-    }
-  }
-  return source.length;
-}
 
 function wordsAt(text: string, offset: number): BareProp[] {
   return bareAttributeWords(text).map(({ word, index }) => ({

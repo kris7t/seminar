@@ -1,16 +1,77 @@
 import { createMdxLanguagePlugin } from '@mdx-js/language-service';
 import { deckSyntaxPlugins, findPackage } from '@seminar/mdx/syntax';
 import type { LanguagePlugin, VirtualCode } from '@volar/language-server';
+import type { Root } from 'mdast';
 import remarkMath from 'remark-math';
+import type ts from 'typescript';
 import type { URI } from 'vscode-uri';
+
+import { generateDirectiveCode } from './directiveCode.ts';
+import type { DirectiveComponent } from './directiveLoader.ts';
 
 /** The language of decks in the editor. */
 export const DECK_LANGUAGE = 'seminar-deck';
 
 const MATH_PLUGIN = '@seminar/plugin-mathjax';
 
+/** The id of the virtual code of the directives of a deck. */
+const DIRECTIVES = 'directives';
+
+/**
+ * Returns the components of the directives of the deck at `file` with
+ * `source`, if they are known.
+ */
+export type DirectiveRegistry = (
+  file: string,
+  source: string,
+) => Readonly<Record<string, DirectiveComponent>> | undefined;
+
+/** What checks the directives of decks against the props of components. */
+export interface DirectiveChecking {
+  typescript: typeof ts;
+  registry: DirectiveRegistry;
+}
+
 function pathOf(file: URI | string): string {
   return typeof file === 'string' ? file : file.fsPath;
+}
+
+function snapshotOf(text: string): VirtualCode['snapshot'] {
+  return {
+    getText: (start, end) => text.slice(start, end),
+    getLength: () => text.length,
+    getChangeRange: () => undefined,
+  };
+}
+
+/**
+ * Adds the virtual TypeScript of the directives of a deck to its `code`, if
+ * the components of its directives are known.
+ */
+function addDirectives(
+  code: (VirtualCode & { ast?: Root | undefined }) | undefined,
+  file: string,
+  source: string,
+  directives: DirectiveRegistry,
+) {
+  const components = code?.ast && directives(file, source);
+  if (code?.ast === undefined || components === undefined) {
+    return;
+  }
+  const { text, mappings } = generateDirectiveCode(
+    source,
+    code.ast,
+    components,
+  );
+  code.embeddedCodes = [
+    ...(code.embeddedCodes ?? []),
+    {
+      id: DIRECTIVES,
+      languageId: 'typescriptreact',
+      snapshot: snapshotOf(text),
+      mappings,
+    },
+  ];
 }
 
 /**
@@ -36,7 +97,8 @@ function blankFrontmatter(code: VirtualCode | undefined) {
 
 /**
  * Creates the language plugin of decks, which turns them into virtual
- * JavaScript and Markdown documents with the language service of MDX.
+ * JavaScript and Markdown documents with the language service of MDX, and
+ * the directives that have components into TypeScript, with `directives`.
  *
  * The syntax has to match the compiler. Reading the configs of decks would run
  * code of the workspace, so `$` starts math whenever the plugin that adds it
@@ -45,6 +107,7 @@ function blankFrontmatter(code: VirtualCode | undefined) {
 export function createDeckLanguagePlugin(
   checkMdx = false,
   jsxImportSource = 'react',
+  directives?: DirectiveChecking,
 ): LanguagePlugin<URI | string> {
   const create = (plugins: Parameters<typeof deckSyntaxPlugins>[0]) =>
     createMdxLanguagePlugin(
@@ -67,7 +130,33 @@ export function createDeckLanguagePlugin(
         findPackage(MATH_PLUGIN, pathOf(file)) === undefined ? plain : withMath;
       const code = plugin.createVirtualCode?.(file, 'mdx', snapshot, context);
       blankFrontmatter(code);
+      if (directives !== undefined) {
+        addDirectives(
+          code,
+          pathOf(file),
+          snapshot.getText(0, snapshot.getLength()),
+          directives.registry,
+        );
+      }
       return code;
     },
+    ...(plain.typescript && {
+      typescript: {
+        ...plain.typescript,
+        getExtraServiceScripts(fileName, root) {
+          const code = root.embeddedCodes?.find(({ id }) => id === DIRECTIVES);
+          return code === undefined || directives === undefined
+            ? []
+            : [
+                {
+                  fileName: `${fileName}.directives.tsx`,
+                  code,
+                  extension: '.tsx',
+                  scriptKind: directives.typescript.ScriptKind.TSX,
+                },
+              ];
+        },
+      },
+    }),
   };
 }

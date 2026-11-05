@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import path from 'node:path';
 
+import type { Language } from '@volar/language-server';
 import {
   createConnection,
   createServer,
@@ -9,8 +10,14 @@ import {
 } from '@volar/language-server/node.js';
 import { URI } from 'vscode-uri';
 
-import { DirectiveLoader } from './directiveLoader.ts';
-import { createDeckLanguagePlugin } from './language.ts';
+import {
+  DirectiveLoader,
+  type DeckDirectiveComponents,
+} from './directiveLoader.ts';
+import {
+  createDeckLanguagePlugin,
+  type DirectiveRegistry,
+} from './language.ts';
 import { createDeckServicePlugins } from './services.ts';
 
 process.title = 'seminar-language-server';
@@ -18,6 +25,41 @@ process.title = 'seminar-language-server';
 const connection = createConnection();
 const server = createServer(connection);
 const directives = new DirectiveLoader();
+/** Changes when directive components are loaded or forgotten. */
+let directivesVersion = 0;
+/** The languages of the projects, to update their decks. */
+const languages = new Set<Language>();
+/** The decks that were given directive components, or are waiting for them. */
+const decksWithDirectives = new Set<string>();
+const loading = new WeakSet<Promise<DeckDirectiveComponents>>();
+
+/** Generates the code of the decks again, e.g., with new directives. */
+function updateDecks(): void {
+  directivesVersion += 1;
+  for (const language of languages) {
+    for (const deck of decksWithDirectives) {
+      language.scripts.delete(URI.file(deck));
+    }
+  }
+  void server.languageFeatures.requestRefresh(false);
+}
+
+/**
+ * Returns the directive components of a deck if they are loaded, and loads
+ * them otherwise, updating the deck once they are.
+ */
+const directiveRegistry: DirectiveRegistry = (file, source) => {
+  decksWithDirectives.add(file);
+  const loaded = directives.loaded(file, source);
+  if (loaded === undefined) {
+    const load = directives.load(file, source);
+    if (!loading.has(load)) {
+      loading.add(load);
+      load.then(updateDecks, () => undefined);
+    }
+  }
+  return loaded?.directives;
+};
 
 /**
  * Returns the directive components of the deck at `uri`, as the Vite config of
@@ -53,9 +95,26 @@ connection.onInitialize((parameters) => {
     createTypeScriptProject(
       typescript,
       diagnosticMessages,
-      ({ configFileName }) => {
+      ({ configFileName, projectHost }) => {
+        // TypeScript only sees new code of decks in new versions of projects.
+        const { getProjectVersion } = projectHost;
+        if (getProjectVersion !== undefined) {
+          projectHost.getProjectVersion = () =>
+            `${getProjectVersion.call(projectHost)}:${String(directivesVersion)}`;
+        }
+        const setup = ({ language }: { language: Language }) => {
+          languages.add(language);
+        };
         if (configFileName === undefined) {
-          return { languagePlugins: [createDeckLanguagePlugin()] };
+          return {
+            languagePlugins: [
+              createDeckLanguagePlugin(false, 'react', {
+                typescript,
+                registry: directiveRegistry,
+              }),
+            ],
+            setup,
+          };
         }
         const config = typescript.parseJsonSourceFileConfigFileContent(
           typescript.readJsonConfigFile(configFileName, (file) =>
@@ -73,8 +132,10 @@ connection.onInitialize((parameters) => {
                 (config.raw as { mdx?: { checkMdx?: unknown } }).mdx?.checkMdx,
               ),
               config.options.jsxImportSource,
+              { typescript, registry: directiveRegistry },
             ),
           ],
+          setup,
         };
       },
     ),
@@ -94,8 +155,11 @@ connection.onInitialized(() => {
     '**/*.{mdx,cjs,cts,js,jsx,json,mjs,mts,ts,tsx}',
   ]);
   server.fileWatcher.onDidChangeWatchedFiles(({ changes }) => {
-    for (const { uri } of changes) {
-      directives.invalidate(URI.parse(uri).fsPath);
+    const forgot = changes
+      .map(({ uri }) => directives.invalidate(URI.parse(uri).fsPath))
+      .includes(true);
+    if (forgot) {
+      updateDecks();
     }
   });
 });
