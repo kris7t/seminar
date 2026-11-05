@@ -496,7 +496,11 @@ export class DeckSync implements Disposable {
           );
         }
       }
-      if (!(await workspace.applyEdit(workspaceEdit))) {
+      // VS Code tells that edits without changes weren't made.
+      if (
+        workspaceEdit.size > 0 &&
+        !(await workspace.applyEdit(workspaceEdit))
+      ) {
         throw new Error('The edits of the preview could not be made');
       }
     } finally {
