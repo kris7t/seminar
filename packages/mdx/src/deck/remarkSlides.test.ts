@@ -491,8 +491,44 @@ More
           ({ cut, fade, master }) => ({ cut, fade, master }),
         ),
       ).toEqual([
-        { cut: '', fade: undefined, master: 'content' },
-        { cut: 'in after', fade: '300', master: 'content' },
+        { cut: true, fade: undefined, master: 'content' },
+        { cut: 'in after', fade: 300, master: 'content' },
+      ]);
+    });
+  });
+
+  describe('props from attributes', () => {
+    it('gives values their types, except for step paths and ids', async () => {
+      expect(
+        (
+          await slides(
+            '## 2024 {from=2 to="3" split=1 columns=2 label="2"}\n\n## B {split=false}',
+          )
+        ).map(({ id, from, to, split, columns, label }) => ({
+          id,
+          from,
+          to,
+          split,
+          columns,
+          label,
+        })),
+      ).toEqual([
+        {
+          id: '2024',
+          from: '2',
+          to: '3',
+          split: '1',
+          columns: 2,
+          label: '2',
+        },
+        {
+          id: 'b',
+          from: undefined,
+          to: undefined,
+          split: false,
+          columns: undefined,
+          label: undefined,
+        },
       ]);
     });
   });

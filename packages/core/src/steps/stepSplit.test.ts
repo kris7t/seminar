@@ -24,7 +24,7 @@ describe('parseStepSplit', () => {
       mode: undefined,
       points: ['before', 'last'],
     });
-    expect(summarize(parseStepSplit(''))).toEqual({
+    expect(summarize(parseStepSplit(true))).toEqual({
       mode: undefined,
       points: ['initial'],
     });
@@ -67,9 +67,9 @@ describe('parseSlideSplit', () => {
 });
 
 describe('parseOverlay', () => {
-  it('reads flags from props and MDX', () => {
-    expect(parseOverlay('')).toBe(true);
-    expect(parseOverlay('false')).toBe(false);
+  it('reads flags', () => {
+    expect(parseOverlay(true)).toBe(true);
+    expect(parseOverlay(false)).toBe(false);
     expect(parseOverlay(undefined)).toBeUndefined();
   });
 });

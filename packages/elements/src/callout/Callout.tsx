@@ -388,15 +388,14 @@ const CalloutContent = styled('span', {
 
 const INITIAL_HEIGHT = 64;
 
-function finiteNumber(value: unknown, fallback: number): number {
-  const converted = Number(value);
-  return Number.isFinite(converted) ? converted : fallback;
+function finiteNumber(value: number | undefined, fallback: number): number {
+  return optionalFiniteNumber(value) ?? fallback;
 }
 
-function optionalFiniteNumber(value: unknown): number | undefined {
-  if (value === undefined) return undefined;
-  const converted = Number(value);
-  return Number.isFinite(converted) ? converted : undefined;
+function optionalFiniteNumber(value: number | undefined): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function fromAnchorOrigin(

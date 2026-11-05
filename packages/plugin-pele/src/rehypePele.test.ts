@@ -75,16 +75,16 @@ describe('rehypePele', () => {
     );
     expect(code).toContain('id: "pipeline"');
     expect(code).toContain('className: "wide"');
-    expect(code).toContain('step: ""');
+    expect(code).toContain('step: true');
   });
 
   it('takes the size of diagrams after the language', async () => {
     const { code } = await compileDeck(
       '```mermaid width=600 scale=1.5 fontSize=12\nflowchart LR\n  A --> B\n```',
     );
-    expect(code).toContain('width: "600"');
-    expect(code).toContain('scale: "1.5"');
-    expect(code).toContain('fontSize: "12"');
+    expect(code).toContain('width: 600');
+    expect(code).toContain('scale: 1.5');
+    expect(code).toContain('fontSize: 12');
   });
 
   it('steps the items of diagrams', async () => {
@@ -93,7 +93,7 @@ describe('rehypePele', () => {
     );
     expect(messages).toEqual([]);
     expect(code.replaceAll(/\s+/g, '')).toContain(
-      'steps:[{"items":["B","L_A_B_0"],"props":{"only":"","title":"Render"},"steps":[]}]',
+      'steps:[{"items":["B","L_A_B_0"],"props":{"only":true,"title":"Render"},"steps":[]}]',
     );
   });
 

@@ -15,6 +15,7 @@ import {
   createEsm,
   createExpressionAttribute,
   createStringAttribute,
+  createValueAttribute,
   EXPLICIT_JSX_HAST,
   getStepProps,
   parseAttributeWords,
@@ -205,7 +206,7 @@ export function rehypePele(): (tree: Root, file: VFile) => Promise<void> {
               ]),
           // Like the attributes of `:step`, e.g., `#id .class step group=…`.
           ...getStepProps(attributes, file).map(([name, value]) =>
-            createStringAttribute(name, value),
+            createValueAttribute(name, value),
           ),
         ],
         children: [],

@@ -205,7 +205,7 @@ const ghostTheme = () =>
     } as Record<string, StepAppearances>,
   });
 
-const ghost = { ghost: '' } as UseStepsOptions;
+const ghost = { ghost: true } as UseStepsOptions;
 
 describe('the logic of steps', () => {
   afterEach(() => {
@@ -363,19 +363,16 @@ describe('the logic of steps', () => {
       expect(slide.shown).toEqual(['*joins', '*in joins', '*with', '*in with']);
     });
 
-    it.each([[false], ['false' as const]])(
-      'treats step=%j like with="parent", unless with is set',
-      (step) => {
-        const slide = new TestSlide();
-        slide.step('first', { with: 'initial' });
-        slide.step('inside', {}, slide.step('not a step', { step }));
-        slide.step('own', { step, with: 'self' });
-        expect(slide.shown).toEqual(['*first', '*not a step']);
-        expect(slide.next().path).toBe('1');
-        expect(slide.next().path).toBe('2');
-        expect(slide.shown).toContain('*own');
-      },
-    );
+    it('treats step=false like with="parent", unless with is set', () => {
+      const slide = new TestSlide();
+      slide.step('first', { with: 'initial' });
+      slide.step('inside', {}, slide.step('not a step', { step: false }));
+      slide.step('own', { step: false, with: 'self' });
+      expect(slide.shown).toEqual(['*first', '*not a step']);
+      expect(slide.next().path).toBe('1');
+      expect(slide.next().path).toBe('2');
+      expect(slide.shown).toContain('*own');
+    });
 
     it('places with="parent" with what encloses it', () => {
       const slide = new TestSlide();
@@ -1171,12 +1168,12 @@ describe('the logic of steps', () => {
     it.each([
       ['before', ['1', '3']],
       // A bare `split` makes a page of the step when it's shown.
-      ['', ['2', '3']],
+      [true, ['2', '3']],
       ['last none', ['2.2', '3']],
     ])('makes pages for split=%j', (split, pages) => {
       const slide = new TestSlide();
       slide.step('A');
-      const b = slide.step('B', { split: split as 'before' });
+      const b = slide.step('B', { split: split as 'before' | true });
       slide.step('B.1', {}, b);
       slide.step('B.2', {}, b);
       slide.step('C');
@@ -1216,7 +1213,7 @@ describe('the logic of steps', () => {
       const slide = new TestSlide();
       slide.step('figure');
       slide.step('first', { overlay: true });
-      slide.step('second', { overlay: '' });
+      slide.step('second', { overlay: true });
       slide.step('text');
       expect(slide.pages).toEqual(['1', '4']);
       expect(slide.tree).toEqual([

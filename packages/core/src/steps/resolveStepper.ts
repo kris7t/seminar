@@ -21,11 +21,11 @@ export function resolveStepperWith({
 }: UseStepsOptions): StepWith | undefined {
   return (
     withStep ??
-    (initial === true || initial === ''
+    (initial === true
       ? 'initial'
-      : step === true || step === ''
+      : step === true
         ? 'self'
-        : step === false || step === 'false'
+        : step === false
           ? 'parent'
           : undefined)
   );

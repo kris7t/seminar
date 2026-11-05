@@ -8,6 +8,7 @@ import type { LeafDirective } from 'mdast-util-directive';
 import { toString } from 'mdast-util-to-string';
 import type { VFile } from 'vfile';
 
+import { attributeValueOf } from '../directives/attributeValues.ts';
 import { getAttributes } from '../directives/directives.ts';
 import { createEsm } from '../utils/estree.ts';
 import { EXPLICIT_JSX, NOTES } from '../utils/jsx.ts';
@@ -362,9 +363,9 @@ export function includeSlides(
     return [];
   }
   const { slides: source, exports, depth, lang: deckLang } = structure;
-  const { id, classes, attributes } = getAttributes(directive);
-  const copy = attributes.get('copy');
-  const isCopy = copy === '' || copy === 'true';
+  const parsed = getAttributes(directive);
+  const { id, classes, attributes } = parsed;
+  const isCopy = attributeValueOf(parsed, 'copy') === true;
 
   // Imports each component once.
   const imported = new Map<number, string>();
@@ -565,7 +566,7 @@ export function includeSlides(
         copyRange(draft, attributes, END_BOUNDS);
       }
       draft.tocTitle = attributes.get('title');
-      draft.spareAttribute = attributes.get('spare');
+      draft.spareAttribute = attributeValueOf(parsed, 'spare');
       const lang = attributes.get('lang');
       if (lang !== undefined && !isRecap) {
         draft.attributes.set('lang', lang);
@@ -587,7 +588,7 @@ export function includeSlides(
       division.id = id ?? division.id;
       division.tocTitle = attributes.get('title') ?? division.tocTitle;
       // The division is spare like a slide of this deck.
-      division.spareAttribute = attributes.get('spare');
+      division.spareAttribute = attributeValueOf(parsed, 'spare');
     }
     return included;
   }
@@ -761,9 +762,9 @@ function expandSelfInclude(
   const label = toString(directive).trim();
   const hash = label.lastIndexOf('#');
   const targetId = hash < 0 ? undefined : label.slice(hash + 1);
-  const { id, classes, attributes } = getAttributes(directive);
-  const copy = attributes.get('copy');
-  const isCopy = copy === '' || copy === 'true';
+  const parsed = getAttributes(directive);
+  const { id, classes, attributes } = parsed;
+  const isCopy = attributeValueOf(parsed, 'copy') === true;
   const report = (allowed: ReadonlySet<string>, form: string) => {
     for (const attribute of [
       ...classes.map((name) => `.${name}`),
@@ -873,7 +874,7 @@ function expandSelfInclude(
         copyRange(draft, attributes, END_BOUNDS);
       }
       draft.tocTitle = attributes.get('title') ?? draft.tocTitle;
-      draft.spareAttribute = attributes.get('spare');
+      draft.spareAttribute = attributeValueOf(parsed, 'spare');
       draft.level = undefined;
       draft.division = false;
       draft.place = place;
@@ -895,7 +896,7 @@ function expandSelfInclude(
         division.id = id;
       }
       division.tocTitle = attributes.get('title') ?? division.tocTitle;
-      division.spareAttribute = attributes.get('spare');
+      division.spareAttribute = attributeValueOf(parsed, 'spare');
     }
     return included;
   }

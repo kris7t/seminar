@@ -205,7 +205,7 @@ export function splitShorthands<Props extends object>(
         return true;
       }
       // `false` turns the shorthand off, e.g., `only={false}`.
-      if (value === true || value === '') {
+      if (value === true) {
         behavior = name as StepBehavior;
       }
       return false;

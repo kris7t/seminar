@@ -14,6 +14,7 @@ import type {
 } from 'mdast-util-mdx';
 import type { VFile } from 'vfile';
 
+import { attributeValueOf } from '../directives/attributeValues.ts';
 import { getAttributes, takeDirective } from '../directives/directives.ts';
 import { IMAGE_ATTRIBUTES } from '../directives/remarkHeadingAttributes.ts';
 import { getStepProps } from '../steps/remarkSteps.ts';
@@ -21,6 +22,7 @@ import {
   createEsm,
   createExpressionAttribute,
   createStringAttribute,
+  createValueAttribute,
 } from '../utils/estree.ts';
 import { EXPLICIT_JSX, IMAGE, NOTES } from '../utils/jsx.ts';
 
@@ -107,7 +109,8 @@ function convertImage(
   if (source === undefined) {
     return undefined;
   }
-  const { id, classes, attributes: others } = getAttributes(attributes ?? {});
+  const imageAttributes = getAttributes(attributes ?? {});
+  const { id, classes, attributes: others } = imageAttributes;
   const jsxAttributes: MdxJsxAttribute[] = [
     sourceAttribute(source.url, images),
     // Images decide what to do without alt text, e.g., with a caption.
@@ -131,14 +134,16 @@ function convertImage(
       : [
           { type: 'mdxJsxAttribute', name: 'step', value: null } as const,
           ...getStepProps(getAttributes(options.step), images.file).map(
-            ([name, value]) => createStringAttribute(name, value),
+            ([name, value]) => createValueAttribute(name, value),
           ),
         ]),
     ...(id === undefined ? [] : [createStringAttribute('id', id)]),
     ...(classes.length === 0
       ? []
       : [createStringAttribute('className', classes.join(' '))]),
-    ...[...others].map(([name, value]) => createStringAttribute(name, value)),
+    ...[...others.keys()].map((name) =>
+      createValueAttribute(name, attributeValueOf(imageAttributes, name) ?? ''),
+    ),
   ];
   const element = {
     type: options.block ? 'mdxJsxFlowElement' : 'mdxJsxTextElement',

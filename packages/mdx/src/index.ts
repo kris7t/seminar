@@ -74,8 +74,10 @@ export {
 export { parseAttributeWords } from './directives/attributeWords.ts';
 export {
   attributeValue,
+  attributeValueOf,
   getAttributeValue,
   remarkDirectiveQuotes,
+  type AttributeValue,
 } from './directives/attributeValues.ts';
 export { getAttributes, type Attributes } from './directives/directives.ts';
 export { getStepProps } from './steps/remarkSteps.ts';
@@ -83,5 +85,6 @@ export {
   createEsm,
   createExpressionAttribute,
   createStringAttribute,
+  createValueAttribute,
 } from './utils/estree.ts';
 export { EXPLICIT_JSX, EXPLICIT_JSX_HAST } from './utils/jsx.ts';

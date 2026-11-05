@@ -13,32 +13,31 @@ export type FadeSide = 'before' | 'after' | 'in' | 'out';
 
 /**
  * Which fades of a slide or step to cut, i.e., to change at once, whatever
- * other slides or steps ask for: all of them with `true`, or the
- * empty string of a bare `cut` in MDX, e.g., for a slide with a background of
- * its own, none with `false`, or some sides (see {@link FadeSide}), e.g.,
- * `'in'`, `['in', 'after']`, or `'in after'` in an attribute of MDX.
+ * other slides or steps ask for: all of them with `true`, e.g., of a bare
+ * `cut` in MDX, for a slide with a background of its own, none with `false`,
+ * or some sides (see {@link FadeSide}), e.g., `'in'`, `['in', 'after']`, or
+ * `'in after'` in an attribute of MDX.
  */
 export type CutProp =
-  boolean | '' | FadeSide | readonly FadeSide[] | `${FadeSide} ${string}`;
+  boolean | FadeSide | readonly FadeSide[] | `${FadeSide} ${string}`;
 
 /**
  * Props that set how long the fades of a slide or step take at least, in
- * milliseconds, e.g., `300`, or `'300'` from MDX. A duration of 0 asks for
- * no time, unlike a cut.
+ * milliseconds, e.g., `300`. A duration of 0 asks for no time, unlike a cut.
  */
 export interface FadeProps {
   /** Which fades to cut, i.e., to change at once (see {@link CutProp}). */
   cut?: CutProp | undefined;
   /** Duration of the fades on all sides. */
-  fade?: number | string | undefined;
+  fade?: number | undefined;
   /** Duration of the fades into it. */
-  fadeIn?: number | string | undefined;
+  fadeIn?: number | undefined;
   /** Duration of the fades out of it. */
-  fadeOut?: number | string | undefined;
+  fadeOut?: number | undefined;
   /** Duration of the fades with the one before it. */
-  fadeBefore?: number | string | undefined;
+  fadeBefore?: number | undefined;
   /** Duration of the fades with the one after it. */
-  fadeAfter?: number | string | undefined;
+  fadeAfter?: number | undefined;
 }
 
 /** Values of {@link FadeProps}, e.g., from MDX, which are checked when read. */
@@ -63,10 +62,10 @@ const ALL_CUTS: Cuts = new Set(['all']);
  * none.
  */
 export function parseCuts(value: unknown): Cuts | undefined {
-  if (value === true || value === '' || value === 'true') {
+  if (value === true) {
     return ALL_CUTS;
   }
-  if (value === false || value === 'false') {
+  if (value === false) {
     return NO_CUTS;
   }
   const tokens: unknown[] | undefined =
@@ -88,15 +87,11 @@ const SIDE_FADES = {
   after: 'fadeAfter',
 } as const satisfies Record<FadeSide, keyof FadeProps>;
 
-/** Reads a duration in milliseconds, e.g., `'300'` from MDX. */
+/** Reads a duration in milliseconds, e.g., `300`. */
 export function parseDuration(value: unknown): number | undefined {
-  const duration =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string' && value.trim() !== ''
-        ? Number(value)
-        : Number.NaN;
-  return Number.isFinite(duration) && duration >= 0 ? duration : undefined;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
 }
 
 /**

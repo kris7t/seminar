@@ -14,8 +14,8 @@ import type { VFile } from 'vfile';
 
 import {
   createEsm,
-  createExpressionAttribute,
   createStringAttribute,
+  createValueAttribute,
 } from '../utils/estree.ts';
 import { getAttributeValue } from './attributeValues.ts';
 import { EXPLICIT_JSX } from '../utils/jsx.ts';
@@ -134,11 +134,8 @@ function attributesOf(directive: Directive): MdxJsxAttribute[] {
         createStringAttribute(name === 'class' ? 'className' : name, value),
       ];
     }
-    const typed = getAttributeValue(directive, name);
     return [
-      typeof typed === 'string'
-        ? createStringAttribute(name, typed)
-        : createExpressionAttribute(name, JSON.stringify(typed)),
+      createValueAttribute(name, getAttributeValue(directive, name) ?? value),
     ];
   });
 }

@@ -3,6 +3,7 @@ import type { MdxJsxFlowElementHast } from 'mdast-util-mdx-jsx';
 import {
   createEsm,
   createStringAttribute,
+  createValueAttribute,
   EXPLICIT_JSX_HAST,
   getStepProps,
   parseAttributeWords,
@@ -116,7 +117,7 @@ export function rehypeShiki(): (tree: Root, file: VFile) => Promise<void> {
           createStringAttribute('code', block.code),
           // Like the attributes of `:step`, e.g., `#id .class step group=…`.
           ...getStepProps(attributes, file).map(([name, value]) =>
-            createStringAttribute(name, value),
+            createValueAttribute(name, value),
           ),
         ],
         children: [rendered],

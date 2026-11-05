@@ -222,7 +222,7 @@ describe('Diagram', () => {
             source={'flowchart LR\n  A[Parse] --> B[Render] --> C[Show]'}
             diagrams={[flowchart]}
             id="pipeline"
-            steps={[{ items: ['B'], props: { only: '' } }, { items: ['C'] }]}
+            steps={[{ items: ['B'], props: { only: true } }, { items: ['C'] }]}
           />
         </Slide>
       </Deck>,
@@ -266,7 +266,7 @@ describe('Diagram', () => {
     render(
       <Deck>
         <Slide title="Diagram">
-          <Diagram source={WIDE} diagrams={[flowchart]} scale="1.5" />
+          <Diagram source={WIDE} diagrams={[flowchart]} scale={1.5} />
         </Slide>
       </Deck>,
     );

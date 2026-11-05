@@ -41,7 +41,7 @@ export interface DiagramStep {
   /** The ids of the items that the step shows. */
   items: readonly string[];
   /** The props of the step, like those of `Step`, e.g., `group` or `only`. */
-  props?: Readonly<Record<string, string>> | undefined;
+  props?: Readonly<Record<string, string | number | boolean>> | undefined;
   /** The steps nested in this step, e.g., of the items in a cluster. */
   steps?: readonly DiagramStep[] | undefined;
 }
@@ -80,7 +80,7 @@ export interface DiagramProps extends Omit<
    * How large the diagram is, compared to its size with the text of diagrams
    * of the slide, e.g., `1.5`. Defaults to 1.
    */
-  scale?: number | string | undefined;
+  scale?: number | undefined;
   /**
    * The size of the text of the diagram, before scaling, in logical slide
    * pixels or any CSS length, e.g., `0.6em` of the text around it. Defaults
@@ -209,10 +209,12 @@ function groupOf(
   name: string | undefined,
 ): string | undefined {
   const [first] = step.items;
-  return (
-    step.props?.['group'] ??
-    (name === undefined || first === undefined ? undefined : `${name}.${first}`)
-  );
+  const group = step.props?.['group'];
+  return typeof group === 'string'
+    ? group
+    : name === undefined || first === undefined
+      ? undefined
+      : `${name}.${first}`;
 }
 
 /** Returns the groups of the steps that show each item of `steps`. */
@@ -234,9 +236,8 @@ function groupsOfItems(
 }
 
 /** Returns the factor of `scale`, or 1 if it isn't a positive number. */
-function scaleOf(scale: number | string): number {
-  const factor = Number(scale);
-  return Number.isFinite(factor) && factor > 0 ? factor : 1;
+function scaleOf(scale: number): number {
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
 }
 
 interface RenderedSvgProps {

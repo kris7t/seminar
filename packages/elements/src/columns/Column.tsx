@@ -38,7 +38,7 @@ export interface ColumnProps extends Omit<
    * How much of the width of the row the column takes, compared to the other
    * columns without a width, e.g., `2` for twice as much. Defaults to 1.
    */
-  grow?: number | string | undefined;
+  grow?: number | undefined;
   children?: ReactNode;
 }
 
@@ -73,7 +73,7 @@ const ColumnRoot = styled(Step, {
   overridesResolver: (_props, styles) => styles['root'],
 })<{ ownerState: ColumnOwnerState }>(({ ownerState }) => {
   const width = cssLength(ownerState.width);
-  const grow = Number(ownerState.grow ?? 1);
+  const grow = ownerState.grow ?? 1;
   return {
     // Columns without a width share the row by their growth, regardless of
     // their content, and may shrink below it.

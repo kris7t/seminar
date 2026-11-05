@@ -100,7 +100,7 @@ Three :step
     ).toEqual([
       '<Step component="div" id="box"><Paragraph>One</Paragraph><ul>\n' +
         '<ListItem>Two</ListItem>\n</ul></Step>' +
-        '<Step component="section" only=""><Paragraph step=true>Three</Paragraph></Step>',
+        '<Step component="section" only=true><Paragraph step=true>Three</Paragraph></Step>',
     ]);
   });
 
@@ -180,7 +180,7 @@ Then that.
 
   it('passes initial to the step', async () => {
     expect(await content('- :step{initial swap} A')).toEqual([
-      '<ul>\n<ListItem step=true initial="" swap="">A</ListItem>\n</ul>',
+      '<ul>\n<ListItem step=true initial=true swap=true>A</ListItem>\n</ul>',
     ]);
   });
 
@@ -188,8 +188,8 @@ Then that.
     expect(
       await content('- :step{step=false} A\n\nB :step{step=false}'),
     ).toEqual([
-      '<ul>\n<ListItem step="false">A</ListItem>\n</ul>' +
-        '<Paragraph step="false">B</Paragraph>',
+      '<ul>\n<ListItem step=false>A</ListItem>\n</ul>' +
+        '<Paragraph step=false>B</Paragraph>',
     ]);
   });
 
@@ -237,10 +237,22 @@ Then that.
     ]);
   });
 
+  it('gives values their types, except for names', async () => {
+    expect(
+      await content(
+        '- :step{group=1 in=2 after=3 fade=500 data-x="6"} A\n\n' +
+          'B :step[C]{title=4 component=span overlay=false}',
+      ),
+    ).toEqual([
+      '<ul>\n<ListItem step=true group="1" in="2" after="3" fade=500 data-x="6">A</ListItem>\n</ul>' +
+        '<Paragraph>B <Step title="4" component="span" overlay=false>C</Step></Paragraph>',
+    ]);
+  });
+
   it('passes shorthands of behaviors to the step', async () => {
     expect(await content('- :step{only} A\n\n:step{dim} B')).toEqual([
-      '<ul>\n<ListItem step=true only="">A</ListItem>\n</ul>' +
-        '<Paragraph step=true dim="">B</Paragraph>',
+      '<ul>\n<ListItem step=true only=true>A</ListItem>\n</ul>' +
+        '<Paragraph step=true dim=true>B</Paragraph>',
     ]);
   });
 });

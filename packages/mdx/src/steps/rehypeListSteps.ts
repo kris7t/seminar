@@ -5,7 +5,11 @@ import type {
 } from 'mdast-util-mdx-jsx';
 import { find, html } from 'property-information';
 
-import { createStringAttribute } from '../utils/estree.ts';
+import type { AttributeValue } from '../directives/attributeValues.ts';
+import {
+  createStringAttribute,
+  createValueAttribute,
+} from '../utils/estree.ts';
 import { EXPLICIT_JSX_HAST, LIST_ITEM } from '../utils/jsx.ts';
 import { STEP_PROPERTY } from './remarkSteps.ts';
 
@@ -37,17 +41,18 @@ function convertListItem(item: Element): MdxJsxFlowElementHast {
   const { [STEP_PROPERTY]: stepProps, ...properties } = item.properties;
   const props =
     typeof stepProps === 'string'
-      ? (JSON.parse(stepProps) as Record<string, string>)
+      ? (JSON.parse(stepProps) as Record<string, AttributeValue>)
       : undefined;
   const { className, ...otherProps } = props ?? {};
-  if (className !== undefined) {
+  if (typeof className === 'string') {
     properties.className = [
       ...(Array.isArray(properties.className) ? properties.className : []),
       ...className.split(' '),
     ];
   }
-  if (otherProps['id'] !== undefined) {
-    properties.id = otherProps['id'];
+  const id = otherProps['id'];
+  if (typeof id === 'string') {
+    properties.id = id;
   }
   const attributes: MdxJsxAttribute[] = [
     ...(props === undefined
@@ -56,7 +61,7 @@ function convertListItem(item: Element): MdxJsxFlowElementHast {
     ...convertProperties({ ...item, properties }),
     ...Object.entries(otherProps)
       .filter(([name]) => name !== 'id')
-      .map(([name, value]) => createStringAttribute(name, value)),
+      .map(([name, value]) => createValueAttribute(name, value)),
   ];
   return {
     type: 'mdxJsxFlowElement',

@@ -24,8 +24,8 @@ describe('images', () => {
 ![](${ARCH} "Only a caption")
 `),
     ).toEqual([
-      `<Image src="${ARCH}" alt="Architecture" caption="The parts" block=true id="arch" className="wide" width="600" step=""></Image>` +
-        `<Image src="${ARCH}" alt="Detail" block=true step=true only=""></Image>` +
+      `<Image src="${ARCH}" alt="Architecture" caption="The parts" block=true id="arch" className="wide" width=600 step=true></Image>` +
+        `<Image src="${ARCH}" alt="Detail" block=true step=true only=true></Image>` +
         `<Image src="${ARCH}" caption="Only a caption" block=true></Image>`,
     ]);
   });

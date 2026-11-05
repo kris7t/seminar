@@ -2,6 +2,11 @@ import type { Nodes } from 'mdast';
 import type { CompileContext, Extension } from 'mdast-util-from-markdown';
 import type { Processor } from 'unified';
 
+import type { Attributes } from './directives.ts';
+
+/** The value of an attribute as a component gets it, see {@link attributeValue}. */
+export type AttributeValue = string | number | boolean;
+
 declare module 'mdast-util-directive' {
   interface ContainerDirectiveData {
     /** The attributes whose values are quoted, see {@link getAttributeValue}. */
@@ -70,7 +75,7 @@ const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 export function attributeValue(
   value: string | undefined,
   quoted: boolean,
-): string | number | boolean {
+): AttributeValue {
   if (value === undefined || (value === '' && !quoted)) {
     return true;
   }
@@ -90,7 +95,7 @@ export function attributeValue(
 export function getAttributeValue(
   directive: Extract<Nodes, { type: `${string}Directive` }>,
   name: string,
-): string | number | boolean | undefined {
+): AttributeValue | undefined {
   const value = directive.attributes?.[name];
   return value === undefined || value === null
     ? undefined
@@ -98,4 +103,18 @@ export function getAttributeValue(
         value,
         directive.data?.quotedAttributes?.includes(name) === true,
       );
+}
+
+/**
+ * Returns the value of the attribute `name` among `attributes`, e.g., of
+ * `getAttributes`, as a component gets it, see {@link attributeValue}.
+ */
+export function attributeValueOf(
+  { attributes, quoted }: Attributes,
+  name: string,
+): AttributeValue | undefined {
+  const value = attributes.get(name);
+  return value === undefined
+    ? undefined
+    : attributeValue(value, quoted?.has(name) === true);
 }

@@ -81,7 +81,7 @@ describe('splitting slides into pages', () => {
         <>
           <Step>Figure</Step>
           <Step overlay>First note</Step>
-          <Step overlay="">Second note</Step>
+          <Step overlay={true}>Second note</Step>
           <Step>Text</Step>
         </>,
       ),

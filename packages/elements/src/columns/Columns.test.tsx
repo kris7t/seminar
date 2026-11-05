@@ -24,7 +24,7 @@ describe('Columns', () => {
             <Column heading="First" data-testid="first">
               <p>One</p>
             </Column>
-            <Column step grow="2" data-testid="second">
+            <Column step grow={2} data-testid="second">
               <p>Two</p>
             </Column>
             <Column width="200" data-testid="third">

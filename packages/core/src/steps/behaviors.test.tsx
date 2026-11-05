@@ -333,7 +333,7 @@ describe('step behaviors', () => {
         ghost: { future: 'dimmed', past: 'hidden' },
       } as Record<string, StepAppearances>,
     });
-    const ghost = { ghost: '' } as Record<string, string>;
+    const ghost = { ghost: true } as Record<string, boolean>;
     render(
       <Deck theme={theme}>
         <Slide title="Steps">

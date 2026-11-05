@@ -24,7 +24,7 @@ describe('getFadeBetween', () => {
 
   it('takes the fade of either slide', () => {
     expect(between({ fade: 300 }, {})).toBe(300);
-    expect(between({}, { fade: '300' })).toBe(300);
+    expect(between({}, { fade: 300 })).toBe(300);
   });
 
   it('takes the longer of equally explicit fades', () => {

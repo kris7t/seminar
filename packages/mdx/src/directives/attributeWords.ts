@@ -40,7 +40,12 @@ export function parseAttributeWords(text: string | undefined): {
   attributes: Attributes;
   rest: string | undefined;
 } {
-  const attributes: Attributes = { classes: [], attributes: new Map() };
+  const quoted = new Set<string>();
+  const attributes: Attributes = {
+    classes: [],
+    attributes: new Map(),
+    quoted,
+  };
   const rest: string[] = [];
   for (const [word] of (text ?? '').matchAll(WORD)) {
     if (!ATTRIBUTE.test(word)) {
@@ -51,10 +56,13 @@ export function parseAttributeWords(text: string | undefined): {
       attributes.classes.push(word.slice(1));
     } else {
       const separator = word.indexOf('=');
-      attributes.attributes.set(
-        separator === -1 ? word : word.slice(0, separator),
-        separator === -1 ? '' : unquote(word.slice(separator + 1)),
-      );
+      const name = separator === -1 ? word : word.slice(0, separator);
+      const value = separator === -1 ? '' : word.slice(separator + 1);
+      const unquoted = unquote(value);
+      attributes.attributes.set(name, unquoted);
+      if (unquoted !== value) {
+        quoted.add(name);
+      }
     }
   }
   return { attributes, rest: rest.length === 0 ? undefined : rest.join(' ') };

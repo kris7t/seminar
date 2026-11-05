@@ -8,7 +8,10 @@ import type { MdxJsxFlowElement, MdxJsxTextElement } from 'mdast-util-mdx';
 import type { VFile } from 'vfile';
 
 import { getAttributes } from '../directives/directives.ts';
-import { createStringAttribute } from '../utils/estree.ts';
+import {
+  createStringAttribute,
+  createValueAttribute,
+} from '../utils/estree.ts';
 import { EXPLICIT_JSX, NOTES, PARAGRAPH, STEP } from '../utils/jsx.ts';
 import { getStepProps } from './remarkSteps.ts';
 
@@ -56,7 +59,7 @@ function toStep(
   file: VFile,
 ): MdxJsxTextElement | MdxJsxFlowElement {
   const props = getStepProps(getAttributes(directive), file).map(
-    ([name, value]) => createStringAttribute(name, value),
+    ([name, value]) => createValueAttribute(name, value),
   );
   const hasComponent = props.some(({ name }) => name === 'component');
   const withComponent = (component: string) =>

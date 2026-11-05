@@ -68,7 +68,7 @@ describe('findSteps', () => {
       'flowchart LR\n  A --> B\n  B --> C\n  %% step[C, B->C] only',
     );
     expect(itemsOf(steps)).toEqual([['C', 'L_B_C_0']]);
-    expect(steps[0]?.props).toMatchObject({ only: '' });
+    expect(steps[0]?.props).toMatchObject({ only: true });
   });
 
   it('steps nodes and edges in their shape data', () => {
@@ -202,7 +202,7 @@ describe('findSteps', () => {
     );
     expect(messages).toEqual([]);
     expect(itemsOf(steps)).toEqual([['B', 'i0']]);
-    expect(steps[0]?.props).toMatchObject({ only: '' });
+    expect(steps[0]?.props).toMatchObject({ only: true });
   });
 
   it('steps the nodes of mind maps with the nodes under them', () => {

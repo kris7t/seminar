@@ -28,12 +28,12 @@ export type SplitWord = SplitMode | SplitPoint;
 /**
  * How a step asks for pages when its slide is split into pages: a
  * {@link SplitMode}, any of the {@link SplitPoint}s, or both, e.g., `'none'`,
- * `['before', 'last']`, or `'none initial'` in an attribute of MDX. `true` and
- * the empty string of a bare `split` in MDX stand for `'initial'`, and `false`
- * for `'none'` without points.
+ * `['before', 'last']`, or `'none initial'` in an attribute of MDX. `true`,
+ * e.g., of a bare `split` in MDX, stands for `'initial'`, and `false` for
+ * `'none'` without points.
  */
 export type SplitProp =
-  boolean | '' | SplitWord | readonly SplitWord[] | `${SplitWord} ${string}`;
+  boolean | SplitWord | readonly SplitWord[] | `${SplitWord} ${string}`;
 
 /** A parsed {@link SplitProp}, where missing parts are left to defaults. */
 export interface StepSplit {
@@ -72,10 +72,10 @@ function tokensOf(value: unknown): unknown[] | undefined {
  * if there is none. Unknown words are left out, and the last mode counts.
  */
 export function parseStepSplit(value: unknown): StepSplit | undefined {
-  if (value === true || value === '' || value === 'true') {
+  if (value === true) {
     return INITIAL;
   }
-  if (value === false || value === 'false') {
+  if (value === false) {
     return NONE;
   }
   const tokens = tokensOf(value);
@@ -133,7 +133,7 @@ export interface SlideSplit {
  * are neither modes nor steps are left out.
  */
 export function parseSlideSplit(value: unknown): SlideSplit | undefined {
-  if (value === false || value === 'false') {
+  if (value === false) {
     return { mode: 'none', pages: [] };
   }
   if (typeof value !== 'string') {
@@ -199,15 +199,11 @@ export function planSplit(
 
 /**
  * Whether a step may cover other content (see the `overlay` option of
- * `useSteps`): `true`, or the empty string of a bare `overlay` in MDX, or
- * `false`, also as the strings `'true'` and `'false'` from MDX.
+ * `useSteps`), e.g., `true` for a bare `overlay` in MDX.
  */
-export type OverlayProp = boolean | '' | 'true' | 'false';
+export type OverlayProp = boolean;
 
 /** Reads an {@link OverlayProp}, or `undefined` if there is none. */
 export function parseOverlay(value: unknown): boolean | undefined {
-  if (value === true || value === '' || value === 'true') {
-    return true;
-  }
-  return value === false || value === 'false' ? false : undefined;
+  return typeof value === 'boolean' ? value : undefined;
 }

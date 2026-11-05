@@ -7,13 +7,20 @@ export interface Attributes {
   classes: string[];
   /** Other attributes, where those without a value are empty strings. */
   attributes: Map<string, string>;
+  /** The attributes whose values are quoted, see `attributeValueOf`. */
+  quoted?: ReadonlySet<string> | undefined;
 }
 
 /** Returns the attributes of a directive. */
 export function getAttributes(directive: {
   attributes?: Record<string, string | null | undefined> | null | undefined;
+  data?: { quotedAttributes?: string[] | undefined } | undefined;
 }): Attributes {
-  const result: Attributes = { classes: [], attributes: new Map() };
+  const result: Attributes = {
+    classes: [],
+    attributes: new Map(),
+    quoted: new Set(directive.data?.quotedAttributes),
+  };
   for (const [key, value] of Object.entries(directive.attributes ?? {})) {
     if (value === null || value === undefined) {
       continue;

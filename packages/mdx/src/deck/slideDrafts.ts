@@ -6,6 +6,10 @@ import type { Position } from 'unist';
 import type { VFile } from 'vfile';
 
 import {
+  attributeValueOf,
+  type AttributeValue,
+} from '../directives/attributeValues.ts';
+import {
   getAttributes,
   hasDirective,
   takeDirective,
@@ -31,14 +35,17 @@ export interface MasterReference {
 export interface SlideDraft {
   master: MasterReference;
   id: string | undefined;
+  /**
+   * The attributes of the slide that become its props, as they're written,
+   * with those without a value as empty strings.
+   */
   attributes: Map<string, string>;
+  /** The attributes whose values are quoted, see `attributeValue`. */
+  quotedAttributes?: ReadonlySet<string> | undefined;
   title: PhrasingContent[] | undefined;
   children: RootContent[];
-  /**
-   * The value of the `spare` attribute, which is the empty string for the bare
-   * word, if any.
-   */
-  spareAttribute?: string | undefined;
+  /** The value of the `spare` attribute, which is `true` for the bare word. */
+  spareAttribute?: AttributeValue | undefined;
   /** Whether the slide is spare, set by {@link resolveSpares}. */
   spare?: boolean;
   /** Where the slide starts in the document, if known. */
@@ -229,7 +236,8 @@ export function createRecap(
     );
     return undefined;
   }
-  const { id, classes, attributes } = getAttributes(node);
+  const parsed = getAttributes(node);
+  const { id, classes, attributes } = parsed;
   const ignored = [
     ...classes.map((name) => `.${name}`),
     ...[...attributes.keys()].filter((key) => !RECAP_ATTRIBUTES.has(key)),
@@ -244,7 +252,7 @@ export function createRecap(
   slide.recap = label.slice(1);
   slide.place = node.position;
   slide.tocTitle = attributes.get('title');
-  slide.spareAttribute = attributes.get('spare');
+  slide.spareAttribute = attributeValueOf(parsed, 'spare');
   for (const bound of STEP_BOUNDS) {
     const value = attributes.get(bound);
     if (value !== undefined) {
@@ -313,10 +321,8 @@ export function checkSlideSplit(value: string): string | undefined {
  * and of several bare words, the last one is used. Classes are passed to the
  * master as its `className`.
  */
-export function applyAttributes(
-  slide: SlideDraft,
-  { id, classes, attributes }: Attributes,
-): void {
+export function applyAttributes(slide: SlideDraft, parsed: Attributes): void {
+  const { id, classes, attributes, quoted } = parsed;
   slide.id = id ?? slide.id;
   // Flags rather than masters.
   const bareWords = [...attributes]
@@ -324,9 +330,9 @@ export function applyAttributes(
       ([key, value]) => value === '' && !FLAGS.has(key) && !BARE_PROPS.has(key),
     )
     .map(([key]) => key);
-  slide.spareAttribute = attributes.get('spare');
-  const noSlide = attributes.get('noslide');
-  slide.noSlide = noSlide === '' || noSlide === 'true';
+  slide.spareAttribute = attributeValueOf(parsed, 'spare');
+  slide.noSlide = attributeValueOf(parsed, 'noslide') === true;
+  slide.quotedAttributes = quoted;
   const master = attributes.get('master');
   const bareWord = bareWords.at(-1);
   if (master !== undefined && master !== '') {
@@ -370,13 +376,11 @@ export function resolveSpares(
       divisions.pop();
     }
     let spare = divisions.at(-1)?.spare ?? false;
-    if (spareAttribute === '' || spareAttribute === 'true') {
-      spare = true;
-    } else if (spareAttribute === 'false') {
-      spare = false;
+    if (typeof spareAttribute === 'boolean') {
+      spare = spareAttribute;
     } else if (spareAttribute !== undefined) {
       file.message(
-        `Expected \`spare\` to be \`true\` or \`false\`, not \`${spareAttribute}\``,
+        `Expected \`spare\` to be \`true\` or \`false\`, not \`${String(spareAttribute)}\``,
         { place },
       );
     }

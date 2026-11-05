@@ -47,8 +47,9 @@ A good slide component follows these rules:
   [Waiting until the slide is ready](components.md#waiting-until-the-slide-is-ready).
 - **Use `Step` for steps.** Wrap the component in a `Step`, and set where it
   goes with `defaults`. Then `:step` attributes work on it.
-- **Accept strings for props that a directive may set.** Directive
-  attributes are always strings, and a bare flag is an empty string.
+- **Type the props that a directive may set as they're written.** A bare
+  flag is `true`, and unquoted numbers are numbers, like in JSX. See
+  [Props from directives](directives.md#props-from-directives).
 - **Make it themeable.** Read props with `useThemeProps`, and build its
   parts with `styled`. See [Theming components](themes.md#theming-components).
 - **Animate from the current step.** Don't fade steps yourself, since the

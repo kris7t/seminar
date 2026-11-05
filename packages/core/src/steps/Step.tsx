@@ -124,7 +124,7 @@ declare module '@mui/material/styles' {
  * `behavior="only"`.
  */
 export type StepBehaviorShorthands = Partial<
-  Record<StepBehavior, boolean | '' | undefined>
+  Record<StepBehavior, boolean | undefined>
 >;
 
 export interface StepProps
@@ -157,13 +157,13 @@ export interface StepProps
    * in a directive, or makes it not a step if `false`, like `with="parent"`,
    * e.g., `step=false` in a directive. Ignored if `with` is set.
    */
-  step?: boolean | '' | 'false' | undefined;
+  step?: boolean | undefined;
   /**
    * Shows the step as soon as what encloses it is shown, like
    * `with="initial"`, e.g., `initial` in a directive. Takes precedence over
    * `step`, and is ignored if `with` is set.
    */
-  initial?: boolean | '' | undefined;
+  initial?: boolean | undefined;
   /**
    * What the step does unless the user says otherwise (see
    * {@link StepDefaults}), which wrapper components can use to choose their

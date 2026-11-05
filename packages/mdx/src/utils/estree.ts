@@ -34,6 +34,19 @@ export function createStringAttribute(
   return { type: 'mdxJsxAttribute', name, value };
 }
 
+/**
+ * Creates a JSX attribute with a string, or a number or a boolean as an
+ * expression, e.g., from `attributeValue`.
+ */
+export function createValueAttribute(
+  name: string,
+  value: string | number | boolean,
+): MdxJsxAttribute {
+  return typeof value === 'string'
+    ? createStringAttribute(name, value)
+    : createExpressionAttribute(name, JSON.stringify(value));
+}
+
 /** Creates a JSX attribute with a JavaScript expression as its value. */
 export function createExpressionAttribute(
   name: string,

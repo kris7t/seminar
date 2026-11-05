@@ -3,11 +3,15 @@ import type { MdxJsxFlowElement } from 'mdast-util-mdx';
 import type { VFile } from 'vfile';
 
 import {
+  attributeValueOf,
+  type AttributeValue,
+} from '../directives/attributeValues.ts';
+import {
   getAttributes,
   takeDirective,
   type Attributes,
 } from '../directives/directives.ts';
-import { createStringAttribute } from '../utils/estree.ts';
+import { createValueAttribute } from '../utils/estree.ts';
 import { EXPLICIT_JSX, NOTES, PARAGRAPH } from '../utils/jsx.ts';
 
 /**
@@ -43,11 +47,27 @@ export function getWith(
   return withValue;
 }
 
-/** Converts the attributes of a `:step` directive to the props of a step. */
+/**
+ * Props of steps that name groups or elements, which stay strings even if
+ * they look like numbers, e.g., `group=1`.
+ */
+const NAME_PROPS: ReadonlySet<string> = new Set([
+  'group',
+  'in',
+  'after',
+  'title',
+  'component',
+]);
+
+/**
+ * Converts the attributes of a `:step` directive to the props of a step,
+ * with the types they're written as (see `attributeValue`), e.g., `true`
+ * for `only` and `500` for `fade=500`, except for names, like `group=1`.
+ */
 export function getStepProps(
   attributes: Attributes,
   file: VFile,
-): [name: string, value: string][] {
+): [name: string, value: AttributeValue][] {
   const withValue = getWith(attributes, file);
   return [
     ...(withValue === undefined
@@ -59,7 +79,14 @@ export function getStepProps(
     ...(attributes.classes.length === 0
       ? []
       : [['className', attributes.classes.join(' ')] as [string, string]]),
-    ...[...attributes.attributes].filter(([name]) => name !== 'with'),
+    ...[...attributes.attributes]
+      .filter(([name]) => name !== 'with')
+      .map(([name, value]): [string, AttributeValue] => [
+        name,
+        NAME_PROPS.has(name)
+          ? value
+          : (attributeValueOf(attributes, name) ?? value),
+      ]),
   ];
 }
 
@@ -115,7 +142,7 @@ function transform(parent: Parents, file: VFile, inNotes: boolean) {
           : [
               { type: 'mdxJsxAttribute', name: 'step', value: null },
               ...getStepProps(getAttributes(directive), file).map(
-                ([name, value]) => createStringAttribute(name, value),
+                ([name, value]) => createValueAttribute(name, value),
               ),
             ],
       // MDX compiles phrasing content in flow elements as expected.

@@ -27,13 +27,19 @@ describe('parseAttributeWords', () => {
         ['title', 'Two words'],
         ['note', 'x y'],
       ]),
+      quoted: new Set(['title', 'note']),
     });
     expect(rest).toBeUndefined();
   });
 
   it('keeps the other words', () => {
     expect(parseAttributeWords('{1-3 | 5} #a 2x "quoted"')).toEqual({
-      attributes: { id: 'a', classes: [], attributes: new Map() },
+      attributes: {
+        id: 'a',
+        classes: [],
+        attributes: new Map(),
+        quoted: new Set(),
+      },
       rest: '{1-3 | 5} 2x "quoted"',
     });
   });
@@ -47,7 +53,7 @@ describe('parseAttributeWords', () => {
 
   it('reads nothing from nothing', () => {
     expect(parseAttributeWords(undefined)).toEqual({
-      attributes: { classes: [], attributes: new Map() },
+      attributes: { classes: [], attributes: new Map(), quoted: new Set() },
       rest: undefined,
     });
   });
