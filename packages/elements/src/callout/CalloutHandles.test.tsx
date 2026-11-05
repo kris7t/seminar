@@ -47,7 +47,7 @@ describe('CalloutHandles', () => {
     Reflect.deleteProperty(globalThis, CHANNEL);
   });
 
-  function renderCallout(props: object = {}) {
+  function renderCallout(props: object = {}, hovered = true) {
     render(
       <Deck>
         <Slide>
@@ -66,7 +66,9 @@ describe('CalloutHandles', () => {
       </Deck>,
     );
     // The handles show while the callout is under the pointer.
-    fireEvent.pointerOver(screen.getByText('Note'));
+    if (hovered) {
+      fireEvent.pointerOver(screen.getByText('Note'));
+    }
   }
 
   /** Drags the handle labeled `name` by `dx`, `dy`, and releases it. */
@@ -103,6 +105,23 @@ describe('CalloutHandles', () => {
     const { angle, offset } = changes as { angle: number; offset: number };
     expect(angle).toBe(Math.round((Math.atan2(40, -36) * 180) / Math.PI));
     expect(offset).toBe(Math.round(Math.hypot(40, 36)));
+  });
+
+  it('shows the handles of the callout that was clicked, until Escape', () => {
+    renderCallout({ angle: 90 }, false);
+    const move = () =>
+      screen.queryByRole('button', { name: 'Move the callout' });
+    expect(move()).toBeNull();
+    fireEvent.click(screen.getByText('Note'));
+    expect(move()).not.toBeNull();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(move()).toBeNull();
+  });
+
+  it('keeps the slide at its step when clicking the callout', () => {
+    renderCallout({ angle: 90 }, false);
+    const clicked = fireEvent.click(screen.getByText('Note'));
+    expect(clicked).toBe(false);
   });
 
   it('has no handles while the callout is a step that is not shown', () => {

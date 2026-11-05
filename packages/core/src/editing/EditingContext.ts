@@ -8,9 +8,16 @@ export interface Editing {
   scale: number;
   /** The editable directive under the pointer, by its key. */
   hovered: string | undefined;
+  /** The editable directive that was clicked, by its key. */
+  selected: string | undefined;
   /** The editable directive whose handle is dragged, by its key. */
   dragging: string | undefined;
-  setHovered: (key: string | undefined) => void;
+  /**
+   * Tells which editable directive is under the pointer, if any, which stays
+   * hovered a little after the pointer leaves it.
+   */
+  hover: (key: string | undefined) => void;
+  select: (key: string | undefined) => void;
   setDragging: (key: string | undefined) => void;
 }
 

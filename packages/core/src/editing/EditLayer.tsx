@@ -1,7 +1,9 @@
 import { alpha, styled, useTheme } from '@mui/material/styles';
 import {
   use,
+  useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -13,7 +15,10 @@ import {
 import { createPortal } from 'react-dom';
 
 import { findPropsOf } from '../host/sourceRanges.ts';
-import { INTERACTIVE_ATTRIBUTE } from '../interaction/interaction.ts';
+import {
+  getInteraction,
+  INTERACTIVE_ATTRIBUTE,
+} from '../interaction/interaction.ts';
 import type { SlideBox } from '../slide/slideBoxes.ts';
 import { rankOf, useStepAppearance } from '../steps/stepAppearance.ts';
 import { EditingContext, type Editing } from './EditingContext.ts';
@@ -201,12 +206,12 @@ export function DragHandle({
           cursor,
         }}
         onPointerEnter={() => {
-          editing.setHovered(editable.key);
+          editing.hover(editable.key);
         }}
         onPointerLeave={(event) => {
           // Onto the slide, or another handle, which tells itself.
           if (startRef.current === undefined) {
-            editing.setHovered(editableAt(event.relatedTarget));
+            editing.hover(editableAt(event.relatedTarget));
           }
         }}
         onPointerDown={(event) => {
@@ -223,6 +228,7 @@ export function DragHandle({
           };
           setDragging(true);
           editing.setDragging(editable.key);
+          editing.select(editable.key);
           onDragStart?.();
         }}
         onPointerMove={(event) => {
@@ -277,9 +283,18 @@ function editableAt(target: EventTarget | null): string | undefined {
 }
 
 /**
+ * How long an editable directive stays hovered after the pointer leaves it
+ * for nothing editable, so that it can reach handles away from it, e.g., at
+ * the tip of a stem, in milliseconds.
+ */
+const HOVER_GRACE = 400;
+
+/**
  * Returns how a slide is edited in the view of `frame`, if `enabled`, with
- * its handles drawn in `layer`, and follows which editable directive is
- * under the pointer.
+ * its handles drawn in `layer`. Follows which editable directive is under the
+ * pointer, and which is selected by clicking it, until clicking elsewhere,
+ * which the click does instead of what it would do, like going to the next
+ * step, or pressing Escape.
  */
 export function useEditing(
   enabled: boolean,
@@ -288,13 +303,26 @@ export function useEditing(
   scale: number,
 ): Editing | undefined {
   const [hovered, setHovered] = useState<string>();
+  const [selected, setSelected] = useState<string>();
   const [dragging, setDragging] = useState<string>();
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const hover = useCallback((key: string | undefined) => {
+    clearTimeout(leaveTimerRef.current);
+    if (key === undefined) {
+      leaveTimerRef.current = setTimeout(() => {
+        setHovered(undefined);
+      }, HOVER_GRACE);
+    } else {
+      setHovered(key);
+    }
+  }, []);
+  const onSelectedEvent = useEffectEvent(() => selected);
   useEffect(() => {
     if (!enabled || frame === null) {
       return undefined;
     }
     const onOver = (event: globalThis.PointerEvent) => {
-      setHovered(editableAt(event.target));
+      hover(editableAt(event.target));
     };
     const onLeave = (event: globalThis.PointerEvent) => {
       // Onto a handle, which tells itself.
@@ -302,19 +330,55 @@ export function useEditing(
         !(event.relatedTarget instanceof Node) ||
         layer?.contains(event.relatedTarget) !== true
       ) {
-        setHovered(undefined);
+        hover(undefined);
+      }
+    };
+    const onClick = (event: MouseEvent) => {
+      // Ctrl+click goes to the source instead.
+      if (event.ctrlKey || event.metaKey || event.button !== 0) {
+        return;
+      }
+      const key = editableAt(event.target);
+      // Other than what interactive elements do with it.
+      if (
+        (key !== undefined || onSelectedEvent() !== undefined) &&
+        getInteraction(event.target) === undefined
+      ) {
+        event.preventDefault();
+      }
+      setSelected(key);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && onSelectedEvent() !== undefined) {
+        event.preventDefault();
+        event.stopPropagation();
+        setSelected(undefined);
       }
     };
     frame.addEventListener('pointerover', onOver);
     frame.addEventListener('pointerleave', onLeave);
+    frame.addEventListener('click', onClick, true);
+    window.addEventListener('keydown', onKeyDown, true);
     return () => {
+      clearTimeout(leaveTimerRef.current);
       frame.removeEventListener('pointerover', onOver);
       frame.removeEventListener('pointerleave', onLeave);
+      frame.removeEventListener('click', onClick, true);
+      window.removeEventListener('keydown', onKeyDown, true);
     };
-  }, [enabled, frame, layer]);
+  }, [enabled, frame, layer, hover]);
   const editing = useMemo(
-    () => ({ layer, scale, hovered, dragging, setHovered, setDragging }),
-    [layer, scale, hovered, dragging],
+    () => ({
+      layer,
+      scale,
+      hovered,
+      selected,
+      dragging,
+      hover,
+      select: setSelected,
+      setDragging,
+    }),
+    [layer, scale, hovered, selected, dragging, hover],
   );
   return enabled ? editing : undefined;
 }

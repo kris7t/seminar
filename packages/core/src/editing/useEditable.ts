@@ -37,9 +37,15 @@ export interface Editable<
   readonly key: string;
   /**
    * Whether the directive should show its handles: it's the innermost
-   * editable directive under the pointer, or one of its handles is dragged.
+   * editable directive under the pointer, or it's selected, unless a handle
+   * of another directive is dragged, or one of its handles is dragged.
    */
   readonly active: boolean;
+  /**
+   * Whether the directive is selected, by clicking it, or dragging one of
+   * its handles, until clicking elsewhere or pressing Escape.
+   */
+  readonly selected: boolean;
   /** Returns the directive of `child` to edit along with this one. */
   of: <C extends object>(child: ReactElement<C>) => EditTarget<C> | undefined;
   /**
@@ -129,7 +135,12 @@ export function useEditable<P extends object>(
   return {
     ...target(props, directive),
     key: directive.key,
-    active: (editing.dragging ?? editing.hovered) === directive.key,
+    active:
+      editing.dragging === undefined
+        ? editing.hovered === directive.key ||
+          editing.selected === directive.key
+        : editing.dragging === directive.key,
+    selected: editing.selected === directive.key,
     of: (child) => {
       const at = editedDirective(getSourceRange(child.props));
       return at === undefined ? undefined : target(child.props, at);
