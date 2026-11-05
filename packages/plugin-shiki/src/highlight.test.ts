@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { Element, ElementContent } from 'hast';
 import { describe, expect, it } from 'vitest';
 

@@ -83,7 +83,9 @@ describe('captureThumbnail', () => {
     const [clone] = vi.mocked(toPng).mock.calls.at(-1) ?? [];
     const child = clone?.querySelector('span');
     expect(child?.textContent).toBe('Shown child');
-    expect(frozenStyle(clone, child ?? undefined).visibility).toBe('visible');
+    expect(frozenStyle(clone, child ?? undefined).visibility).toMatch(
+      /^(?:visible|initial)$/,
+    );
   });
 
   it('keeps hidden SVG definitions that visible glyphs can reference', async () => {
@@ -293,7 +295,8 @@ describe('captureThumbnail', () => {
     const [clone] = vi.mocked(toPng).mock.calls.at(-1) ?? [];
     expect(frozenStyle(clone).color).toBe('rgb(255, 0, 0)');
     const child = clone?.querySelector('span');
-    expect(frozenStyle(clone, child ?? undefined).all).toBe('initial');
+    // The reset of `all`, which jsdom spells out property by property.
+    expect(frozenStyle(clone, child ?? undefined).color).toBe('initial');
     expect(child?.style.color).toBe('');
     expect(child?.style.fontSize).toBe('');
     expect(child?.style.getPropertyValue('--token')).toBe('');

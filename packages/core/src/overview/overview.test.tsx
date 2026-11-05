@@ -205,7 +205,8 @@ describe('SlideOverview', () => {
         name: 'Slide 3: Again (recap)',
       }),
     );
-    expect((await screen.findByRole('tooltip')).textContent).toBe('Again');
+    // The tooltip of the current slide opens too, since it has the focus.
+    await screen.findByRole('tooltip', { name: 'Again' });
     // Scrolling the overview closes it.
     fireEvent.scroll(overview());
     await waitFor(() => {

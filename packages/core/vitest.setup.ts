@@ -29,23 +29,24 @@ vi.stubGlobal(
   },
 );
 
-// jsdom does not implement scrolling.
-Element.prototype.scrollIntoView = () => undefined;
+// Tests of what runs in Node, like compiling decks, have no DOM.
+if (typeof window !== 'undefined') {
+  // jsdom does not implement scrolling.
+  Element.prototype.scrollIntoView = () => undefined;
 
-// jsdom does not implement media queries.
-window.matchMedia = (query: string) =>
-  ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-    addListener: () => undefined,
-    removeListener: () => undefined,
-    dispatchEvent: () => false,
-  }) as MediaQueryList;
+  // jsdom does not implement media queries.
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
 
-// jsdom does not implement pointer capture.
-Element.prototype.setPointerCapture = () => undefined;
-Element.prototype.releasePointerCapture = () => undefined;
-Element.prototype.hasPointerCapture = () => false;
+  // jsdom does not implement pointer capture.
+  Element.prototype.setPointerCapture = () => undefined;
+  Element.prototype.releasePointerCapture = () => undefined;
+  Element.prototype.hasPointerCapture = () => false;
+}

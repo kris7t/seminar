@@ -171,7 +171,7 @@ describe('Callout', () => {
     const primary = getComputedStyle(calloutWithText('Primary'));
     // Opaque over the white paper, so that the slide doesn't show through.
     expect(primary.getPropertyValue('--SeminarCallout-palette-main')).toBe(
-      'rgb(33,33,33)',
+      'rgb(33, 33, 33)',
     );
     expect(
       primary.getPropertyValue('--SeminarCallout-palette-contrastText'),
@@ -180,7 +180,7 @@ describe('Callout', () => {
       getComputedStyle(calloutWithText('Secondary')).getPropertyValue(
         '--SeminarCallout-palette-main',
       ),
-    ).toBe('rgb(102,102,102)');
+    ).toBe('rgb(102, 102, 102)');
   });
 
   it('takes no room, and holds blocks in divs', () => {
@@ -461,9 +461,7 @@ describe('Callout', () => {
         '--SeminarCallout-palette-main',
       ),
     ).toBe('#123456');
-    expect(getComputedStyle(background).fill).toBe(
-      'var(--SeminarCallout-background)',
-    );
+    expect(getComputedStyle(background).fill).toBe('rgb(18, 52, 86)');
     expect(background.querySelector('path')?.getAttribute('d')).toContain(
       'M 24 0',
     );
@@ -489,20 +487,16 @@ describe('Callout', () => {
     expect(filled.getPropertyValue('--SeminarCallout-palette-main')).toBe(
       '#123456',
     );
-    expect(filled.getPropertyValue('--SeminarCallout-color')).toBe(
-      'var(--SeminarCallout-palette-contrastText)',
-    );
+    expect(filled.getPropertyValue('--SeminarCallout-color')).toBe('#ffffff');
     expect(filled.getPropertyValue('--SeminarCallout-outline-width')).toBe('0');
 
     const outlined = getComputedStyle(calloutWithText('Outlined'));
     expect(outlined.getPropertyValue('--SeminarCallout-background')).toBe(
       theme.palette.background.paper,
     );
-    expect(outlined.getPropertyValue('--SeminarCallout-color')).toBe(
-      'var(--SeminarCallout-palette-main)',
-    );
+    expect(outlined.getPropertyValue('--SeminarCallout-color')).toBe('#123456');
     expect(outlined.getPropertyValue('--SeminarCallout-outline')).toBe(
-      'var(--SeminarCallout-palette-main)',
+      '#123456',
     );
     expect(outlined.getPropertyValue('--SeminarCallout-outline-width')).toBe(
       '2',

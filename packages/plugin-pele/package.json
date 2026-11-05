@@ -44,7 +44,7 @@
     "@seminar/plugin-mathjax": "0.2.1",
     "@types/hast": "^3.0.5",
     "mdast-util-mdx-jsx": "^3.2.0",
-    "pele": "~1.10.0",
+    "pele": "~1.13.0",
     "vfile": "^6.0.3"
   },
   "peerDependencies": {

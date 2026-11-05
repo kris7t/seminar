@@ -119,7 +119,9 @@ describe('Vite aliases', () => {
         write: false,
         minify: false,
         rolldownOptions: {
-          onwarn: (warning) => warnings.push(warning.message),
+          onLog: (level, log) => {
+            if (level === 'warn') warnings.push(log.message);
+          },
         },
       },
     });

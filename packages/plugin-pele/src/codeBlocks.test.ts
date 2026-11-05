@@ -118,7 +118,7 @@ describe('peleCodeBlocks', () => {
       '# Deck\n\n```mermaid\nflowchart LR\n  A -->\n```',
     );
     expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatch(/^6:\d+ Cannot render diagram: .*Parse error/);
+    expect(messages[0]).toMatch(/^5:8 Cannot render diagram: .*Parse error/);
     expect(code).not.toContain('Diagram as');
     expect(code).toContain('"language-mermaid"');
   });

@@ -394,7 +394,6 @@ export function useDeckNavigation(
       if (newIndex !== undefined && newIndex !== slideIndex) {
         // Along with the state of the slides, which can't move while
         // rendering.
-        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setRequestedIndex(newIndex);
       }
     },
