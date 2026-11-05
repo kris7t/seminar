@@ -17,6 +17,8 @@ export interface CalloutLayout {
   geometry: CalloutGeometry;
   /** The box that `at` is in: of the anchor, or of the slide without one. */
   box: SlideBox;
+  /** The element of the body. */
+  body: HTMLElement | null;
 }
 
 export const CalloutLayoutContext: Context<CalloutLayout | undefined> =

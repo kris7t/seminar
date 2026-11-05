@@ -6,6 +6,7 @@ import {
   type DevChannel,
 } from '@seminar/core';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CalloutDirective } from './CalloutDirective.tsx';
@@ -47,7 +48,11 @@ describe('CalloutHandles', () => {
     Reflect.deleteProperty(globalThis, CHANNEL);
   });
 
-  function renderCallout(props: object = {}, hovered = true) {
+  function renderCallout(
+    props: object = {},
+    hovered = true,
+    content: ReactNode = 'Note',
+  ) {
     render(
       <Deck>
         <Slide>
@@ -56,7 +61,7 @@ describe('CalloutHandles', () => {
             {__seminarAt(
               // Shown from the start, rather than as a step of its own.
               <CalloutDirective with="initial" {...props}>
-                Note
+                {content}
               </CalloutDirective>,
               RANGE,
               FILE,
@@ -71,12 +76,16 @@ describe('CalloutHandles', () => {
     }
   }
 
+  /** Drags `element` by `dx`, `dy`, and releases it. */
+  function dragElement(element: Element, dx: number, dy: number) {
+    fireEvent.pointerDown(element, { pointerId: 1, clientX: 0, clientY: 0 });
+    fireEvent.pointerMove(element, { pointerId: 1, clientX: dx, clientY: dy });
+    fireEvent.pointerUp(element, { pointerId: 1, clientX: dx, clientY: dy });
+  }
+
   /** Drags the handle labeled `name` by `dx`, `dy`, and releases it. */
   function drag(name: string, dx: number, dy: number) {
-    const handle = screen.getByRole('button', { name });
-    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0, clientY: 0 });
-    fireEvent.pointerMove(handle, { pointerId: 1, clientX: dx, clientY: dy });
-    fireEvent.pointerUp(handle, { pointerId: 1, clientX: dx, clientY: dy });
+    dragElement(screen.getByRole('button', { name }), dx, dy);
   }
 
   /** The changes that the page asked the editor to make. */
@@ -91,7 +100,7 @@ describe('CalloutHandles', () => {
 
   it('turns and stretches the stem by moving the body', () => {
     renderCallout({ angle: 90, offset: 40 });
-    drag('Move the callout', 0, -60);
+    dragElement(screen.getByText('Note'), 0, -60);
     expect(edited()).toEqual([{ angle: 90, offset: 100 }]);
   });
 
@@ -107,10 +116,35 @@ describe('CalloutHandles', () => {
     expect(offset).toBe(Math.round(Math.hypot(40, 36)));
   });
 
+  it('leaves interactive elements in the body to work, unless Alt is held', () => {
+    const onClick = vi.fn();
+    renderCallout({ angle: 90, offset: 40 }, true, [
+      'Note',
+      <button key="button" type="button" onClick={onClick}>
+        Press
+      </button>,
+    ]);
+    const button = screen.getByRole('button', { name: 'Press' });
+    dragElement(button, 0, -60);
+    fireEvent.click(button);
+    expect(edited()).toEqual([]);
+    expect(onClick).toHaveBeenCalledOnce();
+    fireEvent.pointerDown(button, { pointerId: 1, altKey: true });
+    fireEvent.pointerMove(button, { pointerId: 1, clientY: -60 });
+    fireEvent.pointerUp(button, { pointerId: 1, clientY: -60 });
+    expect(edited()).toEqual([{ angle: 90, offset: 100 }]);
+  });
+
+  it('only drags the body once the pointer moves', () => {
+    renderCallout({ angle: 90, offset: 40 });
+    dragElement(screen.getByText('Note'), 2, 0);
+    expect(edited()).toEqual([]);
+  });
+
   it('shows the handles of the callout that was clicked, until Escape', () => {
     renderCallout({ angle: 90 }, false);
     const move = () =>
-      screen.queryByRole('button', { name: 'Move the callout' });
+      screen.queryByRole('button', { name: 'Move what the callout points at' });
     expect(move()).toBeNull();
     fireEvent.click(screen.getByText('Note'));
     expect(move()).not.toBeNull();
@@ -127,7 +161,7 @@ describe('CalloutHandles', () => {
   it('has no handles while the callout is a step that is not shown', () => {
     renderCallout({ angle: 90, with: undefined });
     expect(
-      screen.queryByRole('button', { name: 'Move the callout' }),
+      screen.queryByRole('button', { name: 'Move what the callout points at' }),
     ).toBeNull();
   });
 
@@ -157,10 +191,10 @@ describe('CalloutHandles', () => {
   });
 
   it('removes what a handle sets when it is double-clicked', () => {
-    renderCallout({ angle: 90, offset: 40 });
+    renderCallout({ angle: 90, shift: '0,-4' });
     fireEvent.doubleClick(
-      screen.getByRole('button', { name: 'Move the callout' }),
+      screen.getByRole('button', { name: 'Move what the callout points at' }),
     );
-    expect(edited()).toEqual([{ angle: null, offset: null }]);
+    expect(edited()).toEqual([{ shift: null }]);
   });
 });

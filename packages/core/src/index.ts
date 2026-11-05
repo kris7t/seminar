@@ -197,6 +197,7 @@ export {
   type DragHandleProps,
 } from './editing/EditLayer.tsx';
 export type { AttributeChanges, AttributeValue } from './editing/editStore.ts';
+export { useDragArea, type DragAreaHandlers } from './editing/useDragArea.ts';
 export {
   useEditable,
   useEditedProps,

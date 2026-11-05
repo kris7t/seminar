@@ -1,5 +1,6 @@
 import {
   DragHandle,
+  useDragArea,
   parseSlidePoint,
   resolveSlidePoint,
   SLIDE_WIDTH,
@@ -57,6 +58,14 @@ function pointIn(
   return `${coordinate(x, box.x, box.width, 0)},${coordinate(y, box.y, box.height, 1)}`;
 }
 
+/** Returns the top left corner of the body of a callout on the slide. */
+function bodyOf({ options, geometry }: CalloutLayout) {
+  return {
+    x: options.anchorX + geometry.x,
+    y: options.anchorY + geometry.y,
+  };
+}
+
 /** Props of {@link CalloutHandles}. */
 export interface CalloutHandlesProps {
   editable: Editable<CalloutAttributes>;
@@ -70,7 +79,8 @@ export interface CalloutHandlesProps {
 
 /**
  * The handles of the callout around it, while it's edited: its body, which
- * turns and stretches its stem, the base of its stem, which moves along the
+ * turns and stretches its stem when dragged anywhere but on interactive
+ * elements, or with Alt, the base of its stem, which moves along the
  * edge of the body, also turning the stem, its tip, which moves what it
  * points at, and the sides of the body, which resize it. Double-clicking a
  * handle removes what it sets.
@@ -82,6 +92,49 @@ export function CalloutHandles({
   const layout = useCalloutLayout();
   // The callout when dragging began, which the drags are relative to.
   const startRef = useRef<DragStart>(undefined);
+  const start = () => {
+    if (layout !== undefined) {
+      startRef.current = {
+        ...layout,
+        at: editable.props.at,
+        shift: editable.props.shift,
+      };
+    }
+  };
+  const preview = (
+    changesOf: (start: DragStart, drag: Drag) => AttributeChanges,
+    drag: Drag,
+  ) => {
+    if (startRef.current !== undefined) {
+      editable.preview(changesOf(startRef.current, drag));
+    }
+  };
+  const cancel = () => {
+    startRef.current = undefined;
+    editable.cancel();
+  };
+  // Dragging the body turns and stretches the stem.
+  const move = (from: DragStart, { dx, dy, shiftKey }: Drag) => {
+    const body = bodyOf(from);
+    return calloutPlacementAt(
+      from.options,
+      body.x + dx,
+      body.y + dy,
+      shiftKey ? 15 : 1,
+    );
+  };
+  useDragArea(editable, layout?.body ?? null, {
+    onDragStart: start,
+    onDrag: (drag) => {
+      preview(move, drag);
+    },
+    onRelease: (drag) => {
+      preview(move, drag);
+      startRef.current = undefined;
+      editable.commit();
+    },
+    onCancel: cancel,
+  });
   if (layout === undefined || !editable.active) {
     return null;
   }
@@ -106,29 +159,16 @@ export function CalloutHandles({
       shape={shape}
       label={label}
       cursor={cursor}
-      onDragStart={() => {
-        startRef.current = {
-          ...layout,
-          at: editable.props.at,
-          shift: editable.props.shift,
-        };
-      }}
+      onDragStart={start}
       onDrag={(drag) => {
-        if (startRef.current !== undefined) {
-          editable.preview(changesOf(startRef.current, drag));
-        }
+        preview(changesOf, drag);
       }}
       onRelease={(drag) => {
-        if (startRef.current !== undefined) {
-          editable.preview(changesOf(startRef.current, drag));
-          startRef.current = undefined;
-          editable.commit();
-        }
-      }}
-      onCancel={() => {
+        preview(changesOf, drag);
         startRef.current = undefined;
-        editable.cancel();
+        editable.commit();
       }}
+      onCancel={cancel}
       onReset={() => {
         editable.preview(reset);
         editable.commit();
@@ -136,10 +176,6 @@ export function CalloutHandles({
     />
   );
 
-  const bodyOf = (start: CalloutLayout) => ({
-    x: start.options.anchorX + start.geometry.x,
-    y: start.options.anchorY + start.geometry.y,
-  });
   const tipOf = (start: CalloutLayout) => {
     const body = bodyOf(start);
     return {
@@ -153,21 +189,6 @@ export function CalloutHandles({
 
   return (
     <>
-      {handle(
-        'Move the callout',
-        { x: bodyX, y: bodyY, width: geometry.width, height: geometry.height },
-        'area',
-        (start, { dx, dy, shiftKey }) => {
-          const body = bodyOf(start);
-          return calloutPlacementAt(
-            start.options,
-            body.x + dx,
-            body.y + dy,
-            shiftKey ? 15 : 1,
-          );
-        },
-        { angle: null, offset: null },
-      )}
       {(['left', 'right'] as const).map((side) =>
         handle(
           `Resize the callout from the ${side}`,

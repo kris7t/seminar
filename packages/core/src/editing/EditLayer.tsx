@@ -145,13 +145,9 @@ export function DragHandle({
   onReset,
 }: DragHandleProps): JSX.Element | null {
   const editing = use(EditingContext);
-  // Only what can be read is edited, as `legibleStepAppearance` tells.
   const theme = useTheme();
-  const legible =
-    useStepAppearance().rank <=
-    rankOf(theme, theme.legibleStepAppearance ?? 'dimmed');
-  // Slides that aren't laid out yet have no scale.
-  const scale = editing !== undefined && editing.scale > 0 ? editing.scale : 1;
+  const legible = useLegible();
+  const scale = scaleOf(editing);
   const startRef = useRef<{ x: number; y: number; pointer: number }>(undefined);
   const [dragging, setDragging] = useState(false);
   // Escape cancels dragging, rather than anything else it would do.
@@ -273,6 +269,23 @@ export function DragHandle({
       </HandleRoot>
     </EditLayer>
   );
+}
+
+/**
+ * Whether what is around the component being rendered can be read, as the
+ * `legibleStepAppearance` of the theme tells, which is all that is edited.
+ */
+export function useLegible(): boolean {
+  const theme = useTheme();
+  return (
+    useStepAppearance().rank <=
+    rankOf(theme, theme.legibleStepAppearance ?? 'dimmed')
+  );
+}
+
+/** Returns the scale of the slide, which isn't known before it's laid out. */
+export function scaleOf(editing: Editing | undefined): number {
+  return editing !== undefined && editing.scale > 0 ? editing.scale : 1;
 }
 
 /** Returns the key of the innermost editable directive around `target`. */

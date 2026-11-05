@@ -564,7 +564,7 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const layout: CalloutLayout | undefined =
     anchored === undefined || options === undefined || placed === undefined
       ? undefined
-      : { options, geometry: placed, box: anchored.box };
+      : { options, geometry: placed, box: anchored.box, body: positioner };
 
   // Callouts with blocks are blocks themselves.
   const element = block ? 'div' : 'span';
