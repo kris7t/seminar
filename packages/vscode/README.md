@@ -56,12 +56,16 @@ so it always highlights `$…$` as math, and only on a single line.
 Set `"mdx": { "checkMdx": true }` in `tsconfig.json` to report type errors in
 the JavaScript of decks.
 
-Step behaviors, like `only` in `::Box{only}` or `%% step only`, are colored with
-semantic tokens, which are turned on for decks. Behaviors from
-`StepBehaviorOverrides` are recognized if the augmentation is part of the
-TypeScript project of the deck. Likewise, the attributes of slides are
-checked against the masters from `SlideMasterOverrides`, like `wide` in
-`## Results {wide}`, if the augmentation is part of that project.
+Step behaviors, like `only` in `::Box{only}` or `%% step only`, and slide
+masters, like `section` in `## Part {section}`, are colored with semantic
+tokens, which are turned on for decks. The built-in ones are colored wherever
+they're written. Behaviors from `StepBehaviorOverrides` and masters from
+`SlideMasterOverrides` are only colored where the props have them, e.g., not on
+components that aren't steps, once the components of the deck are known, if
+the augmentation is part of the TypeScript project of the deck. Likewise, the
+attributes of slides are checked against the masters from
+`SlideMasterOverrides`, like `wide` in `## Results {wide}`, if the
+augmentation is part of that project.
 
 ## Previewing
 
@@ -130,6 +134,7 @@ precedence, for themes and for `editor.tokenColorCustomizations`:
 | `seminar.attribute.class`           | `.class`                                                                               |
 | `seminar.attribute.name`            | `key` in `key=value`, and bare words                                                   |
 | `seminar.attribute.name.step`       | A bare `step`, and step behaviors among the props of directives, images, and code      |
+| `seminar.attribute.name.master`     | Slide masters among the attributes of slides                                           |
 | `seminar.attribute.separator`       | `=`                                                                                    |
 | `seminar.attribute.value`           | `value` in `key=value`                                                                 |
 | `seminar.math.delimiter`            | `$`, `$$`                                                                              |

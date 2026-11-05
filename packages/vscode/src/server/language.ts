@@ -17,7 +17,12 @@ export const DECK_LANGUAGE = 'seminar-deck';
 const MATH_PLUGIN = '@seminar/plugin-mathjax';
 
 /** The id of the virtual code of the directives of a deck. */
-const DIRECTIVES = 'directives';
+export const DIRECTIVES = 'directives';
+
+/** The name of the TypeScript file of the directives of the deck `fileName`. */
+export function directivesFileName(fileName: string): string {
+  return `${fileName}.directives.tsx`;
+}
 
 /**
  * Returns the components of the directives of the deck at `file` with
@@ -162,7 +167,7 @@ export function createDeckLanguagePlugin(
             ? []
             : [
                 {
-                  fileName: `${fileName}.directives.tsx`,
+                  fileName: directivesFileName(fileName),
                   code,
                   extension: '.tsx',
                   scriptKind: directives.typescript.ScriptKind.TSX,

@@ -61,10 +61,12 @@ export type SlideMasterName =
 
 /**
  * Slide masters of a theme, selectable by name with `<Slide master="…">`: the
- * built-in ones, and those added to {@link SlideMasterOverrides}.
+ * built-in ones, and those added to {@link SlideMasterOverrides}, which are
+ * mapped from its keys, so that editors find where they're declared.
  */
-export type SlideMasters = BuiltInSlideMasters &
-  Record<keyof SlideMasterOverrides, SlideMaster>;
+export type SlideMasters = BuiltInSlideMasters & {
+  [Name in keyof SlideMasterOverrides]: SlideMaster;
+};
 
 /** Returns the master called `name` among `masters`, if there is one. */
 export function findSlideMaster(

@@ -118,11 +118,14 @@ declare module '@mui/material/styles' {
 
 /**
  * Shorthands for step behaviors, e.g., `<Step only>` or `:step{only}` for
- * `behavior="only"`.
+ * `behavior="only"`. Those of {@link StepBehaviorOverrides} are mapped from
+ * its keys, so that editors find where they're declared.
  */
 export type StepBehaviorShorthands = Partial<
-  Record<StepBehavior, boolean | undefined>
->;
+  Record<BuiltInStepBehavior, boolean | undefined>
+> & {
+  [Behavior in keyof StepBehaviorOverrides]?: boolean | undefined;
+};
 
 export interface StepProps
   extends

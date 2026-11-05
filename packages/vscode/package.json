@@ -185,6 +185,10 @@
       {
         "id": "seminarStepBehavior",
         "description": "A step behavior among the props of a deck."
+      },
+      {
+        "id": "seminarSlideMaster",
+        "description": "A slide master among the attributes of a slide."
       }
     ],
     "semanticTokenScopes": [
@@ -194,6 +198,10 @@
           "seminarStepBehavior": [
             "seminar.attribute.name.step",
             "entity.name.function"
+          ],
+          "seminarSlideMaster": [
+            "seminar.attribute.name.master",
+            "entity.name.type"
           ]
         }
       }

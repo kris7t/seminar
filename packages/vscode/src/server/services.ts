@@ -3,7 +3,7 @@ import type { LanguageServicePlugin } from '@volar/language-server';
 import { create as createMarkdownServicePlugin } from 'volar-service-markdown';
 import { create as createTypeScriptServicePlugin } from 'volar-service-typescript';
 
-import { createStepBehaviorPlugin } from './stepBehaviorTokens.ts';
+import { createShorthandTokenPlugin } from './shorthandTokens.ts';
 import { createUnknownDirectivePlugin } from './unknownDirectiveDiagnostics.ts';
 
 /**
@@ -29,7 +29,7 @@ export function createDeckServicePlugins(
       },
     },
     ...createTypeScriptServicePlugin(typescript, {}),
-    createStepBehaviorPlugin(typescript),
+    createShorthandTokenPlugin(typescript),
     createUnknownDirectivePlugin(),
   ];
 }

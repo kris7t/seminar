@@ -13,9 +13,9 @@ function find(source: string): string[] {
     .use(remarkMdx)
     .use(deckSyntaxPlugins([]))
     .parse(source);
-  return findBareProps(source, tree).map(({ word, offset }) => {
+  return findBareProps(source, tree).map(({ word, offset, slide }) => {
     expect(source.slice(offset, offset + word.length)).toBe(word);
-    return word;
+    return slide ? `slide:${word}` : word;
   });
 }
 
@@ -41,13 +41,17 @@ Text :step{swap} and :Bar{dim}.
     expect(find('![alt](image.png){only #id}\n')).toEqual(['only']);
   });
 
-  it('leaves out headings and directives that are not components', () => {
+  it('finds the bare words of slides', () => {
+    expect(find('# Title {#id wide spare}\n\n::slide{section}\n')).toEqual([
+      'slide:wide',
+      'slide:spare',
+      'slide:section',
+    ]);
+  });
+
+  it('leaves out directives that are not components', () => {
     expect(
-      find(`# Title {master}
-
-::slide{master}
-
-::include{./other.deck.mdx}
+      find(`::include{./other.deck.mdx}
 
 ::recap{other}
 

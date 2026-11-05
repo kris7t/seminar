@@ -2,7 +2,7 @@ import typescript from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { createDeckServicePlugins } from './services.ts';
-import { STEP_BEHAVIOR_TOKEN } from './stepBehaviorTokens.ts';
+import { SLIDE_MASTER_TOKEN, STEP_BEHAVIOR_TOKEN } from './shorthandTokens.ts';
 
 describe('createDeckServicePlugins', () => {
   it('has no commands that could clash with other extensions', () => {
@@ -15,13 +15,15 @@ describe('createDeckServicePlugins', () => {
     ).toEqual([]);
   });
 
-  it('provides the semantic token of step behaviors', () => {
+  it('provides the semantic tokens of step behaviors and slide masters', () => {
     const plugins = createDeckServicePlugins(typescript, {} as never);
     expect(
       plugins.flatMap(
         ({ capabilities }) =>
           capabilities.semanticTokensProvider?.legend.tokenTypes ?? [],
       ),
-    ).toContain(STEP_BEHAVIOR_TOKEN);
+    ).toEqual(
+      expect.arrayContaining([STEP_BEHAVIOR_TOKEN, SLIDE_MASTER_TOKEN]),
+    );
   });
 });
