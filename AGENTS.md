@@ -30,7 +30,7 @@ Workspace packages resolve to their TypeScript sources through the
 - `npm run present`: build the command line and the example deck, and
   present it with `seminar present`.
 - `npm run vscode:package`: build `packages/vscode/dist/seminar.vsix`, see
-  its `README.md`.
+  its `DEVELOPING.md`.
 - `npm run docs:dev`: serve the documentation site.
 - `npm run docs:build`, `npm run docs:preview`: build and preview the docs.
 - `npm test`, or `npx vitest run <path>` for some of the tests.

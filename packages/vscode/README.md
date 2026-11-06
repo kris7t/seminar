@@ -1,25 +1,53 @@
 # Seminar for VS Code
 
-Language support for the `.deck.mdx` files of
-[Seminar](https://seminar.run) in VS Code and VSCodium:
+Language support for the `.deck.mdx` files of [Seminar](https://seminar.run),
+which turns Markdown into React presentations, in VS Code and VSCodium:
 
 - Highlighting of directives, attributes, math, and Mermaid diagrams.
 - Checks, hover, and completion for directives and their attributes, code
   blocks, and the JavaScript of decks.
 - A preview next to the editor that follows the cursor, and presenting.
 
-## Installing
+## Getting started
 
-Build the package from the root of the repository and install it:
+Open a Seminar project, e.g., one created with `npm create seminar`, in a
+trusted workspace. The extension only runs in trusted workspaces, since it
+runs code of the project: it loads the Vite config of a deck to check and
+complete the directives of its plugins and theme, and its code blocks.
 
-```sh
-npm run vscode:package
-codium --install-extension packages/vscode/dist/seminar.vsix
-```
+Previewing and presenting run the `seminar` command of the project, so
+`@seminar/cli` has to be installed in it, and Node has to be on the `PATH`.
 
-Use `code` for VS Code. Reload the window afterwards.
+## Previewing and presenting
 
-## Setting up projects
+**Seminar: Preview Deck** and **Seminar: Present Deck** are also on the title
+bar of the editor. In a preview:
+
+- P fills the panel with the slides, and Shift+P shows the presenter view.
+- Ctrl+click, or Cmd+click, goes to the source.
+- The Seminar sidebar shows the contents and the steps of the deck.
+
+**Seminar: Preview Deck in the Editor** and **Seminar: Preview Deck in a
+Window** choose where the preview opens, see `seminar.preview.location`.
+
+Previews of a project share a dev server. Its errors and warnings are in the
+`Seminar Dev Server` output channel, see **Seminar: Show Dev Server Output**.
+In remote workspaces, it runs on the remote machine, and previews in a window
+open in the browser. Remote workspaces haven't been tested yet.
+
+## Settings
+
+- `seminar.preview.location`: `editor`, the default, shows the preview in a
+  panel of the editor, where the deck can't open windows, go full screen, or
+  print. `window` opens it in the app of `seminar preview`, with all of its
+  features, or in the browser in a remote workspace.
+- `seminar.preview.sync`: whether previews follow the cursor, and editors
+  follow the slide and step of the preview. `both`, the default,
+  `editorToPreview`, `previewToEditor`, or `off`.
+- `seminar.preview.dimHidden`: whether editors fade what can't be read at the
+  current step of the preview, on by default.
+
+## Projects
 
 Decks have their own language, `Seminar Deck`, so settings and extensions for
 `mdx` don't apply to them. Prettier needs to be told about them:
@@ -28,45 +56,18 @@ Decks have their own language, `Seminar Deck`, so settings and extensions for
 { "prettier.documentSelectors": ["**/*.deck.mdx"] }
 ```
 
-The extension only runs in trusted workspaces, since it runs code of the
-workspace: it loads the Vite config of a deck to check and complete the
-directives of its plugins and theme, and its code blocks. It loads the config
-again when it changes. Run `Seminar: Restart Language Server` to load it
-again otherwise, e.g., after installing a plugin.
+Set `"mdx": { "checkMdx": true }` in `tsconfig.json` to report type errors in
+the JavaScript of decks.
+
+The extension loads the Vite config of a deck again when it changes. Run
+**Seminar: Restart Language Server** to load it again otherwise, e.g., after
+installing a plugin.
 
 Augmentations of `StepBehaviorOverrides` and `SlideMasterOverrides` are only
 known if they're part of the TypeScript project of the deck.
 
 `$` starts math only if `@seminar/plugin-mathjax` is installed for the deck.
 Other plugins that add syntax aren't supported yet.
-
-Set `"mdx": { "checkMdx": true }` in `tsconfig.json` to report type errors in
-the JavaScript of decks.
-
-## Previewing
-
-`Seminar: Preview Deck` and `Seminar: Present Deck`, also on the title bar of
-the editor, run `seminar`, so `@seminar/cli` has to be installed in the project
-of the deck, and Node has to be on the `PATH`.
-
-- `seminar.preview.location`: `editor`, the default, shows the preview in a
-  panel, where P fills the panel with the slides and Shift+P shows the
-  presenter view. `window` opens it in the app of `seminar preview`, with all
-  of its features.
-- `seminar.preview.sync`: `both`, the default, `editorToPreview`,
-  `previewToEditor`, or `off`, whether previews follow the cursor, and editors
-  follow the slide and step of the preview.
-- `seminar.preview.dimHidden`: whether editors fade what can't be read at the
-  current step of the preview, on by default.
-
-`Seminar: Preview Deck in the Editor` and `Seminar: Preview Deck in a Window`
-choose the location themselves. Ctrl+click, or Cmd+click, in a preview goes to
-the source. The Seminar sidebar shows the contents of the previewed deck.
-
-Previews of a project share a dev server. Its errors and warnings are in the
-`Seminar Dev Server` output channel, see `Seminar: Show Dev Server Output`. In
-remote workspaces, it runs on the remote machine, and previews in a window
-open in the browser. Remote workspaces haven't been tested yet.
 
 ## Colors
 
@@ -104,11 +105,8 @@ which fall back to the scopes below.
 | `seminar.step.item.operator`        | `->`                                                                                   |
 | `seminar.step.item.separator`       | `,`                                                                                    |
 
-## Developing
+## License
 
-`syntaxes/source.mdx.tmLanguage` is an unmodified copy of the
+Apache-2.0. The grammar of decks builds on the
 [grammar of MDX](https://github.com/wooorm/markdown-tm-language), used under
-the MIT license in `syntaxes/LICENSE.source.mdx.txt`. Replace it to update the
-grammar. `renderDeckGrammar` in `src/grammar.ts` turns it into the grammar of decks
-when building. The grammar of Mermaid comes from `@shikijs/langs`, also when building. The rest of the syntax is injected by the grammars next
-to it, which include the grammar of TeX that comes with the editor.
+the MIT license.
