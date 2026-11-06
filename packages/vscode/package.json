@@ -16,6 +16,12 @@
   "bugs": {
     "url": "https://github.com/kris7t/seminar/issues"
   },
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#00639b",
+    "theme": "dark"
+  },
+  "pricing": "Free",
   "engines": {
     "vscode": "^1.100.0"
   },
@@ -340,6 +346,7 @@
     "@volar/vscode": "~2.4.0",
     "@vscode/vsce": "^4.1.0",
     "esbuild": "^0.28.2",
+    "ovsx": "^1.3.0",
     "remark-math": "^6.0.0",
     "volar-service-markdown": "0.0.71",
     "volar-service-typescript": "0.0.71",

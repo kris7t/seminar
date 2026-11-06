@@ -1,4 +1,4 @@
-name: Release npm packages
+name: Release
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: npm-release
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -52,6 +52,13 @@ jobs:
       - run: npm run check
       - run: npm run release:pack
       - run: npm run release:smoke
+      - name: Package the editor extension
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          npm run vscode:package
+          mkdir -p artifacts/vscode
+          cp packages/vscode/dist/seminar.vsix "artifacts/vscode/seminar-vscode-$RELEASE_VERSION.vsix"
       - name: Save verified version changes
         run: git diff --binary -- package-lock.json 'packages/*/package.json' > artifacts/npm/version.patch
       - uses: actions/upload-artifact@v6
@@ -59,12 +66,18 @@ jobs:
           name: npm-packages
           path: artifacts/npm/
           if-no-files-found: error
+      - uses: actions/upload-artifact@v6
+        with:
+          name: vscode-extension
+          path: artifacts/vscode/
+          if-no-files-found: error
 
   publish:
     needs: verify
     runs-on: ubuntu-latest
     environment: npm
     permissions:
+      actions: write
       contents: write
       id-token: write
     env:
@@ -86,6 +99,10 @@ jobs:
         with:
           name: npm-packages
           path: artifacts/npm/
+      - uses: actions/download-artifact@v7
+        with:
+          name: vscode-extension
+          path: artifacts/vscode/
       - name: Commit and tag the verified release
         env:
           RELEASE_BASE: ${{ github.sha }}
@@ -96,7 +113,7 @@ jobs:
           if ! grep -Fxq -- "$RELEASE_TAG" "$RUNNER_TEMP/release-tags"; then
             gh release create "$RELEASE_TAG" --verify-tag --draft --generate-notes --title "Seminar $RELEASE_TAG"
           fi
-          gh release upload "$RELEASE_TAG" artifacts/npm/*.tgz artifacts/npm/manifest.json --clobber
+          gh release upload "$RELEASE_TAG" artifacts/npm/*.tgz artifacts/npm/manifest.json artifacts/vscode/*.vsix --clobber
           gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/release-assets"
           if grep -Fxq publish-results.json "$RUNNER_TEMP/release-assets"; then
             gh release download "$RELEASE_TAG" --pattern publish-results.json --dir artifacts/npm/ --clobber
@@ -119,6 +136,8 @@ jobs:
           gh release edit "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes"
           if [ "$RELEASE_MODE" = direct ]; then
             gh release edit "$RELEASE_TAG" --draft=false --latest
+            # Releases published with the workflow token don't trigger workflows.
+            gh workflow run publish-extensions.yml --ref "$RELEASE_TAG"
           fi
       - name: Save publication receipts
         if: always()

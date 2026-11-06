@@ -1,0 +1,51 @@
+name: Publish editor extensions
+
+# Publishing the GitHub release of a version marks it as released, after its
+# npm packages are approved in staged mode.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-extensions-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # The Marketplace doesn't accept prerelease versions.
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [vscode-marketplace, open-vsx]
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+      - run: gh release download "$RELEASE_TAG" --pattern '*.vsix' --dir artifacts/vscode/
+      - name: Publish to the Visual Studio Marketplace
+        if: ${{ matrix.environment == 'vscode-marketplace' }}
+        run: npx vsce publish --oidc --skip-duplicate --packagePath artifacts/vscode/*.vsix
+      - name: Publish to Open VSX
+        if: ${{ matrix.environment == 'open-vsx' }}
+        env:
+          # Only needed for the first version, before trusted publishing can be configured.
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx ovsx publish --trusted-publishing --skip-duplicate artifacts/vscode/*.vsix

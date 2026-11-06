@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Material Design Icons: School, by Google (Apache-2.0).
+       Modified for Seminar: white on the brand color.
+       Render with `rsvg-convert -w 256 -h 256 -o assets/icon.png icon.svg`. -->
+  <rect width="128" height="128" rx="24" fill="#00639b" />
+  <path
+    fill="#ffffff"
+    transform="translate(20 20) scale(3.6667)"
+    d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3 1 9l11 6 9-4.91V17h2V9L12 3z"
+  />
+</svg>

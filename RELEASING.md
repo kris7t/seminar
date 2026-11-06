@@ -2,11 +2,13 @@
 
 The eight library packages and `create-seminar` share a version. The repository
 root, documentation site, and example stay private. Internal dependencies use
-the exact shared version.
+the exact shared version. The editor extension has the same version, and is
+published to the Visual Studio Marketplace and Open VSX as
+`kris7t.seminar-vscode`.
 
 ## Run a release
 
-In GitHub Actions, select **Release npm packages → Run workflow**, choose
+In GitHub Actions, select **Release → Run workflow**, choose
 `main`, and set:
 
 - **bump**: `patch`, `minor`, or `major`.
@@ -20,14 +22,22 @@ tarballs, and publishes those exact tarballs to npm in dependency order.
 The initial version baseline is `0.0.0`; choose `minor` for the first `0.1.0`
 release. No manual version commit or tag is needed.
 
+The workflow also packages the editor extension and attaches the VSIX to the
+GitHub release. Publishing the GitHub release runs **Publish editor
+extensions**, which publishes that VSIX to the Visual Studio Marketplace and
+Open VSX. Prerelease versions aren't published as extensions, since the
+Marketplace doesn't accept them.
+
 In **staged** mode, packages wait on npm for a maintainer to approve them with
 2FA. The Actions summary and GitHub release notes list each package's stage ID.
 Use npm's staged-publishing interface, or `npm stage approve <stage-id>`, to
 approve them in the listed dependency order. Once all ten are approved,
-publish the draft GitHub release. Approval cannot be automated using OIDC.
+publish the draft GitHub release, which also publishes the editor extension.
+Approval cannot be automated using OIDC.
 
 In **direct** mode, packages become available on npm during the workflow, and
-the GitHub release is published automatically after all packages succeed. This
+the GitHub release is published automatically after all packages succeed,
+and the workflow then runs **Publish editor extensions** for its tag. This
 requires direct publishing to be enabled for each npm trusted publisher.
 
 Releases are serialized. If `main` advances while verification runs, the atomic
@@ -61,6 +71,23 @@ new packages, so their publisher settings become available before the actual
 release is approved. Configure OIDC for all ten packages, then remove the
 secret. A token used for a direct bootstrap also needs npm's 2FA bypass.
 
+For the editor extension, create the `vscode-marketplace` and `open-vsx`
+GitHub environments, and limit their deployments to `v*` tags, since a trusted
+publisher on Open VSX doesn't restrict the ref. Then configure trusted
+publishing with the organization `kris7t`, the repository `seminar`, the
+workflow filename `publish-extensions.yml`, and the environment of each:
+
+- On the [Visual Studio Marketplace](https://marketplace.visualstudio.com/manage),
+  under **Trusted Publishing** of the `kris7t` publisher, with the
+  `vscode-marketplace` environment.
+- On [Open VSX](https://open-vsx.org/), under **Settings → Trusted
+  Publishers** for the `kris7t` namespace, with the `open-vsx` environment.
+  This needs a verified namespace that you own, and a current publisher
+  agreement. Trusted publishers are registered per extension, so the first
+  version needs a token: add an `OVSX_PAT` secret to the `open-vsx`
+  environment for the first release, configure the trusted publisher, then
+  remove the secret, since it takes precedence over trusted publishing.
+
 ## Recover a partial release
 
 Rerun the failed workflow jobs in the same run to retry the same version.
@@ -78,6 +105,11 @@ OIDC cannot inspect or approve stages. If you manually reject a stage, remove
 its entry from the release's `publish-results.json` asset before retrying.
 A staged version must be approved or rejected before it can be published
 directly. Fixes to a published package require another version.
+
+Publishing extensions skips versions that are already published, so rerun
+the failed jobs, or run **Publish editor extensions** again with the tag of
+the release as its ref, e.g. `gh workflow run publish-extensions.yml --ref
+v0.3.0`.
 
 ## Check packages locally
 
