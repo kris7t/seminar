@@ -24,6 +24,42 @@ describe('createSlideTheme', () => {
     expect(typography.button.fontSize).toMatch(/px$/u);
   });
 
+  it('applies custom typography to the variants', () => {
+    const { typography } = createSlideTheme({
+      typography: { fontFamily: 'Inter', h1: { fontWeight: 700 } },
+    });
+    expect(typography.h1.fontFamily).toBe('Inter');
+    expect(typography.h1.fontWeight).toBe(700);
+    // The other slide defaults of the variant are kept.
+    expect(typography.h1.fontSize).toBe(64);
+  });
+
+  it('sizes MUI components with a custom font size', () => {
+    const { typography } = createSlideTheme({ typography: { fontSize: 28 } });
+    expect(typography.pxToRem(14)).toBe('28px');
+  });
+
+  it('accepts typography that depends on the palette', () => {
+    const { typography } = createSlideTheme(
+      { palette: { primary: { main: '#00639b' } } },
+      { typography: (palette) => ({ h1: { color: palette.primary.main } }) },
+    );
+    expect(typography.h1.color).toBe('#00639b');
+    expect(typography.h1.fontSize).toBe(64);
+  });
+
+  it('derives the palette from later options', () => {
+    const { palette } = createSlideTheme(
+      {},
+      {
+        palette: { primary: { main: '#00639b' } },
+      },
+    );
+    expect(palette.primary.main).toBe('#00639b');
+    expect(palette.primary.contrastText).toBe('#fff');
+    expect(palette.primary.dark).not.toBe('#1565c0');
+  });
+
   it('scales icons with the zoom of the slide', () => {
     const { components } = createSlideTheme();
     expect(components?.MuiSvgIcon?.styleOverrides?.root).toEqual({

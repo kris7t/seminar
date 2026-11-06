@@ -1,5 +1,6 @@
 import { createTheme, type Theme, type ThemeOptions } from '@mui/material';
-import type { TypographyVariantsOptions } from '@mui/material/styles';
+import type { Palette, TypographyVariantsOptions } from '@mui/material/styles';
+import deepmerge from '@mui/utils/deepmerge';
 
 import { ContentMaster } from '../masters/ContentMaster.tsx';
 import { SectionMaster } from '../masters/SectionMaster.tsx';
@@ -52,29 +53,40 @@ const slideThemeOptions: ThemeOptions = {
  * Creates a MUI theme with typography sized for slides and the built-in
  * slide masters.
  *
- * Additional options are merged on top of the slide defaults, so further
- * masters can be added with the `master` option.
+ * Additional options are merged on top of the slide defaults.
  *
  * MUI components are sized in pixels rather than `rem`, which doesn't scale
  * with slides in WebKit, where slides are scaled with `zoom`. The sizes are
  * the same as MUI would give them in `rem`.
  */
 export function createSlideTheme(...options: ThemeOptions[]): Theme {
-  // MUI sizes the typography and components from the first options only, and
-  // merges the others into the theme afterwards.
-  const typography = slideThemeOptions.typography as TypographyVariantsOptions;
-  const fontSize = typography.fontSize ?? 14;
-  return createTheme(
-    {
-      ...slideThemeOptions,
-      typography: {
+  // MUI derives the palette, typography, and spacing from the first options
+  // only, and merges the others into the theme afterwards as they are, so we
+  // merge all options into the first.
+  const allOptions = [slideThemeOptions, ...options];
+  const merged = allOptions.reduce<ThemeOptions>(
+    (acc, option) => deepmerge(acc, { ...option, typography: undefined }),
+    {},
+  );
+  return createTheme({
+    ...merged,
+    typography: (palette: Palette) => {
+      const typography = allOptions.reduce<TypographyVariantsOptions>(
+        (acc, { typography: option = {} }) =>
+          deepmerge(
+            acc,
+            typeof option === 'function' ? option(palette) : option,
+          ),
+        {},
+      );
+      const fontSize = typography.fontSize ?? 14;
+      return {
         ...typography,
         // Supported by MUI, but missing from its types.
         pxToRem: (size: number) => `${String((size * fontSize) / 14)}px`,
-      } as TypographyVariantsOptions,
+      } as TypographyVariantsOptions;
     },
-    ...options,
-  );
+  });
 }
 
 export const defaultSlideTheme: Theme = createSlideTheme();
