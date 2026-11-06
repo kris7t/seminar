@@ -34,9 +34,37 @@ describe('createSlideTheme', () => {
     expect(typography.h1.fontSize).toBe(64);
   });
 
+  it('applies allVariants over the slide defaults of the variants', () => {
+    const { typography } = createSlideTheme({
+      typography: {
+        allVariants: { lineHeight: 1, fontWeight: 300 },
+        body2: { lineHeight: 2 },
+      },
+    });
+    expect(typography.h1.lineHeight).toBe(1);
+    expect(typography.h1.fontWeight).toBe(300);
+    expect(typography.body1.lineHeight).toBe(1);
+    // Variants still override allVariants.
+    expect(typography.body2.lineHeight).toBe(2);
+  });
+
+  it('weighs headings with fontWeightMedium', () => {
+    const { typography } = createSlideTheme({
+      typography: { fontWeightMedium: 600 },
+    });
+    expect(typography.h1.fontWeight).toBe(600);
+    expect(typography.h6.fontWeight).toBe(600);
+  });
+
   it('sizes MUI components with a custom font size', () => {
     const { typography } = createSlideTheme({ typography: { fontSize: 28 } });
     expect(typography.pxToRem(14)).toBe('28px');
+  });
+
+  it('scales the variants with a custom font size', () => {
+    const { typography } = createSlideTheme({ typography: { fontSize: 36 } });
+    expect(typography.h1.fontSize).toBe(96);
+    expect(typography.body2.fontSize).toBe(36);
   });
 
   it('accepts typography that depends on the palette', () => {
