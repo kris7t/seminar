@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import * as release from './release.mjs';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -262,4 +268,42 @@ test('stage identifiers accept npm response shapes and reject incomplete receipt
       () => release.stageIdentifier(response, entry.name),
       /stage ID/,
     );
+});
+
+test('version bumps include the editor extension, and checks require it', (t) => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'seminar-version-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  cpSync(
+    path.join(release.root, 'packages'),
+    path.join(directory, 'packages'),
+    {
+      recursive: true,
+      filter: (source) =>
+        !/[\\/](?:node_modules|dist|src|test)$/.test(source) &&
+        (!source.includes('.') || source.endsWith('package.json')),
+    },
+  );
+  const manifest = (workspace) =>
+    JSON.parse(
+      readFileSync(
+        path.join(directory, 'packages', workspace, 'package.json'),
+        'utf8',
+      ),
+    );
+  const version = release.updateManifests('9.8.7', directory);
+  assert.equal(version, '9.8.7');
+  assert.equal(manifest('core').version, '9.8.7');
+  assert.equal(manifest('vscode').version, '9.8.7');
+  assert.equal(manifest('vscode').devDependencies['@seminar/core'], '9.8.7');
+  assert.equal(release.checkRelease('v9.8.7', directory)[0].version, '9.8.7');
+
+  const file = path.join(directory, 'packages/vscode/package.json');
+  writeFileSync(
+    file,
+    JSON.stringify({ ...manifest('vscode'), version: '9.8.6' }),
+  );
+  assert.throws(
+    () => release.checkRelease(undefined, directory),
+    /seminar-vscode must use the shared release version 9\.8\.7, got 9\.8\.6/,
+  );
 });

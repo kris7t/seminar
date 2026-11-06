@@ -27,6 +27,14 @@ export const libraries = [
   'vite-plugin',
 ];
 export const releaseWorkspaces = [...libraries, 'create', 'cli'];
+// Released with the libraries, but to the editor extension registries.
+const extensionWorkspaces = ['vscode'];
+const dependentWorkspaces = [
+  ...releaseWorkspaces,
+  ...extensionWorkspaces,
+  'example',
+  'docs',
+];
 const registry = 'https://registry.npmjs.org/';
 const dependencyFields = [
   'dependencies',
@@ -37,10 +45,10 @@ const dependencyFields = [
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const writeJson = (file, value) =>
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
-const manifests = () =>
-  releaseWorkspaces.map((directory) => ({
-    directory,
-    ...readJson(path.join(root, 'packages', directory, 'package.json')),
+const manifests = (directory, workspaces = releaseWorkspaces) =>
+  workspaces.map((workspace) => ({
+    directory: workspace,
+    ...readJson(path.join(directory, 'packages', workspace, 'package.json')),
   }));
 const npm = (args, options = {}) =>
   execFileSync('npm', args, { cwd: root, encoding: 'utf8', ...options });
@@ -102,8 +110,8 @@ export function distTag(version) {
   return validateVersion(version).includes('-') ? 'next' : 'latest';
 }
 
-export function checkRelease(tag) {
-  const packages = manifests();
+export function checkRelease(tag, directory = root) {
+  const packages = manifests(directory);
   const version = validateVersion(packages[0].version);
   if (tag !== undefined && tag !== `v${version}`)
     throw new Error(`Release tag ${tag} must match v${version}`);
@@ -119,11 +127,14 @@ export function checkRelease(tag) {
       );
     }
   }
+  for (const pkg of manifests(directory, extensionWorkspaces)) {
+    if (pkg.version !== version)
+      throw new Error(
+        `${pkg.name} must use the shared release version ${version}, got ${pkg.version}`,
+      );
+  }
   const names = new Set(packages.map((pkg) => pkg.name));
-  for (const directory of [...releaseWorkspaces, 'example', 'docs', 'vscode']) {
-    const pkg = readJson(
-      path.join(root, 'packages', directory, 'package.json'),
-    );
+  for (const pkg of manifests(directory, dependentWorkspaces)) {
     for (const field of dependencyFields) {
       for (const [name, range] of Object.entries(pkg[field] ?? {})) {
         if (names.has(name) && range !== version)
@@ -136,21 +147,31 @@ export function checkRelease(tag) {
   return packages;
 }
 
-function setVersion(version) {
+/** Sets the shared version in the manifests, without updating the lockfile. */
+export function updateManifests(version, directory = root) {
   if (['major', 'minor', 'patch'].includes(version))
-    version = bumpVersion(checkRelease()[0].version, version);
+    version = bumpVersion(
+      checkRelease(undefined, directory)[0].version,
+      version,
+    );
   validateVersion(version);
-  const names = new Set(manifests().map((pkg) => pkg.name));
-  for (const directory of [...releaseWorkspaces, 'example', 'docs', 'vscode']) {
-    const file = path.join(root, 'packages', directory, 'package.json');
+  const names = new Set(manifests(directory).map((pkg) => pkg.name));
+  const versioned = [...releaseWorkspaces, ...extensionWorkspaces];
+  for (const workspace of dependentWorkspaces) {
+    const file = path.join(directory, 'packages', workspace, 'package.json');
     const pkg = readJson(file);
-    if (names.has(pkg.name)) pkg.version = version;
+    if (versioned.includes(workspace)) pkg.version = version;
     for (const field of dependencyFields) {
       for (const name of Object.keys(pkg[field] ?? {}))
         if (names.has(name)) pkg[field][name] = version;
     }
     writeJson(file, pkg);
   }
+  return version;
+}
+
+function setVersion(version) {
+  version = updateManifests(version);
   npm(
     [
       'install',
