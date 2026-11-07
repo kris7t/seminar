@@ -1,5 +1,6 @@
 import { createContext, use, type Context } from 'react';
 
+import type { DeckMetadata } from './DeckMetadata.ts';
 import type { ResolvedTocEntry } from './tableOfContents.ts';
 import type { GoToOptions, GoToSteps } from './useDeckNavigation.ts';
 
@@ -11,6 +12,8 @@ export interface DeckState {
    * text taken from the slide in the user interface, like its title.
    */
   slideLangs: readonly (string | undefined)[];
+  /** The title, authors, and other metadata of the deck. */
+  metadata: DeckMetadata;
   /** Zero-based index of the currently shown slide. */
   slideIndex: number;
   slideCount: number;

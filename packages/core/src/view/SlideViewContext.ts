@@ -55,6 +55,11 @@ export interface SlideView {
    * recap recaps. Defaults to `index`.
    */
   stateIndex?: number | undefined;
+  /**
+   * The language of the slide. If the slide doesn't set one, it's the
+   * language of the deck.
+   */
+  lang?: string | undefined;
 }
 
 /** The view outside of slides. */

@@ -9,7 +9,9 @@ import { Step } from '../steps/Step.tsx';
 import { useSteps } from '../steps/useSteps.ts';
 import { useSlideState } from '../state/useSlideState.ts';
 import { useOwnAnimation } from '../transitions/SlideTransitions.ts';
+import { useSlideView } from '../view/SlideViewContext.ts';
 import { Deck } from './Deck.tsx';
+import { useDeck } from './DeckContext.ts';
 import { DeckDocument } from './DeckDocument.tsx';
 
 function link(anchor: string) {
@@ -28,7 +30,32 @@ function Animated(): JSX.Element {
   return <div style={useOwnAnimation()}>Moving</div>;
 }
 
+function About(): JSX.Element {
+  const { metadata, lang } = useDeck();
+  const slideLang = useSlideView().lang;
+  return (
+    <>{`${metadata.title ?? ''}, ${String(lang)}, ${String(slideLang)}`}</>
+  );
+}
+
 describe('DeckDocument', () => {
+  it('tells the slides the metadata of the deck and their languages', () => {
+    const html = renderToStaticMarkup(
+      <DeckDocument>
+        <Deck lang="en" metadata={{ title: 'Talk' }}>
+          <Slide id="first">
+            <About />
+          </Slide>
+          <Slide id="second" lang="hu">
+            <About />
+          </Slide>
+        </Deck>
+      </DeckDocument>,
+    );
+    expect(html).toContain('Talk, en, en');
+    expect(html).toContain('Talk, en, hu');
+  });
+
   it('renders slides as headings by their master', () => {
     const html = renderToStaticMarkup(
       <DeckDocument>

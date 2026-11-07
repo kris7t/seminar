@@ -218,6 +218,9 @@ a simulation, in this view, and keep the results in
 The audience window isn't interactive, but the audience is looking at it, so
 components must render there in full.
 
+`lang` is the language of the slide. If the slide doesn't set one, it's the
+language of the deck.
+
 `useSlideView` also has flags for common checks:
 
 - `presented`: the view is `audience` or `presenter`. Other views can render a

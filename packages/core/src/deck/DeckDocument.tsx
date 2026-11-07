@@ -142,6 +142,7 @@ export function DocumentDeck({
   toc: tocEntries,
   lang,
   uiLocales,
+  metadata = {},
 }: DeckProps): JSX.Element {
   const locale =
     (lang === undefined ? undefined : findLocale(uiLocales ?? [], lang)) ??
@@ -170,6 +171,7 @@ export function DocumentDeck({
   const deck: DeckState = {
     lang,
     slideLangs,
+    metadata,
     slideIndex: 0,
     slideCount: slides.length,
     atFirstStep: true,

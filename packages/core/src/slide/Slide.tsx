@@ -208,11 +208,15 @@ export function Slide({
       </StepBehaviorContext>
     </SlideElementScope>
   );
-  // Recaps share the state of the slide they recap.
-  return recapOf === undefined ? (
-    content
-  ) : (
-    <SlideViewContext value={{ ...view, stateIndex: recapOf }}>
+  return (
+    <SlideViewContext
+      value={{
+        ...view,
+        lang: lang ?? deckLang,
+        // Recaps share the state of the slide they recap.
+        stateIndex: recapOf ?? view.stateIndex,
+      }}
+    >
       {content}
     </SlideViewContext>
   );

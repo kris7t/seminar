@@ -623,6 +623,7 @@ function InteractiveDeck({
         : transitions.register(presenterPanel, { holdOnly: true }),
     [presenterPanel, showOverview, transitions],
   );
+  const deckMetadata = useMemo(() => metadata ?? {}, [metadata]);
   const notes = getSlideNotes(slides[slideIndex]);
   // The notes are in the language of their slide.
   const notesLang = getSlideLang(slides[slideIndex]) ?? lang;
@@ -635,6 +636,7 @@ function InteractiveDeck({
     () => ({
       lang,
       slideLangs,
+      metadata: deckMetadata,
       slideIndex,
       slideCount,
       atFirstStep,
@@ -674,6 +676,7 @@ function InteractiveDeck({
     [
       lang,
       slideLangs,
+      deckMetadata,
       slideIndex,
       slideCount,
       atFirstStep,

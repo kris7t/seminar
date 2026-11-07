@@ -3,9 +3,11 @@ import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Deck } from './Deck.tsx';
+import { useDeck } from './DeckContext.ts';
 import { useSeminarOptions } from './SeminarOptionsContext.ts';
 import { Slide } from '../slide/Slide.tsx';
 import { Step } from '../steps/Step.tsx';
+import { useSlideView } from '../view/SlideViewContext.ts';
 
 function renderDeck() {
   return render(
@@ -42,6 +44,24 @@ describe('Deck', () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('tells the slides its metadata and their languages', () => {
+    function About() {
+      const { metadata, lang } = useDeck();
+      const slideLang = useSlideView().lang;
+      return (
+        <>{`${metadata.title ?? ''} by ${metadata.authors?.join(', ') ?? ''}, ${String(lang)}, ${String(slideLang)}`}</>
+      );
+    }
+    render(
+      <Deck lang="en" metadata={{ title: 'Talk', authors: ['Ada'] }}>
+        <Slide lang="hu">
+          <About />
+        </Slide>
+      </Deck>,
+    );
+    expect(screen.getByText('Talk by Ada, en, hu')).toBeDefined();
   });
 
   it('provides its options to the slides', () => {
