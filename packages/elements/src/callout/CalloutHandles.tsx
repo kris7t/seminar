@@ -122,9 +122,10 @@ export interface CalloutHandlesProps {
  * turns and stretches its stem when dragged anywhere but on interactive
  * elements, or with Alt, the base of its stem, which moves along the
  * edge of the body, also turning the stem, its tip, which moves what it
- * points at, and the sides of the body and their corners, which resize it.
- * Double-clicking a handle removes what it sets. The corners of a side light
- * up while it, or one of them, resizes the body. The area around the body and
+ * points at, as does its stem, and the sides of the body and their corners,
+ * which resize it. Double-clicking a handle removes what it sets. The tip
+ * lights up while the stem is hovered or dragged, and the corners of a side
+ * while it, or one of them, resizes the body. The area around the body and
  * the tip keeps the callout hovered on the way between them.
  */
 export function CalloutHandles({
@@ -167,6 +168,8 @@ export function CalloutHandles({
   };
   // The side whose handle is under the pointer or dragged.
   const [side, setSide] = useState<Side>();
+  // Whether the stem, which moves the tip, is under the pointer or dragged.
+  const [stem, setStem] = useState(false);
   const scale = useSlideScale();
   useDragArea(editable, layout?.body ?? null, {
     onDragStart: start,
@@ -201,12 +204,14 @@ export function CalloutHandles({
       elevation,
       highlighted,
       onHighlightedChange,
+      path,
     }: {
       cursor: string;
       key?: string;
       background?: string | undefined;
       elevation?: number;
-      highlighted?: boolean;
+      highlighted?: boolean | undefined;
+      path?: string;
       onHighlightedChange?: (highlighted: boolean) => void;
     },
   ) => (
@@ -220,6 +225,7 @@ export function CalloutHandles({
       background={background}
       elevation={elevation}
       highlighted={highlighted}
+      path={path}
       onHighlightedChange={onHighlightedChange}
       onDragStart={start}
       onDrag={(drag) => {
@@ -266,6 +272,38 @@ export function CalloutHandles({
   );
   const bridge = `M ${around.map(([x, y]) => `${String(x)} ${String(y)}`).join(' L ')} Z ${geometry.path}`;
 
+  // Moving the tip, or the stem, moves what the callout points at.
+  const moveTip = (
+    start: DragStart,
+    { dx, dy, shiftKey }: Drag,
+  ): AttributeChanges => {
+    const parsed = parseSlidePoint(start.shift);
+    const [shiftX, shiftY] =
+      parsed === undefined ? [0, 0] : resolveSlidePoint(parsed, ZERO_BOX);
+    if (tip === 'shift') {
+      const x = Math.round(shiftX + dx);
+      const y = Math.round(shiftY + dy);
+      return {
+        shift: x === 0 && y === 0 ? null : `${String(x)},${String(y)}`,
+      };
+    }
+    // From where the tip is, which may be an edge of what it points at.
+    const from = tipOf(start);
+    return {
+      at: pointIn(
+        start.box,
+        from.x + dx - shiftX,
+        from.y + dy - shiftY,
+        start.at,
+        tip === 'anchor',
+        shiftKey,
+      ),
+    };
+  };
+  // The stem, on the slide.
+  const halfBase = options.stemSize / 2;
+  const [baseDX, baseDY] = horizontalEdge ? [halfBase, 0] : [0, halfBase];
+  const stemPath = `M ${String(baseX - baseDX)} ${String(baseY - baseDY)} L ${String(tipAt.x)} ${String(tipAt.y)} L ${String(baseX + baseDX)} ${String(baseY + baseDY)} Z`;
   // Resizing from a side, or a corner of it, keeps the other side and the tip
   // where they are.
   const resizeFrom =
@@ -347,6 +385,19 @@ export function CalloutHandles({
           },
         ),
       )}
+      {/* Below the handles of the base and the tip of the stem. */}
+      {handle(
+        'Move what the callout points at by its stem',
+        { x: baseX, y: baseY, width: 0, height: 0 },
+        'area',
+        moveTip,
+        tip === 'shift' ? { shift: null } : { at: null },
+        {
+          cursor: 'move',
+          path: stemPath,
+          onHighlightedChange: setStem,
+        },
+      )}
       {handle(
         'Move the stem of the callout along its edge',
         { x: baseX, y: baseY, width: 0, height: 0 },
@@ -383,32 +434,13 @@ export function CalloutHandles({
         'Move what the callout points at',
         { x: tipAt.x, y: tipAt.y, width: 0, height: 0 },
         'circle',
-        (start, { dx, dy, shiftKey }) => {
-          const parsed = parseSlidePoint(start.shift);
-          const [shiftX, shiftY] =
-            parsed === undefined ? [0, 0] : resolveSlidePoint(parsed, ZERO_BOX);
-          if (tip === 'shift') {
-            const x = Math.round(shiftX + dx);
-            const y = Math.round(shiftY + dy);
-            return {
-              shift: x === 0 && y === 0 ? null : `${String(x)},${String(y)}`,
-            };
-          }
-          // From where the tip is, which may be an edge of what it points at.
-          const from = tipOf(start);
-          return {
-            at: pointIn(
-              start.box,
-              from.x + dx - shiftX,
-              from.y + dy - shiftY,
-              start.at,
-              tip === 'anchor',
-              shiftKey,
-            ),
-          };
-        },
+        moveTip,
         tip === 'shift' ? { shift: null } : { at: null },
-        { cursor: 'crosshair' },
+        {
+          cursor: 'move',
+          // Also while the stem is dragged.
+          highlighted: stem ? true : undefined,
+        },
       )}
     </>
   );

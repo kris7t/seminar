@@ -182,7 +182,7 @@ describe('CalloutHandles', () => {
     },
   );
 
-  it('lets the stem be dragged like the body', () => {
+  it('lets the stem bring up the handles like the body', () => {
     renderCallout({ angle: 90 });
     const stem = document.querySelector(`.${calloutClasses.background} > path`);
     expect(stem).not.toBeNull();
@@ -403,6 +403,27 @@ describe('CalloutHandles', () => {
     expect(
       screen.queryByRole('button', { name: 'Move what the callout points at' }),
     ).toBeNull();
+  });
+
+  it('moves what the callout points at by dragging its stem', () => {
+    renderCallout({ shift: '0,-4' });
+    drag('Move what the callout points at by its stem', 10, 6);
+    expect(edited()).toEqual([{ shift: '10,2' }]);
+  });
+
+  it('lights up the tip while the stem is under the pointer', () => {
+    renderCallout({ angle: 90 });
+    const circle = () =>
+      document
+        .querySelector('[data-shape="circle"]')
+        ?.hasAttribute('data-highlighted');
+    expect(circle()).toBe(false);
+    fireEvent.pointerEnter(
+      screen.getByRole('button', {
+        name: 'Move what the callout points at by its stem',
+      }),
+    );
+    expect(circle()).toBe(true);
   });
 
   it('shifts what callouts in the text point at', () => {

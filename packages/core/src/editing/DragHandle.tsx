@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type JSX,
+  type MouseEvent,
   type PointerEvent,
 } from 'react';
 
@@ -40,6 +41,12 @@ export interface DragHandleProps {
   editable: Editable<object>;
   /** Where the handle takes the pointer, in the logical pixels of the slide. */
   box: SlideBox;
+  /**
+   * Where the handle takes the pointer instead of `box`, as an SVG path in
+   * the logical pixels of the slide, e.g., for an `area` that isn't a box,
+   * like the stem of a callout.
+   */
+  path?: string | undefined;
   /**
    * How the handle is drawn: a line across a `vertical` or `horizontal`
    * box, along which it's dragged, a `square`, a `circle`, or a `diamond` in
@@ -86,7 +93,7 @@ export interface DragHandleProps {
 }
 
 /** Screen pixels of the smallest side of the box that takes the pointer. */
-const MIN_HIT_SIZE = 12;
+const MIN_HIT_SIZE = 20;
 
 const DEFAULT_CURSORS = {
   vertical: 'col-resize',
@@ -96,6 +103,21 @@ const DEFAULT_CURSORS = {
   diamond: 'move',
   area: 'move',
 };
+
+/** Covers the layer for handles that take the pointer in a path. */
+const PathRoot = styled('svg', {
+  name: 'SeminarDragHandle',
+  slot: 'Path',
+})({
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  overflow: 'visible',
+  pointerEvents: 'none',
+  fill: 'transparent',
+  touchAction: 'none',
+});
 
 const HandleRoot = styled('div', {
   name: 'SeminarDragHandle',
@@ -120,6 +142,7 @@ const HandleRoot = styled('div', {
 export function DragHandle({
   editable,
   box,
+  path,
   shape,
   label,
   cursor = DEFAULT_CURSORS[shape],
@@ -233,78 +256,93 @@ export function DragHandle({
       },
     };
   };
+  // Where the handle takes the pointer, a box or a path.
+  const handleProps = {
+    ...(shape === 'vertical' || shape === 'horizontal'
+      ? { role: 'separator', 'aria-orientation': shape }
+      : { role: 'button' }),
+    'aria-label': label,
+    'aria-hidden': visible ? undefined : true,
+    [INTERACTIVE_ATTRIBUTE]: '',
+    onPointerEnter: () => {
+      setHovered(true);
+      editing.hover(editable.key);
+    },
+    onPointerLeave: (event: PointerEvent) => {
+      setHovered(false);
+      // Onto the slide, or another handle, which tells itself.
+      if (startRef.current === undefined) {
+        editing.hover(editableAt(event.relatedTarget));
+      }
+    },
+    onPointerDown: (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      startRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+        pointer: event.pointerId,
+      };
+      setDragging(true);
+      editing.setDragging(editable.key);
+      editing.select(editable.key);
+      onDragStart?.();
+    },
+    onPointerMove: (event: PointerEvent) => {
+      if (startRef.current?.pointer === event.pointerId) {
+        onDrag(dragOf(event));
+      }
+    },
+    onPointerUp: (event: PointerEvent) => {
+      if (startRef.current?.pointer === event.pointerId) {
+        const drag = dragOf(event);
+        startRef.current = undefined;
+        setDragging(false);
+        editing.setDragging(undefined);
+        onRelease(drag);
+      }
+    },
+    onLostPointerCapture: () => {
+      if (startRef.current !== undefined) {
+        startRef.current = undefined;
+        setDragging(false);
+        editing.setDragging(undefined);
+        onCancel?.();
+      }
+    },
+    onDoubleClick: (event: MouseEvent) => {
+      event.stopPropagation();
+      onReset?.();
+    },
+  };
   return (
     <EditLayer>
-      <HandleRoot
-        {...(shape === 'vertical' || shape === 'horizontal'
-          ? { role: 'separator', 'aria-orientation': shape }
-          : { role: 'button' })}
-        aria-label={label}
-        aria-hidden={visible ? undefined : true}
-        {...{ [INTERACTIVE_ATTRIBUTE]: '' }}
-        style={{
-          left,
-          top,
-          width,
-          height,
-          cursor,
-          pointerEvents: visible ? undefined : 'none',
-        }}
-        onPointerEnter={() => {
-          setHovered(true);
-          editing.hover(editable.key);
-        }}
-        onPointerLeave={(event) => {
-          setHovered(false);
-          // Onto the slide, or another handle, which tells itself.
-          if (startRef.current === undefined) {
-            editing.hover(editableAt(event.relatedTarget));
-          }
-        }}
-        onPointerDown={(event) => {
-          if (event.button !== 0) {
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          event.currentTarget.setPointerCapture(event.pointerId);
-          startRef.current = {
-            x: event.clientX,
-            y: event.clientY,
-            pointer: event.pointerId,
-          };
-          setDragging(true);
-          editing.setDragging(editable.key);
-          editing.select(editable.key);
-          onDragStart?.();
-        }}
-        onPointerMove={(event) => {
-          if (startRef.current?.pointer === event.pointerId) {
-            onDrag(dragOf(event));
-          }
-        }}
-        onPointerUp={(event) => {
-          if (startRef.current?.pointer === event.pointerId) {
-            const drag = dragOf(event);
-            startRef.current = undefined;
-            setDragging(false);
-            editing.setDragging(undefined);
-            onRelease(drag);
-          }
-        }}
-        onLostPointerCapture={() => {
-          if (startRef.current !== undefined) {
-            startRef.current = undefined;
-            setDragging(false);
-            editing.setDragging(undefined);
-            onCancel?.();
-          }
-        }}
-        onDoubleClick={(event) => {
-          event.stopPropagation();
-          onReset?.();
-        }}
-      />
+      {path === undefined ? (
+        <HandleRoot
+          {...handleProps}
+          style={{
+            left,
+            top,
+            width,
+            height,
+            cursor,
+            pointerEvents: visible ? undefined : 'none',
+          }}
+        />
+      ) : (
+        <PathRoot>
+          <path
+            d={path}
+            transform={`scale(${String(scale)})`}
+            {...handleProps}
+            style={{ cursor, pointerEvents: visible ? 'fill' : 'none' }}
+          />
+        </PathRoot>
+      )}
       {shape !== 'area' && (
         <MarkAnchor style={mark().anchor}>
           {shape === 'diamond' ? (
