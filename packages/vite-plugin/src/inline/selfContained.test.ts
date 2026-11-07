@@ -27,10 +27,12 @@ afterEach(async () => {
 async function buildApp(
   options?: SeminarPluginOptions,
   build?: BuildEnvironmentOptions,
+  fixtures = root,
+  page = 'talk.html',
 ) {
   outDir = await mkdtemp(path.join(tmpdir(), 'seminar-build-'));
   const builder = await createBuilder({
-    root,
+    root: fixtures,
     configFile: false,
     logLevel: 'silent',
     plugins: [
@@ -44,7 +46,7 @@ async function buildApp(
   });
   await builder.buildApp();
   const files = await readdir(outDir, { recursive: true });
-  const html = await readFile(path.join(outDir, 'talk.html'), 'utf8');
+  const html = await readFile(path.join(outDir, page), 'utf8');
   return { files: files.sort(), html };
 }
 
@@ -130,6 +132,24 @@ describe('seminarSelfContained', () => {
     ).replaceAll('\n', ' ');
     expect(colophon).toMatch(
       /<br> Images: there is 1, with alt text\. [^]* The Markdown refers to each image as <code>!\[Alt text\]\(#seminar-image-N\)<\/code>, and the HTML shows it as an <code>&lt;svg role="img"&gt;<\/code>/,
+    );
+  }, 60_000);
+
+  it('embeds images of packages once for the document and the slides', async () => {
+    const { html } = await buildApp(
+      { content: 'ssr' },
+      undefined,
+      fileURLToPath(new URL('../test/fixtures-package', import.meta.url)),
+      'package.html',
+    );
+    const data =
+      /<image id="seminar-image-0" href="(data:image\/svg\+xml;base64,[^"]+)" width="40" height="20"\/>/.exec(
+        html,
+      )?.[1];
+    expect(data).toBeDefined();
+    expect(html.split(data ?? '').length - 1).toBe(1);
+    expect(html).toContain(
+      '<svg role="img" aria-label="The logo" width="40" height="20" viewBox="0 0 40 20"><title>The logo</title><use href="#seminar-image-0"/></svg>',
     );
   }, 60_000);
 

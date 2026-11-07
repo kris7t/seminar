@@ -1,13 +1,22 @@
 import { registerHooks } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   createServer,
   isCSSRequest,
+  normalizePath,
   type ResolvedConfig,
   type ViteDevServer,
 } from 'vite';
 
-import { imageMarkers } from '../inline/images.ts';
+import {
+  imageElement,
+  imageMarkers,
+  isImageFile,
+  mark,
+  resolveImages,
+} from '../inline/images.ts';
 
 /** Query that marks the module that renders a deck as a document. */
 export const DOCUMENT_QUERY = '?seminar-document';
@@ -214,30 +223,51 @@ interface DocumentModule {
   render: () => Promise<string>;
 }
 
-let ignoresStyleSheets = false;
+let loadsAssets = false;
 
 /**
- * Makes Node.js load style sheets as empty modules. The server leaves packages
- * in `node_modules` to Node.js, which can't load the style sheets that they
- * import, e.g., the fonts of themes. Documents don't need styles, and Node.js
- * would fail to load style sheets anyway, so this affects nothing else.
+ * Makes Node.js load style sheets as empty modules, and images as their
+ * markers, like `imageMarkers` does for the modules that Vite loads. The server
+ * leaves packages in `node_modules` to Node.js, which can't load the assets
+ * that they import, e.g., the fonts and logos of themes. Documents don't need
+ * styles, and Node.js would fail to load these assets anyway, so this affects
+ * nothing else.
  */
-function ignoreStyleSheets(): void {
-  if (ignoresStyleSheets) {
+function loadAssets(): void {
+  if (loadsAssets) {
     return;
   }
-  ignoresStyleSheets = true;
+  loadsAssets = true;
   registerHooks({
-    load: (url, context, nextLoad) =>
-      url.startsWith('file:') && isCSSRequest(url)
-        ? { format: 'module', source: '', shortCircuit: true }
-        : nextLoad(url, context),
+    load: (url, context, nextLoad) => {
+      if (!url.startsWith('file:')) {
+        return nextLoad(url, context);
+      }
+      if (isCSSRequest(url)) {
+        return { format: 'module', source: '', shortCircuit: true };
+      }
+      const file = fileURLToPath(url);
+      return isImageFile(file)
+        ? {
+            format: 'module',
+            source: `export default ${JSON.stringify(mark(file))};`,
+            shortCircuit: true,
+          }
+        : nextLoad(url, context);
+    },
   });
 }
 
-/** Renders decks with the modules that `server` loads for the server. */
-export function documentRenderer(server: ViteDevServer): RenderDocument {
-  ignoreStyleSheets();
+/**
+ * Renders decks with the modules that `server` loads for the server. Images
+ * that Node.js loaded are markers in the documents, which `imageUrl` resolves,
+ * if given, or else the build (see `resolveImages`).
+ */
+export function documentRenderer(
+  server: ViteDevServer,
+  imageUrl?: (file: string) => string,
+): RenderDocument {
+  loadAssets();
   return async (deckPath) => {
     const module = (await server.ssrLoadModule(
       deckPath + DOCUMENT_QUERY,
@@ -245,8 +275,21 @@ export function documentRenderer(server: ViteDevServer): RenderDocument {
     if (typeof module.render !== 'function') {
       throw new Error(`${deckPath}${DOCUMENT_QUERY} doesn't export render`);
     }
-    return wrapLines(breakLines(cleanDocument(await module.render())));
+    let html = cleanDocument(await module.render());
+    if (imageUrl !== undefined) {
+      html = resolveImages(
+        html,
+        (file, attributes) => imageElement(imageUrl(file), attributes),
+        imageUrl,
+      );
+    }
+    return wrapLines(breakLines(html));
   };
+}
+
+/** Returns the URL at which the dev server with `base` serves `file`. */
+export function servedFileUrl(base: string, file: string): string {
+  return path.posix.join(base, '@fs', normalizePath(file));
 }
 
 /**

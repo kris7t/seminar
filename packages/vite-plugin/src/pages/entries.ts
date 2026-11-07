@@ -35,6 +35,7 @@ import {
   DOCUMENT_PREFIX,
   DOCUMENT_QUERY,
   documentRenderer,
+  servedFileUrl,
   renderDocumentModule,
   type RenderDocument,
 } from './documents.ts';
@@ -665,7 +666,9 @@ export function seminarEntries({
     },
 
     configureServer(server) {
-      renderDocument = documentRenderer(server);
+      renderDocument = documentRenderer(server, (file) =>
+        servedFileUrl(server.config.base, file),
+      );
       server.middlewares.use((request, response, next) => {
         if (
           request.url === undefined ||

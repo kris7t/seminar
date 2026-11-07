@@ -335,24 +335,27 @@ describe('seminarEntries', () => {
     <meta property="og:description" content="What the analytical engine can do" />`);
     });
 
-    it('renders decks with packages that import CSS', async () => {
+    it('renders decks with packages that import CSS and images', async () => {
       const warn = vi.fn<(message: string) => void>();
       const logger = createLogger('silent');
       logger.warn = warn;
-      const [html = ''] = await serve(
-        {
-          root: fileURLToPath(
-            new URL('../test/fixtures-package', import.meta.url),
-          ),
-          customLogger: logger,
-          logLevel: 'warn',
-        },
-        ['/package.html'],
+      const fixtures = fileURLToPath(
+        new URL('../test/fixtures-package', import.meta.url),
+      );
+      const logo = `/@fs${fixtures}/node_modules/seminar-theme-fixture/logo.svg`;
+      const [html = '', image] = await serve(
+        { root: fixtures, customLogger: logger, logLevel: 'warn' },
+        ['/package.html', logo],
       );
       expect(warn).not.toHaveBeenCalled();
       expect(html).toContain(
         'id="a-theme-from-a-package">A theme from a package ',
       );
+      // Served by Vite from the package.
+      expect(html.replaceAll('\n', ' ')).toContain(
+        `<img src="${logo}" alt="The logo"/>`,
+      );
+      expect(image).toContain('<svg');
     });
 
     it('falls back to the Markdown of the deck with a warning', async () => {
