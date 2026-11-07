@@ -65,7 +65,25 @@ describe('directiveComponents', () => {
       warnings: [
         'The `box` directive is wrapped in the `boxes` directive, which has no component',
       ],
+      theme: path.join(root, 'decks/theme.tsx'),
     });
+  });
+
+  it('resolves the theme of the deck, or the default theme', async () => {
+    const plugin = seminar({
+      defaultTheme: 'seminar-theme-fixture',
+      resolveModule: (specifier) =>
+        specifier.replace(/^@\//, `${path.join(root, 'src')}/`),
+      importModule: () => Promise.resolve({ module: {}, dependencies: [] }),
+    });
+    plugin.config({ root }, { mode: 'development' });
+    const deck = path.join(root, 'decks/talk.deck.mdx');
+    const themeOf = async (source: string) =>
+      (await plugin.directiveComponents(source, deck)).theme;
+    expect(await themeOf('---\ntheme: "@/theme.ts"\n---\n\n# Talk')).toBe(
+      path.join(root, 'src/theme.ts'),
+    );
+    expect(await themeOf('# Talk')).toBe('seminar-theme-fixture');
   });
 
   it('collects the code blocks of the plugins and the theme', async () => {

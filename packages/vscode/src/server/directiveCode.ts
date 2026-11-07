@@ -257,6 +257,7 @@ export function generateDirectiveCode(
   root: Root,
   directives: Readonly<Record<string, DirectiveComponent>>,
   codeBlocks?: Readonly<Record<string, ModuleExport>>,
+  theme?: string,
 ): DirectiveCode {
   const imports = new Map<DirectiveComponent, string>();
   const codeComponents = new Map<string, string>();
@@ -381,6 +382,11 @@ export function generateDirectiveCode(
     documented[name] = local;
     documentation += `import type { ${exportName} as ${local} } from ${JSON.stringify(module)};\n`;
   };
+  // The theme isn't imported by the deck, but may augment the types of
+  // Seminar, e.g., with its slide masters.
+  if (theme !== undefined) {
+    documentation += `import type {} from ${JSON.stringify(theme)};\n`;
+  }
   for (const [name, type] of Object.entries(BUILT_IN)) {
     if (name !== IMAGE_ATTRIBUTES) {
       document(name, '@seminar/core', type);

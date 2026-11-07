@@ -32,7 +32,9 @@ export function directivesFileName(fileName: string): string {
 export type DirectiveRegistry = (
   file: string,
   source: string,
-) => Pick<DeckDirectiveComponents, 'directives' | 'codeBlocks'> | undefined;
+) =>
+  | Pick<DeckDirectiveComponents, 'directives' | 'codeBlocks' | 'theme'>
+  | undefined;
 
 /** What checks the directives of decks against the props of components. */
 export interface DirectiveChecking {
@@ -74,6 +76,7 @@ function addDirectives(
     code.ast,
     registry?.directives ?? {},
     registry?.codeBlocks,
+    registry?.theme,
   );
   code.seminarDocumented = documented;
   if (registry !== undefined) {

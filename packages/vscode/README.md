@@ -66,7 +66,8 @@ installing a plugin.
 Augmentations of `StepBehaviorOverrides` and `SlideMasterOverrides` are only
 known if they're part of the TypeScript project of the deck, whose
 `tsconfig.json` has to include the deck, e.g., with `**/*.mdx` in `include`,
-like projects made with `npm create seminar`.
+like projects made with `npm create seminar`. Those of the theme of the deck
+are always known, since the extension imports the theme for its types.
 
 `$` starts math only if `@seminar/plugin-mathjax` is installed for the deck.
 Other plugins that add syntax aren't supported yet.

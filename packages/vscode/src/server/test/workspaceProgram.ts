@@ -30,6 +30,8 @@ export function workspaceProgram(source: string): typescript.Program {
     jsx: typescript.JsxEmit.Preserve,
     customConditions: ['@seminar/source'],
     noEmit: true,
+    // Like the projects of decks, which needn't list the files they import.
+    composite: false,
   };
   const host = typescript.createCompilerHost(compilerOptions);
   const getSourceFile = host.getSourceFile.bind(host);

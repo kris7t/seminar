@@ -78,6 +78,11 @@ export interface DeckDirectiveComponents {
   dependencies: string[];
   /** Problems with the configs and the registrations. */
   warnings: string[];
+  /**
+   * The theme of the deck, with aliases and paths relative to the deck
+   * resolved, e.g., for editors to load its type augmentations.
+   */
+  theme?: string | undefined;
 }
 
 /** The plugin, which works with both Rollup and Vite. */
@@ -249,8 +254,10 @@ export default function seminar({
   // the plugins it refers to may extend the compiler.
   const compilers = new Map<string, Promise<Compiler>>();
   /** Returns the compiler of the deck at `deckPath` with `source`. */
+  const deckTheme = (source: string): string | undefined =>
+    readDeckTheme(source) ?? resolvedDefaultTheme(rootPath);
   const getCompiler = (source: string, deckPath: string): Promise<Compiler> => {
-    const theme = readDeckTheme(source) ?? resolvedDefaultTheme(rootPath);
+    const theme = deckTheme(source);
     const key = theme === undefined ? '' : resolveThemeKey(theme, deckPath);
     let compiler = compilers.get(key);
     if (compiler === undefined) {
@@ -321,6 +328,7 @@ export default function seminar({
     async directiveComponents(source: string, deckPath: string) {
       const { setup } = await getCompiler(source, deckPath);
       const warnings = [...setup.warnings];
+      const theme = deckTheme(source);
       return {
         directives: collectDirectiveComponents(
           directives ?? {},
@@ -337,6 +345,13 @@ export default function seminar({
         }),
         dependencies: [...setup.dependencies],
         warnings,
+        theme:
+          theme === undefined
+            ? undefined
+            : resolveThemeKey(
+                (await resolveModule?.(theme, deckPath)) ?? theme,
+                deckPath,
+              ),
       };
     },
   };

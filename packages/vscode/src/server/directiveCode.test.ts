@@ -1,10 +1,14 @@
+import { fileURLToPath } from 'node:url';
+
 import { deckSyntaxPlugins } from '@seminar/mdx/syntax';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
+import typescript from 'typescript';
 import { unified } from 'unified';
 import { describe, expect, it } from 'vitest';
 
 import { generateDirectiveCode } from './directiveCode.ts';
+import { VIRTUAL_FILE, workspaceProgram } from './test/workspaceProgram.ts';
 
 const DIRECTIVES = {
   callout: {
@@ -205,6 +209,31 @@ export {};
     expect(text).toMatch(
       /_SeminarDocumented6 } from "\.\/Column\.tsx";\nexport \{\};\n$/,
     );
+  });
+
+  it('imports the theme for the types that it augments', () => {
+    const source = '## Title {wide}';
+    const root = unified()
+      .use(remarkParse)
+      .use(remarkMdx)
+      .use(deckSyntaxPlugins([]))
+      .parse(source);
+    const errors = (theme?: string) => {
+      const { text } = generateDirectiveCode(source, root, {}, {}, theme);
+      const program = workspaceProgram(text);
+      return program
+        .getSemanticDiagnostics(program.getSourceFile(VIRTUAL_FILE))
+        .map(({ messageText }) =>
+          typescript.flattenDiagnosticMessageText(messageText, '\n'),
+        );
+    };
+    expect(errors()).toEqual([
+      expect.stringContaining("Property 'wide' does not exist"),
+    ]);
+    // The theme adds the `wide` master.
+    expect(
+      errors(fileURLToPath(new URL('./test/theme.ts', import.meta.url))),
+    ).toEqual([]);
   });
 
   it('maps the attributes of headings to the deck', () => {

@@ -35,6 +35,8 @@ export interface DeckDirectiveComponents {
   /** Files that the registrations were loaded from. */
   dependencies: string[];
   warnings: string[];
+  /** The resolved theme of the deck, whose type augmentations apply to it. */
+  theme?: string | undefined;
 }
 
 /** What the language server asks the worker. */

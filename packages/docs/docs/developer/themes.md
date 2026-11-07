@@ -64,6 +64,11 @@ declare module '@seminar/core' {
 createSlideTheme({ master: { wide: WideMaster } });
 ```
 
+The editor extension loads the types of the theme of each deck, so its
+declarations apply to the deck even though the deck doesn't import the theme.
+A theme published as a package has to declare them in the types of its main
+entry, e.g., in the `index.ts` that it builds them from.
+
 A deck can also import a master and pass it to a slide, e.g.,
 `{master=ClosingMaster}`.
 
