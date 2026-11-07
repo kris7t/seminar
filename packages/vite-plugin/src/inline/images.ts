@@ -51,7 +51,7 @@ export function isImageFile(id: string): boolean {
 }
 
 /** Returns the marker of the image at `file`, without characters to escape. */
-export function mark(file: string, prefix = MARKER): string {
+export function mark(file: string, prefix: string = MARKER): string {
   return (
     prefix +
     encodeURIComponent(file).replaceAll(
