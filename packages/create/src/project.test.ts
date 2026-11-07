@@ -63,8 +63,10 @@ for (let mask = 0; mask < 1 << plugins.length; mask++) {
       );
       const tsconfig = JSON.parse(read(directory, 'tsconfig.json')) as {
         compilerOptions: { paths: Record<string, string[]> };
+        include: string[];
       };
       expect(tsconfig.compilerOptions.paths['@/*']).toEqual(['./src/*']);
+      expect(tsconfig.include).toContain('**/*.mdx');
       expect(config).toContain("outDir: '../dist'");
       expect(config).toContain('emptyOutDir: true');
       expect(config).toContain('selfContained: true');

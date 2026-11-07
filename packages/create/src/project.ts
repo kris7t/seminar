@@ -295,7 +295,9 @@ ${seminarOptions.join('\n')}
       types: ['node', 'vite/client', '@seminar/mdx/client'],
       paths: { '@/*': ['./src/*'] },
     },
-    include: ['**/*.ts', '**/*.tsx'],
+    // Decks, too, so that the editor checks them with the augmentations of
+    // the project, e.g., of the props of directives.
+    include: ['**/*.ts', '**/*.tsx', '**/*.mdx'],
   };
   const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
   const files: Record<string, string> = {

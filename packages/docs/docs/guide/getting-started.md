@@ -327,4 +327,8 @@ npm install --save-dev @seminar/mdx @seminar/vite-plugin @vitejs/plugin-react vi
 Add the Seminar and React plugins to `vite.config.ts`, as shown in
 [Configure Vite](#configure-vite). With that configuration, create your deck
 in `decks/index.deck.mdx`. For TypeScript imports of decks, add
-`@seminar/mdx/client` to `tsconfig.json`'s `compilerOptions.types`.
+`@seminar/mdx/client` to `tsconfig.json`'s `compilerOptions.types`. Add
+`**/*.mdx` to its `include`, so that the
+[VS Code extension](https://github.com/kris7t/seminar/tree/main/packages/vscode#readme)
+checks the directives of decks with the types of the project, e.g., its own
+step behaviors and slide masters.
