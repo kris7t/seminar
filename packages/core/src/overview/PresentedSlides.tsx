@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 import { DeckContext, useDeck, type DeckState } from '../deck/DeckContext.ts';
-import { useEditing } from '../editing/EditLayer.tsx';
+import { useEditing } from '../editing/useEditing.ts';
 import { EditingContext } from '../editing/EditingContext.ts';
 import { StepStoreContext } from '../steps/StepStoreContext.ts';
 import type { StepStore } from '../steps/StepStore.ts';

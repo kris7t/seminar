@@ -189,18 +189,14 @@ export {
   type SourcePosition,
   type SourceRange,
 } from './host/sourceRanges.ts';
+export { DragHandle, type DragHandleProps } from './editing/DragHandle.tsx';
+export { EditBridge, type EditBridgeProps } from './editing/EditBridge.tsx';
+export { EditLayer, useSlideScale, type Drag } from './editing/EditLayer.tsx';
 export {
-  DragHandle,
-  EditBridge,
-  EditLayer,
   EditMark,
-  useSlideScale,
-  type Drag,
-  type DragHandleProps,
-  type EditBridgeProps,
   type EditMarkProps,
   type EditMarkShape,
-} from './editing/EditLayer.tsx';
+} from './editing/EditMark.tsx';
 export type { AttributeChanges, AttributeValue } from './editing/editStore.ts';
 export { useDragArea, type DragAreaHandlers } from './editing/useDragArea.ts';
 export {
