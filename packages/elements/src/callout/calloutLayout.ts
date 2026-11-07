@@ -19,6 +19,8 @@ export interface CalloutLayout {
   box: SlideBox;
   /** The element of the body. */
   body: HTMLElement | null;
+  /** The color of the bubble, if it's known, e.g., for handles over it. */
+  background: string | undefined;
 }
 
 export const CalloutLayoutContext: Context<CalloutLayout | undefined> =

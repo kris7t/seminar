@@ -195,9 +195,19 @@ export function CalloutHandles({
     shape: 'circle' | 'diamond' | 'area',
     changesOf: (start: DragStart, drag: Drag) => AttributeChanges,
     reset: AttributeChanges,
-    cursor?: string,
-    key: string = label,
-    onHighlightedChange?: (highlighted: boolean) => void,
+    {
+      cursor,
+      key = label,
+      background,
+      elevation,
+      onHighlightedChange,
+    }: {
+      cursor: string;
+      key?: string;
+      background?: string | undefined;
+      elevation?: number;
+      onHighlightedChange?: (highlighted: boolean) => void;
+    },
   ) => (
     <DragHandle
       key={key}
@@ -206,6 +216,8 @@ export function CalloutHandles({
       shape={shape}
       label={label}
       cursor={cursor}
+      background={background}
+      elevation={elevation}
       onHighlightedChange={onHighlightedChange}
       onDragStart={start}
       onDrag={(drag) => {
@@ -309,12 +321,14 @@ export function CalloutHandles({
             };
           },
           { width: null },
-          'ew-resize',
-          edge,
-          (highlighted) => {
-            setSide((previous) =>
-              highlighted ? edge : previous === edge ? undefined : previous,
-            );
+          {
+            cursor: 'ew-resize',
+            key: edge,
+            onHighlightedChange: (highlighted) => {
+              setSide((previous) =>
+                highlighted ? edge : previous === edge ? undefined : previous,
+              );
+            },
           },
         ),
       )}
@@ -343,7 +357,12 @@ export function CalloutHandles({
           };
         },
         { stemOffset: null },
-        horizontalEdge ? 'ew-resize' : 'ns-resize',
+        {
+          cursor: horizontalEdge ? 'ew-resize' : 'ns-resize',
+          // On the bubble, as high as it.
+          background: layout.background,
+          elevation: 0,
+        },
       )}
       {handle(
         'Move what the callout points at',
@@ -374,7 +393,7 @@ export function CalloutHandles({
           };
         },
         tip === 'shift' ? { shift: null } : { at: null },
-        'crosshair',
+        { cursor: 'crosshair' },
       )}
     </>
   );

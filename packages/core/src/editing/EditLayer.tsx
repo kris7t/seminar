@@ -1,4 +1,9 @@
-import { styled, useTheme, type Theme } from '@mui/material/styles';
+import {
+  getContrastRatio,
+  styled,
+  useTheme,
+  type Theme,
+} from '@mui/material/styles';
 import {
   use,
   useCallback,
@@ -93,6 +98,18 @@ export interface DragHandleProps {
    * and when it no longer is either, e.g., to light up other marks with it.
    */
   onHighlightedChange?: ((highlighted: boolean) => void) | undefined;
+  /**
+   * The color that the mark of the handle is drawn over, if it's known, e.g.,
+   * the background of the directive, so that it's outlined to stand out from
+   * it.
+   */
+  background?: string | undefined;
+  /**
+   * Depth of the shadow of the mark, one of the `shadows` of the theme, e.g.,
+   * 0 for a mark on what it moves, which is as high. Defaults to 4. Marks over
+   * dark backgrounds cast none.
+   */
+  elevation?: number | undefined;
   /** Called when the handle starts to be dragged. */
   onDragStart?: (() => void) | undefined;
   /** Called while the handle is dragged. */
@@ -126,6 +143,13 @@ const FILL_COLOR = '#fff';
 const OUTLINE_COLOR = '#2a2b2a';
 const HIGHLIGHTED_FILL_COLOR = '#fff700';
 const HIGHLIGHTED_OUTLINE_COLOR = '#5a5b5a';
+/**
+ * Colors of marks over dark backgrounds, with their tones swapped, so that
+ * their outlines stand out from the background, and their fills from those.
+ */
+const ON_DARK_FILL_COLOR = '#474847';
+const ON_DARK_OUTLINE_COLOR = '#fff';
+const ON_DARK_HIGHLIGHTED_OUTLINE_COLOR = '#fff';
 
 /** Depth of the shadow of marks, one of the `shadows` of the theme. */
 const MARK_ELEVATION = 4;
@@ -180,6 +204,14 @@ const HandleMark = styled('div', {
     background: HIGHLIGHTED_FILL_COLOR,
     [OUTLINE_PROPERTY]: HIGHLIGHTED_OUTLINE_COLOR,
   },
+  '&[data-on-dark]': {
+    background: ON_DARK_FILL_COLOR,
+    [OUTLINE_PROPERTY]: ON_DARK_OUTLINE_COLOR,
+  },
+  '&[data-on-dark][data-highlighted]': {
+    background: HIGHLIGHTED_FILL_COLOR,
+    [OUTLINE_PROPERTY]: ON_DARK_HIGHLIGHTED_OUTLINE_COLOR,
+  },
 }));
 
 /** Where marks are drawn from, in the screen pixels of the layer. */
@@ -208,12 +240,22 @@ const SvgMark = styled('svg', {
     stroke: HIGHLIGHTED_OUTLINE_COLOR,
   },
   '&[data-highlighted] [data-part="fill"]': { fill: HIGHLIGHTED_FILL_COLOR },
+  '&[data-on-dark] [data-part="outline"]': { stroke: ON_DARK_OUTLINE_COLOR },
+  '&[data-on-dark] [data-part="fill"]': { fill: ON_DARK_FILL_COLOR },
+  '&[data-on-dark][data-highlighted] [data-part="outline"]': {
+    stroke: ON_DARK_HIGHLIGHTED_OUTLINE_COLOR,
+  },
+  '&[data-on-dark][data-highlighted] [data-part="fill"]': {
+    fill: HIGHLIGHTED_FILL_COLOR,
+  },
 }));
 
 /** Props of a {@link DiamondMark}. */
 interface DiamondMarkProps {
   highlighted: boolean;
   swapped: boolean;
+  onDark: boolean;
+  elevation: number;
   opacity: number;
 }
 
@@ -224,18 +266,20 @@ interface DiamondMarkProps {
 function DiamondMark({
   highlighted,
   swapped,
+  onDark,
+  elevation,
   opacity,
 }: DiamondMarkProps): JSX.Element {
   const theme = useTheme();
   const shadowId = useSvgId('SeminarEditMark-shadow');
-  const shadow = markShadow(theme);
+  const shadow = markShadow(theme, onDark, elevation);
   const half = DIAMOND_DIAGONAL / 2;
   // With the outline, which reaches beyond the tips.
   const extent = half + OUTLINE_WIDTH * 2;
   const points = `0 ${String(-half)} ${String(half)} 0 0 ${String(half)} ${String(-half)} 0`;
   return (
     <SvgMark
-      {...markAttributes(highlighted, swapped)}
+      {...markAttributes(highlighted, swapped, onDark)}
       data-shape="diamond"
       viewBox={`${String(-extent)} ${String(-extent)} ${String(extent * 2)} ${String(extent * 2)}`}
       style={{
@@ -271,18 +315,41 @@ function DiamondMark({
 }
 
 /** The data attributes of a mark that tell how it's drawn. */
-function markAttributes(highlighted: boolean, swapped: boolean) {
+function markAttributes(
+  highlighted: boolean,
+  swapped: boolean,
+  onDark = false,
+) {
   return {
     'data-highlighted': highlighted ? '' : undefined,
     'data-swapped': swapped ? '' : undefined,
+    'data-on-dark': onDark ? '' : undefined,
   };
+}
+
+/** Whether `color` is dark, so that light outlines stand out more over it. */
+function isDark(color: string | undefined): boolean {
+  if (color === undefined || color === '') {
+    return false;
+  }
+  try {
+    return getContrastRatio(color, '#fff') > getContrastRatio(color, '#000');
+  } catch {
+    // Not a color MUI reads, e.g., a gradient.
+    return false;
+  }
 }
 
 /**
  * Returns the place, the size, and the outline of a square or a circle around
  * its anchor, in screen pixels.
  */
-function boxStyle(shape: 'square' | 'circle', theme: Theme): CSSProperties {
+function boxStyle(
+  shape: 'square' | 'circle',
+  theme: Theme,
+  onDark = false,
+  elevation = MARK_ELEVATION,
+): CSSProperties {
   const size = shape === 'square' ? SQUARE_SIZE : CIRCLE_DIAMETER;
   return {
     left: -size / 2,
@@ -290,21 +357,34 @@ function boxStyle(shape: 'square' | 'circle', theme: Theme): CSSProperties {
     width: size,
     height: size,
     borderRadius: shape === 'circle' ? '50%' : undefined,
-    ...outlineStyle(theme),
+    ...outlineStyle(theme, onDark, elevation),
   };
 }
 
-/** Returns the shadow that marks cast, from the theme. */
-function markShadow(theme: Theme): string {
-  return theme.shadows[clampElevation(theme, MARK_ELEVATION)] ?? 'none';
+/**
+ * Returns the shadow that marks at `elevation` cast, from the theme, but none
+ * over dark backgrounds, where it can't be seen.
+ */
+function markShadow(
+  theme: Theme,
+  onDark = false,
+  elevation = MARK_ELEVATION,
+): string {
+  return onDark
+    ? 'none'
+    : (theme.shadows[clampElevation(theme, elevation)] ?? 'none');
 }
 
 /**
- * Returns the outline that marks are seen with on any background, and their
- * shadow.
+ * Returns the outline that marks are seen with, and their shadow, which can't
+ * be seen over dark backgrounds.
  */
-function outlineStyle(theme: Theme): CSSProperties {
-  const shadow = markShadow(theme);
+function outlineStyle(
+  theme: Theme,
+  onDark = false,
+  elevation = MARK_ELEVATION,
+): CSSProperties {
+  const shadow = markShadow(theme, onDark, elevation);
   return {
     boxShadow: `0 0 0 ${String(OUTLINE_WIDTH)}px var(${OUTLINE_PROPERTY})${shadow === 'none' ? '' : `, ${shadow}`}`,
   };
@@ -378,6 +458,8 @@ export function EditMark({
           <DiamondMark
             highlighted={highlighted}
             swapped={editable.swapped}
+            onDark={false}
+            elevation={MARK_ELEVATION}
             opacity={opacity}
           />
         ) : (
@@ -407,6 +489,8 @@ export function DragHandle({
   label,
   cursor = DEFAULT_CURSORS[shape],
   highlighted: requestedHighlighted,
+  background,
+  elevation = MARK_ELEVATION,
   onHighlightedChange,
   onDragStart,
   onDrag,
@@ -480,7 +564,10 @@ export function DragHandle({
           box.x + box.width / 2,
           box.y + box.height / 2,
         ),
-        style: shape === 'diamond' ? {} : boxStyle(shape, theme),
+        style:
+          shape === 'diamond'
+            ? {}
+            : boxStyle(shape, theme, isDark(background), elevation),
       };
     }
     const [startX, startY] = snapToPixels(editing, box.x, box.y);
@@ -508,7 +595,7 @@ export function DragHandle({
         top: vertical ? 0 : across,
         width: vertical ? LINE_WIDTH : length,
         height: vertical ? length : LINE_WIDTH,
-        ...outlineStyle(theme),
+        ...outlineStyle(theme, false, elevation),
       },
     };
   };
@@ -590,11 +677,17 @@ export function DragHandle({
             <DiamondMark
               highlighted={highlighted}
               swapped={editable.swapped}
+              onDark={isDark(background)}
+              elevation={elevation}
               opacity={visible ? 1 : 0}
             />
           ) : (
             <HandleMark
-              {...markAttributes(highlighted, editable.swapped)}
+              {...markAttributes(
+                highlighted,
+                editable.swapped,
+                isDark(background),
+              )}
               data-shape={shape}
               style={{ ...mark().style, opacity: visible ? 1 : 0 }}
             />

@@ -245,6 +245,26 @@ function textColors(palette: Palette): [CalloutColor, PaletteColorLike][] {
 }
 
 /**
+ * Returns the background of the bubble of a callout of `color` and
+ * `variant`, as the styles of the built-in variants make it, or `undefined`
+ * for other variants.
+ */
+function bubbleBackground(
+  palette: Palette,
+  color: CalloutColor,
+  variant: CalloutVariant,
+): string | undefined {
+  // Themes may add variants, whose backgrounds aren't known.
+  const backgrounds: Partial<Record<CalloutVariant, string | undefined>> = {
+    filled:
+      paletteColor(palette, color)?.main ??
+      textColors(palette).find(([textColor]) => textColor === color)?.[1].main,
+    outlined: palette.background.paper,
+  };
+  return backgrounds[variant];
+}
+
+/**
  * Where the callout is rendered, which takes no room, and which its bubble is
  * placed relative to.
  */
@@ -567,7 +587,13 @@ export function Callout(inProps: CalloutProps): JSX.Element {
   const layout: CalloutLayout | undefined =
     anchored === undefined || options === undefined || placed === undefined
       ? undefined
-      : { options, geometry: placed, box: anchored.box, body: positioner };
+      : {
+          options,
+          geometry: placed,
+          box: anchored.box,
+          body: positioner,
+          background: bubbleBackground(theme.palette, color, variant),
+        };
 
   // Callouts with blocks are blocks themselves.
   const element = block ? 'div' : 'span';

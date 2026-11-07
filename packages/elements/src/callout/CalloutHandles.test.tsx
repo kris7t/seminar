@@ -167,6 +167,18 @@ describe('CalloutHandles', () => {
     expect(highlightedCorners()).toEqual([]);
   });
 
+  it.each([
+    ['filled', true],
+    ['outlined', false],
+  ])(
+    'outlines the stem handle for the bubble of %s callouts',
+    (variant, onDark) => {
+      renderCallout({ angle: 90, color: 'text.primary', variant });
+      const stem = document.querySelector('[data-shape="diamond"]');
+      expect(stem?.hasAttribute('data-on-dark')).toBe(onDark);
+    },
+  );
+
   it('lets the stem be dragged like the body', () => {
     renderCallout({ angle: 90 });
     const stem = document.querySelector(`.${calloutClasses.background} > path`);
