@@ -42,14 +42,15 @@ export {
   type ColumnsClassKey,
   type ColumnsProps,
 } from './columns/Columns.tsx';
+// Moved to the core, which draws handles with them, too.
 export {
   clampElevation,
   parseBoxShadow,
   ShadowFilter,
   shadowFilterUrl,
   shadowExtent,
+  useSvgId,
   type ShadowFilterProps,
   type ShadowLayer,
   type SvgBounds,
-} from './svg/shadow.tsx';
-export { useSvgId } from './svg/useSvgId.ts';
+} from '@seminar/core';

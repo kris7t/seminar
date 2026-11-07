@@ -22,10 +22,8 @@ import {
   SelectionFrame,
   type SelectionFrameProps,
 } from '../view/SelectionFrame.tsx';
-import {
-  FITTED_SLIDE_FRAME_STYLES,
-  slideScaleStyles,
-} from '../view/slideFrame.ts';
+import { SLIDE_HEIGHT, SLIDE_WIDTH } from '../theme/createSlideTheme.ts';
+import { FITTED_SLIDE_FRAME_STYLES } from '../view/slideFrame.ts';
 import {
   SLIDE_VIEW_ATTRIBUTE,
   type SlideView,
@@ -133,8 +131,10 @@ function PresentedLayer({
         <Box
           ref={setEditLayer}
           sx={FITTED_SLIDE_FRAME_STYLES}
+          // Unscaled, so that handles are drawn in whole screen pixels.
           style={{
-            ...slideScaleStyles(scale),
+            width: SLIDE_WIDTH * scale,
+            height: SLIDE_HEIGHT * scale,
             zIndex: 2,
             overflow: 'visible',
             background: 'none',

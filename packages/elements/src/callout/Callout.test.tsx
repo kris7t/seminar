@@ -80,6 +80,24 @@ describe('Callout', () => {
     expect(callout.classList).toContain(stepClasses.hidden);
   });
 
+  it('takes the pointer only while its bubble is shown', () => {
+    render(
+      <Deck>
+        <Slide title="Callout">
+          <Callout data-testid="callout">Detail</Callout>
+        </Slide>
+      </Deck>,
+    );
+    const callout = screen.getByTestId('callout');
+    expect(callout.classList).toContain('SeminarStep-hidden');
+    // Rather than what it covers, while it's hidden.
+    const positioner = callout.parentElement;
+    if (positioner === null) throw new Error('Missing callout positioner');
+    expect(getComputedStyle(positioner).pointerEvents).toBe('none');
+    expect(getComputedStyle(callout).pointerEvents).toBe('auto');
+    expect(getComputedStyle(callout).visibility).toBe('hidden');
+  });
+
   it('supports full behaviors and built-in or custom shorthands', async () => {
     const user = userEvent.setup();
     const theme = createSlideTheme({

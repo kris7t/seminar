@@ -530,12 +530,13 @@ export function calloutPlacementAt(
 
 /**
  * Returns the `stemOffset` that moves the base of the stem of the callout of
- * `options` with `geometry` by `distance` along its edge, as far as it can be
- * attached there, rounded to `step`.
+ * `options` with `geometry` by `distance` along its edge, rounded to `step`,
+ * as far as it can be attached there, and as far as the stem can turn to its
+ * tip without moving the body, as {@link calloutPlacementAt} turns it.
  */
 export function calloutStemOffsetAt(
   options: CalloutGeometryOptions,
-  { edge, stemOffset }: CalloutGeometry,
+  { x, y, edge, stemOffset }: CalloutGeometry,
   distance: number,
   step = 0.05,
 ): number {
@@ -543,9 +544,41 @@ export function calloutStemOffsetAt(
   const length = edge === 'top' || edge === 'bottom' ? width : height;
   const inset = radius + stemHalfBase(edge, width, height, radius, stemSize);
   const lowest = Math.min(inset / length, 0.5);
-  return clamp(
+  const target = clamp(
     round(stemOffset + distance / length, step),
     round(Math.ceil(lowest / step) * step, step),
     round(Math.floor((1 - lowest) / step) * step, step),
   );
+  const keepsBody = (value: number) => {
+    const turned = { ...options, stemOffset: value };
+    const placed = calloutGeometry({
+      ...turned,
+      ...calloutPlacementAt(turned, options.anchorX + x, options.anchorY + y),
+    });
+    // As close as whole degrees and pixels place it.
+    const tolerance = 1 + placed.offset * Math.sin(Math.PI / 360);
+    return (
+      placed.edge === edge &&
+      Math.hypot(placed.x - x, placed.y - y) <= tolerance
+    );
+  };
+  // Steps towards the target, until the body would move.
+  const direction = Math.sign(target - stemOffset);
+  let reached = stemOffset;
+  for (
+    let value = round(
+      (direction > 0
+        ? Math.floor(stemOffset / step + 1e-6) + 1
+        : Math.ceil(stemOffset / step - 1e-6) - 1) * step,
+      step,
+    );
+    direction > 0 ? value <= target : value >= target;
+    value = round(value + direction * step, step)
+  ) {
+    if (!keepsBody(value)) {
+      break;
+    }
+    reached = value;
+  }
+  return reached;
 }

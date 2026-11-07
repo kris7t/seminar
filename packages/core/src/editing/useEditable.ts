@@ -42,6 +42,12 @@ export interface Editable<
    */
   readonly active: boolean;
   /**
+   * Whether the handles of the directive appear or disappear at once, since
+   * the pointer or the selection moved directly between it and another
+   * directive, rather than fading in or out.
+   */
+  readonly swapped: boolean;
+  /**
    * Whether the directive is selected, by clicking it, or dragging one of
    * its handles, until clicking elsewhere or pressing Escape.
    */
@@ -140,6 +146,7 @@ export function useEditable<P extends object>(
         ? editing.hovered === directive.key ||
           editing.selected === directive.key
         : editing.dragging === directive.key,
+    swapped: editing.swapped.includes(directive.key),
     selected: editing.selected === directive.key,
     of: (child) => {
       const at = editedDirective(getSourceRange(child.props));

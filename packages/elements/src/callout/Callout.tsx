@@ -10,9 +10,13 @@ import {
   type TypeText,
 } from '@mui/material/styles';
 import {
+  clampElevation,
+  ShadowFilter,
+  shadowFilterUrl,
   SLIDE_HEIGHT,
   SLIDE_WIDTH,
   Step,
+  useSvgId,
   type ComponentTheme,
   parseSlidePoint,
   resolveSlidePoint,
@@ -40,13 +44,7 @@ import {
 } from './calloutGeometry.ts';
 import { CalloutLayoutContext, type CalloutLayout } from './calloutLayout.ts';
 import { calloutTitleClasses } from './CalloutTitle.tsx';
-import {
-  clampElevation,
-  ShadowFilter,
-  shadowFilterUrl,
-} from '../svg/shadow.tsx';
 import { FIRST_CHILD } from '../selectors.ts';
-import { useSvgId } from '../svg/useSvgId.ts';
 
 export const DEFAULT_CALLOUT_MAX_WIDTH = 360;
 export const DEFAULT_CALLOUT_STEM_SIZE = 36;
@@ -271,6 +269,9 @@ const CalloutPositioner = styled('span', {
   top: '50%',
   left: 0,
   display: 'block',
+  // Only the bubble takes the pointer, which hidden steps don't, rather
+  // than what they cover.
+  pointerEvents: 'none',
   ...(ownerState.width === undefined
     ? { width: 'max-content', maxWidth: ownerState.maxWidth }
     : { width: ownerState.width }),
@@ -307,6 +308,7 @@ const CalloutRoot = styled(Step, {
     display: 'block',
     boxSizing: 'border-box',
     width: '100%',
+    pointerEvents: 'auto',
     color: 'var(--SeminarCallout-color)',
     variants: [
       {
@@ -346,6 +348,8 @@ const CalloutBackground = styled('svg', {
   height: '100%',
   overflow: 'visible',
   pointerEvents: 'none',
+  // The stem takes the pointer like the body.
+  '& > path': { pointerEvents: 'visiblePainted' },
   fill: 'var(--SeminarCallout-background)',
   stroke: 'var(--SeminarCallout-outline)',
   strokeWidth: 'var(--SeminarCallout-outline-width)',

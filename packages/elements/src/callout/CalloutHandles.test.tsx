@@ -9,6 +9,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { calloutClasses } from './Callout.tsx';
 import { CalloutDirective } from './CalloutDirective.tsx';
 
 const CHANNEL = Symbol.for('seminar.devChannel');
@@ -120,6 +121,200 @@ describe('CalloutHandles', () => {
     const { angle, offset } = changes as { angle: number; offset: number };
     expect(angle).toBe(Math.round((Math.atan2(40, -36) * 180) / Math.PI));
     expect(offset).toBe(Math.round(Math.hypot(40, 36)));
+  });
+
+  it('stops the stem where the body would have to move', () => {
+    renderCallout({ angle: 90, offset: 40, stemOffset: 0.5 });
+    // Beyond 40 to the right, the stem would turn to the left edge.
+    drag('Move the stem of the callout along its edge', 200, 0);
+    const [changes] = edited();
+    expect(changes).toMatchObject({ stemOffset: 0.6 });
+    const { angle, offset } = changes as { angle: number; offset: number };
+    expect(angle).toBe(Math.round((Math.atan2(40, -36) * 180) / Math.PI));
+    expect(offset).toBe(Math.round(Math.hypot(40, 36)));
+  });
+
+  it('marks the stem with a diamond and the tip with a circle', () => {
+    renderCallout({ angle: 90 });
+    const shapes = [...document.querySelectorAll('[data-shape]')].map((mark) =>
+      mark.getAttribute('data-shape'),
+    );
+    // After the squares on the corners of the body.
+    expect(shapes.slice(4)).toEqual(['diamond', 'circle']);
+  });
+
+  const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+
+  /**
+   * The squares on the corners of the bodies of callouts, from the top left
+   * to the bottom right.
+   */
+  const cornersOf = (callout = 0) =>
+    [...document.querySelectorAll('[data-shape="square"]')].slice(
+      callout * 4,
+      callout * 4 + 4,
+    );
+
+  /** The corners of the body that are lit up. */
+  const highlightedCorners = () =>
+    cornersOf().flatMap((corner, index) =>
+      corner.hasAttribute('data-highlighted') ? [CORNERS[index]] : [],
+    );
+
+  it('marks the corners of the body, without lighting them up to move it', () => {
+    renderCallout({ angle: 90 });
+    expect(cornersOf()).toHaveLength(4);
+    expect(highlightedCorners()).toEqual([]);
+  });
+
+  it('lets the stem be dragged like the body', () => {
+    renderCallout({ angle: 90 });
+    const stem = document.querySelector(`.${calloutClasses.background} > path`);
+    expect(stem).not.toBeNull();
+    if (stem === null) return;
+    expect(getComputedStyle(stem).pointerEvents.toLowerCase()).toBe(
+      'visiblepainted',
+    );
+  });
+
+  it.each(['left', 'right'])(
+    'lights up the corners on the %s while resizing from there',
+    (side) => {
+      // Selected, rather than under the pointer.
+      renderCallout({ angle: 90 }, false);
+      fireEvent.click(screen.getByText('Note'));
+      const handle = screen.getByRole('button', {
+        name: `Resize the callout from the ${side}`,
+      });
+      fireEvent.pointerEnter(handle);
+      expect(highlightedCorners()).toEqual([`top-${side}`, `bottom-${side}`]);
+      fireEvent.pointerLeave(handle);
+      expect(highlightedCorners()).toEqual([]);
+    },
+  );
+
+  it('lights up a handle under the pointer', () => {
+    renderCallout({ angle: 90 });
+    const handle = screen.getByRole('button', {
+      name: 'Move what the callout points at',
+    });
+    const mark = document.querySelectorAll('[data-shape="circle"]').item(0);
+    expect(mark.hasAttribute('data-highlighted')).toBe(false);
+    fireEvent.pointerEnter(handle);
+    expect(mark.hasAttribute('data-highlighted')).toBe(true);
+  });
+
+  it('stays hovered along its stem, on the way to its tip', () => {
+    renderCallout({ angle: 90, offset: 100 });
+    const tip = () =>
+      document.querySelector('[aria-label="Move what the callout points at"]');
+    const frame = screen.getByText('Note').closest('[data-seminar-view]');
+    const bridge = document.querySelector('svg[aria-hidden] > path:only-child');
+    expect(bridge).not.toBeNull();
+    if (frame === null || bridge === null) return;
+    // From the body onto the stem, which takes the pointer over the slide.
+    fireEvent.pointerLeave(frame, { relatedTarget: bridge });
+    fireEvent.pointerEnter(bridge);
+    expect(tip()?.getAttribute('aria-hidden')).toBeNull();
+    const handle = tip();
+    if (handle === null) return;
+    fireEvent.pointerLeave(bridge, { relatedTarget: handle });
+    fireEvent.pointerEnter(handle);
+    expect(tip()?.getAttribute('aria-hidden')).toBeNull();
+    // Off the stem, onto nothing editable.
+    fireEvent.pointerLeave(bridge, { relatedTarget: document.body });
+    expect(tip()?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('keeps hidden handles from taking the pointer', () => {
+    renderCallout({ angle: 90 }, false);
+    // Hidden from assistive technologies, which have no name for it.
+    const handle = document.querySelector<HTMLElement>(
+      '[aria-label="Move what the callout points at"]',
+    );
+    expect(handle).not.toBeNull();
+    if (handle === null) return;
+    expect(handle.getAttribute('aria-hidden')).toBe('true');
+    expect(handle.style.pointerEvents).toBe('none');
+  });
+
+  it('swaps the handles between callouts at once, rather than fading', () => {
+    render(
+      <Deck>
+        <Slide>
+          <p>
+            {__seminarAt(
+              <CalloutDirective with="initial" angle={90}>
+                Note
+              </CalloutDirective>,
+              RANGE,
+              FILE,
+            )}
+            {__seminarAt(
+              <CalloutDirective with="initial" angle={-90}>
+                Other
+              </CalloutDirective>,
+              '4:5-4:30',
+              FILE,
+            )}
+          </p>
+        </Slide>
+      </Deck>,
+    );
+    const swapped = () =>
+      [...document.querySelectorAll('[data-shape="square"]')].map(
+        (corner) =>
+          `${corner.hasAttribute('data-swapped') ? 'swapped' : 'fading'} ${(corner as HTMLElement).style.opacity}`,
+      );
+    fireEvent.pointerOver(screen.getByText('Note'));
+    expect(new Set(swapped())).toEqual(new Set(['fading 1', 'fading 0']));
+    fireEvent.pointerOver(screen.getByText('Other'));
+    expect(new Set(swapped())).toEqual(new Set(['swapped 1', 'swapped 0']));
+  });
+
+  it('fades hovered handles in and out while another callout is selected', () => {
+    render(
+      <Deck>
+        <Slide>
+          <p>
+            {__seminarAt(
+              <CalloutDirective with="initial" angle={90}>
+                Note
+              </CalloutDirective>,
+              RANGE,
+              FILE,
+            )}
+            {__seminarAt(
+              <CalloutDirective with="initial" angle={-90}>
+                Other
+              </CalloutDirective>,
+              '4:5-4:30',
+              FILE,
+            )}
+          </p>
+        </Slide>
+      </Deck>,
+    );
+    // Selected, so that its handles stay shown.
+    fireEvent.pointerOver(screen.getByText('Note'));
+    fireEvent.click(screen.getByText('Note'));
+    const corners = (text: string) => cornersOf(text === 'Note' ? 0 : 1);
+    const fade = (text: string) => [
+      ...new Set(
+        corners(text).map(
+          (corner) =>
+            `${corner.hasAttribute('data-swapped') ? 'swapped' : 'fading'} ${(corner as HTMLElement).style.opacity}`,
+        ),
+      ),
+    ];
+    fireEvent.pointerOver(screen.getByText('Other'));
+    expect(fade('Other')).toEqual(['swapped 1']);
+    // Onto nothing editable.
+    fireEvent.pointerOver(screen.getByRole('paragraph'));
+    expect(fade('Other')).toEqual(['fading 0']);
+    expect(fade('Note')).toEqual(['fading 1']);
+    fireEvent.pointerOver(screen.getByText('Other'));
+    expect(fade('Other')).toEqual(['fading 1']);
   });
 
   it('leaves interactive elements in the body to work, unless Alt is held', () => {

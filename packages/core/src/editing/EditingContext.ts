@@ -13,9 +13,13 @@ export interface Editing {
   /** The editable directive whose handle is dragged, by its key. */
   dragging: string | undefined;
   /**
-   * Tells which editable directive is under the pointer, if any, which stays
-   * hovered a little after the pointer leaves it.
+   * The editable directives, by their keys, that the pointer or the
+   * selection moved between directly the last time either moved, whose
+   * handles appear and disappear at once, rather than fading in from nothing
+   * or out to nothing.
    */
+  swapped: readonly string[];
+  /** Tells which editable directive is under the pointer, if any. */
   hover: (key: string | undefined) => void;
   select: (key: string | undefined) => void;
   setDragging: (key: string | undefined) => void;

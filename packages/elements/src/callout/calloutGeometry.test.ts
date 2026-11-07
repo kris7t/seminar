@@ -254,17 +254,59 @@ describe('calloutPlacementAt', () => {
 
 describe('calloutStemOffsetAt', () => {
   it('moves the base of the stem along its edge', () => {
-    const options = { ...BASE, angle: 90, stemOffset: 0.5 };
+    const options = { ...BASE, angle: 90, offset: 200, stemOffset: 0.5 };
     const geometry = calloutGeometry(options);
     expect(calloutStemOffsetAt(options, geometry, 60)).toBe(0.7);
     expect(calloutStemOffsetAt(options, geometry, -31, 0.01)).toBe(0.4);
   });
 
   it('keeps the stem where it can be attached', () => {
-    const options = { ...BASE, angle: 90, stemOffset: 0.5 };
+    const options = { ...BASE, angle: 90, offset: 200, stemOffset: 0.5 };
     const geometry = calloutGeometry(options);
     // The inset is the radius and half the stem, 40 of 300.
     expect(calloutStemOffsetAt(options, geometry, 1000)).toBe(0.85);
     expect(calloutStemOffsetAt(options, geometry, -1000)).toBe(0.15);
+  });
+
+  it.each([
+    [1000, 0.6],
+    [-1000, 0.4],
+  ])(
+    'stops the stem where the body would move, by %i',
+    (distance, stemOffset) => {
+      // The stem turns from the bottom edge to a side 40 away from the tip.
+      const options = { ...BASE, angle: 90, offset: 40, stemOffset: 0.5 };
+      const geometry = calloutGeometry(options);
+      expect(calloutStemOffsetAt(options, geometry, distance)).toBe(stemOffset);
+    },
+  );
+
+  it('stops the stem where the body would move, pointing at a box', () => {
+    const options = {
+      ...BASE,
+      anchorWidth: 80,
+      anchorHeight: 30,
+      angle: 90,
+      offset: 40,
+      stemOffset: 0.5,
+    };
+    const geometry = calloutGeometry(options);
+    const stemOffset = calloutStemOffsetAt(options, geometry, 1000, 0.01);
+    expect(stemOffset).toBeGreaterThan(0.5);
+    expect(stemOffset).toBeLessThan(0.85);
+    const turned = { ...options, stemOffset };
+    const placed = calloutGeometry({
+      ...turned,
+      ...calloutPlacementAt(
+        turned,
+        options.anchorX + geometry.x,
+        options.anchorY + geometry.y,
+      ),
+    });
+    expect(placed.edge).toBe('bottom');
+    // As close as whole degrees and pixels place it.
+    expect(
+      Math.hypot(placed.x - geometry.x, placed.y - geometry.y),
+    ).toBeLessThanOrEqual(1.5);
   });
 });

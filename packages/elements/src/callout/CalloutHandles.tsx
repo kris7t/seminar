@@ -1,6 +1,9 @@
 import {
   DragHandle,
+  EditBridge,
+  EditMark,
   useDragArea,
+  useSlideScale,
   parseSlidePoint,
   resolveSlidePoint,
   SLIDE_WIDTH,
@@ -10,7 +13,7 @@ import {
   type SlideBox,
   type SlidePoint,
 } from '@seminar/core';
-import { useRef, type JSX } from 'react';
+import { useRef, useState, type JSX } from 'react';
 
 import {
   CALLOUT_SLIDE_MARGIN,
@@ -27,6 +30,44 @@ interface CalloutAttributes {
 
 /** A callout when dragging its handle began. */
 interface DragStart extends CalloutLayout, CalloutAttributes {}
+
+/** A side of the body of a callout, which resizes it. */
+type Side = 'left' | 'right';
+
+/**
+ * Screen pixels around the body and the tip of a callout that keep it hovered
+ * on the way between them.
+ */
+const BRIDGE_MARGIN = 16;
+
+/** Returns the convex hull of `points`, counterclockwise. */
+function convexHull(points: [number, number][]): [number, number][] {
+  const sorted = [...points].sort(([ax, ay], [bx, by]) => ax - bx || ay - by);
+  const cross = (
+    [ox, oy]: [number, number],
+    [ax, ay]: [number, number],
+    [bx, by]: [number, number],
+  ) => (ax - ox) * (by - oy) - (ay - oy) * (bx - ox);
+  const half = (from: [number, number][]) =>
+    from.reduce<[number, number][]>((hull, point) => {
+      for (;;) {
+        const [before, last] = hull.slice(-2);
+        if (
+          before === undefined ||
+          last === undefined ||
+          cross(before, last, point) > 0
+        ) {
+          break;
+        }
+        hull.pop();
+      }
+      hull.push(point);
+      return hull;
+    }, []);
+  const lower = half(sorted);
+  const upper = half([...sorted].reverse());
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
 
 /** Narrowest a callout gets while resizing, in logical slide pixels. */
 const MIN_WIDTH = 40;
@@ -83,7 +124,9 @@ export interface CalloutHandlesProps {
  * elements, or with Alt, the base of its stem, which moves along the
  * edge of the body, also turning the stem, its tip, which moves what it
  * points at, and the sides of the body, which resize it. Double-clicking a
- * handle removes what it sets.
+ * handle removes what it sets. The corners of a side light up while it
+ * resizes the body. The area around the body and the tip keeps the callout
+ * hovered on the way between them.
  */
 export function CalloutHandles({
   editable,
@@ -123,6 +166,9 @@ export function CalloutHandles({
       shiftKey ? 15 : 1,
     );
   };
+  // The side whose handle is under the pointer or dragged.
+  const [side, setSide] = useState<Side>();
+  const scale = useSlideScale();
   useDragArea(editable, layout?.body ?? null, {
     onDragStart: start,
     onDrag: (drag) => {
@@ -135,7 +181,7 @@ export function CalloutHandles({
     },
     onCancel: cancel,
   });
-  if (layout === undefined || !editable.active) {
+  if (layout === undefined) {
     return null;
   }
   const { options, geometry } = layout;
@@ -146,11 +192,12 @@ export function CalloutHandles({
   const handle = (
     label: string,
     box: SlideBox,
-    shape: 'point' | 'area',
+    shape: 'circle' | 'diamond' | 'area',
     changesOf: (start: DragStart, drag: Drag) => AttributeChanges,
     reset: AttributeChanges,
     cursor?: string,
     key: string = label,
+    onHighlightedChange?: (highlighted: boolean) => void,
   ) => (
     <DragHandle
       key={key}
@@ -159,6 +206,7 @@ export function CalloutHandles({
       shape={shape}
       label={label}
       cursor={cursor}
+      onHighlightedChange={onHighlightedChange}
       onDragStart={start}
       onDrag={(drag) => {
         preview(changesOf, drag);
@@ -186,14 +234,52 @@ export function CalloutHandles({
   const tipAt = tipOf(layout);
   const baseX = bodyX + geometry.baseX;
   const baseY = bodyY + geometry.baseY;
+  // Around the body and the tip, but for the bubble, which takes the pointer
+  // itself, relative to the body.
+  const margin = BRIDGE_MARGIN / scale;
+  const around = convexHull(
+    [
+      [0, 0],
+      [geometry.width, 0],
+      [0, geometry.height],
+      [geometry.width, geometry.height],
+      [geometry.tipX, geometry.tipY],
+    ].flatMap(([x = 0, y = 0]) =>
+      [-margin, margin].flatMap((dx) =>
+        [-margin, margin].map((dy): [number, number] => [x + dx, y + dy]),
+      ),
+    ),
+  );
+  const bridge = `M ${around.map(([x, y]) => `${String(x)} ${String(y)}`).join(' L ')} Z ${geometry.path}`;
 
   return (
     <>
-      {(['left', 'right'] as const).map((side) =>
+      <EditBridge
+        editable={editable}
+        path={bridge}
+        at={{ x: bodyX, y: bodyY }}
+      />
+      {(
+        [
+          ['top-left', bodyX, bodyY],
+          ['top-right', bodyX + geometry.width, bodyY],
+          ['bottom-left', bodyX, bodyY + geometry.height],
+          ['bottom-right', bodyX + geometry.width, bodyY + geometry.height],
+        ] as const
+      ).map(([corner, x, y]) => (
+        <EditMark
+          key={corner}
+          editable={editable}
+          at={{ x, y }}
+          shape="square"
+          highlighted={side !== undefined && corner.endsWith(side)}
+        />
+      ))}
+      {(['left', 'right'] as const).map((edge) =>
         handle(
-          `Resize the callout from the ${side}`,
+          `Resize the callout from the ${edge}`,
           {
-            x: side === 'left' ? bodyX : bodyX + geometry.width,
+            x: edge === 'left' ? bodyX : bodyX + geometry.width,
             y: bodyY,
             width: 0,
             height: geometry.height,
@@ -203,7 +289,7 @@ export function CalloutHandles({
             const width = Math.round(
               Math.min(
                 Math.max(
-                  start.geometry.width + (side === 'left' ? -dx : dx),
+                  start.geometry.width + (edge === 'left' ? -dx : dx),
                   MIN_WIDTH,
                 ),
                 SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN * 2,
@@ -215,7 +301,7 @@ export function CalloutHandles({
               width,
               ...calloutPlacementAt(
                 { ...start.options, width },
-                side === 'left'
+                edge === 'left'
                   ? body.x + start.geometry.width - width
                   : body.x,
                 body.y,
@@ -224,13 +310,18 @@ export function CalloutHandles({
           },
           { width: null },
           'ew-resize',
-          side,
+          edge,
+          (highlighted) => {
+            setSide((previous) =>
+              highlighted ? edge : previous === edge ? undefined : previous,
+            );
+          },
         ),
       )}
       {handle(
         'Move the stem of the callout along its edge',
         { x: baseX, y: baseY, width: 0, height: 0 },
-        'point',
+        'diamond',
         (start, { dx, dy, shiftKey }) => {
           const stemOffset = calloutStemOffsetAt(
             start.options,
@@ -257,7 +348,7 @@ export function CalloutHandles({
       {handle(
         'Move what the callout points at',
         { x: tipAt.x, y: tipAt.y, width: 0, height: 0 },
-        'point',
+        'circle',
         (start, { dx, dy, shiftKey }) => {
           const parsed = parseSlidePoint(start.shift);
           const [shiftX, shiftY] =

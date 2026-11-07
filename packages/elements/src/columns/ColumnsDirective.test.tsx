@@ -96,6 +96,8 @@ describe('ColumnsDirective', () => {
 
   /** Drags the divider by `dx` without releasing it. */
   function drag(dx: number) {
+    // The divider shows while the columns are under the pointer.
+    fireEvent.pointerOver(screen.getByTestId('first'));
     const divider = screen.getByRole('separator', {
       name: 'Resize the columns',
     });
@@ -182,7 +184,9 @@ describe('ColumnsDirective', () => {
           </Slide>
         </Deck>,
       );
-      expect(screen.queryAllByRole('separator')).toHaveLength(dividers);
+      expect(screen.queryAllByRole('separator', { hidden: true })).toHaveLength(
+        dividers,
+      );
     },
   );
 
@@ -194,13 +198,13 @@ describe('ColumnsDirective', () => {
       } satisfies DevChannel,
     });
     renderColumns();
-    expect(screen.queryByRole('separator')).toBeNull();
+    expect(screen.queryByRole('separator', { hidden: true })).toBeNull();
   });
 
   it('has no handles without a channel', () => {
     Reflect.deleteProperty(globalThis, CHANNEL);
     renderColumns();
-    expect(screen.queryByRole('separator')).toBeNull();
+    expect(screen.queryByRole('separator', { hidden: true })).toBeNull();
     expect(flex('first')).toBe('1 1 0px');
   });
 });

@@ -191,10 +191,15 @@ export {
 } from './host/sourceRanges.ts';
 export {
   DragHandle,
+  EditBridge,
   EditLayer,
+  EditMark,
   useSlideScale,
   type Drag,
   type DragHandleProps,
+  type EditBridgeProps,
+  type EditMarkProps,
+  type EditMarkShape,
 } from './editing/EditLayer.tsx';
 export type { AttributeChanges, AttributeValue } from './editing/editStore.ts';
 export { useDragArea, type DragAreaHandlers } from './editing/useDragArea.ts';
@@ -264,3 +269,14 @@ export {
   useUiLanguage,
   type UiLanguage,
 } from './i18n/UiLanguageContext.ts';
+export {
+  clampElevation,
+  parseBoxShadow,
+  ShadowFilter,
+  shadowFilterUrl,
+  shadowExtent,
+  type ShadowFilterProps,
+  type ShadowLayer,
+  type SvgBounds,
+} from './svg/shadow.tsx';
+export { useSvgId } from './svg/useSvgId.ts';
