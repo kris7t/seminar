@@ -130,6 +130,8 @@ function useRowLayout(
 export function ColumnsDirective(props: ColumnsDirectiveProps): JSX.Element {
   const editable = useEditable(props);
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
+  // Columns are positional children, matched to the boxes of the row.
+  // eslint-disable-next-line @eslint-react/no-children-to-array
   const columns = Children.toArray(props.children).filter(
     (child): child is ReactElement<ColumnProps> =>
       isValidElement<ColumnProps>(child),
@@ -183,7 +185,7 @@ export function ColumnsDirective(props: ColumnsDirectiveProps): JSX.Element {
           const x = left.x + left.width;
           return (
             <DragHandle
-              key={index}
+              key={rightColumn.key}
               editable={editable}
               box={{
                 x,
