@@ -174,13 +174,24 @@ export class SourceEdits {
   }
 
   /**
-   * Tells the `changes` of `file` since it was last told about, and returns
-   * whether it has edits, whose attributes may have changed.
+   * Tells the `changes` of `file` since it was last told about, which made it
+   * `text`, and returns whether it has edits, whose attributes may have
+   * changed. Forgets the edits if it's what is saved again, e.g., undone.
    */
-  changed(file: string, changes: readonly SourceChange[]): boolean {
+  changed(
+    file: string,
+    changes: readonly SourceChange[],
+    text: string,
+  ): boolean {
     const state = this.#sources.get(file);
-    state?.changes.push(...changes);
-    return (state?.tracked.length ?? 0) > 0;
+    if (state === undefined) {
+      return false;
+    }
+    if (text === state.saved) {
+      return this.saved(file, text);
+    }
+    state.changes.push(...changes);
+    return state.tracked.length > 0;
   }
 
   /** The files with edits. */

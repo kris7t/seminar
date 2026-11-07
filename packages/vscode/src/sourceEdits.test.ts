@@ -36,7 +36,7 @@ class Source {
       text: added,
     };
     this.text = this.text.slice(0, start) + added + this.text.slice(end);
-    this.edits.changed(FILE, [change]);
+    this.edits.changed(FILE, [change], this.text);
   }
 
   /** Types `added` at the start of the first `before`. */
@@ -94,10 +94,10 @@ describe('SourceEdits', () => {
     source.change(
       source.text.indexOf('45'),
       source.text.indexOf('45') + 2,
-      '35',
+      '50',
     );
     expect(source.pending).toEqual([
-      { range: callout, saved: { angle: 35 }, attributes: { angle: 35 } },
+      { range: callout, saved: { angle: 35 }, attributes: { angle: 50 } },
     ]);
   });
 
@@ -126,6 +126,18 @@ describe('SourceEdits', () => {
     source.edit({ range: callout, changes: { angle: 40 } });
     expect(source.edits.files).toEqual([FILE]);
     expect(source.edits.saved(FILE, source.text)).toBe(true);
+    expect(source.edits.files).toEqual([]);
+    expect(source.pending).toEqual([]);
+  });
+
+  it('forgets the edits once changed back to what is saved', () => {
+    const source = new Source(deck);
+    source.edit({ range: callout, changes: { angle: 40 } });
+    expect(source.edits.files).toEqual([FILE]);
+    // Undone, like an editor replaces the attributes.
+    const start = source.text.indexOf('{');
+    source.change(start, source.text.indexOf('}') + 1, '{angle=35}');
+    expect(source.text).toBe(deck);
     expect(source.edits.files).toEqual([]);
     expect(source.pending).toEqual([]);
   });

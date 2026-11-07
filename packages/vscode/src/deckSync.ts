@@ -192,13 +192,11 @@ export class DeckSync implements Disposable {
           text,
         }));
         // Saving tells that the document is no longer dirty without changes.
+        // Whether it's dirty isn't known yet when it's first changed.
         if (
           deckOfUri(document.uri) !== undefined &&
           changes.length > 0 &&
-          (document.isDirty
-            ? this.#edits.changed(file, changes)
-            : // E.g., undone or reverted to what is saved.
-              this.#edits.saved(file, document.getText()))
+          this.#edits.changed(file, changes, document.getText())
         ) {
           this.#sendEdits(file, document.getText());
         }
