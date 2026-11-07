@@ -153,6 +153,23 @@ describe('seminarSelfContained', () => {
     );
   }, 60_000);
 
+  it('embeds images of masters once for the slides', async () => {
+    const { html } = await buildApp(
+      { content: 'ssr' },
+      undefined,
+      fileURLToPath(new URL('../test/fixtures-package', import.meta.url)),
+      'package.html',
+    );
+    const data =
+      /<image id="(seminar-image-\d+)" href="(data:image\/svg\+xml;base64,[^"]+)" width="32" height="18"\/>/.exec(
+        html,
+      );
+    expect(data).not.toBeNull();
+    expect(html.split(data?.[2] ?? '').length - 1).toBe(1);
+    // The slides look the image up in the page.
+    expect(html).toContain(`getElementById(\`${data?.[1] ?? ''}\`)`);
+  }, 60_000);
+
   it('embeds images into the document in other modes', async () => {
     const { html } = await buildApp({ selfContained: false });
     expect(html).toMatch(
