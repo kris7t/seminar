@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { calloutClasses } from './Callout.tsx';
-import { CalloutDirective } from './CalloutDirective.tsx';
+import { calloutAnchorClasses, CalloutDirective } from './CalloutDirective.tsx';
 import { calloutTitleClasses } from './CalloutTitle.tsx';
 
 describe('CalloutDirective', () => {
@@ -44,19 +44,52 @@ describe('CalloutDirective', () => {
     // Callouts in the text mark their position with an anchor.
     expect(
       originOf('Text').previousElementSibling?.classList.contains(
-        calloutClasses.anchor,
+        calloutAnchorClasses.root,
       ),
     ).toBe(true);
     expect(
       originOf('Named').previousElementSibling?.classList.contains(
-        calloutClasses.anchor,
+        calloutAnchorClasses.root,
       ) ?? false,
     ).toBe(false);
-    expect(document.querySelectorAll(`.${calloutClasses.anchor}`)).toHaveLength(
-      1,
-    );
+    expect(
+      document.querySelectorAll(`.${calloutAnchorClasses.root}`),
+    ).toHaveLength(1);
     expect(originOf('Leaf').tagName).toBe('SPAN');
     expect(originOf('First').tagName).toBe('DIV');
+  });
+
+  it('lets the overrides of callouts use their owner state with an anchor', () => {
+    const theme = createSlideTheme({
+      components: {
+        SeminarCallout: {
+          styleOverrides: {
+            root: ({ ownerState }) =>
+              ownerState.variant === 'outlined' ? { letterSpacing: '3px' } : {},
+          },
+        },
+        SeminarCalloutAnchor: {
+          styleOverrides: { root: { width: 2 } },
+        },
+      },
+    });
+    render(
+      <Deck theme={theme}>
+        <Slide title="Callout">
+          <p>
+            Before <CalloutDirective variant="outlined">Text</CalloutDirective>
+          </p>
+        </Slide>
+      </Deck>,
+    );
+    const root = screen
+      .getByText('Text')
+      .closest<HTMLElement>(`.${calloutClasses.root}`);
+    if (root === null) throw new Error('Missing root');
+    expect(getComputedStyle(root).letterSpacing).toBe('3px');
+    const anchor = document.querySelector(`.${calloutAnchorClasses.root}`);
+    if (anchor === null) throw new Error('Missing anchor');
+    expect(getComputedStyle(anchor).width).toBe('2px');
   });
 
   it('shows the label of a container as a title styled by the theme', () => {

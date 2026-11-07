@@ -158,11 +158,10 @@ export interface CalloutProps extends Omit<
 }
 
 export type CalloutClassKey =
-  'anchor' | 'origin' | 'positioner' | 'root' | 'background' | 'content';
+  'origin' | 'positioner' | 'root' | 'background' | 'content';
 
 export const calloutClasses: Record<CalloutClassKey, string> =
   generateUtilityClasses('SeminarCallout', [
-    'anchor',
     'origin',
     'positioner',
     'root',

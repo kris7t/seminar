@@ -1,8 +1,14 @@
+import { generateUtilityClasses } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useEditable, useEditedProps, type DirectiveForm } from '@seminar/core';
-import { useState, type JSX, type ReactNode } from 'react';
+import {
+  useEditable,
+  useEditedProps,
+  type ComponentTheme,
+  type DirectiveForm,
+} from '@seminar/core';
+import { useState, type ComponentProps, type JSX, type ReactNode } from 'react';
 
-import { Callout, calloutClasses, type CalloutProps } from './Callout.tsx';
+import { Callout, type CalloutProps } from './Callout.tsx';
 import { CalloutHandles } from './CalloutHandles.tsx';
 import { CalloutTitle } from './CalloutTitle.tsx';
 
@@ -29,11 +35,36 @@ export interface CalloutDirectiveProps extends Omit<
   children?: ReactNode;
 }
 
-/** Marks the position of a callout in the text, as tall as a character. */
+export type CalloutAnchorClassKey = 'root';
+
+export const calloutAnchorClasses: Record<CalloutAnchorClassKey, string> =
+  generateUtilityClasses('SeminarCalloutAnchor', ['root']);
+
+declare module '@mui/material/styles' {
+  interface ComponentNameToClassKey {
+    SeminarCalloutAnchor: CalloutAnchorClassKey;
+  }
+
+  interface ComponentsPropsList {
+    SeminarCalloutAnchor: ComponentProps<'span'>;
+  }
+
+  interface Components<Theme = unknown> {
+    SeminarCalloutAnchor?:
+      ComponentTheme<'SeminarCalloutAnchor', Theme> | undefined;
+  }
+}
+
+/**
+ * Marks the position of a callout in the text, as tall as a character. A
+ * component of its own rather than a slot of `SeminarCallout`, since it's
+ * rendered outside of the callout, without its owner state, which the style
+ * overrides of the callout may use.
+ */
 const CalloutInlineAnchor = styled('span', {
-  name: 'SeminarCallout',
-  slot: 'Anchor',
-  overridesResolver: (_props, styles) => styles['anchor'],
+  name: 'SeminarCalloutAnchor',
+  slot: 'Root',
+  overridesResolver: (_props, styles) => styles['root'],
 })({
   display: 'inline-block',
   width: 0,
@@ -74,7 +105,7 @@ export function CalloutDirective(inProps: CalloutDirectiveProps): JSX.Element {
       {inline && (
         <CalloutInlineAnchor
           ref={setInlineAnchor}
-          className={calloutClasses.anchor}
+          className={calloutAnchorClasses.root}
         />
       )}
       <Callout
