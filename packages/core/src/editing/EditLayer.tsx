@@ -33,6 +33,8 @@ import {
   shadowFilterUrl,
 } from '../svg/shadow.tsx';
 import { useSvgId } from '../svg/useSvgId.ts';
+import { useMeasure } from '../transitions/settling.ts';
+import { slideBackground } from '../view/slideBackground.ts';
 import { EditingContext, type Editing } from './EditingContext.ts';
 import { editableKeyOf, type Editable } from './useEditable.ts';
 
@@ -101,7 +103,7 @@ export interface DragHandleProps {
   /**
    * The color that the mark of the handle is drawn over, if it's known, e.g.,
    * the background of the directive, so that it's outlined to stand out from
-   * it.
+   * it. Defaults to the background of the slide.
    */
   background?: string | undefined;
   /**
@@ -451,6 +453,7 @@ export function EditMark({
     return null;
   }
   const opacity = editable.active ? 1 : 0;
+  const onDark = isDark(editing.background);
   return (
     <EditLayer>
       <MarkAnchor aria-hidden style={anchorStyle(editing, at.x, at.y)}>
@@ -458,15 +461,15 @@ export function EditMark({
           <DiamondMark
             highlighted={highlighted}
             swapped={editable.swapped}
-            onDark={false}
+            onDark={onDark}
             elevation={MARK_ELEVATION}
             opacity={opacity}
           />
         ) : (
           <HandleMark
-            {...markAttributes(highlighted, editable.swapped)}
+            {...markAttributes(highlighted, editable.swapped, onDark)}
             data-shape={shape}
-            style={{ ...boxStyle(shape, theme), opacity }}
+            style={{ ...boxStyle(shape, theme, onDark), opacity }}
           />
         )}
       </MarkAnchor>
@@ -554,6 +557,7 @@ export function DragHandle({
   const left = (box.x + box.width / 2) * scale - width / 2;
   const top = (box.y + box.height / 2) * scale - height / 2;
   const highlighted = requestedHighlighted ?? engaged;
+  const onDark = isDark(background ?? editing.background);
   // Marks on whole pixels: in the middle of points, and across lines, from
   // one end to the other.
   const mark = () => {
@@ -565,9 +569,7 @@ export function DragHandle({
           box.y + box.height / 2,
         ),
         style:
-          shape === 'diamond'
-            ? {}
-            : boxStyle(shape, theme, isDark(background), elevation),
+          shape === 'diamond' ? {} : boxStyle(shape, theme, onDark, elevation),
       };
     }
     const [startX, startY] = snapToPixels(editing, box.x, box.y);
@@ -595,7 +597,7 @@ export function DragHandle({
         top: vertical ? 0 : across,
         width: vertical ? LINE_WIDTH : length,
         height: vertical ? length : LINE_WIDTH,
-        ...outlineStyle(theme, false, elevation),
+        ...outlineStyle(theme, onDark, elevation),
       },
     };
   };
@@ -677,17 +679,13 @@ export function DragHandle({
             <DiamondMark
               highlighted={highlighted}
               swapped={editable.swapped}
-              onDark={isDark(background)}
+              onDark={onDark}
               elevation={elevation}
               opacity={visible ? 1 : 0}
             />
           ) : (
             <HandleMark
-              {...markAttributes(
-                highlighted,
-                editable.swapped,
-                isDark(background),
-              )}
+              {...markAttributes(highlighted, editable.swapped, onDark)}
               data-shape={shape}
               style={{ ...mark().style, opacity: visible ? 1 : 0 }}
             />
@@ -908,6 +906,13 @@ export function useEditing(
       window.removeEventListener('keydown', onKeyDown, true);
     };
   }, [enabled, frame, layer, hover, setSelected]);
+  // Like the backgrounds of thumbnails, once the slide is rendered.
+  const [background, setBackground] = useState<string>();
+  useMeasure(enabled ? frame : null, () => {
+    const measured =
+      enabled && frame !== null ? slideBackground(frame) : undefined;
+    setBackground((previous) => (previous === measured ? previous : measured));
+  });
   const editing = useMemo(
     () => ({
       layer,
@@ -916,6 +921,7 @@ export function useEditing(
       selected,
       dragging,
       swapped,
+      background,
       hover,
       select: setSelected,
       setDragging,
@@ -927,6 +933,7 @@ export function useEditing(
       selected,
       dragging,
       swapped,
+      background,
       hover,
       setSelected,
       setDragging,

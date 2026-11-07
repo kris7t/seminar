@@ -19,6 +19,11 @@ export interface Editing {
    * or out to nothing.
    */
   swapped: readonly string[];
+  /**
+   * The background color of the slide, which marks are drawn over unless
+   * they tell otherwise, if it has one.
+   */
+  background: string | undefined;
   /** Tells which editable directive is under the pointer, if any. */
   hover: (key: string | undefined) => void;
   select: (key: string | undefined) => void;

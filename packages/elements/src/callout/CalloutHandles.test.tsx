@@ -3,8 +3,10 @@ import {
   Deck,
   Slide,
   SLIDE_WIDTH,
+  createSlideTheme,
   type DevChannel,
 } from '@seminar/core';
+import type { Theme } from '@mui/material/styles';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -59,9 +61,10 @@ describe('CalloutHandles', () => {
     props: object = {},
     hovered = true,
     content: ReactNode = 'Note',
+    theme?: Theme,
   ) {
     render(
-      <Deck>
+      <Deck {...(theme === undefined ? {} : { theme })}>
         <Slide>
           <p>
             Text
@@ -187,6 +190,30 @@ describe('CalloutHandles', () => {
     expect(getComputedStyle(stem).pointerEvents.toLowerCase()).toBe(
       'visiblepainted',
     );
+  });
+
+  it.each(['left', 'right'])(
+    'lights up the corners on the %s while resizing from a corner',
+    (side) => {
+      renderCallout({ angle: 90 }, false);
+      fireEvent.click(screen.getByText('Note'));
+      const handle = screen.getByRole('button', {
+        name: `Resize the callout from the bottom ${side}`,
+      });
+      fireEvent.pointerEnter(handle);
+      expect(highlightedCorners()).toEqual([`top-${side}`, `bottom-${side}`]);
+    },
+  );
+
+  it('outlines handles for the background of the slide', () => {
+    renderCallout(
+      { angle: 90 },
+      true,
+      'Note',
+      createSlideTheme({ palette: { mode: 'dark' } }),
+    );
+    const tip = document.querySelector('[data-shape="circle"]');
+    expect(tip?.hasAttribute('data-on-dark')).toBe(true);
   });
 
   it.each(['left', 'right'])(
@@ -393,6 +420,8 @@ describe('CalloutHandles', () => {
   it.each([
     ['right', 50],
     ['left', -50],
+    ['bottom right', 50],
+    ['top left', -50],
   ])('resizes the body from the %s, keeping the other side', (side, dx) => {
     renderCallout({ width: 200, angle: 90, offset: 40 });
     drag(`Resize the callout from the ${side}`, dx, 0);

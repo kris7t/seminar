@@ -1,7 +1,6 @@
 import {
   DragHandle,
   EditBridge,
-  EditMark,
   useDragArea,
   useSlideScale,
   parseSlidePoint,
@@ -123,10 +122,10 @@ export interface CalloutHandlesProps {
  * turns and stretches its stem when dragged anywhere but on interactive
  * elements, or with Alt, the base of its stem, which moves along the
  * edge of the body, also turning the stem, its tip, which moves what it
- * points at, and the sides of the body, which resize it. Double-clicking a
- * handle removes what it sets. The corners of a side light up while it
- * resizes the body. The area around the body and the tip keeps the callout
- * hovered on the way between them.
+ * points at, and the sides of the body and their corners, which resize it.
+ * Double-clicking a handle removes what it sets. The corners of a side light
+ * up while it, or one of them, resizes the body. The area around the body and
+ * the tip keeps the callout hovered on the way between them.
  */
 export function CalloutHandles({
   editable,
@@ -192,7 +191,7 @@ export function CalloutHandles({
   const handle = (
     label: string,
     box: SlideBox,
-    shape: 'circle' | 'diamond' | 'area',
+    shape: 'square' | 'circle' | 'diamond' | 'area',
     changesOf: (start: DragStart, drag: Drag) => AttributeChanges,
     reset: AttributeChanges,
     {
@@ -200,12 +199,14 @@ export function CalloutHandles({
       key = label,
       background,
       elevation,
+      highlighted,
       onHighlightedChange,
     }: {
       cursor: string;
       key?: string;
       background?: string | undefined;
       elevation?: number;
+      highlighted?: boolean;
       onHighlightedChange?: (highlighted: boolean) => void;
     },
   ) => (
@@ -218,6 +219,7 @@ export function CalloutHandles({
       cursor={cursor}
       background={background}
       elevation={elevation}
+      highlighted={highlighted}
       onHighlightedChange={onHighlightedChange}
       onDragStart={start}
       onDrag={(drag) => {
@@ -264,6 +266,38 @@ export function CalloutHandles({
   );
   const bridge = `M ${around.map(([x, y]) => `${String(x)} ${String(y)}`).join(' L ')} Z ${geometry.path}`;
 
+  // Resizing from a side, or a corner of it, keeps the other side and the tip
+  // where they are.
+  const resizeFrom =
+    (edge: Side) =>
+    (start: DragStart, { dx }: Drag): AttributeChanges => {
+      const width = Math.round(
+        Math.min(
+          Math.max(
+            start.geometry.width + (edge === 'left' ? -dx : dx),
+            MIN_WIDTH,
+          ),
+          SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN * 2,
+        ),
+      );
+      const body = bodyOf(start);
+      return {
+        width,
+        ...calloutPlacementAt(
+          { ...start.options, width },
+          edge === 'left' ? body.x + start.geometry.width - width : body.x,
+          body.y,
+        ),
+      };
+    };
+  // The corners of a side light up while it, or one of them, is hovered or
+  // dragged.
+  const lightUp = (edge: Side) => (highlighted: boolean) => {
+    setSide((previous) =>
+      highlighted ? edge : previous === edge ? undefined : previous,
+    );
+  };
+
   return (
     <>
       <EditBridge
@@ -271,22 +305,6 @@ export function CalloutHandles({
         path={bridge}
         at={{ x: bodyX, y: bodyY }}
       />
-      {(
-        [
-          ['top-left', bodyX, bodyY],
-          ['top-right', bodyX + geometry.width, bodyY],
-          ['bottom-left', bodyX, bodyY + geometry.height],
-          ['bottom-right', bodyX + geometry.width, bodyY + geometry.height],
-        ] as const
-      ).map(([corner, x, y]) => (
-        <EditMark
-          key={corner}
-          editable={editable}
-          at={{ x, y }}
-          shape="square"
-          highlighted={side !== undefined && corner.endsWith(side)}
-        />
-      ))}
       {(['left', 'right'] as const).map((edge) =>
         handle(
           `Resize the callout from the ${edge}`,
@@ -297,38 +315,35 @@ export function CalloutHandles({
             height: geometry.height,
           },
           'area',
-          (start, { dx }) => {
-            const width = Math.round(
-              Math.min(
-                Math.max(
-                  start.geometry.width + (edge === 'left' ? -dx : dx),
-                  MIN_WIDTH,
-                ),
-                SLIDE_WIDTH - CALLOUT_SLIDE_MARGIN * 2,
-              ),
-            );
-            // The other side stays where it is, and so does the tip.
-            const body = bodyOf(start);
-            return {
-              width,
-              ...calloutPlacementAt(
-                { ...start.options, width },
-                edge === 'left'
-                  ? body.x + start.geometry.width - width
-                  : body.x,
-                body.y,
-              ),
-            };
-          },
+          resizeFrom(edge),
           { width: null },
           {
             cursor: 'ew-resize',
             key: edge,
-            onHighlightedChange: (highlighted) => {
-              setSide((previous) =>
-                highlighted ? edge : previous === edge ? undefined : previous,
-              );
-            },
+            onHighlightedChange: lightUp(edge),
+          },
+        ),
+      )}
+      {(
+        [
+          ['top', 'left', bodyX, bodyY],
+          ['top', 'right', bodyX + geometry.width, bodyY],
+          ['bottom', 'left', bodyX, bodyY + geometry.height],
+          ['bottom', 'right', bodyX + geometry.width, bodyY + geometry.height],
+        ] as const
+      ).map(([vertical, edge, x, y]) =>
+        // Like their side, since the height follows the content.
+        handle(
+          `Resize the callout from the ${vertical} ${edge}`,
+          { x, y, width: 0, height: 0 },
+          'square',
+          resizeFrom(edge),
+          { width: null },
+          {
+            cursor: 'ew-resize',
+            key: `${vertical}-${edge}`,
+            highlighted: side === edge,
+            onHighlightedChange: lightUp(edge),
           },
         ),
       )}
