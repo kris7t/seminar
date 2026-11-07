@@ -164,10 +164,21 @@ describe('CalloutHandles', () => {
       corner.hasAttribute('data-highlighted') ? [CORNERS[index]] : [],
     );
 
-  it('marks the corners of the body, without lighting them up to move it', () => {
-    renderCallout({ angle: 90 });
-    expect(cornersOf()).toHaveLength(4);
+  it('lights up the corners of the body where it can be moved', () => {
+    renderCallout({ angle: 90 }, false, [
+      'Note',
+      <button key="button" type="button">
+        Press
+      </button>,
+    ]);
     expect(highlightedCorners()).toEqual([]);
+    fireEvent.pointerOver(screen.getByText('Note'));
+    expect(highlightedCorners()).toEqual(CORNERS);
+    const button = screen.getByRole('button', { name: 'Press' });
+    fireEvent.pointerOver(button);
+    expect(highlightedCorners()).toEqual([]);
+    fireEvent.pointerOver(button, { altKey: true });
+    expect(highlightedCorners()).toEqual(CORNERS);
   });
 
   it.each([

@@ -124,8 +124,9 @@ export interface CalloutHandlesProps {
  * edge of the body, also turning the stem, its tip, which moves what it
  * points at, as does its stem, and the sides of the body and their corners,
  * which resize it. Double-clicking a handle removes what it sets. The tip
- * lights up while the stem is hovered or dragged, and the corners of a side
- * while it, or one of them, resizes the body. The area around the body and
+ * lights up while the stem is hovered or dragged, the corners while the body
+ * would be moved, and those of a side while it, or one of them, resizes the
+ * body. The area around the body and
  * the tip keeps the callout hovered on the way between them.
  */
 export function CalloutHandles({
@@ -171,7 +172,7 @@ export function CalloutHandles({
   // Whether the stem, which moves the tip, is under the pointer or dragged.
   const [stem, setStem] = useState(false);
   const scale = useSlideScale();
-  useDragArea(editable, layout?.body ?? null, {
+  const moving = useDragArea(editable, layout?.body ?? null, {
     onDragStart: start,
     onDrag: (drag) => {
       preview(move, drag);
@@ -380,7 +381,7 @@ export function CalloutHandles({
           {
             cursor: 'ew-resize',
             key: `${vertical}-${edge}`,
-            highlighted: side === edge,
+            highlighted: moving || side === edge,
             onHighlightedChange: lightUp(edge),
           },
         ),

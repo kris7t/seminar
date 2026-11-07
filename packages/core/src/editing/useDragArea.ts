@@ -1,4 +1,4 @@
-import { use, useEffect, useEffectEvent } from 'react';
+import { use, useEffect, useEffectEvent, useState } from 'react';
 
 import { getInteraction } from '../interaction/interaction.ts';
 import { EditingContext } from './EditingContext.ts';
@@ -27,17 +27,21 @@ const DRAG_SLOP = 4;
  * interactive elements, like buttons, aren't drags, unless Alt is held, and
  * other presses only become drags once the pointer moves, so that clicks
  * still select the directive. It takes the place of selecting text.
+ *
+ * Returns whether the area should light up: it's dragged, or the pointer is
+ * where pressing it would drag it.
  */
 export function useDragArea(
   editable: Editable<object> | undefined,
   element: HTMLElement | null,
   handlers: DragAreaHandlers,
-): void {
+): boolean {
   const editing = use(EditingContext);
   const legible = useLegible();
   const key = editable?.key;
   const enabled =
     editing !== undefined && key !== undefined && element !== null && legible;
+  const [highlighted, setHighlighted] = useState(false);
   const onDragStart = useEffectEvent(() => {
     editing?.setDragging(key);
     editing?.select(key);
@@ -62,6 +66,16 @@ export function useDragArea(
     let press:
       { x: number; y: number; pointer: number; dragging: boolean } | undefined;
     let swallowTimer: ReturnType<typeof setTimeout> | undefined;
+    // What the pointer is over in the element, if anything.
+    let over: { target: EventTarget | null; altKey: boolean } | undefined;
+    const draggable = (target: EventTarget | null, altKey: boolean) =>
+      altKey || getInteraction(target) === undefined;
+    const updateHighlighted = () => {
+      setHighlighted(
+        press?.dragging === true ||
+          (over !== undefined && draggable(over.target, over.altKey)),
+      );
+    };
     const swallow = (event: MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -81,6 +95,7 @@ export function useDragArea(
       if (!wasDragging) {
         return;
       }
+      updateHighlighted();
       onEnd(drag);
       // The click after a drag selects nothing, and goes to no step.
       window.addEventListener('click', swallow, true);
@@ -94,7 +109,7 @@ export function useDragArea(
         event.button !== 0 ||
         event.ctrlKey ||
         event.metaKey ||
-        (!event.altKey && getInteraction(event.target) !== undefined)
+        !draggable(event.target, event.altKey)
       ) {
         return;
       }
@@ -119,6 +134,7 @@ export function useDragArea(
           return;
         }
         press.dragging = true;
+        updateHighlighted();
         element.setPointerCapture(event.pointerId);
         onDragStart();
       }
@@ -134,7 +150,22 @@ export function useDragArea(
         end(undefined);
       }
     };
+    const onOver = (event: PointerEvent) => {
+      over = { target: event.target, altKey: event.altKey };
+      updateHighlighted();
+    };
+    const onLeave = () => {
+      over = undefined;
+      updateHighlighted();
+    };
+    const onAlt = (event: KeyboardEvent) => {
+      if (event.key === 'Alt' && over !== undefined) {
+        over.altKey = event.altKey;
+        updateHighlighted();
+      }
+    };
     const onKeyDown = (event: KeyboardEvent) => {
+      onAlt(event);
       if (event.key === 'Escape' && press?.dragging === true) {
         event.preventDefault();
         event.stopPropagation();
@@ -144,6 +175,9 @@ export function useDragArea(
     const cursor = element.style.getPropertyValue('cursor');
     element.style.setProperty('cursor', 'move');
     element.addEventListener('pointerdown', onPointerDown);
+    element.addEventListener('pointerover', onOver);
+    element.addEventListener('pointerleave', onLeave);
+    window.addEventListener('keyup', onAlt, true);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerCancel);
@@ -153,10 +187,15 @@ export function useDragArea(
       clearTimeout(swallowTimer);
       window.removeEventListener('click', swallow, true);
       element.removeEventListener('pointerdown', onPointerDown);
+      element.removeEventListener('pointerover', onOver);
+      element.removeEventListener('pointerleave', onLeave);
+      window.removeEventListener('keyup', onAlt, true);
+      setHighlighted(false);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerCancel);
       window.removeEventListener('keydown', onKeyDown, true);
     };
   }, [enabled, element]);
+  return enabled && highlighted;
 }

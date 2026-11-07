@@ -16,7 +16,7 @@ import type { Editing } from './EditingContext.ts';
 import { scaleOf } from './EditLayer.tsx';
 
 /** Screen pixels of the lines and the points of marks. */
-export const LINE_WIDTH = 4;
+export const LINE_WIDTH = 2;
 const SQUARE_SIZE = 8;
 const CIRCLE_DIAMETER = 9;
 /** The diagonal of diamonds, whose tips are then on whole pixels. */
