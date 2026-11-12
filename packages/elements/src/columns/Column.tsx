@@ -55,10 +55,10 @@ export interface ColumnProps
   children?: ReactNode;
 }
 
-export type ColumnClassKey = 'root' | 'heading';
+export type ColumnClassKey = 'root' | 'content' | 'heading';
 
 export const columnClasses: Record<ColumnClassKey, string> =
-  generateUtilityClasses('SeminarColumn', ['root', 'heading']);
+  generateUtilityClasses('SeminarColumn', ['root', 'content', 'heading']);
 
 declare module '@mui/material/styles' {
   interface ComponentNameToClassKey {
@@ -102,14 +102,9 @@ const ColumnRoot = styled(Step, {
     boxSizing: 'border-box',
     '--SeminarColumn-background': 'transparent',
     '--SeminarColumn-padding': '0px',
-    padding: 'var(--SeminarColumn-padding)',
     backgroundColor: 'var(--SeminarColumn-background)',
     borderRadius: ownerState.radius,
     boxShadow: theme.shadows[ownerState.elevation],
-    // The tops of columns line up, whatever their first blocks are. Titles
-    // are placed by their own styles.
-    [`& > ${FIRST_CHILD}:not(.${columnClasses.heading})`]: { marginTop: 0 },
-    '& > :last-child': { marginBottom: 0 },
     variants: [
       {
         props: { variant: 'plain' },
@@ -141,6 +136,20 @@ const ColumnRoot = styled(Step, {
       ...paletteColorVariants(theme, 'SeminarColumn'),
     ],
   };
+});
+
+// The padding is inside the content, so that it doesn't take from the share
+// of the row of the column.
+const ColumnContent = styled('div', {
+  name: 'SeminarColumn',
+  slot: 'Content',
+  overridesResolver: (_props, styles) => styles['content'],
+})<{ ownerState: ColumnOwnerState }>({
+  padding: 'var(--SeminarColumn-padding)',
+  // The tops of columns line up, whatever their first blocks are. Titles
+  // are placed by their own styles.
+  [`& > ${FIRST_CHILD}:not(.${columnClasses.heading})`]: { marginTop: 0 },
+  '& > :last-child': { marginBottom: 0 },
 });
 
 const ColumnHeading = styled('h2', {
@@ -220,16 +229,18 @@ export function Column(inProps: ColumnProps): JSX.Element {
       ownerState={ownerState}
       {...stepProps}
     >
-      {heading !== undefined && heading !== null && (
-        <ColumnHeading
-          as={kind === 'document' ? 'h5' : undefined}
-          className={columnClasses.heading}
-          ownerState={ownerState}
-        >
-          {heading}
-        </ColumnHeading>
-      )}
-      {children}
+      <ColumnContent className={columnClasses.content} ownerState={ownerState}>
+        {heading !== undefined && heading !== null && (
+          <ColumnHeading
+            as={kind === 'document' ? 'h5' : undefined}
+            className={columnClasses.heading}
+            ownerState={ownerState}
+          >
+            {heading}
+          </ColumnHeading>
+        )}
+        {children}
+      </ColumnContent>
     </ColumnRoot>
   );
 }

@@ -33,7 +33,7 @@ describe('elements in documents', () => {
           </Column>
         </Columns>,
       ),
-    ).toBe('<div><div><h5>Left</h5><p>Text</p></div></div>');
+    ).toBe('<div><div><div><h5>Left</h5><p>Text</p></div></div></div>');
   });
 
   it('renders inline callouts as parenthesized side comments', () => {
