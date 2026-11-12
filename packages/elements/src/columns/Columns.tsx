@@ -1,19 +1,32 @@
 import { generateUtilityClasses } from '@mui/material';
 import { styled, useThemeProps } from '@mui/material/styles';
 import type { ComponentTheme } from '@seminar/core';
-import type { ComponentProps, JSX } from 'react';
+import { useMemo, type ComponentProps, type JSX } from 'react';
+
+import {
+  columnAppearance,
+  ColumnsAppearanceContext,
+  type ColumnAppearance,
+} from './columnAppearance.ts';
 
 /** Alignment of the columns of {@link Columns} across the row. */
 export type ColumnsAlign = 'start' | 'center' | 'end' | 'stretch';
 
-/** Props of {@link Columns}. */
-export interface ColumnsProps extends ComponentProps<'div'> {
+/**
+ * Props of {@link Columns}. Its `color`, `variant`, `elevation`, and `radius`
+ * are those of its columns that don't set them.
+ */
+export interface ColumnsProps
+  extends Omit<ComponentProps<'div'>, 'color'>, ColumnAppearance {
   /**
    * Space between the columns, in logical slide pixels, e.g., `48`, or any
    * CSS length. Defaults to the spacing of the theme times 4.
    */
   gap?: number | string | undefined;
-  /** How the columns are aligned vertically. Defaults to `start`. */
+  /**
+   * How the columns are aligned vertically. Defaults to `stretch`, which
+   * makes them as high as the row, with their content at their tops.
+   */
   align?: ColumnsAlign | undefined;
 }
 
@@ -71,19 +84,57 @@ const ColumnsRoot = styled('div', {
 
 /**
  * A row of {@link Column}s, e.g., `::::columns` in MDX, with `:::column`
- * containers in it. The columns share the width of the row, and are aligned
- * at their tops by default.
+ * containers in it. The columns share the width of the row, are as high as
+ * it by default, and look as the row sets, unless they set it themselves.
  *
  * Can be themed as `SeminarColumns` in the `components` of the MUI theme.
  */
 export function Columns(inProps: ColumnsProps): JSX.Element {
   const props = useThemeProps({ props: inProps, name: 'SeminarColumns' });
-  const { gap, align = 'start', className, ...other } = props;
+  const {
+    gap,
+    align = 'stretch',
+    color,
+    variant,
+    elevation,
+    radius,
+    className,
+    ...other
+  } = props;
+  const {
+    color: ownColor,
+    variant: ownVariant,
+    elevation: ownElevation,
+    radius: ownRadius,
+  } = inProps;
+  const appearance = useMemo(
+    () => ({
+      props: columnAppearance({
+        color: ownColor,
+        variant: ownVariant,
+        elevation: ownElevation,
+        radius: ownRadius,
+      }),
+      defaults: columnAppearance({ color, variant, elevation, radius }),
+    }),
+    [
+      ownColor,
+      ownVariant,
+      ownElevation,
+      ownRadius,
+      color,
+      variant,
+      elevation,
+      radius,
+    ],
+  );
   return (
-    <ColumnsRoot
-      className={`${columnsClasses.root}${className === undefined ? '' : ` ${className}`}`}
-      ownerState={{ gap, align }}
-      {...other}
-    />
+    <ColumnsAppearanceContext value={appearance}>
+      <ColumnsRoot
+        className={`${columnsClasses.root}${className === undefined ? '' : ` ${className}`}`}
+        ownerState={{ gap, align }}
+        {...other}
+      />
+    </ColumnsAppearanceContext>
   );
 }

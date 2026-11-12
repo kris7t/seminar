@@ -1,13 +1,9 @@
 import { generateUtilityClasses } from '@mui/material';
 import {
-  decomposeColor,
-  recomposeColor,
   styled,
   useTheme,
   useThemeProps,
   type Palette,
-  type PaletteColor,
-  type TypeText,
 } from '@mui/material/styles';
 import {
   clampElevation,
@@ -44,6 +40,12 @@ import {
 } from './calloutGeometry.ts';
 import { CalloutLayoutContext, type CalloutLayout } from './calloutLayout.ts';
 import { calloutTitleClasses } from './CalloutTitle.tsx';
+import {
+  paletteColor,
+  paletteColorVariants,
+  textColors,
+  type ElementColor,
+} from '../paletteColors.ts';
 import { FIRST_CHILD } from '../selectors.ts';
 
 export const DEFAULT_CALLOUT_MAX_WIDTH = 360;
@@ -54,11 +56,7 @@ export const DEFAULT_CALLOUT_ELEVATION = 4;
  * Keys of the MUI theme palette whose values are palette colors, like
  * `primary`, or text colors of the palette, like `text.secondary`.
  */
-export type CalloutColor =
-  | {
-      [Key in keyof Palette]: Palette[Key] extends PaletteColor ? Key : never;
-    }[keyof Palette]
-  | `text.${Extract<keyof TypeText, string>}`;
+export type CalloutColor = ElementColor;
 
 /** Further visual variants of callouts, added by module augmentation. */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- Augmented by themes.
@@ -193,57 +191,6 @@ interface CalloutOwnerState extends CalloutProps {
   stemSize: number;
 }
 
-interface PaletteColorLike {
-  main: string;
-  light?: string | undefined;
-  dark?: string | undefined;
-  contrastText?: string | undefined;
-}
-
-function paletteColor(
-  palette: Palette,
-  color: string,
-): PaletteColorLike | undefined {
-  const value = (palette as unknown as Record<PropertyKey, unknown>)[color];
-  return typeof value === 'object' &&
-    value !== null &&
-    'main' in value &&
-    typeof value.main === 'string'
-    ? (value as PaletteColorLike)
-    : undefined;
-}
-
-/** Composes a translucent `color` over `background` into an opaque color. */
-function opaque(color: string, background: string): string {
-  const { values } = decomposeColor(color);
-  const alpha = values[3] ?? 1;
-  if (alpha >= 1) return color;
-  const under = decomposeColor(background).values;
-  return recomposeColor({
-    type: 'rgb',
-    values: [0, 1, 2].map((i) =>
-      Math.round((values[i] ?? 0) * alpha + (under[i] ?? 0) * (1 - alpha)),
-    ) as [number, number, number],
-  });
-}
-
-/**
- * Palette colors for the text colors of the palette, opaque over the paper
- * background, so that filled callouts don't let the slide show through.
- */
-function textColors(palette: Palette): [CalloutColor, PaletteColorLike][] {
-  return Object.entries(palette.text).flatMap(([key, value]) => {
-    if (typeof value !== 'string') return [];
-    let main: string;
-    try {
-      main = opaque(value, palette.background.paper);
-    } catch {
-      return [];
-    }
-    return [[`text.${key}` as CalloutColor, { main }]];
-  });
-}
-
 /**
  * Returns the background of the bubble of a callout of `color` and
  * `variant`, as the styles of the built-in variants make it, or `undefined`
@@ -301,59 +248,35 @@ const CalloutRoot = styled(Step, {
   name: 'SeminarCallout',
   slot: 'Root',
   overridesResolver: (_props, styles) => styles['root'],
-})<{ ownerState: CalloutOwnerState }>(({ theme }) => {
-  const colors: [CalloutColor, PaletteColorLike][] = [
-    ...Object.keys(theme.palette).flatMap(
-      (color): [CalloutColor, PaletteColorLike][] => {
-        const selected = paletteColor(theme.palette, color);
-        return selected === undefined
-          ? []
-          : [[color as CalloutColor, selected]];
+})<{ ownerState: CalloutOwnerState }>(({ theme }) => ({
+  position: 'relative',
+  display: 'block',
+  boxSizing: 'border-box',
+  width: '100%',
+  pointerEvents: 'auto',
+  color: 'var(--SeminarCallout-color)',
+  variants: [
+    {
+      props: { variant: 'filled' },
+      style: {
+        '--SeminarCallout-background': 'var(--SeminarCallout-palette-main)',
+        '--SeminarCallout-color': 'var(--SeminarCallout-palette-contrastText)',
+        '--SeminarCallout-outline': 'transparent',
+        '--SeminarCallout-outline-width': 0,
       },
-    ),
-    ...textColors(theme.palette),
-  ];
-  const colorVariants = colors.map(([color, selected]) => ({
-    props: { color },
-    style: {
-      '--SeminarCallout-palette-main': selected.main,
-      '--SeminarCallout-palette-light': selected.light ?? selected.main,
-      '--SeminarCallout-palette-dark': selected.dark ?? selected.main,
-      '--SeminarCallout-palette-contrastText':
-        selected.contrastText ?? theme.palette.getContrastText(selected.main),
     },
-  }));
-  return {
-    position: 'relative',
-    display: 'block',
-    boxSizing: 'border-box',
-    width: '100%',
-    pointerEvents: 'auto',
-    color: 'var(--SeminarCallout-color)',
-    variants: [
-      {
-        props: { variant: 'filled' },
-        style: {
-          '--SeminarCallout-background': 'var(--SeminarCallout-palette-main)',
-          '--SeminarCallout-color':
-            'var(--SeminarCallout-palette-contrastText)',
-          '--SeminarCallout-outline': 'transparent',
-          '--SeminarCallout-outline-width': 0,
-        },
+    {
+      props: { variant: 'outlined' },
+      style: {
+        '--SeminarCallout-background': theme.palette.background.paper,
+        '--SeminarCallout-color': 'var(--SeminarCallout-palette-main)',
+        '--SeminarCallout-outline': 'var(--SeminarCallout-palette-main)',
+        '--SeminarCallout-outline-width': 2,
       },
-      {
-        props: { variant: 'outlined' },
-        style: {
-          '--SeminarCallout-background': theme.palette.background.paper,
-          '--SeminarCallout-color': 'var(--SeminarCallout-palette-main)',
-          '--SeminarCallout-outline': 'var(--SeminarCallout-palette-main)',
-          '--SeminarCallout-outline-width': 2,
-        },
-      },
-      ...colorVariants,
-    ],
-  };
-});
+    },
+    ...paletteColorVariants(theme, 'SeminarCallout'),
+  ],
+}));
 
 const CalloutBackground = styled('svg', {
   name: 'SeminarCallout',

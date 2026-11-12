@@ -174,6 +174,23 @@ Consecutive `:::column` containers are laid out next to each other
 :step `::::columns{gap=… align=…}` around them spaces them, with more colons
 than the fences inside it
 
+### Column looks
+
+::::columns{variant=card}
+:::column[Cards]
+`{variant=card}` on the columns puts their titles on a band of their color
+:::
+
+:::column[Colors]{color=secondary elevation=4}
+`{color=secondary}` picks a color of the theme, and `{elevation=4}` casts a
+shadow
+:::
+
+:::column[Plain]{variant=plain}
+Plain columns, the default, only color their titles
+:::
+::::
+
 ### Math
 
 Inline math like $e^{i\pi} + 1 = 0$ is rendered with MathJax when the deck

@@ -29,6 +29,12 @@ export {
   type ColumnClassKey,
   type ColumnProps,
 } from './columns/Column.tsx';
+export type {
+  ColumnAppearance,
+  ColumnColor,
+  ColumnVariant,
+  ColumnVariantOverrides,
+} from './columns/columnAppearance.ts';
 export {
   ColumnDirective,
   ColumnsDirective,
