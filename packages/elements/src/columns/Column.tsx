@@ -125,7 +125,7 @@ const ColumnRoot = styled(Step, {
       {
         props: { variant: 'card' },
         style: {
-          '--SeminarColumn-background': `color-mix(in srgb, var(--SeminarColumn-palette-main) 10%, ${theme.palette.background.paper})`,
+          '--SeminarColumn-background': 'var(--SeminarColumn-palette-tint)',
           '--SeminarColumn-heading-color':
             'var(--SeminarColumn-palette-contrastText)',
           '--SeminarColumn-heading-background':
@@ -133,7 +133,16 @@ const ColumnRoot = styled(Step, {
           '--SeminarColumn-padding': theme.spacing(3),
         },
       },
-      ...paletteColorVariants(theme, 'SeminarColumn'),
+      ...paletteColorVariants(theme, 'SeminarColumn', (selected) => {
+        // Like the background of the `standard` variant of MUI `Alert`.
+        const light = selected.light ?? selected.main;
+        return {
+          '--SeminarColumn-palette-tint':
+            theme.palette.mode === 'light'
+              ? theme.lighten(light, 0.9)
+              : theme.darken(light, 0.9),
+        };
+      }),
     ],
   };
 });

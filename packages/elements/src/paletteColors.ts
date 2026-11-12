@@ -73,11 +73,13 @@ export function textColors(
 /**
  * Returns style variants that set the `--<name>-palette-main`, `-light`,
  * `-dark`, and `-contrastText` CSS variables of each `color` of the palette
- * of `theme`, for the styles of the component `name` to use.
+ * of `theme`, and the variables that `extra` returns for the color, for the
+ * styles of the component `name` to use.
  */
 export function paletteColorVariants(
   theme: Theme,
   name: string,
+  extra?: (selected: PaletteColorLike) => Record<string, string>,
 ): { props: { color: ElementColor }; style: Record<string, string> }[] {
   const colors: [ElementColor, PaletteColorLike][] = [
     ...Object.keys(theme.palette).flatMap(
@@ -98,6 +100,7 @@ export function paletteColorVariants(
       [`--${name}-palette-dark`]: selected.dark ?? selected.main,
       [`--${name}-palette-contrastText`]:
         selected.contrastText ?? theme.palette.getContrastText(selected.main),
+      ...extra?.(selected),
     },
   }));
 }
